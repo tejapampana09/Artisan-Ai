@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, TrendingUp, Tag, Sparkles, Package, AlertCircle } from 'lucide-react';
+import { PlusCircle, TrendingUp, Tag, Sparkles, Package, Wand2 } from 'lucide-react';
 import ProductList from './ProductList';
 import CreateProductModal from './CreateProductModal';
 import ProductDetailModal from './ProductDetailModal';
+import AICatalogStudioModal from './AICatalogStudioModal';
 import { getProducts, createProduct, updateProduct, deleteProduct } from '../api';
 
 export default function SellView({ user }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isAIOpen, setIsAIOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [notification, setNotification] = useState('');
@@ -88,13 +90,26 @@ export default function SellView({ user }) {
               Craft: <span className="font-semibold text-white">{user?.craft}</span> • Location: {user?.location}
             </p>
           </div>
-          <button
-            onClick={() => setIsCreateOpen(true)}
-            className="inline-flex items-center space-x-2 bg-white text-amber-900 hover:bg-amber-50 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-md transition-all active:scale-95 cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4 text-amber-700" />
-            <span>+ Add New Craft</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            {/* AI Catalog Button */}
+            <button
+              id="ai-studio-btn"
+              onClick={() => setIsAIOpen(true)}
+              className="inline-flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-400/40 px-4 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer"
+            >
+              <Wand2 className="w-4 h-4 text-amber-400" />
+              <span>AI Voice Catalog</span>
+            </button>
+
+            {/* Standard Add */}
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="inline-flex items-center space-x-2 bg-white text-amber-900 hover:bg-amber-50 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-md transition-all active:scale-95 cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4 text-amber-700" />
+              <span>Manual Add</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -149,11 +164,21 @@ export default function SellView({ user }) {
           onSelectProduct={handleSelectProduct}
           onEditProduct={handleSelectProduct}
           onDeleteProduct={handleDeleteProduct}
-          onAddProduct={() => setIsCreateOpen(true)}
+          onAddProduct={() => setIsAIOpen(true)}
         />
       )}
 
-      {/* Create Product Modal */}
+      {/* AI Voice Catalog Studio Modal */}
+      <AICatalogStudioModal
+        isOpen={isAIOpen}
+        onClose={() => setIsAIOpen(false)}
+        onPublished={async (msg) => {
+          showNotification(msg);
+          await loadProducts();
+        }}
+      />
+
+      {/* Manual Add Modal */}
       <CreateProductModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}

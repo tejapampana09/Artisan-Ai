@@ -9,6 +9,7 @@ from backend.app.database import engine, Base, SessionLocal, get_db
 from backend.app.models import User
 from backend.app.schemas import HealthResponse, ReadyResponse, UserResponse, ModeUpdateRequest
 from backend.app.routes.products import router as products_router
+from backend.app.routes.ai_catalog import router as ai_router
 from backend.app.seed import seed_sample_products
 
 # Create tables
@@ -57,6 +58,7 @@ app.add_middleware(
 
 # Include Routers
 app.include_router(products_router)
+app.include_router(ai_router)
 
 @app.get("/api/health", response_model=HealthResponse)
 def health_check():

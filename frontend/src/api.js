@@ -113,3 +113,34 @@ export async function deleteProduct(id) {
     throw err;
   }
 }
+
+// Step 3: AI Catalog APIs
+export async function processAICatalog(data) {
+  try {
+    const res = await fetch(`${API_BASE}/ai/process-catalog`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error in AI catalog processing:', err);
+    throw err;
+  }
+}
+
+export async function approveAndPublishAICatalog(data) {
+  try {
+    const res = await fetch(`${API_BASE}/ai/approve-and-publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error approving AI catalog:', err);
+    throw err;
+  }
+}
