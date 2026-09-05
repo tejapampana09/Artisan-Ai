@@ -12,6 +12,7 @@ from backend.app.routes.products import router as products_router
 from backend.app.routes.ai_catalog import router as ai_router
 from backend.app.routes.events import router as events_router
 from backend.app.routes.intelligence import router as intelligence_router
+from backend.app.routes.pricing import router as pricing_router
 from backend.app.seed import seed_sample_products
 
 # Create tables
@@ -63,6 +64,7 @@ app.include_router(products_router)
 app.include_router(ai_router)
 app.include_router(events_router)
 app.include_router(intelligence_router)
+app.include_router(pricing_router)
 
 @app.get("/api/health", response_model=HealthResponse)
 def health_check():

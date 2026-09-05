@@ -248,3 +248,30 @@ export async function getCopilotInsight() {
     return null;
   }
 }
+
+// Step 6: Explainable Dynamic Pricing APIs
+export async function getPriceRecommendation(productId) {
+  try {
+    const res = await fetch(`${API_BASE}/products/${productId}/price-recommendation`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error(`Error fetching price recommendation for product ${productId}:`, err);
+    throw err;
+  }
+}
+
+export async function submitPriceDecision(productId, decision) {
+  try {
+    const res = await fetch(`${API_BASE}/products/${productId}/price-decision`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision }),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error(`Error submitting price decision for product ${productId}:`, err);
+    throw err;
+  }
+}

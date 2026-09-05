@@ -42,6 +42,7 @@ class Product(Base):
     seller = relationship("User", back_populates="products")
 
     events = relationship("Event", back_populates="product")
+    pricing_decisions = relationship("PricingDecision", back_populates="product")
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -60,3 +61,19 @@ class Event(Base):
 
     product = relationship("Product", back_populates="events")
     user = relationship("User", back_populates="events")
+
+class PricingDecision(Base):
+    __tablename__ = "pricing_decisions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    decision = Column(String, nullable=False)  # ACCEPT or REJECT
+    previous_price = Column(Float, nullable=False)
+    recommended_price = Column(Float, nullable=False)
+    applied_price = Column(Float, nullable=False)
+    demand_factor = Column(Float, nullable=False)
+    market_adjustment = Column(Float, nullable=False)
+    reasoning_json = Column(Text, nullable=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    product = relationship("Product", back_populates="pricing_decisions")

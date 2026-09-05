@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 class HealthResponse(BaseModel):
@@ -100,3 +100,37 @@ class OrderCreate(BaseModel):
     buyer_name: str
     quantity: int = Field(default=1, ge=1)
     delivery_address: str
+
+# Step 6: Explainable Dynamic Pricing Schemas
+class PriceRecommendationResponse(BaseModel):
+    product_id: int
+    product_title: str
+    category: str
+    current_price: float
+    cost_basis: float
+    minimum_fair_price: float
+    demand_factor: float
+    market_adjustment: float
+    recommended_price: float
+    market_range: Dict[str, float]
+    current_market_position: str
+    price_change_amount: float
+    price_change_percentage: float
+    reasoning: List[str]
+    safety_constraints: Dict[str, Any]
+
+class PriceDecisionRequest(BaseModel):
+    decision: str = Field(..., pattern="^(ACCEPT|REJECT)$")
+
+class PriceDecisionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    product_id: int
+    decision: str
+    previous_price: float
+    recommended_price: float
+    applied_price: float
+    demand_factor: float
+    market_adjustment: float
+    timestamp: datetime

@@ -26,7 +26,6 @@ def calculate_category_demand(db: Session) -> List[Dict[str, Any]]:
     Computes real-time dynamic demand scores for each craft category
     based on aggregated events stored in the SQLite database.
     """
-    # Group events by category and event_type
     results = (
         db.query(Event.category, Event.event_type, func.count(Event.id))
         .filter(Event.category.isnot(None))
@@ -66,19 +65,20 @@ def calculate_category_demand(db: Session) -> List[Dict[str, Any]]:
             "event_breakdown": counts
         })
 
-    # Sort categories by demand percentage descending
     demand_list.sort(key=lambda x: x["demand_pct"], reverse=True)
     return demand_list
 
 def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
     """
     Generates actionable seller opportunities and AI Business Copilot guidance
-    by connecting the seller's active products with real-time category demand.
+    connected directly to the Pricing Engine and real-time category demand.
     """
+    # Import here to prevent circular import
+    from backend.app.services.pricing_engine import calculate_price_recommendation
+
     category_demands = {d["category"]: d for d in calculate_category_demand(db)}
     seller_products = db.query(Product).filter(Product.seller_id == user_id).all()
     
-    # If no specific seller products, fetch all products
     if not seller_products:
         seller_products = db.query(Product).all()
 
@@ -90,7 +90,9 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
         if not cat_demand:
             continue
 
-        # Count product-specific enquiries and saves
+        pricing_rec = calculate_price_recommendation(prod, db)
+        rec_price = pricing_rec["recommended_price"]
+
         save_count = db.query(Event).filter(Event.product_id == prod.id, Event.event_type == "SAVE").count()
         enquiry_count = db.query(Event).filter(Event.product_id == prod.id, Event.event_type == "ENQUIRY").count()
 
@@ -98,8 +100,7 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
         is_low_inventory = prod.stock <= 8
 
         if is_high_demand:
-            rec_price_bump = round(prod.price * (1 + (cat_demand["demand_pct"] / 200)))
-            action_text = f"Review price: ₹{int(prod.price)} → ₹{rec_price_bump}. Consider producing 10–15 more units."
+            action_text = f"Review price: ₹{int(prod.price)} → ₹{int(rec_price)}. Consider producing 10–15 more units."
 
             opp = {
                 "product_id": prod.id,
@@ -110,13 +111,17 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
                 "stock": prod.stock,
                 "buyer_saves": save_count,
                 "buyer_enquiries": enquiry_count,
+                "current_price": prod.price,
+                "recommended_price": rec_price,
+                "minimum_fair_price": pricing_rec["minimum_fair_price"],
                 "benchmark_range": cat_demand["benchmark_price_range"],
                 "headline": f"{prod.category} demand is increasing",
                 "narrative": (
-                    f"Demand is increasing. Search interest is up {cat_demand['demand_pct']}%, "
-                    f"comparable products are within the {cat_demand['benchmark_price_range']} range, "
-                    f"and your current inventory is low ({prod.stock} units). "
-                    f"Consider preparing additional units and reviewing the suggested price."
+                    f"{prod.category} demand is increasing (+{cat_demand['demand_pct']}%). "
+                    f"Your current price is ₹{int(prod.price):,}. Based on your protected margin (≥{int(pricing_rec['safety_constraints']['min_margin_percentage'])}%), "
+                    f"demand signals, and comparable products ({cat_demand['benchmark_price_range']}), "
+                    f"the recommended price is ₹{int(rec_price):,}. "
+                    f"Review the full price explanation before making a decision. Your price will not change automatically."
                 ),
                 "next_best_action": action_text,
                 "urgency": "HIGH" if is_low_inventory else "MEDIUM"
@@ -126,7 +131,6 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
             if not copilot_insight or opp["demand_pct"] > copilot_insight["demand_pct"]:
                 copilot_insight = opp
 
-    # Fallback copilot insight if no high demand trigger
     if not copilot_insight and category_demands:
         top_cat = list(category_demands.values())[0]
         copilot_insight = {
