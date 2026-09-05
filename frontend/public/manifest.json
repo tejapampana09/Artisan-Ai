@@ -1,0 +1,18 @@
+{
+  "short_name": "Artisan AI",
+  "name": "Artisan AI — Smart Rural Commerce & Cataloging",
+  "description": "Voice-First AI Business Platform & Market Linkage for Marginalized Artisans",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#d97706",
+  "background_color": "#f8fafc",
+  "orientation": "portrait-primary"
+}

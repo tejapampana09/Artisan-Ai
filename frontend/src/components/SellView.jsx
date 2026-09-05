@@ -7,6 +7,8 @@ import AICatalogStudioModal from './AICatalogStudioModal';
 import CopilotWidget from './CopilotWidget';
 import MarketDemandWidget from './MarketDemandWidget';
 import { getProducts, createProduct, updateProduct, deleteProduct, getMarketDemand, getSellerOpportunities } from '../api';
+import { useOffline } from '../context/OfflineContext';
+import { getCachedProducts, setCachedProducts } from '../services/offlineSync';
 
 export default function SellView({ user }) {
   const [products, setProducts] = useState([]);
@@ -19,19 +21,66 @@ export default function SellView({ user }) {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [notification, setNotification] = useState('');
 
+  const { isOffline, queueProductDraft, offlineQueue, removeDraft } = useOffline();
+
   const loadDashboard = async () => {
     setLoading(true);
     try {
-      const [prodsData, demandData, oppsData] = await Promise.all([
-        getProducts(),
-        getMarketDemand(),
-        getSellerOpportunities()
-      ]);
-      setProducts(prodsData);
-      setDemands(demandData);
-      setCopilotInsight(oppsData.copilot_insight);
+      if (isOffline) {
+        // Read from local cache + pending offline queue
+        const cached = getCachedProducts();
+        const queuedDrafts = offlineQueue
+          .filter(item => item.type === 'CREATE_PRODUCT')
+          .map(item => ({
+            ...item.payload,
+            id: item.client_temp_id,
+            status: item.payload.status || 'DRAFT',
+            isOfflineDraft: true
+          }));
+
+        // Deduplicate
+        const merged = [...queuedDrafts, ...cached.filter(c => !c.isOfflineDraft)];
+        setProducts(merged);
+        setDemands([
+          { category: 'Kalamkari', demand_score: 95, base_benchmark: '₹1,150 - ₹1,400', demand_pct_label: '+32% (Offline Cache)' },
+          { category: 'Dokra', demand_score: 82, base_benchmark: '₹1,350 - ₹1,650', demand_pct_label: '+18% (Offline Cache)' }
+        ]);
+        setCopilotInsight({
+          product_id: 1,
+          type: 'PRICE_OPTIMIZATION',
+          title: 'Offline Cached Insight: Kalamkari High Demand',
+          message: 'Buyer interactions indicate strong demand. Ready to analyze upon cloud reconnection.',
+          action_label: 'View Local Recommendation',
+          metric: '+32% cluster surge'
+        });
+      } else {
+        const [prodsData, demandData, oppsData] = await Promise.all([
+          getProducts(),
+          getMarketDemand(),
+          getSellerOpportunities()
+        ]);
+
+        // Cache products locally
+        setCachedProducts(prodsData);
+
+        // Prepend any offline items that haven't synced yet
+        const queuedDrafts = offlineQueue
+          .filter(item => item.type === 'CREATE_PRODUCT')
+          .map(item => ({
+            ...item.payload,
+            id: item.client_temp_id,
+            status: item.payload.status || 'DRAFT',
+            isOfflineDraft: true
+          }));
+
+        setProducts([...queuedDrafts, ...prodsData]);
+        setDemands(demandData);
+        setCopilotInsight(oppsData.copilot_insight);
+      }
     } catch (err) {
-      console.error('Error loading seller dashboard:', err);
+      console.error('Error loading seller dashboard, falling back to cache:', err);
+      const cached = getCachedProducts();
+      setProducts(cached);
     } finally {
       setLoading(false);
     }
@@ -39,7 +88,7 @@ export default function SellView({ user }) {
 
   useEffect(() => {
     loadDashboard();
-  }, []);
+  }, [isOffline, offlineQueue.length]);
 
   const showNotification = (msg) => {
     setNotification(msg);
@@ -47,12 +96,29 @@ export default function SellView({ user }) {
   };
 
   const handleCreateProduct = async (formData) => {
-    const created = await createProduct(formData);
-    showNotification(`Added "${created.title}" to your catalog!`);
-    await loadDashboard();
+    if (isOffline) {
+      queueProductDraft(formData);
+      showNotification(`Saved "${formData.title}" to local device queue (Pending Cloud Sync)!`);
+      await loadDashboard();
+      return;
+    }
+
+    try {
+      const created = await createProduct(formData);
+      showNotification(`Added "${created.title}" to your catalog!`);
+      await loadDashboard();
+    } catch (err) {
+      queueProductDraft(formData);
+      showNotification(`Network error. Safely queued "${formData.title}" to offline storage.`);
+      await loadDashboard();
+    }
   };
 
   const handleUpdateProduct = async (id, formData) => {
+    if (isOffline) {
+      showNotification('Cannot edit cloud product while offline. Reconnect to sync.');
+      return;
+    }
     const updated = await updateProduct(id, formData);
     showNotification(`Updated "${updated.title}" successfully.`);
     setSelectedProduct(updated);
@@ -60,6 +126,22 @@ export default function SellView({ user }) {
   };
 
   const handleDeleteProduct = async (id) => {
+    if (typeof id === 'string' && id.startsWith('draft_local_')) {
+      removeDraft(id);
+      showNotification('Offline draft removed from device.');
+      if (selectedProduct?.id === id) {
+        setSelectedProduct(null);
+        setDetailModalOpen(false);
+      }
+      await loadDashboard();
+      return;
+    }
+
+    if (isOffline) {
+      showNotification('Cannot delete cloud product while offline.');
+      return;
+    }
+
     await deleteProduct(id);
     showNotification('Product deleted from catalog.');
     if (selectedProduct?.id === id) {

@@ -4,10 +4,12 @@ import {
   TrendingUp, ArrowRight, CheckCircle2, AlertCircle, Info, Lock
 } from 'lucide-react';
 import { getPriceRecommendation, submitPriceDecision } from '../api';
+import { useOffline } from '../context/OfflineContext';
 
 export default function ProductDetailModal({ product, isOpen, onClose, onUpdated, onDelete }) {
   if (!isOpen || !product) return null;
 
+  const { isOffline, queuePriceDecision } = useOffline();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     title: product.title,
@@ -30,6 +32,45 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
 
   const fetchPricing = async () => {
     setPricingLoading(true);
+    if (isOffline || (typeof product.id === 'string' && product.id.startsWith('draft_local_'))) {
+      // Step 7: Offline deterministic pricing fallback calculation
+      const costBasis = (product.material_cost || 0) + (product.labour_cost || 0) + (product.packaging_cost || 0);
+      const minFair = costBasis * 1.20;
+      const baseAnchor = Math.max(product.price || minFair, minFair);
+      const demandFactor = 1.06;
+      const marketAdjustment = 1.02;
+      const rawRec = Math.round(baseAnchor * demandFactor * marketAdjustment);
+      const safeRec = Math.max(minFair, Math.min(rawRec, Math.round((product.price || minFair) * 1.25)));
+      setPricingRec({
+        product_id: product.id,
+        product_title: product.title,
+        category: product.category,
+        current_price: product.price || safeRec,
+        cost_basis: costBasis,
+        minimum_fair_price: minFair,
+        demand_factor: demandFactor,
+        market_adjustment: marketAdjustment,
+        recommended_price: safeRec,
+        market_range: { min_benchmark: Math.round(costBasis * 1.3), max_benchmark: Math.round(costBasis * 1.8) },
+        current_market_position: 'COMPETITIVE',
+        price_change_amount: safeRec - (product.price || safeRec),
+        price_change_percentage: product.price > 0 ? Number((((safeRec - product.price) / product.price) * 100).toFixed(1)) : 0,
+        reasoning: [
+          'Calculated via offline deterministic pricing engine.',
+          `Minimum Fair Living Wage Floor: ₹${minFair.toFixed(0)} (Cost Basis: ₹${costBasis.toFixed(0)} + 20% margin).`,
+          'Upward surge capped safely within +25% maximum bound to prevent price gouging.',
+          'Artisan retains 100% final approval power before price updates in catalog.'
+        ],
+        safety_constraints: {
+          minimum_fair_price_guaranteed: true,
+          max_upward_cap_applied: false,
+          artisan_approval_required: true
+        }
+      });
+      setPricingLoading(false);
+      return;
+    }
+
     try {
       const data = await getPriceRecommendation(product.id);
       setPricingRec(data);
@@ -56,7 +97,7 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
       setDecisionFeedback('');
       fetchPricing();
     }
-  }, [product?.id]);
+  }, [product?.id, isOffline]);
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -81,6 +122,27 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
 
   const handleDecision = async (decision) => {
     setDecisionSubmitting(true);
+    if (isOffline) {
+      const appliedPrice = decision === 'ACCEPT' ? (pricingRec?.recommended_price || product.price) : product.price;
+      queuePriceDecision({
+        product_id: typeof product.id === 'number' ? product.id : 1,
+        decision,
+        recommended_price: pricingRec?.recommended_price || product.price,
+        previous_price: product.price,
+        demand_factor: pricingRec?.demand_factor || 1.0,
+        market_adjustment: pricingRec?.market_adjustment || 1.0,
+        reasoning_summary: decision === 'ACCEPT' ? 'Artisan approved in offline mode' : 'Artisan kept current price in offline mode'
+      });
+      if (decision === 'ACCEPT') {
+        setDecisionFeedback(`Decision saved offline! Price updated locally to ₹${appliedPrice.toLocaleString('en-IN')}. Will sync to cloud on reconnect.`);
+        await onUpdated(product.id, { price: appliedPrice });
+      } else {
+        setDecisionFeedback('Rejection saved offline. Current price maintained.');
+      }
+      setDecisionSubmitting(false);
+      return;
+    }
+
     try {
       const res = await submitPriceDecision(product.id, decision);
       if (decision === 'ACCEPT') {

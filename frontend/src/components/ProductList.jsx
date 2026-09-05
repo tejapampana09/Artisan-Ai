@@ -60,6 +60,11 @@ export default function ProductList({ products, onSelectProduct, onEditProduct, 
                   }`}>
                     {p.status}
                   </span>
+                  {p.isOfflineDraft && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 border border-orange-300 flex items-center space-x-1 animate-pulse">
+                      <span>📡 Offline Draft (Pending Sync)</span>
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-500 mt-1 line-clamp-1 max-w-md">
                   {p.description || p.craft_story}

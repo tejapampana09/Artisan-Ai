@@ -4,6 +4,14 @@ from backend.app.main import app
 client = TestClient(app)
 
 def test_closed_loop_market_intelligence_scenario():
+    # Ensure clean state for dynamic surge testing
+    from backend.app.database import SessionLocal
+    from backend.app.models import Event
+    db = SessionLocal()
+    db.query(Event).filter(Event.category == "Wooden Toys").delete()
+    db.commit()
+    db.close()
+
     # 1. Fetch initial demand
     initial_demand_res = client.get("/api/market/demand")
     assert initial_demand_res.status_code == 200

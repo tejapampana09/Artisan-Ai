@@ -275,3 +275,30 @@ export async function submitPriceDecision(productId, decision) {
     throw err;
   }
 }
+
+// Step 7: Offline Batch Sync APIs
+export async function getSyncStatus() {
+  try {
+    const res = await fetch(`${API_BASE}/sync/status`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    return { status: 'offline', error: err.message };
+  }
+}
+
+export async function syncBatch(batchData) {
+  try {
+    const res = await fetch(`${API_BASE}/sync/batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(batchData),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error during batch sync:', err);
+    throw err;
+  }
+}
+
