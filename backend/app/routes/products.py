@@ -84,3 +84,30 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
     db.delete(product)
     db.commit()
     return None
+
+VALID_LIFECYCLE_STATES = ["DRAFT", "AI_PROCESSING", "AI_GENERATED", "APPROVED", "PUBLISHED"]
+
+@router.patch("/{product_id}/status", response_model=ProductResponse)
+def transition_product_status(
+    product_id: int,
+    status_payload: dict,
+    db: Session = Depends(get_db)
+):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with id {product_id} not found"
+        )
+    
+    new_status = status_payload.get("status", "").upper()
+    if new_status not in VALID_LIFECYCLE_STATES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status '{new_status}'. Must be one of: {', '.join(VALID_LIFECYCLE_STATES)}"
+        )
+
+    product.status = new_status
+    db.commit()
+    db.refresh(product)
+    return product

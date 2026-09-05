@@ -74,8 +74,27 @@ def test_buyer_marketplace_events_storage():
     for expected in ["SEARCH", "VIEW", "SAVE", "ENQUIRY", "ORDER"]:
         assert expected in types_found, f"Expected event type {expected} not found in DB events"
 
-    # 8. Test Trending Endpoint
+    # 8. Test Trending Endpoint with Weighted Scoring
     trending_res = client.get("/api/marketplace/trending")
     assert trending_res.status_code == 200
     trending = trending_res.json()
     assert len(trending) > 0
+
+    # 9. Test Insufficient Stock Validation (400 Bad Request)
+    over_order_res = client.post("/api/marketplace/order", json={
+        "product_id": pid,
+        "buyer_name": "Bulk Buyer",
+        "quantity": 999999,
+        "delivery_address": "Bangalore"
+    })
+    assert over_order_res.status_code == 400
+    assert "Insufficient stock" in over_order_res.json()["detail"]
+
+    # 10. Test Product Lifecycle State Transition
+    trans_res = client.patch(f"/api/products/{pid}/status", json={"status": "AI_GENERATED"})
+    assert trans_res.status_code == 200
+    assert trans_res.json()["status"] == "AI_GENERATED"
+
+    pub_trans_res = client.patch(f"/api/products/{pid}/status", json={"status": "PUBLISHED"})
+    assert pub_trans_res.status_code == 200
+    assert pub_trans_res.json()["status"] == "PUBLISHED"

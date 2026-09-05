@@ -61,6 +61,7 @@ def calculate_category_demand(db: Session) -> List[Dict[str, Any]]:
             "benchmark_price_range": f"₹{baseline['benchmark_min']}–₹{baseline['benchmark_max']}",
             "benchmark_min": baseline["benchmark_min"],
             "benchmark_max": baseline["benchmark_max"],
+            "data_source_label": "Demo Market Benchmark / Baseline Market Index (SIH 2026 Sandbox)",
             "total_buyer_events": total_events,
             "event_breakdown": counts
         })

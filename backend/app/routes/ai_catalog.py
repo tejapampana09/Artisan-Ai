@@ -37,6 +37,7 @@ class AICatalogDraftResponse(BaseModel):
     enhanced_image_url: str
     transcription: str
     language_detected: str
+    lifecycle_state: str = "AI_GENERATED"
 
 class CatalogApproveRequest(BaseModel):
     title: str

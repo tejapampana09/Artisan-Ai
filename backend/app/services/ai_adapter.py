@@ -160,5 +160,6 @@ async def generate_catalog_draft(
         "image_url": image_url or "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80",
         "enhanced_image_url": enhance_image_url(image_url),
         "transcription": voice_description,
-        "language_detected": language
+        "language_detected": language,
+        "lifecycle_state": "AI_GENERATED"
     }

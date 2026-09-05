@@ -181,6 +181,31 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
           </button>
         </div>
 
+        {/* 5-Stage Product Lifecycle State Machine */}
+        <div className="pt-3 pb-1 border-b border-slate-100 flex items-center justify-between text-[10px] font-bold text-slate-400">
+          <div className="flex items-center space-x-1 sm:space-x-2">
+            <span className={`px-2 py-0.5 rounded-full ${step === 'INPUT' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-slate-100 text-slate-600'}`}>
+              1. DRAFT
+            </span>
+            <span>→</span>
+            <span className={`px-2 py-0.5 rounded-full ${step === 'PROCESSING' ? 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse' : 'bg-slate-100 text-slate-600'}`}>
+              2. AI_PROCESSING
+            </span>
+            <span>→</span>
+            <span className={`px-2 py-0.5 rounded-full ${step === 'REVIEW' && !publishing ? 'bg-indigo-100 text-indigo-900 border border-indigo-300' : 'bg-slate-100 text-slate-600'}`}>
+              3. AI_GENERATED
+            </span>
+            <span>→</span>
+            <span className={`px-2 py-0.5 rounded-full ${publishing ? 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse' : 'bg-slate-100 text-slate-600'}`}>
+              4. APPROVED
+            </span>
+            <span>→</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+              5. PUBLISHED
+            </span>
+          </div>
+        </div>
+
         {/* STEP 1: Input Flow */}
         {step === 'INPUT' && (
           <div className="mt-4 space-y-5">

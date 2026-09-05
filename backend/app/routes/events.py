@@ -80,9 +80,20 @@ def place_order(order: OrderCreate, db: Session = Depends(get_db)):
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # Decrement inventory
-    if product.stock >= order.quantity:
-        product.stock -= order.quantity
+    # Strict Stock Integrity Validation
+    if product.stock <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Product '{product.title}' is currently out of stock."
+        )
+    if product.stock < order.quantity:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Insufficient stock: requested {order.quantity} units, but only {product.stock} available."
+        )
+
+    # Decrement inventory upon confirmed availability
+    product.stock -= order.quantity
 
     meta = f"Buyer: {order.buyer_name} | Qty: {order.quantity} | Total: ₹{product.price * order.quantity} | Delivery: {order.delivery_address}"
 
@@ -96,27 +107,42 @@ def place_order(order: OrderCreate, db: Session = Depends(get_db)):
     db.add(evt)
     db.commit()
     db.refresh(evt)
+    db.refresh(product)
     return evt
 
 @router.get("/marketplace/trending", response_model=List[ProductResponse])
 def get_trending_products(limit: int = Query(8, le=20), db: Session = Depends(get_db)):
-    # Simple scoring: count events per product
+    """
+    Ranks products using the exact weighted Demand Engine scoring:
+    ORDER: 10, ENQUIRY: 6, SAVE: 4, SEARCH: 2, VIEW: 1
+    Ensures consistent marketplace & seller intelligence signals.
+    """
+    from sqlalchemy import case
+
+    weighted_score = func.sum(
+        case(
+            (Event.event_type == "ORDER", 10),
+            (Event.event_type == "ENQUIRY", 6),
+            (Event.event_type == "SAVE", 4),
+            (Event.event_type == "SEARCH", 2),
+            (Event.event_type == "VIEW", 1),
+            else_=1
+        )
+    ).label("score")
+
     event_counts = (
-        db.query(Event.product_id, func.count(Event.id).label("score"))
+        db.query(Event.product_id, weighted_score)
         .filter(Event.product_id.isnot(None))
         .group_by(Event.product_id)
-        .order_by(func.count(Event.id).desc())
+        .order_by(weighted_score.desc())
         .all()
     )
     product_ids = [row[0] for row in event_counts]
 
     if product_ids:
-        # Fetch matching products in order of popularity
         products = db.query(Product).filter(Product.id.in_(product_ids)).all()
-        # sort by appearance in product_ids
         id_to_prod = {p.id: p for p in products}
         ordered = [id_to_prod[pid] for pid in product_ids if pid in id_to_prod]
         return ordered[:limit]
 
-    # Fallback to recent products
     return db.query(Product).order_by(Product.id.desc()).limit(limit).all()

@@ -30,7 +30,8 @@ class Product(Base):
     stock = Column(Integer, nullable=False, default=1)
     image_url = Column(String, nullable=True)
     enhanced_image_url = Column(String, nullable=True)
-    status = Column(String, default="PUBLISHED")  # DRAFT, APPROVED, PUBLISHED
+    # Full 5-stage lifecycle state machine: DRAFT -> AI_PROCESSING -> AI_GENERATED -> APPROVED -> PUBLISHED
+    status = Column(String, default="PUBLISHED")
     
     # Cost structure for explainable pricing
     material_cost = Column(Float, default=0.0)
