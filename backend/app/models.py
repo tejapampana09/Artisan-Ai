@@ -15,6 +15,7 @@ class User(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     products = relationship("Product", back_populates="seller")
+    events = relationship("Event", back_populates="user")
 
 class Product(Base):
     __tablename__ = "products"
@@ -40,5 +41,22 @@ class Product(Base):
     seller_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     seller = relationship("User", back_populates="products")
 
+    events = relationship("Event", back_populates="product")
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+class Event(Base):
+    __tablename__ = "events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_type = Column(String, index=True, nullable=False)  # SEARCH, VIEW, SAVE, ENQUIRY, ORDER
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
+    category = Column(String, index=True, nullable=True)
+    query = Column(String, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    metadata_info = Column(Text, nullable=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    product = relationship("Product", back_populates="events")
+    user = relationship("User", back_populates="events")

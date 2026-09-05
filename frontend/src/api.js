@@ -144,3 +144,73 @@ export async function approveAndPublishAICatalog(data) {
     throw err;
   }
 }
+
+// Step 4: Event & Marketplace APIs
+export async function recordEvent(eventData) {
+  try {
+    const res = await fetch(`${API_BASE}/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(eventData),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error recording event:', err);
+    return null;
+  }
+}
+
+export async function getEvents(params = {}) {
+  try {
+    const query = new URLSearchParams(params).toString();
+    const url = query ? `${API_BASE}/events?${query}` : `${API_BASE}/events`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching events:', err);
+    return [];
+  }
+}
+
+export async function submitEnquiry(data) {
+  try {
+    const res = await fetch(`${API_BASE}/marketplace/enquire`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error submitting enquiry:', err);
+    throw err;
+  }
+}
+
+export async function placeOrder(data) {
+  try {
+    const res = await fetch(`${API_BASE}/marketplace/order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error placing order:', err);
+    throw err;
+  }
+}
+
+export async function getTrendingProducts() {
+  try {
+    const res = await fetch(`${API_BASE}/marketplace/trending`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching trending products:', err);
+    return [];
+  }
+}

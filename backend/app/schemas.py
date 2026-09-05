@@ -68,3 +68,35 @@ class ProductResponse(ProductBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+# Step 4: Event & Marketplace Schemas
+class EventCreate(BaseModel):
+    event_type: str = Field(..., pattern="^(SEARCH|VIEW|SAVE|ENQUIRY|ORDER)$")
+    product_id: Optional[int] = None
+    category: Optional[str] = None
+    query: Optional[str] = None
+    metadata_info: Optional[str] = None
+
+class EventResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    event_type: str
+    product_id: Optional[int] = None
+    category: Optional[str] = None
+    query: Optional[str] = None
+    metadata_info: Optional[str] = None
+    timestamp: datetime
+
+class EnquiryCreate(BaseModel):
+    product_id: int
+    buyer_name: str
+    buyer_phone: str
+    quantity: int = Field(default=1, ge=1)
+    message: Optional[str] = None
+
+class OrderCreate(BaseModel):
+    product_id: int
+    buyer_name: str
+    quantity: int = Field(default=1, ge=1)
+    delivery_address: str
