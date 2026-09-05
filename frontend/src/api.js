@@ -214,3 +214,37 @@ export async function getTrendingProducts() {
     return [];
   }
 }
+
+// Step 5: Market Intelligence APIs
+export async function getMarketDemand() {
+  try {
+    const res = await fetch(`${API_BASE}/market/demand`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching market demand:', err);
+    return [];
+  }
+}
+
+export async function getSellerOpportunities() {
+  try {
+    const res = await fetch(`${API_BASE}/seller/opportunities`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching seller opportunities:', err);
+    return { copilot_insight: null, opportunities: [], category_demand: [] };
+  }
+}
+
+export async function getCopilotInsight() {
+  try {
+    const res = await fetch(`${API_BASE}/seller/copilot-insight`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching copilot insight:', err);
+    return null;
+  }
+}

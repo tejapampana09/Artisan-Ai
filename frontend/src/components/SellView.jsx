@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, TrendingUp, Tag, Sparkles, Package, Wand2 } from 'lucide-react';
+import { PlusCircle, TrendingUp, Tag, Sparkles, Package, Wand2, RefreshCw } from 'lucide-react';
 import ProductList from './ProductList';
 import CreateProductModal from './CreateProductModal';
 import ProductDetailModal from './ProductDetailModal';
 import AICatalogStudioModal from './AICatalogStudioModal';
-import { getProducts, createProduct, updateProduct, deleteProduct } from '../api';
+import CopilotWidget from './CopilotWidget';
+import MarketDemandWidget from './MarketDemandWidget';
+import { getProducts, createProduct, updateProduct, deleteProduct, getMarketDemand, getSellerOpportunities } from '../api';
 
 export default function SellView({ user }) {
   const [products, setProducts] = useState([]);
+  const [demands, setDemands] = useState([]);
+  const [copilotInsight, setCopilotInsight] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
@@ -15,20 +19,26 @@ export default function SellView({ user }) {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [notification, setNotification] = useState('');
 
-  const loadProducts = async () => {
+  const loadDashboard = async () => {
     setLoading(true);
     try {
-      const data = await getProducts();
-      setProducts(data);
+      const [prodsData, demandData, oppsData] = await Promise.all([
+        getProducts(),
+        getMarketDemand(),
+        getSellerOpportunities()
+      ]);
+      setProducts(prodsData);
+      setDemands(demandData);
+      setCopilotInsight(oppsData.copilot_insight);
     } catch (err) {
-      console.error(err);
+      console.error('Error loading seller dashboard:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadProducts();
+    loadDashboard();
   }, []);
 
   const showNotification = (msg) => {
@@ -39,14 +49,14 @@ export default function SellView({ user }) {
   const handleCreateProduct = async (formData) => {
     const created = await createProduct(formData);
     showNotification(`Added "${created.title}" to your catalog!`);
-    await loadProducts();
+    await loadDashboard();
   };
 
   const handleUpdateProduct = async (id, formData) => {
     const updated = await updateProduct(id, formData);
     showNotification(`Updated "${updated.title}" successfully.`);
     setSelectedProduct(updated);
-    await loadProducts();
+    await loadDashboard();
   };
 
   const handleDeleteProduct = async (id) => {
@@ -56,7 +66,7 @@ export default function SellView({ user }) {
       setSelectedProduct(null);
       setDetailModalOpen(false);
     }
-    await loadProducts();
+    await loadDashboard();
   };
 
   const handleSelectProduct = (product) => {
@@ -64,8 +74,21 @@ export default function SellView({ user }) {
     setDetailModalOpen(true);
   };
 
+  const handleCopilotAction = (insight) => {
+    if (insight?.product_id) {
+      const target = products.find((p) => p.id === insight.product_id);
+      if (target) {
+        setSelectedProduct(target);
+        setDetailModalOpen(true);
+        return;
+      }
+    }
+    setIsCreateOpen(true);
+  };
+
   const totalUnits = products.reduce((sum, p) => sum + (p.stock || 0), 0);
   const totalCatalogValue = products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0);
+  const topDemandCategory = demands.length > 0 ? demands[0] : { category: 'Kalamkari', demand_pct_label: '+32%' };
 
   return (
     <div className="space-y-6">
@@ -90,7 +113,15 @@ export default function SellView({ user }) {
               Craft: <span className="font-semibold text-white">{user?.craft}</span> • Location: {user?.location}
             </p>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2.5 flex-wrap gap-y-2">
+            <button
+              onClick={loadDashboard}
+              className="p-2.5 bg-amber-800/50 hover:bg-amber-800 text-amber-200 rounded-xl transition-colors"
+              title="Refresh Live Metrics"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+
             {/* AI Catalog Button */}
             <button
               id="ai-studio-btn"
@@ -113,7 +144,13 @@ export default function SellView({ user }) {
         </div>
       </div>
 
-      {/* Overview Cards */}
+      {/* AI Business Copilot Recommendation Widget (Step 5 Core Brain) */}
+      <CopilotWidget
+        copilotInsight={copilotInsight}
+        onActionTaken={handleCopilotAction}
+      />
+
+      {/* Live Calculated Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
           <div className="flex justify-between items-start">
@@ -135,11 +172,11 @@ export default function SellView({ user }) {
 
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Market Demand</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Top Market Demand</span>
             <TrendingUp className="w-5 h-5 text-emerald-600" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">+32%</p>
-          <p className="text-xs text-emerald-600 font-medium mt-1">High interest in Kalamkari</p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{topDemandCategory.demand_pct_label}</p>
+          <p className="text-xs text-emerald-600 font-medium mt-1">{topDemandCategory.category} category</p>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
@@ -151,6 +188,9 @@ export default function SellView({ user }) {
           <p className="text-xs text-slate-500 mt-1">Deterministic cost baseline</p>
         </div>
       </div>
+
+      {/* Regional Craft Market Demand (Calculated from events) */}
+      <MarketDemandWidget demands={demands} />
 
       {/* Product List Section */}
       {loading ? (
@@ -174,7 +214,7 @@ export default function SellView({ user }) {
         onClose={() => setIsAIOpen(false)}
         onPublished={async (msg) => {
           showNotification(msg);
-          await loadProducts();
+          await loadDashboard();
         }}
       />
 
