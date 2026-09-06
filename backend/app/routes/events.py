@@ -1,5 +1,6 @@
 from typing import List, Optional
 from datetime import datetime, timezone
+from decimal import Decimal, ROUND_HALF_UP
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, update
@@ -152,7 +153,9 @@ def place_order(
         )
 
     try:
-        total_price = round(product.price * order.quantity, 2)
+        unit_price = Decimal(str(product.price)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        quantity_dec = Decimal(str(order.quantity))
+        total_price = (unit_price * quantity_dec).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         buyer_name = order.buyer_name.strip() if order.buyer_name and order.buyer_name.strip() else current_user.name
         buyer_phone = order.buyer_phone.strip() if order.buyer_phone and order.buyer_phone.strip() else (current_user.phone or None)
 
@@ -163,7 +166,7 @@ def place_order(
             buyer_name=buyer_name,
             buyer_phone=buyer_phone,
             quantity=order.quantity,
-            unit_price=product.price,
+            unit_price=unit_price,
             total_price=total_price,
             delivery_address=order.delivery_address.strip(),
             status="CONFIRMED",
@@ -172,7 +175,7 @@ def place_order(
         db.add(order_record)
 
         # 2. Public analytics event with sanitized operational info (NO delivery address or phone PII)
-        sanitized_meta = f"Quantity: {order.quantity} | Total: ₹{total_price:,.0f} | Status: CONFIRMED"
+        sanitized_meta = f"Quantity: {order.quantity} | Total: ₹{float(total_price):,.0f} | Status: CONFIRMED"
 
         evt = Event(
             event_type="ORDER",

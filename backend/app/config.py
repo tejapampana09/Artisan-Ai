@@ -1,34 +1,44 @@
 import os
 from typing import List
 
+def normalize_database_url(url: str) -> str:
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql://", 1)
+    return url
+
+get_database_url = normalize_database_url
+
 # Environment & Demo Mode
 ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development").lower()
 
-# DEMO_MODE explicitly controls whether demo fallback is permitted.
-# In production, DEMO_MODE defaults to False.
-# In development/test, DEMO_MODE defaults to True unless explicitly disabled.
-DEMO_MODE: bool = os.getenv(
-    "DEMO_MODE", 
-    "true" if ENVIRONMENT != "production" else "false"
-).lower() in ("true", "1", "yes")
+_raw_demo_mode = os.getenv("DEMO_MODE")
+if ENVIRONMENT == "production":
+    DEMO_MODE: bool = False if _raw_demo_mode is None else (_raw_demo_mode.lower() in ("true", "1", "yes"))
+else:
+    DEMO_MODE: bool = _raw_demo_mode.lower() in ("true", "1", "yes") if _raw_demo_mode is not None else True
 
-# Database
-DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./artisan_ai.db")
+# Database URL
+raw_db_url: str = os.getenv("DATABASE_URL", "sqlite:///./artisan_ai.db")
+DATABASE_URL: str = normalize_database_url(raw_db_url)
 
 # JWT Authentication
 DEV_FALLBACK_JWT_SECRET: str = "sih_2026_artisan_ai_dev_secret_key_marginalized_artisans_safety_first"
 _env_jwt_secret = os.getenv("JWT_SECRET_KEY")
+JWT_SECRET_KEY: str = _env_jwt_secret or (DEV_FALLBACK_JWT_SECRET if ENVIRONMENT != "production" else "")
 
-if ENVIRONMENT == "production":
-    if not _env_jwt_secret or _env_jwt_secret == DEV_FALLBACK_JWT_SECRET:
-        raise RuntimeError(
-            "CRITICAL SECURITY CONFIGURATION ERROR: JWT_SECRET_KEY environment variable "
-            "must be explicitly set to a secure, unpredictable secret in production! "
-            "Do not use predictable development fallback secrets."
-        )
-    JWT_SECRET_KEY: str = _env_jwt_secret
-else:
-    JWT_SECRET_KEY: str = _env_jwt_secret or DEV_FALLBACK_JWT_SECRET
+def validate_production_config(env: str, demo_mode: bool, database_url: str, jwt_secret: str) -> bool:
+    """Strict configuration validator for production deployments."""
+    if env == "production":
+        if demo_mode:
+            raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: DEMO_MODE cannot be enabled in production! Set DEMO_MODE=false.")
+        if not jwt_secret or jwt_secret == DEV_FALLBACK_JWT_SECRET or "sih_2026" in jwt_secret or "sih_2024" in jwt_secret or "dev-" in jwt_secret:
+            raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: JWT_SECRET_KEY environment variable must be explicitly set to a secure, unpredictable secret in production! Do not use predictable development fallback secrets.")
+        if database_url.startswith("sqlite"):
+            raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: SQLite cannot be used as the production database. Set DATABASE_URL to PostgreSQL.")
+    return True
+
+# Validate active environment settings
+validate_production_config(ENVIRONMENT, DEMO_MODE, DATABASE_URL, JWT_SECRET_KEY)
 
 JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")) # 24 hours

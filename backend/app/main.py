@@ -8,7 +8,7 @@ from sqlalchemy import text
 from backend.app.database import engine, Base, SessionLocal, get_db
 from backend.app.models import User
 from backend.app.schemas import HealthResponse, ReadyResponse, UserResponse, ModeUpdateRequest
-from backend.app.config import get_cors_origins, DEMO_MODE
+from backend.app.config import get_cors_origins, DEMO_MODE, ENVIRONMENT
 from backend.app.routes.products import router as products_router
 from backend.app.routes.ai_catalog import router as ai_router
 from backend.app.routes.events import router as events_router
@@ -19,8 +19,10 @@ from backend.app.routes.auth import router as auth_router
 from backend.app.services.auth import get_current_user as auth_get_current_user, hash_password
 from backend.app.seed import seed_sample_products
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+# Create tables automatically only in development/test/demo environments.
+# In production, schema management must be performed explicitly via Alembic migrations.
+if ENVIRONMENT != "production":
+    Base.metadata.create_all(bind=engine)
 
 def ensure_default_user(db: Session) -> User:
     user = db.query(User).first()

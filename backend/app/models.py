@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey, CheckConstraint
+from decimal import Decimal
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, CheckConstraint, Numeric
 from sqlalchemy.orm import relationship
 from backend.app.database import Base
 
@@ -38,7 +39,7 @@ class Product(Base):
     craft_story = Column(Text, nullable=True)
     category = Column(String, index=True, nullable=False)
     materials = Column(String, nullable=True)
-    price = Column(Float, nullable=False, default=0.0)
+    price = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     stock = Column(Integer, nullable=False, default=1)
     image_url = Column(String, nullable=True)
     enhanced_image_url = Column(String, nullable=True)
@@ -46,10 +47,10 @@ class Product(Base):
     status = Column(String, default="PUBLISHED")
     
     # Cost structure for explainable pricing
-    material_cost = Column(Float, default=0.0)
-    labour_cost = Column(Float, default=0.0)
-    packaging_cost = Column(Float, default=0.0)
-    min_margin_pct = Column(Float, default=0.20) # 20% minimum protected margin
+    material_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
+    labour_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
+    packaging_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
+    min_margin_pct = Column(Numeric(5, 4), default=Decimal("0.2000"), nullable=False) # 20% minimum protected margin
 
     seller_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
     seller = relationship("User", back_populates="products")
@@ -69,6 +70,11 @@ class Order(Base):
     secure relation — NEVER leaked into public analytics event metadata.
     """
     __tablename__ = "orders"
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="chk_order_quantity_positive"),
+        CheckConstraint("unit_price >= 0", name="chk_order_unit_price_non_negative"),
+        CheckConstraint("total_price >= 0", name="chk_order_total_price_non_negative"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), index=True, nullable=False)
@@ -76,8 +82,8 @@ class Order(Base):
     buyer_name = Column(String, nullable=False)
     buyer_phone = Column(String, nullable=True)
     quantity = Column(Integer, nullable=False, default=1)
-    unit_price = Column(Float, nullable=False)
-    total_price = Column(Float, nullable=False)
+    unit_price = Column(Numeric(12, 2), nullable=False)
+    total_price = Column(Numeric(12, 2), nullable=False)
     delivery_address = Column(Text, nullable=False)
     status = Column(String, default="CONFIRMED") # CONFIRMED, SHIPPED, DELIVERED, CANCELLED
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -125,15 +131,20 @@ class Event(Base):
 
 class PricingDecision(Base):
     __tablename__ = "pricing_decisions"
+    __table_args__ = (
+        CheckConstraint("previous_price >= 0", name="chk_pd_prev_price_non_negative"),
+        CheckConstraint("recommended_price >= 0", name="chk_pd_rec_price_non_negative"),
+        CheckConstraint("applied_price >= 0", name="chk_pd_app_price_non_negative"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), index=True, nullable=False)
     decision = Column(String, nullable=False) # ACCEPT or REJECT
-    previous_price = Column(Float, nullable=False)
-    recommended_price = Column(Float, nullable=False)
-    applied_price = Column(Float, nullable=False)
-    demand_factor = Column(Float, nullable=False)
-    market_adjustment = Column(Float, nullable=False)
+    previous_price = Column(Numeric(12, 2), nullable=False)
+    recommended_price = Column(Numeric(12, 2), nullable=False)
+    applied_price = Column(Numeric(12, 2), nullable=False)
+    demand_factor = Column(Numeric(6, 4), nullable=False)
+    market_adjustment = Column(Numeric(6, 4), nullable=False)
     reasoning_json = Column(Text, nullable=True)
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

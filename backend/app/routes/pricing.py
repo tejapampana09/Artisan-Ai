@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timezone
+from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -50,8 +51,8 @@ def submit_price_decision(
 
     # Calculate latest recommendation
     rec = calculate_price_recommendation(product, db)
-    prev_price = product.price
-    rec_price = rec["recommended_price"]
+    prev_price = Decimal(str(product.price)).quantize(Decimal("0.01"))
+    rec_price = Decimal(str(rec["recommended_price"])).quantize(Decimal("0.01"))
 
     if decision_req.decision == "ACCEPT":
         # Seller accepts: explicitly update product price
@@ -68,8 +69,8 @@ def submit_price_decision(
         previous_price=prev_price,
         recommended_price=rec_price,
         applied_price=applied_price,
-        demand_factor=rec["demand_factor"],
-        market_adjustment=rec["market_adjustment"],
+        demand_factor=Decimal(str(rec["demand_factor"])).quantize(Decimal("0.0001")),
+        market_adjustment=Decimal(str(rec["market_adjustment"])).quantize(Decimal("0.0001")),
         reasoning_json=json.dumps(rec["reasoning"]),
         timestamp=datetime.now(timezone.utc)
     )
