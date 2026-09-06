@@ -110,7 +110,7 @@ function AppContent() {
             ) : activeMode === 'SELL' ? (
               <SellView user={user} onOpenAuth={() => setIsAuthOpen(true)} key={`sell_${refreshTrigger}`} />
             ) : (
-              <BuyView user={user} key={`buy_${refreshTrigger}`} />
+              <BuyView user={user} onOpenAuth={() => setIsAuthOpen(true)} key={`buy_${refreshTrigger}`} />
             )}
           </div>
         )}

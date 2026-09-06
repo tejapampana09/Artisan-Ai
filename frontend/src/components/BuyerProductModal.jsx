@@ -9,7 +9,9 @@ export default function BuyerProductModal({
   isSaved, 
   onToggleSave, 
   onOpenOrder, 
-  onOpenEnquiry 
+  onOpenEnquiry,
+  user,
+  onOpenAuth
 }) {
   if (!isOpen || !product) return null;
 
@@ -106,6 +108,11 @@ export default function BuyerProductModal({
             <div className="pt-2 space-y-2">
               <button
                 onClick={() => {
+                  if (!user) {
+                    onClose();
+                    onOpenAuth?.();
+                    return;
+                  }
                   onClose();
                   onOpenOrder(product);
                 }}
@@ -117,6 +124,11 @@ export default function BuyerProductModal({
 
               <button
                 onClick={() => {
+                  if (!user) {
+                    onClose();
+                    onOpenAuth?.();
+                    return;
+                  }
                   onClose();
                   onOpenEnquiry(product);
                 }}

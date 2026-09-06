@@ -13,7 +13,7 @@ const CATEGORIES = [
   'Pochampally Ikat'
 ];
 
-export default function BuyView({ user }) {
+export default function BuyView({ user, onOpenAuth }) {
   const [products, setProducts] = useState([]);
   const [trending, setTrending] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All Crafts');
@@ -327,7 +327,13 @@ export default function BuyView({ user }) {
                       </button>
 
                       <button
-                        onClick={() => setOrderModal({ isOpen: true, product: p, mode: 'ORDER' })}
+                        onClick={() => {
+                          if (!user) {
+                            onOpenAuth?.();
+                            return;
+                          }
+                          setOrderModal({ isOpen: true, product: p, mode: 'ORDER' });
+                        }}
                         className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors cursor-pointer"
                       >
                         <ShoppingBag className="w-3.5 h-3.5" />
@@ -349,8 +355,22 @@ export default function BuyView({ user }) {
         onClose={() => setIsDetailOpen(false)}
         isSaved={selectedProduct ? savedProductIds.has(selectedProduct.id) : false}
         onToggleSave={handleToggleSave}
-        onOpenOrder={(prod) => setOrderModal({ isOpen: true, product: prod, mode: 'ORDER' })}
-        onOpenEnquiry={(prod) => setOrderModal({ isOpen: true, product: prod, mode: 'ENQUIRY' })}
+        user={user}
+        onOpenAuth={onOpenAuth}
+        onOpenOrder={(prod) => {
+          if (!user) {
+            onOpenAuth?.();
+            return;
+          }
+          setOrderModal({ isOpen: true, product: prod, mode: 'ORDER' });
+        }}
+        onOpenEnquiry={(prod) => {
+          if (!user) {
+            onOpenAuth?.();
+            return;
+          }
+          setOrderModal({ isOpen: true, product: prod, mode: 'ENQUIRY' });
+        }}
       />
 
       {/* Order / B2B Enquiry Modal */}
@@ -359,6 +379,7 @@ export default function BuyView({ user }) {
         mode={orderModal.mode}
         isOpen={orderModal.isOpen}
         user={user}
+        onOpenAuth={onOpenAuth}
         onClose={() => setOrderModal({ isOpen: false, product: null, mode: 'ORDER' })}
         onSuccess={(msg) => {
           showNotification(msg);

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, ShoppingBag, Send, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { placeOrder, submitEnquiry } from '../api';
 
-export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClose, onSuccess, user }) {
+export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClose, onSuccess, user, onOpenAuth }) {
   if (!isOpen || !product) return null;
 
   const isOrder = mode === 'ORDER';
@@ -17,6 +17,11 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!user) {
+      onClose();
+      onOpenAuth?.();
+      return;
+    }
     setSubmitting(true);
     try {
       if (isOrder) {
@@ -39,7 +44,13 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
       }
       onClose();
     } catch (err) {
-      alert('Action failed: ' + err.message);
+      if (err.message && (err.message.includes('401') || err.message.includes('Unauthorized'))) {
+        alert('Please sign in to place your order or submit an enquiry.');
+        onClose();
+        onOpenAuth?.();
+      } else {
+        alert('Action failed: ' + err.message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -75,7 +86,39 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3 text-xs">
+        {!user ? (
+          <div className="mt-4 p-5 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+              <ShoppingBag className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 text-sm">Sign In Required to Proceed</h4>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                Please sign in to your account to place your direct artisan order or submit a bulk enquiry with live delivery updates.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-2 px-3 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs hover:bg-white transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenAuth?.();
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+              >
+                Sign In / Register
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="mt-4 space-y-3 text-xs">
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Your Name</label>
             <input
@@ -164,6 +207,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );
