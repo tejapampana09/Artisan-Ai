@@ -4,6 +4,7 @@ import SellView from './components/SellView';
 import BuyView from './components/BuyView';
 import OfflineSyncBanner from './components/OfflineSyncBanner';
 import JudgeDemoModal from './components/JudgeDemoModal';
+import AuthModal from './components/AuthModal';
 import { OfflineProvider, useOffline } from './context/OfflineContext';
 import { checkHealth, checkReady, getCurrentUser, updateUserMode } from './api';
 import { Award, Sparkles } from 'lucide-react';
@@ -15,6 +16,7 @@ function AppContent() {
   const [readyStatus, setReadyStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isJudgeGuideOpen, setIsJudgeGuideOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const { isOffline, queueCount } = useOffline();
@@ -68,6 +70,7 @@ function AppContent() {
         user={user}
         readyStatus={readyStatus}
         onOpenGuide={() => setIsJudgeGuideOpen(true)}
+        onOpenAuth={() => setIsAuthOpen(true)}
       />
 
       {/* Main Container */}
@@ -108,6 +111,20 @@ function AppContent() {
           )}
         </button>
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        user={user}
+        onAuthChange={(newUser) => {
+          setUser(newUser);
+          if (newUser?.active_mode) {
+            setActiveMode(newUser.active_mode);
+          }
+          handleRefreshAll();
+        }}
+      />
 
       {/* SIH Judge Demo Walkthrough Modal */}
       <JudgeDemoModal

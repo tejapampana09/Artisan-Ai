@@ -17,10 +17,31 @@ class UserResponse(BaseModel):
 
     id: int
     name: str
-    phone: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[str] = "ARTISAN"
     active_mode: str
     location: str
     craft: str
+
+class UserRegister(BaseModel):
+    name: str = Field(..., min_length=2)
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    password: str = Field(..., min_length=6)
+    role: Optional[str] = "ARTISAN"
+    location: Optional[str] = "India"
+    craft: Optional[str] = "Traditional Crafts"
+    active_mode: Optional[str] = "SELL"
+
+class UserLogin(BaseModel):
+    email_or_phone: str
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
 
 class ModeUpdateRequest(BaseModel):
     mode: str = Field(..., pattern="^(SELL|BUY)$")
@@ -95,11 +116,37 @@ class EnquiryCreate(BaseModel):
     quantity: int = Field(default=1, ge=1)
     message: Optional[str] = None
 
+class EnquiryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    product_id: int
+    user_id: Optional[int] = None
+    buyer_name: str
+    quantity: int
+    message: Optional[str] = None
+    created_at: datetime
+
 class OrderCreate(BaseModel):
     product_id: int
     buyer_name: str
+    buyer_phone: Optional[str] = None
     quantity: int = Field(default=1, ge=1)
     delivery_address: str
+
+class OrderResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    product_id: int
+    user_id: Optional[int] = None
+    buyer_name: str
+    quantity: int
+    unit_price: float
+    total_price: float
+    delivery_address: str
+    status: str
+    created_at: datetime
 
 # Step 6: Explainable Dynamic Pricing Schemas
 class PriceRecommendationResponse(BaseModel):

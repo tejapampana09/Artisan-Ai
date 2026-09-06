@@ -1,0 +1,311 @@
+import React, { useState } from 'react';
+import { X, User, Lock, Mail, Phone, MapPin, Sparkles, CheckCircle2, LogIn, UserPlus, LogOut } from 'lucide-react';
+import { loginUser, registerUser, logoutUser, getAuthToken } from '../api';
+
+export default function AuthModal({ isOpen, onClose, user, onAuthChange }) {
+  if (!isOpen) return null;
+
+  const [tab, setTab] = useState('login'); // 'login' | 'register'
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+
+  // Login form
+  const [loginIdentifier, setLoginIdentifier] = useState('lakshmi@artisanai.in');
+  const [loginPassword, setLoginPassword] = useState('artisan123');
+
+  // Register form
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regRole, setRegRole] = useState('ARTISAN');
+  const [regCraft, setRegCraft] = useState('Hand-block Kalamkari');
+  const [regLocation, setRegLocation] = useState('Machilipatnam, Andhra Pradesh');
+  const [regPassword, setRegPassword] = useState('');
+
+  const handleLogin = async (e) => {
+    e?.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await loginUser({
+        email_or_phone: loginIdentifier,
+        password: loginPassword,
+      });
+      setSuccessMsg(`Welcome back, ${res.user.name}!`);
+      setTimeout(() => {
+        onAuthChange(res.user);
+        onClose();
+      }, 600);
+    } catch (err) {
+      setError(err.message || 'Login failed. Please check credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e?.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await registerUser({
+        name: regName,
+        email: regEmail || null,
+        phone: regPhone || null,
+        role: regRole,
+        craft: regCraft,
+        location: regLocation,
+        password: regPassword,
+        active_mode: regRole === 'ARTISAN' ? 'SELL' : 'BUY'
+      });
+      setSuccessMsg(`Account created successfully! Welcome, ${res.user.name}.`);
+      setTimeout(() => {
+        onAuthChange(res.user);
+        onClose();
+      }, 600);
+    } catch (err) {
+      setError(err.message || 'Registration failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logoutUser();
+    onAuthChange(null);
+    onClose();
+  };
+
+  const fillDemoArtisan = () => {
+    setLoginIdentifier('lakshmi@artisanai.in');
+    setLoginPassword('artisan123');
+  };
+
+  const hasToken = !!getAuthToken();
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-150">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-amber-700 via-orange-600 to-amber-600 p-5 text-white flex justify-between items-center">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+              <User className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base">Artisan AI Account</h3>
+              <p className="text-xs text-amber-100">Secure Identity & Ownership</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-amber-200 hover:text-white rounded-lg hover:bg-white/10 cursor-pointer">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-4">
+          {/* Active User Card if logged in */}
+          {user && (
+            <div className="bg-amber-50/70 border border-amber-200 p-3.5 rounded-2xl flex items-center justify-between">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-bold text-slate-900">{user.name}</span>
+                  <span className="text-[10px] uppercase font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">
+                    {user.role || 'ARTISAN'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-0.5">{user.email || user.phone} • {user.craft}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center space-x-1 text-xs font-bold text-rose-700 bg-white hover:bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          )}
+
+          {/* Feedback messages */}
+          {error && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-medium">
+              {error}
+            </div>
+          )}
+          {successMsg && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-medium flex items-center space-x-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
+          {/* Tabs */}
+          <div className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold">
+            <button
+              onClick={() => { setTab('login'); setError(''); }}
+              className={`py-2 rounded-lg transition-all cursor-pointer ${tab === 'login' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => { setTab('register'); setError(''); }}
+              className={`py-2 rounded-lg transition-all cursor-pointer ${tab === 'register' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              Create Account
+            </button>
+          </div>
+
+          {/* Tab 1: Login */}
+          {tab === 'login' && (
+            <form onSubmit={handleLogin} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Email or Phone</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={loginIdentifier}
+                    onChange={(e) => setLoginIdentifier(e.target.value)}
+                    required
+                    placeholder="lakshmi@artisanai.in"
+                    className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Password</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    required
+                    placeholder="••••••••"
+                    className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-1 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={fillDemoArtisan}
+                  className="text-[11px] text-amber-700 hover:underline font-semibold"
+                >
+                  Fill Demo Artisan Credentials
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+              >
+                {loading ? 'Authenticating...' : 'Sign In with JWT'}
+              </button>
+            </form>
+          )}
+
+          {/* Tab 2: Register */}
+          {tab === 'register' && (
+            <form onSubmit={handleRegister} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  required
+                  placeholder="e.g. Ramesh Kumar"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-hidden"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    placeholder="artisan@domain.com"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={regPhone}
+                    onChange={(e) => setRegPhone(e.target.value)}
+                    placeholder="+91 98765 00000"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Account Role</label>
+                  <select
+                    value={regRole}
+                    onChange={(e) => setRegRole(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white"
+                  >
+                    <option value="ARTISAN">Artisan (Seller)</option>
+                    <option value="BUYER">Connoisseur (Buyer)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Craft Specialization</label>
+                  <input
+                    type="text"
+                    value={regCraft}
+                    onChange={(e) => setRegCraft(e.target.value)}
+                    placeholder="e.g. Dokra Casting"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Location / Cluster</label>
+                <input
+                  type="text"
+                  value={regLocation}
+                  onChange={(e) => setRegLocation(e.target.value)}
+                  placeholder="e.g. Bastar, Chhattisgarh"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Password (min 6 chars) *</label>
+                <input
+                  type="password"
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-hidden"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 mt-2"
+              >
+                {loading ? 'Creating Account...' : 'Register & Get JWT'}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -8,12 +8,15 @@ from sqlalchemy import text
 from backend.app.database import engine, Base, SessionLocal, get_db
 from backend.app.models import User
 from backend.app.schemas import HealthResponse, ReadyResponse, UserResponse, ModeUpdateRequest
+from backend.app.config import get_cors_origins
 from backend.app.routes.products import router as products_router
 from backend.app.routes.ai_catalog import router as ai_router
 from backend.app.routes.events import router as events_router
 from backend.app.routes.intelligence import router as intelligence_router
 from backend.app.routes.pricing import router as pricing_router
 from backend.app.routes.sync import router as sync_router
+from backend.app.routes.auth import router as auth_router
+from backend.app.services.auth import get_current_user as auth_get_current_user, hash_password
 from backend.app.seed import seed_sample_products
 
 # Create tables
@@ -24,7 +27,10 @@ def ensure_default_user(db: Session) -> User:
     if not user:
         user = User(
             name="Lakshmi Devi",
+            email="lakshmi@artisanai.in",
             phone="+91 98765 43210",
+            hashed_password=hash_password("artisan123"),
+            role="ARTISAN",
             active_mode="SELL",
             location="Machilipatnam, Andhra Pradesh",
             craft="Hand-block Kalamkari"
@@ -32,6 +38,10 @@ def ensure_default_user(db: Session) -> User:
         db.add(user)
         db.commit()
         db.refresh(user)
+    elif not user.hashed_password:
+        user.hashed_password = hash_password("artisan123")
+        user.email = user.email or "lakshmi@artisanai.in"
+        db.commit()
     return user
 
 @asynccontextmanager
@@ -51,16 +61,17 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Configuration
+# CORS Configuration (Restricted based on ENVIRONMENT and CORS_ORIGINS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Include Routers
+app.include_router(auth_router)
 app.include_router(products_router)
 app.include_router(ai_router)
 app.include_router(events_router)
@@ -93,14 +104,16 @@ def readiness_check(db: Session = Depends(get_db)):
         raise HTTPException(status_code=503, detail=f"Database not ready: {str(e)}")
 
 @app.get("/api/me", response_model=UserResponse)
-def get_current_user(db: Session = Depends(get_db)):
-    user = ensure_default_user(db)
-    return user
+def get_user_me(current_user: User = Depends(auth_get_current_user)):
+    return current_user
 
 @app.patch("/api/me/mode", response_model=UserResponse)
-def update_user_mode(payload: ModeUpdateRequest, db: Session = Depends(get_db)):
-    user = ensure_default_user(db)
-    user.active_mode = payload.mode
+def update_user_mode(
+    payload: ModeUpdateRequest, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth_get_current_user)
+):
+    current_user.active_mode = payload.mode
     db.commit()
-    db.refresh(user)
-    return user
+    db.refresh(current_user)
+    return current_user

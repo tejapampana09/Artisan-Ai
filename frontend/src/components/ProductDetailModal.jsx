@@ -6,8 +6,10 @@ import {
 import { getPriceRecommendation, submitPriceDecision } from '../api';
 import { useOffline } from '../context/OfflineContext';
 
-export default function ProductDetailModal({ product, isOpen, onClose, onUpdated, onDelete }) {
+export default function ProductDetailModal({ product, isOpen, onClose, onUpdated, onDelete, currentUser }) {
   if (!isOpen || !product) return null;
+
+  const isOwner = !product.seller_id || !currentUser || product.seller_id === currentUser?.id;
 
   const { isOffline, queuePriceDecision } = useOffline();
   const [isEditing, setIsEditing] = useState(false);
@@ -174,7 +176,12 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
             <h3 className="text-lg font-bold text-slate-900 mt-1">{product.title}</h3>
           </div>
           <div className="flex items-center space-x-2">
-            {!isEditing ? (
+            {!isOwner ? (
+              <span className="inline-flex items-center space-x-1 text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                <Lock className="w-3 h-3 text-slate-400" />
+                <span>View-only (Other Seller)</span>
+              </span>
+            ) : !isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
                 className="inline-flex items-center space-x-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
@@ -192,18 +199,20 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                 <span>{saving ? 'Saving...' : 'Save Changes'}</span>
               </button>
             )}
-            <button
-              onClick={() => {
-                if (confirm('Are you sure you want to delete this craft?')) {
-                  onDelete(product.id);
-                  onClose();
-                }
-              }}
-              className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-              title="Delete Craft"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {isOwner && (
+              <button
+                onClick={() => {
+                  if (confirm('Are you sure you want to delete this craft?')) {
+                    onDelete(product.id);
+                    onClose();
+                  }
+                }}
+                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                title="Delete Craft"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
               <X className="w-5 h-5" />
             </button>
@@ -338,23 +347,30 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                   <span>Your price will not change automatically. The artisan always makes the final decision.</span>
                 </p>
 
-                <div className="flex items-center space-x-2 self-end sm:self-auto">
-                  <button
-                    onClick={() => handleDecision('REJECT')}
-                    disabled={decisionSubmitting}
-                    className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
-                  >
-                    Keep Current Price
-                  </button>
-                  <button
-                    onClick={() => handleDecision('ACCEPT')}
-                    disabled={decisionSubmitting || pricingRec.recommended_price === pricingRec.current_price}
-                    className="inline-flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded-xl text-xs shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Accept ₹{pricingRec.recommended_price.toLocaleString('en-IN')}</span>
-                  </button>
-                </div>
+                {isOwner ? (
+                  <div className="flex items-center space-x-2 self-end sm:self-auto">
+                    <button
+                      onClick={() => handleDecision('REJECT')}
+                      disabled={decisionSubmitting}
+                      className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
+                    >
+                      Keep Current Price
+                    </button>
+                    <button
+                      onClick={() => handleDecision('ACCEPT')}
+                      disabled={decisionSubmitting || pricingRec.recommended_price === pricingRec.current_price}
+                      className="inline-flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded-xl text-xs shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Accept ₹{pricingRec.recommended_price.toLocaleString('en-IN')}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-[11px] font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 flex items-center space-x-1.5">
+                    <Lock className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Price decisions can only be approved by the owning artisan</span>
+                  </div>
+                )}
               </div>
             </div>
           ) : null}

@@ -1,4 +1,91 @@
 const API_BASE = '/api';
+const AUTH_TOKEN_KEY = 'artisan_ai_auth_token';
+
+export function getAuthToken() {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthToken(token) {
+  try {
+    if (token) {
+      localStorage.setItem(AUTH_TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+    }
+  } catch (e) {
+    console.error('Failed to write auth token:', e);
+  }
+}
+
+export function clearAuthToken() {
+  try {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+  } catch (e) {
+    console.error('Failed to clear auth token:', e);
+  }
+}
+
+export function getAuthHeaders(extra = {}) {
+  const token = getAuthToken();
+  const headers = { ...extra };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+// Authentication APIs
+export async function registerUser(userData) {
+  try {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Registration failed' }));
+      throw new Error(err.detail || `HTTP error ${res.status}`);
+    }
+    const data = await res.json();
+    if (data.access_token) {
+      setAuthToken(data.access_token);
+    }
+    return data;
+  } catch (err) {
+    console.error('Registration error:', err);
+    throw err;
+  }
+}
+
+export async function loginUser(credentials) {
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Invalid credentials' }));
+      throw new Error(err.detail || `HTTP error ${res.status}`);
+    }
+    const data = await res.json();
+    if (data.access_token) {
+      setAuthToken(data.access_token);
+    }
+    return data;
+  } catch (err) {
+    console.error('Login error:', err);
+    throw err;
+  }
+}
+
+export function logoutUser() {
+  clearAuthToken();
+}
 
 export async function checkHealth() {
   try {
@@ -22,7 +109,9 @@ export async function checkReady() {
 
 export async function getCurrentUser() {
   try {
-    const res = await fetch(`${API_BASE}/me`);
+    const res = await fetch(`${API_BASE}/me`, {
+      headers: getAuthHeaders()
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -35,7 +124,7 @@ export async function updateUserMode(mode) {
   try {
     const res = await fetch(`${API_BASE}/me/mode`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ mode }),
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -75,7 +164,7 @@ export async function createProduct(data) {
   try {
     const res = await fetch(`${API_BASE}/products`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -90,7 +179,7 @@ export async function updateProduct(id, data) {
   try {
     const res = await fetch(`${API_BASE}/products/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -105,6 +194,7 @@ export async function deleteProduct(id) {
   try {
     const res = await fetch(`${API_BASE}/products/${id}`, {
       method: 'DELETE',
+      headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return true;
@@ -265,7 +355,7 @@ export async function submitPriceDecision(productId, decision) {
   try {
     const res = await fetch(`${API_BASE}/products/${productId}/price-decision`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ decision }),
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);

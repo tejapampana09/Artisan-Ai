@@ -1,7 +1,7 @@
 import React from 'react';
 import { Package, Edit2, Trash2, Eye, IndianRupee, Layers, CheckCircle2 } from 'lucide-react';
 
-export default function ProductList({ products, onSelectProduct, onEditProduct, onDeleteProduct, onAddProduct }) {
+export default function ProductList({ products, onSelectProduct, onEditProduct, onDeleteProduct, onAddProduct, currentUser }) {
   if (!products || products.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
@@ -85,25 +85,29 @@ export default function ProductList({ products, onSelectProduct, onEditProduct, 
             <div className="flex items-center space-x-2 self-end sm:self-center">
               <button
                 onClick={() => onSelectProduct(p)}
-                className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors title='View Details'"
+                className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                 title="View Details"
               >
                 <Eye className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => onEditProduct(p)}
-                className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
-                title="Edit Product"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => onDeleteProduct(p.id)}
-                className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
-                title="Delete Product"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {(!p.seller_id || !currentUser || p.seller_id === currentUser?.id) && (
+                <>
+                  <button
+                    onClick={() => onEditProduct(p)}
+                    className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                    title="Edit Product"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => onDeleteProduct(p.id)}
+                    className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                    title="Delete Product"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         ))}

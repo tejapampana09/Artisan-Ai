@@ -2,7 +2,7 @@ import React from 'react';
 import { Store, ShoppingBag, CheckCircle2, AlertCircle, Sparkles, UserCheck, Wifi, WifiOff, Award } from 'lucide-react';
 import { useOffline } from '../context/OfflineContext';
 
-export default function Navbar({ activeMode, onToggleMode, user, readyStatus, onOpenGuide }) {
+export default function Navbar({ activeMode, onToggleMode, user, readyStatus, onOpenGuide, onOpenAuth }) {
   const isSell = activeMode === 'SELL';
   const { isOffline, toggleOfflineMode, queueCount } = useOffline();
 
@@ -100,11 +100,18 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
               <span className="hidden sm:inline">Demo Guide</span>
             </button>
 
-            {/* Single Account Badge */}
-            <div className="hidden lg:flex items-center space-x-2 bg-slate-50 border border-slate-200 py-1 px-3 rounded-full text-xs text-slate-700">
+            {/* Account Badge & Auth Trigger */}
+            <button
+              onClick={onOpenAuth}
+              className="flex items-center space-x-2 bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 py-1.5 px-3 rounded-full text-xs text-slate-700 transition-all cursor-pointer shadow-2xs"
+              title="Manage Account / Sign In"
+            >
               <UserCheck className="w-3.5 h-3.5 text-amber-600" />
-              <span className="font-medium truncate max-w-[100px]">{user?.name || 'Artisan'}</span>
-            </div>
+              <span className="font-semibold truncate max-w-[110px]">{user?.name || 'Sign In'}</span>
+              <span className="text-[10px] text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded-full font-bold uppercase">
+                {user?.role || 'ARTISAN'}
+              </span>
+            </button>
           </div>
         </div>
       </div>

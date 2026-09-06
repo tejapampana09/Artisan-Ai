@@ -5,17 +5,17 @@ from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import Product, User
 from backend.app.schemas import ProductCreate, ProductUpdate, ProductResponse
+from backend.app.services.auth import get_current_user
 
 router = APIRouter(prefix="/api/products", tags=["Products"])
 
 @router.post("", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
-def create_product(product_in: ProductCreate, db: Session = Depends(get_db)):
-    # If seller_id not provided, assign to default artisan
-    seller_id = product_in.seller_id
-    if not seller_id:
-        user = db.query(User).first()
-        if user:
-            seller_id = user.id
+def create_product(
+    product_in: ProductCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    seller_id = product_in.seller_id or current_user.id
 
     product_data = product_in.model_dump()
     product_data["seller_id"] = seller_id
@@ -56,13 +56,21 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
 def update_product(
     product_id: int,
     product_in: ProductUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product with id {product_id} not found"
+        )
+
+    # Seller Ownership Validation
+    if product.seller_id and current_user.id and product.seller_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to modify another artisan's product."
         )
 
     update_data = product_in.model_dump(exclude_unset=True)
@@ -74,13 +82,25 @@ def update_product(
     return product
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_product(product_id: int, db: Session = Depends(get_db)):
+def delete_product(
+    product_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product with id {product_id} not found"
         )
+
+    # Seller Ownership Validation
+    if product.seller_id and current_user.id and product.seller_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to delete another artisan's product."
+        )
+
     db.delete(product)
     db.commit()
     return None
@@ -91,13 +111,21 @@ VALID_LIFECYCLE_STATES = ["DRAFT", "AI_PROCESSING", "AI_GENERATED", "APPROVED", 
 def transition_product_status(
     product_id: int,
     status_payload: dict,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product with id {product_id} not found"
+        )
+
+    # Seller Ownership Validation
+    if product.seller_id and current_user.id and product.seller_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to transition status of another artisan's product."
         )
     
     new_status = status_payload.get("status", "").upper()

@@ -283,6 +283,7 @@ export default function SellView({ user }) {
       ) : (
         <ProductList
           products={products}
+          currentUser={user}
           onSelectProduct={handleSelectProduct}
           onEditProduct={handleSelectProduct}
           onDeleteProduct={handleDeleteProduct}
@@ -310,6 +311,7 @@ export default function SellView({ user }) {
       {/* Product Detail & Edit Modal */}
       <ProductDetailModal
         product={selectedProduct}
+        currentUser={user}
         isOpen={detailModalOpen}
         onClose={() => setDetailModalOpen(false)}
         onUpdated={handleUpdateProduct}

@@ -1,10 +1,8 @@
-import os
 import re
 import json
 import httpx
 from typing import Dict, Any, Optional
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+from backend.app.config import GEMINI_API_KEY, AI_REQUEST_TIMEOUT_SECONDS
 
 # Fallback presets keyed by detected keywords or craft category
 DEMO_CRAFT_KNOWLEDGE = {
@@ -112,7 +110,7 @@ async def generate_catalog_draft(
             - suggested_price: Fair selling price in INR (float)
             - estimated_cost: object with material, labour, packaging
             """
-            async with httpx.AsyncClient(timeout=8.0) as client:
+            async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
                 res = await client.post(
                     f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}",
                     json={"contents": [{"parts": [{"text": prompt}]}]},
@@ -124,12 +122,14 @@ async def generate_catalog_draft(
                     json_match = re.search(r"\{.*\}", content, re.DOTALL)
                     if json_match:
                         parsed = json.loads(json_match.group(0))
-                        parsed["source"] = "LIVE AI"
-                        parsed["enhanced_image_url"] = enhance_image_url(image_url)
-                        parsed["transcription"] = voice_description
-                        return parsed
+                        # Validate mandatory fields
+                        if "title" in parsed and "category" in parsed:
+                            parsed["source"] = "LIVE AI"
+                            parsed["enhanced_image_url"] = enhance_image_url(image_url)
+                            parsed["transcription"] = voice_description
+                            return parsed
         except Exception as e:
-            print(f"[AI Adapter] Live Gemini call failed ({e}), switching to DEMO FALLBACK.")
+            print(f"[AI Adapter] Live Gemini call unavailable or timed out ({e}). Seamlessly engaging DEMO FALLBACK.")
 
     # Deterministic Fallback Flow
     profile = detect_craft_profile(voice_description, category_hint)
