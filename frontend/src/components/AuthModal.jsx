@@ -11,8 +11,8 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange }) {
   const [successMsg, setSuccessMsg] = useState('');
 
   // Login form
-  const [loginIdentifier, setLoginIdentifier] = useState('lakshmi@artisanai.in');
-  const [loginPassword, setLoginPassword] = useState('artisan123');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
 
   // Register form
   const [regName, setRegName] = useState('');
@@ -75,11 +75,6 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange }) {
     logoutUser();
     onAuthChange(null);
     onClose();
-  };
-
-  const fillDemoArtisan = () => {
-    setLoginIdentifier('lakshmi@artisanai.in');
-    setLoginPassword('artisan123');
   };
 
   const hasToken = !!getAuthToken();
@@ -168,7 +163,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange }) {
                     value={loginIdentifier}
                     onChange={(e) => setLoginIdentifier(e.target.value)}
                     required
-                    placeholder="lakshmi@artisanai.in"
+                    placeholder="artisan@domain.com or phone"
                     className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-hidden"
                   />
                 </div>
@@ -189,22 +184,12 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange }) {
                 </div>
               </div>
 
-              <div className="pt-1 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={fillDemoArtisan}
-                  className="text-[11px] text-amber-700 hover:underline font-semibold"
-                >
-                  Fill Demo Artisan Credentials
-                </button>
-              </div>
-
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                className="w-full mt-2 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
               >
-                {loading ? 'Authenticating...' : 'Sign In with JWT'}
+                {loading ? 'Authenticating...' : 'Sign In to Account'}
               </button>
             </form>
           )}

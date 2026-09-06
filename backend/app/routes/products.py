@@ -48,10 +48,6 @@ def list_products(
     seller_id: Optional[int] = Query(None),
     db: Session = Depends(get_db)
 ):
-    # Ensure baseline sample products exist only in demo mode
-    if DEMO_MODE and db.query(Product).count() < len(SAMPLE_PRODUCTS):
-        seed_sample_products(db, seller_id or 1)
-
     query = db.query(Product)
     if category:
         query = query.filter(Product.category == category)

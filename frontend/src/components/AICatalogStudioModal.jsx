@@ -54,32 +54,42 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
   const { isOffline, queueProductDraft } = useOffline();
   const [step, setStep] = useState('INPUT'); // 'INPUT' | 'PROCESSING' | 'REVIEW'
-  const [selectedPhoto, setSelectedPhoto] = useState(SAMPLE_PHOTOS[0]);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [customImageUrl, setCustomImageUrl] = useState('');
   const [selectedLang, setSelectedLang] = useState('te');
-  const [voiceText, setVoiceText] = useState(SAMPLE_PHOTOS[0].te);
+  const [voiceText, setVoiceText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
-  const [costs, setCosts] = useState({ material: 450, labour: 400, packaging: 60 });
+  const [costs, setCosts] = useState({ material: '', labour: '', packaging: '' });
   const [aiDraft, setAiDraft] = useState(null);
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
   // Sync sample prompt when photo or language changes
   const handlePhotoSelect = (p) => {
-    setSelectedPhoto(p);
-    const sample = p[selectedLang] || p.en;
-    setVoiceText(sample);
+    if (selectedPhoto?.name === p.name) {
+      setSelectedPhoto(null);
+      setCustomImageUrl('');
+    } else {
+      setSelectedPhoto(p);
+      setCustomImageUrl(p.url);
+      const sample = p[selectedLang] || p.en;
+      if (!voiceText.trim()) {
+        setVoiceText(sample);
+      }
+    }
   };
 
   const handleLangSelect = (code) => {
     setSelectedLang(code);
-    const sample = selectedPhoto[code] || selectedPhoto.en;
-    setVoiceText(sample);
+    if (selectedPhoto && (!voiceText.trim() || Object.values(selectedPhoto).includes(voiceText))) {
+      const sample = selectedPhoto[code] || selectedPhoto.en;
+      if (sample) setVoiceText(sample);
+    }
   };
 
   // Simulated & Web Speech recognition
   const toggleSpeechRecognition = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      // Fallback voice toggle simulation
       setIsRecording(!isRecording);
       return;
     }
@@ -101,8 +111,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         recognition.onerror = () => setIsRecording(false);
         recognition.onend = () => setIsRecording(false);
       } else {
-        setIsRecording(false);
         recognition.stop();
+        setIsRecording(false);
       }
     } catch (e) {
       setIsRecording(false);
@@ -110,26 +120,38 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   };
 
   const handleGenerateAI = async () => {
+    if (!voiceText.trim() && !selectedPhoto && !customImageUrl.trim()) {
+      alert('Please speak or type a craft description, or select an inspiration craft.');
+      return;
+    }
     setStep('PROCESSING');
     setLoading(true);
+
+    const mat = Number(costs.material) || 0;
+    const lab = Number(costs.labour) || 0;
+    const pkg = Number(costs.packaging) || 0;
+    const effectiveImg = customImageUrl.trim() || selectedPhoto?.url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80';
+    const effectiveCat = selectedPhoto?.category || null;
+
     if (isOffline) {
-      // Step 7: Zero network dependency local processing in rural offline mode
+      // Zero network dependency local processing in rural offline mode
       setTimeout(() => {
-        const costBasis = (costs.material || 0) + (costs.labour || 0) + (costs.packaging || 0);
-        const minFair = costBasis * 1.20;
+        const costBasis = mat + lab + pkg;
+        const minFair = costBasis > 0 ? Math.round(costBasis * 1.20) : 800;
+        const rawTitle = voiceText.trim().split('\n')[0].slice(0, 45) || (selectedPhoto ? selectedPhoto.name : 'Handcrafted Heritage Creation');
         const offlineDraft = {
-          title: `Heritage Handcrafted ${selectedPhoto.name} (Rural Offline Draft)`,
-          category: selectedPhoto.category,
-          materials: selectedPhoto.category === 'Kalamkari' ? 'Pure Tussar Silk, Organic Madder Root & Indigo' : 'Natural Artisanal Raw Materials',
-          description: `Authentic handcrafted ${selectedPhoto.name} recorded in rural cluster offline mode. Preserving traditional craftsmanship.`,
-          craft_story: `Centuries-old tribal technique preserved across generations in rural handicraft clusters. Voice transcription processed locally on-device.`,
-          suggested_price: Math.round(minFair * 1.25),
-          material_cost: costs.material,
-          labour_cost: costs.labour,
-          packaging_cost: costs.packaging,
+          title: rawTitle,
+          category: effectiveCat || 'Handloom',
+          materials: effectiveCat === 'Kalamkari' ? 'Pure Tussar Silk, Organic Madder Root & Indigo' : 'Natural Artisanal Raw Materials',
+          description: voiceText.trim() || 'Authentic handcrafted creation recorded offline by artisan.',
+          craft_story: 'Centuries-old tribal technique preserved across generations in rural handicraft clusters. Voice transcription processed locally on-device.',
+          suggested_price: Math.max(minFair, 1100),
+          material_cost: mat,
+          labour_cost: lab,
+          packaging_cost: pkg,
           min_margin_pct: 0.20,
-          image_url: selectedPhoto.url,
-          enhanced_image_url: selectedPhoto.url,
+          image_url: effectiveImg,
+          enhanced_image_url: effectiveImg,
           ai_engine_used: 'Offline Edge Pipeline (Rural PWA Fallback)'
         };
         setAiDraft(offlineDraft);
@@ -141,13 +163,13 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
     try {
       const res = await processAICatalog({
-        voice_description: voiceText,
+        voice_description: voiceText.trim() || (selectedPhoto ? selectedPhoto.en : 'Authentic handcrafted heritage creation'),
         language: selectedLang,
-        image_url: selectedPhoto.url,
-        category_hint: selectedPhoto.category,
-        material_cost: costs.material,
-        labour_cost: costs.labour,
-        packaging_cost: costs.packaging
+        image_url: effectiveImg,
+        category_hint: effectiveCat,
+        material_cost: mat || null,
+        labour_cost: lab || null,
+        packaging_cost: pkg || null
       });
       setAiDraft(res);
       setStep('REVIEW');
@@ -261,24 +283,40 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         {/* STEP 1: Input Flow */}
         {step === 'INPUT' && (
           <div className="mt-4 space-y-5">
-            {/* 1. Photo Selection */}
+            {/* 1. Craft Photo URL & Optional Inspiration */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-2 flex items-center space-x-1.5">
-                <ImageIcon className="w-4 h-4 text-amber-600" />
-                <span>1. Select or Capture Craft Photo</span>
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
+                  <ImageIcon className="w-4 h-4 text-amber-600" />
+                  <span>1. Craft Image URL or Inspiration</span>
+                </label>
+                <span className="text-[11px] text-slate-500">Optional: Click a craft below for prompt inspiration</span>
+              </div>
+              <input
+                type="text"
+                value={customImageUrl}
+                onChange={(e) => {
+                  setCustomImageUrl(e.target.value);
+                  if (selectedPhoto && selectedPhoto.url !== e.target.value) {
+                    setSelectedPhoto(null);
+                  }
+                }}
+                placeholder="Paste craft photo URL or select a craft inspiration card below..."
+                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 mb-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {SAMPLE_PHOTOS.map((p) => (
                   <div
                     key={p.name}
                     onClick={() => handlePhotoSelect(p)}
                     className={`relative rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${
-                      selectedPhoto.name === p.name ? 'border-amber-600 ring-2 ring-amber-500/20 shadow-xs' : 'border-slate-200 hover:border-slate-300'
+                      selectedPhoto?.name === p.name ? 'border-amber-600 ring-2 ring-amber-500/20 shadow-xs' : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
                     <img src={p.url} alt={p.name} className="w-full h-20 object-cover" />
                     <div className="p-1.5 bg-white text-center">
                       <span className="text-[11px] font-semibold text-slate-800 truncate block">{p.name}</span>
+                      <span className="text-[9px] text-amber-600 font-medium">Inspiration Sample</span>
                     </div>
                   </div>
                 ))}
@@ -344,7 +382,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   <input
                     type="number"
                     value={costs.material}
-                    onChange={(e) => setCosts({ ...costs, material: parseFloat(e.target.value) || 0 })}
+                    placeholder="e.g. 450"
+                    onChange={(e) => setCosts({ ...costs, material: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                     className="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white"
                   />
                 </div>
@@ -353,7 +392,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   <input
                     type="number"
                     value={costs.labour}
-                    onChange={(e) => setCosts({ ...costs, labour: parseFloat(e.target.value) || 0 })}
+                    placeholder="e.g. 400"
+                    onChange={(e) => setCosts({ ...costs, labour: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                     className="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white"
                   />
                 </div>
@@ -362,7 +402,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   <input
                     type="number"
                     value={costs.packaging}
-                    onChange={(e) => setCosts({ ...costs, packaging: parseFloat(e.target.value) || 0 })}
+                    placeholder="e.g. 60"
+                    onChange={(e) => setCosts({ ...costs, packaging: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                     className="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white"
                   />
                 </div>

@@ -35,39 +35,13 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
   const fetchPricing = async () => {
     setPricingLoading(true);
     if (isOffline || (typeof product.id === 'string' && product.id.startsWith('draft_local_'))) {
-      // Step 7: Offline deterministic pricing fallback calculation
-      const costBasis = (product.material_cost || 0) + (product.labour_cost || 0) + (product.packaging_cost || 0);
-      const minFair = costBasis * 1.20;
-      const baseAnchor = Math.max(product.price || minFair, minFair);
-      const demandFactor = 1.06;
-      const marketAdjustment = 1.02;
-      const rawRec = Math.round(baseAnchor * demandFactor * marketAdjustment);
-      const safeRec = Math.max(minFair, Math.min(rawRec, Math.round((product.price || minFair) * 1.25)));
       setPricingRec({
-        product_id: product.id,
-        product_title: product.title,
-        category: product.category,
-        current_price: product.price || safeRec,
-        cost_basis: costBasis,
-        minimum_fair_price: minFair,
-        demand_factor: demandFactor,
-        market_adjustment: marketAdjustment,
-        recommended_price: safeRec,
-        market_range: { min_benchmark: Math.round(costBasis * 1.3), max_benchmark: Math.round(costBasis * 1.8) },
-        current_market_position: 'COMPETITIVE',
-        price_change_amount: safeRec - (product.price || safeRec),
-        price_change_percentage: product.price > 0 ? Number((((safeRec - product.price) / product.price) * 100).toFixed(1)) : 0,
+        unavailable_offline: true,
         reasoning: [
-          'Calculated via offline deterministic pricing engine.',
-          `Minimum Fair Living Wage Floor: ₹${minFair.toFixed(0)} (Cost Basis: ₹${costBasis.toFixed(0)} + 20% margin).`,
-          'Upward surge capped safely within +25% maximum bound to prevent price gouging.',
-          'Artisan retains 100% final approval power before price updates in catalog.'
-        ],
-        safety_constraints: {
-          minimum_fair_price_guaranteed: true,
-          max_upward_cap_applied: false,
-          artisan_approval_required: true
-        }
+          'Pricing recommendation unavailable offline. Cloud sync required.',
+          'Live competitor benchmarks and AI pricing models require cloud connectivity.',
+          'Connect to the internet to run real-time fair wage and demand analysis for this product.'
+        ]
       });
       setPricingLoading(false);
       return;
@@ -251,7 +225,19 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
           {pricingLoading ? (
             <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center space-x-2">
               <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
-              <span>Computing deterministic price recommendation...</span>
+              <span>Computing price recommendation...</span>
+            </div>
+          ) : pricingRec?.unavailable_offline ? (
+            <div className="bg-white rounded-xl p-4 border border-amber-300 shadow-xs space-y-2.5">
+              <div className="flex items-center space-x-2 text-amber-900 font-bold text-xs">
+                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>Pricing recommendation unavailable offline. Cloud sync required.</span>
+              </div>
+              <ul className="space-y-1 pl-6 list-disc text-[11px] text-slate-600">
+                {pricingRec.reasoning.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ul>
             </div>
           ) : pricingRec ? (
             <div className="space-y-4">

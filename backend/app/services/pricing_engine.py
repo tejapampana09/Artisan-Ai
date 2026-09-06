@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Tuple
 from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy.orm import Session
 from backend.app.models import Product, Event
-from backend.app.services.demand_engine import calculate_category_demand, BASELINE_MARKET_DEMAND
+from backend.app.services.demand_engine import calculate_category_demand
 
 # Deterministic safety constraint bounds
 MAX_UPWARD_ADJUSTMENT_PCT = Decimal("0.25")   # Maximum +25% price increase in one cycle
@@ -95,10 +95,9 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
         benchmark_low = to_decimal(cat_demand["benchmark_min"])
         benchmark_high = to_decimal(cat_demand["benchmark_max"])
     else:
-        base_cat = BASELINE_MARKET_DEMAND.get(product.category, {"base_pct": 20, "benchmark_min": 800, "benchmark_max": 1200})
-        demand_pct = float(base_cat["base_pct"])
-        benchmark_low = to_decimal(base_cat["benchmark_min"])
-        benchmark_high = to_decimal(base_cat["benchmark_max"])
+        demand_pct = 5.0
+        benchmark_low = Decimal("800.00")
+        benchmark_high = Decimal("1500.00")
 
     curr_price = to_decimal(product.price)
     demand_factor, demand_label = compute_demand_factor(demand_pct)

@@ -2,7 +2,7 @@ import re
 import json
 import httpx
 from typing import Dict, Any, Optional
-from backend.app.config import GEMINI_API_KEY, AI_REQUEST_TIMEOUT_SECONDS
+from backend.app.config import GEMINI_API_KEY, AI_REQUEST_TIMEOUT_SECONDS, ENVIRONMENT, DEMO_MODE
 
 # Fallback presets keyed by detected keywords or craft category
 DEMO_CRAFT_KNOWLEDGE = {
@@ -127,24 +127,54 @@ async def generate_catalog_draft(
                             parsed["source"] = "LIVE AI"
                             parsed["enhanced_image_url"] = enhance_image_url(image_url)
                             parsed["transcription"] = voice_description
+                            parsed["lifecycle_state"] = "AI_GENERATED"
                             return parsed
         except Exception as e:
-            print(f"[AI Adapter] Live Gemini call unavailable or timed out ({e}). Seamlessly engaging DEMO FALLBACK.")
+            print(f"[AI Adapter] Live Gemini call unavailable or timed out ({e}). Engaging fallback handler.")
 
-    # Deterministic Fallback Flow
+    # Determine execution flow based on environment
+    is_production = ENVIRONMENT == "production"
+
     profile = detect_craft_profile(voice_description, category_hint)
     
     # Cost structure calculation
-    mat = material_cost if material_cost is not None and material_cost > 0 else profile["estimated_cost"]["material"]
-    lab = labour_cost if labour_cost is not None and labour_cost > 0 else profile["estimated_cost"]["labour"]
-    pkg = packaging_cost if packaging_cost is not None and packaging_cost > 0 else profile["estimated_cost"]["packaging"]
+    mat = material_cost if material_cost is not None and material_cost > 0 else (profile["estimated_cost"]["material"] if not is_production else 350.0)
+    lab = labour_cost if labour_cost is not None and labour_cost > 0 else (profile["estimated_cost"]["labour"] if not is_production else 400.0)
+    pkg = packaging_cost if packaging_cost is not None and packaging_cost > 0 else (profile["estimated_cost"]["packaging"] if not is_production else 50.0)
     
     base_cost = mat + lab + pkg
     min_fair = round(base_cost * 1.20)
     suggested = max(min_fair, profile["suggested_price"])
 
+    if is_production:
+        # In production SaaS: never impersonate AI with static canned strings.
+        # Construct an authentic draft directly from artisan's real voice/text input.
+        raw_title = voice_description.strip().split("\n")[0][:60].strip()
+        title = raw_title if len(raw_title) > 3 else "Handcrafted Heritage Artisan Creation"
+        return {
+            "source": "MANUAL_DRAFT",
+            "title": title,
+            "category": category_hint or profile["category"],
+            "materials": "Authentic Handcrafted Materials",
+            "description": voice_description.strip() or "Authentic handmade craft listing created by artisan.",
+            "craft_story": "Generational traditional craft handmade with locally sourced materials.",
+            "tags": [category_hint or profile["category"], "Handmade", "Authentic Craft"],
+            "suggested_price": suggested,
+            "material_cost": mat,
+            "labour_cost": lab,
+            "packaging_cost": pkg,
+            "min_margin_pct": 0.20,
+            "min_fair_price": min_fair,
+            "image_url": image_url or "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80",
+            "enhanced_image_url": enhance_image_url(image_url),
+            "transcription": voice_description,
+            "language_detected": language,
+            "lifecycle_state": "MANUAL_DRAFT",
+            "notice": "Live AI generation service unavailable. Product draft created directly from your craft notes."
+        }
+
     return {
-        "source": "DEMO FALLBACK",
+        "source": "DEMO FALLBACK" if DEMO_MODE else "HEURISTIC_PREVIEW",
         "title": profile["title"],
         "category": profile["category"],
         "materials": profile["materials"],

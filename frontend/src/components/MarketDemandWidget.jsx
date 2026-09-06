@@ -26,7 +26,7 @@ export default function MarketDemandWidget({ demands = [] }) {
             <div className="flex justify-between items-start">
               <div>
                 <span className="text-xs font-bold text-slate-900 block">{d.category}</span>
-                <span className="text-[10px] text-slate-400 font-medium">Demo Benchmark: {d.benchmark_price_range}</span>
+                <span className="text-[10px] text-slate-400 font-medium">Market Benchmark: {d.benchmark_price_range}</span>
               </div>
               <span className={`text-xs font-extrabold px-2 py-0.5 rounded-full ${
                 d.demand_pct >= 30

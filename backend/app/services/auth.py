@@ -139,7 +139,9 @@ def get_current_user(
         )
 
     # Explicit DEMO_MODE fallback for local evaluation and developer testing
-    user = db.query(User).first()
+    user = db.query(User).filter(User.email == "lakshmi@artisanai.in").first()
+    if not user:
+        user = db.query(User).filter(User.role == "ARTISAN").first()
     if not user:
         user = User(
             name="Lakshmi Devi",

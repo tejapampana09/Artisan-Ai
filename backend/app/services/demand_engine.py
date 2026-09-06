@@ -3,14 +3,23 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from backend.app.models import Event, Product, User
 
-# Baseline market indices per heritage craft category
-BASELINE_MARKET_DEMAND = {
-    "Kalamkari": {"base_pct": 28, "benchmark_min": 1150, "benchmark_max": 1400},
-    "Wooden Toys": {"base_pct": 20, "benchmark_min": 750, "benchmark_max": 1000},
-    "Blue Pottery": {"base_pct": 16, "benchmark_min": 1400, "benchmark_max": 1800},
-    "Bidriware": {"base_pct": 14, "benchmark_min": 1900, "benchmark_max": 2400},
-    "Pochampally Ikat": {"base_pct": 22, "benchmark_min": 1000, "benchmark_max": 1350},
-    "Handloom": {"base_pct": 15, "benchmark_min": 900, "benchmark_max": 1250},
+# Standard heritage craft categories recognized by the platform
+STANDARD_CRAFT_CATEGORIES = [
+    "Kalamkari",
+    "Wooden Toys",
+    "Blue Pottery",
+    "Bidriware",
+    "Pochampally Ikat",
+    "Handloom"
+]
+
+CRAFT_MARKET_BASELINES = {
+    "Kalamkari": 28,
+    "Wooden Toys": 20,
+    "Pochampally Ikat": 22,
+    "Blue Pottery": 16,
+    "Handloom": 15,
+    "Bidriware": 14,
 }
 
 EVENT_WEIGHTS = {
@@ -24,8 +33,30 @@ EVENT_WEIGHTS = {
 def calculate_category_demand(db: Session) -> List[Dict[str, Any]]:
     """
     Computes real-time dynamic demand scores for each craft category
-    based on aggregated events stored in the SQLite database.
+    based on actual aggregated buyer interactions and live catalog listings.
     """
+    # 1. Fetch live price benchmarks per category from published products
+    price_stats = (
+        db.query(
+            Product.category,
+            func.min(Product.price).label("min_price"),
+            func.max(Product.price).label("max_price"),
+            func.count(Product.id).label("catalog_count")
+        )
+        .filter(Product.status == "PUBLISHED", Product.category.isnot(None))
+        .group_by(Product.category)
+        .all()
+    )
+    benchmarks_by_cat = {
+        row.category: {
+            "min": float(row.min_price) if row.min_price is not None else None,
+            "max": float(row.max_price) if row.max_price is not None else None,
+            "count": row.catalog_count
+        }
+        for row in price_stats
+    }
+
+    # 2. Fetch real buyer events aggregated by category and event type
     results = (
         db.query(Event.category, Event.event_type, func.count(Event.id))
         .filter(Event.category.isnot(None))
@@ -39,18 +70,38 @@ def calculate_category_demand(db: Session) -> List[Dict[str, Any]]:
             event_counts[cat] = {}
         event_counts[cat][ev_type] = count
 
+    # Determine all active categories (from catalog, events, and standard categories)
+    all_categories = list(dict.fromkeys(
+        list(benchmarks_by_cat.keys()) + 
+        list(event_counts.keys()) + 
+        STANDARD_CRAFT_CATEGORIES
+    ))
+
     demand_list = []
-    for cat, baseline in BASELINE_MARKET_DEMAND.items():
+    for cat in all_categories:
         counts = event_counts.get(cat, {})
         weighted_score = sum(counts.get(ev, 0) * weight for ev, weight in EVENT_WEIGHTS.items())
         total_events = sum(counts.values())
 
-        # Dynamic surge: each weighted interaction dynamically increases demand up to 98%
+        # Dynamic demand calculation: historical craft index + verified buyer interaction surge
+        base_index = CRAFT_MARKET_BASELINES.get(cat, 12)
         dynamic_surge = min(70, weighted_score * 2)
-        calculated_pct = baseline["base_pct"] + dynamic_surge
+        calculated_pct = base_index + dynamic_surge
 
         level = "HIGH" if calculated_pct >= 30 else ("MODERATE" if calculated_pct >= 20 else "NORMAL")
         trend = "INCREASING" if dynamic_surge > 0 else "STABLE"
+
+        # Determine price benchmark from live catalog; fallback to category estimation if no products yet
+        cat_stats = benchmarks_by_cat.get(cat)
+        if cat_stats and cat_stats["min"] is not None and cat_stats["max"] is not None:
+            b_min = int(cat_stats["min"])
+            b_max = int(cat_stats["max"])
+            range_str = f"₹{b_min}–₹{b_max}" if b_min != b_max else f"₹{b_min}"
+            source_label = f"Live Marketplace Catalog ({cat_stats['count']} listings)"
+        else:
+            b_min, b_max = 800, 1500
+            range_str = f"₹{b_min}–₹{b_max}"
+            source_label = "Market Estimate (Awaiting Initial Listings)"
 
         demand_list.append({
             "category": cat,
@@ -58,10 +109,10 @@ def calculate_category_demand(db: Session) -> List[Dict[str, Any]]:
             "demand_pct_label": f"+{calculated_pct}%",
             "demand_level": level,
             "trend_direction": trend,
-            "benchmark_price_range": f"₹{baseline['benchmark_min']}–₹{baseline['benchmark_max']}",
-            "benchmark_min": baseline["benchmark_min"],
-            "benchmark_max": baseline["benchmark_max"],
-            "data_source_label": "Demo Market Benchmark / Baseline Market Index (SIH 2026 Sandbox)",
+            "benchmark_price_range": range_str,
+            "benchmark_min": b_min,
+            "benchmark_max": b_max,
+            "data_source_label": source_label,
             "total_buyer_events": total_events,
             "event_breakdown": counts
         })
@@ -73,15 +124,34 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
     """
     Generates actionable seller opportunities and AI Business Copilot guidance
     connected directly to the Pricing Engine and real-time category demand.
+    Strictly isolates seller data to prevent leaking other artisans' inventory.
     """
-    # Import here to prevent circular import
     from backend.app.services.pricing_engine import calculate_price_recommendation
 
     category_demands = {d["category"]: d for d in calculate_category_demand(db)}
     seller_products = db.query(Product).filter(Product.seller_id == user_id).all()
     
+    # Strictly isolated: if seller has no products, return a clean onboarding guidance state
     if not seller_products:
-        seller_products = db.query(Product).all()
+        return {
+            "copilot_insight": {
+                "product_id": None,
+                "product_title": "No Active Listings",
+                "category": "All Crafts",
+                "demand_pct": 0,
+                "demand_label": "0%",
+                "stock": 0,
+                "buyer_saves": 0,
+                "buyer_enquiries": 0,
+                "benchmark_range": "N/A",
+                "headline": "No craft listings in catalog",
+                "narrative": "You do not have any active craft products listed yet. Create your first product listing in AI Catalog Studio to activate automated pricing recommendations and market demand tracking.",
+                "next_best_action": "Open AI Catalog Studio to list your first handcrafted creation.",
+                "urgency": "LOW"
+            },
+            "opportunities": [],
+            "category_demand": list(category_demands.values())
+        }
 
     opportunities = []
     copilot_insight = None
@@ -97,7 +167,7 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
         save_count = db.query(Event).filter(Event.product_id == prod.id, Event.event_type == "SAVE").count()
         enquiry_count = db.query(Event).filter(Event.product_id == prod.id, Event.event_type == "ENQUIRY").count()
 
-        is_high_demand = cat_demand["demand_pct"] >= 25
+        is_high_demand = cat_demand["demand_pct"] >= 15
         is_low_inventory = prod.stock <= 8
 
         if is_high_demand:
@@ -144,8 +214,8 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
             "buyer_saves": 0,
             "buyer_enquiries": 0,
             "benchmark_range": top_cat["benchmark_price_range"],
-            "headline": f"{top_cat['category']} demand is increasing",
-            "narrative": f"Market search trends show growing interest in {top_cat['category']} crafts (+{top_cat['demand_pct']}%). Prepare your authentic listings.",
+            "headline": f"{top_cat['category']} market interest",
+            "narrative": f"Market search trends show interest in {top_cat['category']} crafts (+{top_cat['demand_pct']}%). Maintain authentic listings and protect margins.",
             "next_best_action": f"Expand your {top_cat['category']} collection.",
             "urgency": "MEDIUM"
         }
