@@ -70,4 +70,4 @@ def get_cors_origins() -> List[str]:
 
 # AI API configuration
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
-AI_REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "10.0"))
+AI_REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "25.0"))

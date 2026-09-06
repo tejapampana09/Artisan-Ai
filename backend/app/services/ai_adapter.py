@@ -167,18 +167,40 @@ async def generate_catalog_draft(
             - suggested_price: Fair selling price in INR as a number
             - estimated_cost: object with keys "material", "labour", "packaging" as numbers
             """
+            models_to_try = [
+                os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest"),
+                "gemini-flash-lite-latest",
+                "gemini-3.1-flash-lite",
+                "gemini-3.6-flash"
+            ]
             async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
-                res = await client.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}",
-                    json={
-                        "contents": [{"parts": [{"text": prompt}]}],
-                        "generationConfig": {"response_mime_type": "application/json"}
-                    },
-                    headers={"Content-Type": "application/json"}
-                )
-                if res.status_code == 200:
+                res = None
+                for model in models_to_try:
+                    try:
+                        resp = await client.post(
+                            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}",
+                            json={
+                                "contents": [{"parts": [{"text": prompt}]}],
+                                "generationConfig": {"response_mime_type": "application/json"}
+                            },
+                            headers={"Content-Type": "application/json"}
+                        )
+                        if resp.status_code == 200:
+                            res = resp
+                            break
+                    except Exception:
+                        continue
+
+                if res and res.status_code == 200:
                     data = res.json()
-                    content = data["candidates"][0]["content"]["parts"][0]["text"]
+                    content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    if content.startswith("```"):
+                        lines = content.split("\n")
+                        if lines[0].startswith("```"):
+                            lines = lines[1:]
+                        if lines and lines[-1].strip() == "```":
+                            lines = lines[:-1]
+                        content = "\n".join(lines).strip()
                     parsed = json.loads(content)
 
                     # Validate required core fields from AI
