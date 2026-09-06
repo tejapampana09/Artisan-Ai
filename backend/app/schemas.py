@@ -38,6 +38,10 @@ class UserLogin(BaseModel):
     email_or_phone: str
     password: str
 
+class ResetPasswordRequest(BaseModel):
+    email_or_phone: str = Field(..., min_length=3)
+    new_password: str = Field(..., min_length=6)
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

@@ -61,6 +61,52 @@ def test_auth_registration_and_login_flow():
     invalid_res = client.get("/api/auth/me", headers={"Authorization": "Bearer invalid_garbage_token"})
     assert invalid_res.status_code == 401
 
+def test_reset_password_flow():
+    uid = uuid.uuid4().hex[:6]
+    email = f"artisan.{uid}@artisanai.in"
+    phone = f"+91 93333 {uid[:5]}"
+
+    # 1. Register user
+    reg = client.post("/api/auth/register", json={
+        "name": "Artisan Reset Test",
+        "email": email,
+        "phone": phone,
+        "password": "OldPassword123!",
+        "role": "ARTISAN"
+    })
+    assert reg.status_code == 201
+
+    # 2. Reset password using email
+    reset_res = client.post("/api/auth/reset-password", json={
+        "email_or_phone": email,
+        "new_password": "NewSecretPassword456!"
+    })
+    assert reset_res.status_code == 200
+    reset_data = reset_res.json()
+    assert "access_token" in reset_data
+    assert reset_data["user"]["email"] == email
+
+    # 3. Verify login works with new password
+    new_login = client.post("/api/auth/login", json={
+        "email_or_phone": email,
+        "password": "NewSecretPassword456!"
+    })
+    assert new_login.status_code == 200
+
+    # 4. Verify old password is now rejected
+    old_login = client.post("/api/auth/login", json={
+        "email_or_phone": email,
+        "password": "OldPassword123!"
+    })
+    assert old_login.status_code == 401
+
+    # 5. Reject non-existent email/phone
+    bad_reset = client.post("/api/auth/reset-password", json={
+        "email_or_phone": "nonexistent@artisanai.in",
+        "new_password": "NewSecretPassword456!"
+    })
+    assert bad_reset.status_code == 404
+
 def test_product_ownership_and_seller_isolation():
     uid = uuid.uuid4().hex[:6]
     # Setup User 1 (Demo user token or default)

@@ -83,6 +83,28 @@ export async function loginUser(credentials) {
   }
 }
 
+export async function resetPassword(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Password reset failed' }));
+      throw new Error(err.detail || `HTTP error ${res.status}`);
+    }
+    const data = await res.json();
+    if (data.access_token) {
+      setAuthToken(data.access_token);
+    }
+    return data;
+  } catch (err) {
+    console.error('Reset password error:', err);
+    throw err;
+  }
+}
+
 export function logoutUser() {
   clearAuthToken();
 }

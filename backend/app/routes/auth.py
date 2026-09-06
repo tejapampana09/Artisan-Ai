@@ -4,7 +4,7 @@ from sqlalchemy import or_
 
 from backend.app.database import get_db
 from backend.app.models import User
-from backend.app.schemas import UserRegister, UserLogin, TokenResponse, UserResponse
+from backend.app.schemas import UserRegister, UserLogin, ResetPasswordRequest, TokenResponse, UserResponse
 from backend.app.services.auth import (
     hash_password,
     verify_password,
@@ -93,6 +93,42 @@ def login_user(payload: UserLogin, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials. Please check your email/phone and password."
         )
+
+    access_token = create_access_token({
+        "sub": str(user.id),
+        "name": user.name,
+        "role": user.role
+    })
+
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=user
+    )
+
+@router.post("/reset-password", response_model=TokenResponse)
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Resets password for an existing account identified by email or phone.
+    Returns a fresh JWT token for seamless sign-in.
+    """
+    identifier = payload.email_or_phone.strip()
+    user = db.query(User).filter(
+        or_(
+            User.email == identifier.lower(),
+            User.phone == identifier
+        )
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with this email or phone number. Please check or create a new account."
+        )
+
+    user.hashed_password = hash_password(payload.new_password)
+    db.commit()
+    db.refresh(user)
 
     access_token = create_access_token({
         "sub": str(user.id),
