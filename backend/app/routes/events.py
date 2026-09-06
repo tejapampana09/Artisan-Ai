@@ -11,7 +11,7 @@ from backend.app.schemas import (
     EventCreate, EventResponse, EnquiryCreate, EnquiryResponse, 
     OrderCreate, OrderResponse, ProductResponse
 )
-from backend.app.services.auth import get_current_user
+from backend.app.services.auth import get_current_user, get_optional_current_user
 
 router = APIRouter(prefix="/api", tags=["Events & Marketplace"])
 
@@ -250,3 +250,62 @@ def get_trending_products(limit: int = Query(8, le=20), db: Session = Depends(ge
         return ordered[:limit]
 
     return db.query(Product).order_by(Product.id.desc()).limit(limit).all()
+@router.get("/recommendations", response_model=List[ProductResponse])
+def get_personalized_recommendations(
+    limit: int = Query(8, le=20),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
+    """
+    Buyer Recommendation Engine (Section 10 in Architecture Document):
+    SEARCH + VIEW + SAVE + ENQUIRY + PURCHASE -> INTEREST PROFILE -> PERSONALIZED RECOMMENDATIONS
+    Cold-start fallback: Top trending & published items if no prior user behavioral history.
+    """
+    if current_user:
+        recent_cats = (
+            db.query(Event.category)
+            .filter(Event.user_id == current_user.id, Event.category.isnot(None))
+            .order_by(Event.id.desc())
+            .limit(10)
+            .all()
+        )
+        cat_names = [c[0] for c in recent_cats if c[0]]
+        if cat_names:
+            personalized = (
+                db.query(Product)
+                .filter(Product.status == "PUBLISHED", Product.category.in_(cat_names))
+                .order_by(Product.id.desc())
+                .limit(limit)
+                .all()
+            )
+            if len(personalized) >= 3:
+                return personalized
+
+    return get_trending_products(limit=limit, db=db)
+
+@router.get("/marketplace/ondc/catalog")
+def get_ondc_catalog(db: Session = Depends(get_db)):
+    """
+    ONDC Beckn Protocol Catalog Endpoint (Section 14.3).
+    Returns published artisan inventory formatted to ONDC retail schema.
+    """
+    from backend.app.services.ondc_adapter import handle_ondc_search
+    return handle_ondc_search(query=None, category=None, db=db)
+
+@router.post("/marketplace/ondc/search")
+def search_ondc_catalog(payload: dict, db: Session = Depends(get_db)):
+    """
+    ONDC Beckn Protocol Discovery Endpoint (Section 14.3).
+    """
+    from backend.app.services.ondc_adapter import handle_ondc_search
+    intent = payload.get("message", {}).get("intent", {})
+    query = intent.get("item", {}).get("descriptor", {}).get("name")
+    category = intent.get("category", {}).get("id")
+    return handle_ondc_search(query=query, category=category, db=db)
+
+# Exact Document Spec Endpoint Aliases (Section 18)
+router.add_api_route("/market/trending", get_trending_products, methods=["GET"], response_model=List[ProductResponse], tags=["Market Intelligence & Seller Copilot"])
+router.add_api_route("/enquiries", submit_enquiry, methods=["POST"], response_model=EventResponse, status_code=status.HTTP_201_CREATED, tags=["Events & Marketplace"])
+router.add_api_route("/enquiries", list_enquiries, methods=["GET"], response_model=List[EnquiryResponse], tags=["Events & Marketplace"])
+router.add_api_route("/orders", place_order, methods=["POST"], response_model=EventResponse, status_code=status.HTTP_201_CREATED, tags=["Events & Marketplace"])
+router.add_api_route("/orders", list_orders, methods=["GET"], response_model=List[OrderResponse], tags=["Events & Marketplace"])

@@ -156,3 +156,18 @@ def get_current_user(
         db.commit()
         db.refresh(user)
     return user
+def get_optional_current_user(
+    db: Session = Depends(get_db),
+    auth_header: Optional[str] = Header(None, alias="Authorization")
+) -> Optional[User]:
+    """Returns authenticated user if valid token present, else None without raising 401."""
+    token = extract_token_from_header(auth_header)
+    if not token:
+        return None
+    payload = decode_access_token(token)
+    if not payload or "sub" not in payload:
+        return None
+    try:
+        return db.query(User).filter(User.id == int(payload["sub"])).first()
+    except Exception:
+        return None
