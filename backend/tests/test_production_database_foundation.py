@@ -70,6 +70,14 @@ def test_postgresql_connection_pool_hardening():
     Verify PostgreSQL engine is configured with production connection pooling:
     pool_size=10, max_overflow=20, pool_pre_ping=True, pool_recycle=300
     """
+    try:
+        import psycopg2
+    except ImportError:
+        try:
+            import psycopg
+        except ImportError:
+            pytest.skip("PostgreSQL driver (psycopg2/psycopg) not installed in current environment")
+
     pg_url = "postgresql://user:pass@localhost:5432/mock_db"
     pg_engine = build_engine(pg_url)
 

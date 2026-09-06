@@ -42,15 +42,19 @@ def compute_demand_factor(demand_pct: float) -> Tuple[float, str]:
 
 def compute_market_adjustment(
     current_price: float,
-    benchmark_low: float,
-    benchmark_high: float
+    benchmark_low: Any,
+    benchmark_high: Any
 ) -> Tuple[float, str]:
     """
     Determines market adjustment factor and position:
+    - If no benchmark exists yet: 1.00 (Neutral)
     - BELOW MARKET (< benchmark_low): 1.04
     - WITHIN MARKET RANGE (benchmark_low <= price <= benchmark_high): 1.01
     - ABOVE MARKET (> benchmark_high): 0.98
     """
+    if benchmark_low is None or benchmark_high is None:
+        return 1.0, "INITIAL CATEGORY LISTING"
+
     c_price = float(current_price)
     b_low = float(benchmark_low)
     b_high = float(benchmark_high)
@@ -86,18 +90,18 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
     margin_pct = to_decimal(product.min_margin_pct, "0.20")
     minimum_fair_price = (cost_basis * (Decimal("1.0") + margin_pct)).quantize(Decimal("1.00"), rounding=ROUND_HALF_UP)
 
-    # 2. Category Demand & Benchmark Range
+    # 2. Category Demand & Benchmark Range from pure database records
     all_demands = {d["category"]: d for d in calculate_category_demand(db)}
     cat_demand = all_demands.get(product.category)
     
     if cat_demand:
         demand_pct = float(cat_demand["demand_pct"])
-        benchmark_low = to_decimal(cat_demand["benchmark_min"])
-        benchmark_high = to_decimal(cat_demand["benchmark_max"])
+        benchmark_low = to_decimal(cat_demand["benchmark_min"]) if cat_demand["benchmark_min"] is not None else None
+        benchmark_high = to_decimal(cat_demand["benchmark_max"]) if cat_demand["benchmark_max"] is not None else None
     else:
-        demand_pct = 5.0
-        benchmark_low = Decimal("800.00")
-        benchmark_high = Decimal("1500.00")
+        demand_pct = 0.0
+        benchmark_low = None
+        benchmark_high = None
 
     curr_price = to_decimal(product.price)
     demand_factor, demand_label = compute_demand_factor(demand_pct)
@@ -133,11 +137,15 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
 
     # 7. Transparent Explainable Reasoning List
     reasoning: List[str] = [
-        f"{product.category} market demand indicates {demand_pct}% surge ({demand_label}, factor {float(demand_factor):.3f}x).",
-        f"Comparable craft market benchmark range is ₹{int(benchmark_low):,}–₹{int(benchmark_high):,} (Current position: {market_pos}).",
+        f"{product.category} market demand indicates {demand_pct}% share ({demand_label}, factor {float(demand_factor):.3f}x).",
         f"Cost basis is ₹{float(cost_basis):,.0f} (Material: ₹{float(mat_cost)}, Labour: ₹{float(lab_cost)}, Packaging: ₹{float(pkg_cost)}).",
         f"Protected minimum fair price is ₹{float(minimum_fair_price):,.0f}, ensuring your configured {int(float(margin_pct) * 100)}% minimum margin.",
     ]
+
+    if benchmark_low is not None and benchmark_high is not None:
+        reasoning.insert(1, f"Comparable craft market benchmark range is ₹{int(benchmark_low):,}–₹{int(benchmark_high):,} (Current position: {market_pos}).")
+    else:
+        reasoning.insert(1, "No comparable catalog listings yet in this category (Initial category listing).")
 
     if save_count > 0 or enquiry_count > 0:
         reasoning.append(f"Recorded buyer interest velocity: {save_count} wishlist save(s) and {enquiry_count} active lead(s).")

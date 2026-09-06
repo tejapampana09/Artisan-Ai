@@ -13,15 +13,6 @@ STANDARD_CRAFT_CATEGORIES = [
     "Handloom"
 ]
 
-CRAFT_MARKET_BASELINES = {
-    "Kalamkari": 28,
-    "Wooden Toys": 20,
-    "Pochampally Ikat": 22,
-    "Blue Pottery": 16,
-    "Handloom": 15,
-    "Bidriware": 14,
-}
-
 EVENT_WEIGHTS = {
     "SEARCH": 2,
     "VIEW": 1,
@@ -33,7 +24,8 @@ EVENT_WEIGHTS = {
 def calculate_category_demand(db: Session) -> List[Dict[str, Any]]:
     """
     Computes real-time dynamic demand scores for each craft category
-    based on actual aggregated buyer interactions and live catalog listings.
+    based strictly on actual aggregated buyer interactions and live catalog listings.
+    Zero hardcoded baselines or simulated fallback prices.
     """
     # 1. Fetch live price benchmarks per category from published products
     price_stats = (
@@ -77,36 +69,57 @@ def calculate_category_demand(db: Session) -> List[Dict[str, Any]]:
         STANDARD_CRAFT_CATEGORIES
     ))
 
-    demand_list = []
+    # Calculate total market engagement across all categories
+    category_scores = {}
+    total_market_engagement = 0
     for cat in all_categories:
         counts = event_counts.get(cat, {})
         weighted_score = sum(counts.get(ev, 0) * weight for ev, weight in EVENT_WEIGHTS.items())
+        category_scores[cat] = weighted_score
+        total_market_engagement += weighted_score
+
+    demand_list = []
+    for cat in all_categories:
+        counts = event_counts.get(cat, {})
+        weighted_score = category_scores[cat]
         total_events = sum(counts.values())
 
-        # Dynamic demand calculation: historical craft index + verified buyer interaction surge
-        base_index = CRAFT_MARKET_BASELINES.get(cat, 12)
-        dynamic_surge = min(70, weighted_score * 2)
-        calculated_pct = base_index + dynamic_surge
+        # 100% Real Demand Calculation:
+        # If the platform has buyer interactions, demand_pct is the category's real percentage share of total buyer interest.
+        # If no events exist anywhere yet, demand is 0% (honest, real zero baseline).
+        if total_market_engagement > 0 and weighted_score > 0:
+            calculated_pct = max(1, round((weighted_score / total_market_engagement) * 100))
+            level = "HIGH" if calculated_pct >= 30 else ("MODERATE" if calculated_pct >= 15 else "NORMAL")
+            trend = "INCREASING"
+            pct_label = f"+{calculated_pct}%"
+        elif weighted_score > 0:
+            calculated_pct = weighted_score
+            level = "HIGH" if calculated_pct >= 30 else ("MODERATE" if calculated_pct >= 15 else "NORMAL")
+            trend = "INCREASING"
+            pct_label = f"+{calculated_pct}%"
+        else:
+            calculated_pct = 0
+            level = "NORMAL"
+            trend = "STABLE"
+            pct_label = "0%"
 
-        level = "HIGH" if calculated_pct >= 30 else ("MODERATE" if calculated_pct >= 20 else "NORMAL")
-        trend = "INCREASING" if dynamic_surge > 0 else "STABLE"
-
-        # Determine price benchmark from live catalog; fallback to category estimation if no products yet
+        # Determine price benchmark from live catalog:
+        # Strictly authentic: if no products listed in this category, do NOT invent fake ₹800-₹1500!
         cat_stats = benchmarks_by_cat.get(cat)
-        if cat_stats and cat_stats["min"] is not None and cat_stats["max"] is not None:
+        if cat_stats and cat_stats["count"] > 0 and cat_stats["min"] is not None and cat_stats["max"] is not None:
             b_min = int(cat_stats["min"])
             b_max = int(cat_stats["max"])
             range_str = f"₹{b_min}–₹{b_max}" if b_min != b_max else f"₹{b_min}"
-            source_label = f"Live Marketplace Catalog ({cat_stats['count']} listings)"
+            source_label = f"Live Marketplace ({cat_stats['count']} listings)"
         else:
-            b_min, b_max = 800, 1500
-            range_str = f"₹{b_min}–₹{b_max}"
-            source_label = "Market Estimate (Awaiting Initial Listings)"
+            b_min, b_max = None, None
+            range_str = "No Listings"
+            source_label = "Awaiting initial catalog listings"
 
         demand_list.append({
             "category": cat,
             "demand_pct": calculated_pct,
-            "demand_pct_label": f"+{calculated_pct}%",
+            "demand_pct_label": pct_label,
             "demand_level": level,
             "trend_direction": trend,
             "benchmark_price_range": range_str,
@@ -117,7 +130,7 @@ def calculate_category_demand(db: Session) -> List[Dict[str, Any]]:
             "event_breakdown": counts
         })
 
-    demand_list.sort(key=lambda x: x["demand_pct"], reverse=True)
+    demand_list.sort(key=lambda x: (x["demand_pct"], x["total_buyer_events"]), reverse=True)
     return demand_list
 
 def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:

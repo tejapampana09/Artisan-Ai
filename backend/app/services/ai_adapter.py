@@ -165,50 +165,28 @@ async def generate_catalog_draft(
     min_fair = round(base_cost * 1.20)
     suggested = max(min_fair, profile["suggested_price"])
 
-    if is_production:
-        # In production SaaS: never impersonate AI with static canned strings.
-        # Construct an authentic draft directly from artisan's real voice/text input.
-        raw_title = voice_description.strip().split("\n")[0][:60].strip()
-        title = raw_title if len(raw_title) > 3 else "Handcrafted Heritage Artisan Creation"
-        return {
-            "source": "MANUAL_DRAFT",
-            "title": title,
-            "category": category_hint or profile["category"],
-            "materials": "Authentic Handcrafted Materials",
-            "description": voice_description.strip() or "Authentic handmade craft listing created by artisan.",
-            "craft_story": "Generational traditional craft handmade with locally sourced materials.",
-            "tags": [category_hint or profile["category"], "Handmade", "Authentic Craft"],
-            "suggested_price": suggested,
-            "material_cost": mat,
-            "labour_cost": lab,
-            "packaging_cost": pkg,
-            "min_margin_pct": 0.20,
-            "min_fair_price": min_fair,
-            "image_url": image_url or "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80",
-            "enhanced_image_url": enhance_image_url(image_url),
-            "transcription": voice_description,
-            "language_detected": language,
-            "lifecycle_state": "MANUAL_DRAFT",
-            "notice": "Live AI generation service unavailable. Product draft created directly from your craft notes."
-        }
-
+    # When live Gemini AI is unavailable or offline:
+    # Construct an authentic draft directly from artisan's real voice/text input without fake images or canned stories.
+    raw_title = voice_description.strip().split("\n")[0][:60].strip()
+    title = raw_title if len(raw_title) > 3 else f"Handcrafted {category_hint or profile['category']}"
     return {
-        "source": "OFFLINE_CRAFT_ONTOLOGY",
-        "title": profile["title"],
-        "category": profile["category"],
-        "materials": profile["materials"],
-        "description": profile["description"],
-        "craft_story": profile["craft_story"],
-        "tags": profile["tags"],
+        "source": "MANUAL_DRAFT",
+        "title": title,
+        "category": category_hint or profile["category"],
+        "materials": "To be specified by artisan during review",
+        "description": voice_description.strip() or "Artisan handcrafted creation.",
+        "craft_story": voice_description.strip() or "Artisan handcrafted creation.",
+        "tags": [category_hint or profile["category"], "Handmade"],
         "suggested_price": suggested,
         "material_cost": mat,
         "labour_cost": lab,
         "packaging_cost": pkg,
         "min_margin_pct": 0.20,
         "min_fair_price": min_fair,
-        "image_url": image_url or "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80",
-        "enhanced_image_url": enhance_image_url(image_url),
+        "image_url": image_url or "",
+        "enhanced_image_url": image_url or "",
         "transcription": voice_description,
         "language_detected": language,
-        "lifecycle_state": "AI_GENERATED"
+        "lifecycle_state": "MANUAL_DRAFT",
+        "notice": "Live AI generation service unavailable. Product draft created directly from your craft notes."
     }
