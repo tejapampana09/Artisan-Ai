@@ -249,3 +249,45 @@ def test_sync_idempotency_client_operation_id():
     # Guaranteed idempotency: returns the EXACT SAME server product ID, no duplicate row created
     assert server_id_1 == server_id_2
 
+
+def test_sync_idempotency_tenant_isolation():
+    """
+    Verify composite uniqueness on (user_id, client_operation_id).
+    Another user submitting the same client_operation_id is treated as a separate operation
+    and does NOT receive User A's cached response.
+    """
+    uid1 = uuid.uuid4().hex[:6]
+    uid2 = uuid.uuid4().hex[:6]
+
+    reg1 = client.post("/api/auth/register", json={
+        "name": f"User 1 {uid1}", "email": f"u1.{uid1}@artisanai.in", "password": "Password123!", "role": "ARTISAN"
+    })
+    h1 = {"Authorization": f"Bearer {reg1.json()['access_token']}"}
+
+    reg2 = client.post("/api/auth/register", json={
+        "name": f"User 2 {uid2}", "email": f"u2.{uid2}@artisanai.in", "password": "Password123!", "role": "ARTISAN"
+    })
+    h2 = {"Authorization": f"Bearer {reg2.json()['access_token']}"}
+
+    shared_op_id = f"op_shared_{uuid.uuid4().hex[:8]}"
+
+    # User 1 syncs with shared_op_id
+    payload1 = {
+        "products": [{"client_operation_id": shared_op_id, "title": "User 1 Item", "category": "Pottery", "price": 100.0}]
+    }
+    r1 = client.post("/api/sync/batch", json=payload1, headers=h1)
+    assert r1.status_code == 200
+    id1 = r1.json()["products_synced"][0]["server_id"]
+
+    # User 2 syncs with SAME shared_op_id
+    payload2 = {
+        "products": [{"client_operation_id": shared_op_id, "title": "User 2 Item", "category": "Textiles", "price": 200.0}]
+    }
+    r2 = client.post("/api/sync/batch", json=payload2, headers=h2)
+    assert r2.status_code == 200
+    id2 = r2.json()["products_synced"][0]["server_id"]
+
+    # Must be separate items created for different users, zero cross-tenant collision
+    assert id1 != id2
+
+

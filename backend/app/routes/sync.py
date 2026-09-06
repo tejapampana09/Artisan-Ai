@@ -94,9 +94,10 @@ def batch_sync(
     try:
         # 1. Sync offline drafted products
         for prod_item in payload.products:
-            # Check persistent operation store for idempotency
+            # Check persistent operation store for idempotency (tenant-isolated)
             if prod_item.client_operation_id:
                 existing_op = db.query(ProcessedOperation).filter(
+                    ProcessedOperation.user_id == seller_id,
                     ProcessedOperation.client_operation_id == prod_item.client_operation_id
                 ).first()
                 if existing_op:
@@ -143,9 +144,10 @@ def batch_sync(
 
         # 2. Sync queued price decisions (ownership verified per item)
         for dec_item in payload.price_decisions:
-            # Check persistent operation store for idempotency
+            # Check persistent operation store for idempotency (tenant-isolated)
             if dec_item.client_operation_id:
                 existing_op = db.query(ProcessedOperation).filter(
+                    ProcessedOperation.user_id == seller_id,
                     ProcessedOperation.client_operation_id == dec_item.client_operation_id
                 ).first()
                 if existing_op:

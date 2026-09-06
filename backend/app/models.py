@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, CheckConstraint, Numeric
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, CheckConstraint, Numeric, UniqueConstraint
 from sqlalchemy.orm import relationship
 from backend.app.database import Base
 
@@ -157,13 +157,18 @@ class ProcessedOperation(Base):
     """
     Persistent storage for client_operation_id to guarantee true database-level idempotency
     across offline batch sync retries. Prevents duplicate product creations or pricing decision mutations.
+    Enforces strict tenant isolation via composite unique constraint (user_id, client_operation_id).
     """
     __tablename__ = "processed_operations"
+    __table_args__ = (
+        UniqueConstraint("user_id", "client_operation_id", name="uq_processed_op_user_client_op_id"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    client_operation_id = Column(String, unique=True, index=True, nullable=False)
+    client_operation_id = Column(String, index=True, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     entity_type = Column(String, nullable=False) # "PRODUCT" or "PRICE_DECISION"
     result_json = Column(Text, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 
