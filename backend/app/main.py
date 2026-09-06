@@ -51,12 +51,18 @@ from fastapi import Request
 
 @app.middleware("http")
 async def add_observability_headers(request: Request, call_next):
+    if request.method == "OPTIONS":
+        response = await call_next(request)
+        response.headers["Access-Control-Allow-Private-Network"] = "true"
+        return response
+
     request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
     start_time = time.time()
     response = await call_next(request)
     duration_ms = round((time.time() - start_time) * 1000, 2)
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Process-Time-Ms"] = str(duration_ms)
+    response.headers["Access-Control-Allow-Private-Network"] = "true"
     return response
 
 # Include Routers

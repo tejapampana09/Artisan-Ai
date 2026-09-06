@@ -8,7 +8,7 @@ export function getApiBase() {
       return '/api';
     }
     // When served from static S3/CloudFront without custom proxy, connect to active backend API
-    return 'http://127.0.0.1:8000/api';
+    return 'http://localhost:8000/api';
   }
   return '/api';
 }
@@ -92,6 +92,9 @@ export async function registerUser(userData) {
   } catch (err) {
     console.error('Registration error:', err);
     if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
+      if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+        throw new Error('Mixed Content Error: HTTPS page cannot call HTTP local backend (127.0.0.1:8000). Please open the HTTP S3 website link: http://artisan-ai-frontend-339954341605.s3-website-us-east-1.amazonaws.com');
+      }
       throw new Error('Unable to connect to backend server. Please ensure the backend is running on port 8000.');
     }
     throw err;
@@ -117,6 +120,9 @@ export async function loginUser(credentials) {
   } catch (err) {
     console.error('Login error:', err);
     if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
+      if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+        throw new Error('Mixed Content Error: HTTPS page cannot call HTTP local backend (127.0.0.1:8000). Please open the HTTP S3 website link: http://artisan-ai-frontend-339954341605.s3-website-us-east-1.amazonaws.com');
+      }
       throw new Error('Unable to connect to backend server. Please ensure the backend is running on port 8000.');
     }
     throw err;
