@@ -252,7 +252,8 @@ async def generate_catalog_draft(
                             "notice": "AI-generated draft. Factual heritage, materials, and pricing claims must be verified by the artisan before publishing."
                         }
         except Exception as e:
-            print(f"[AI Adapter] Live Gemini call unavailable or timed out ({e}).")
+            import logging
+            logging.getLogger("artisan_ai").warning("[AI Adapter] Live Gemini call unavailable or timed out: %s", str(e))
 
     # -------------------------------------------------------------------------
     # 2. PRODUCTION MANUAL DRAFT (100% Honest Draft — Zero Fabrications)
