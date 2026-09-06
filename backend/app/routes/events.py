@@ -1,7 +1,7 @@
 from typing import List, Optional
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import func, update
 
@@ -71,11 +71,18 @@ def get_events(
 def submit_enquiry(
     enquiry: EnquiryCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    auth_header: Optional[str] = Header(None, alias="Authorization")
 ):
     product = db.query(Product).filter(Product.id == enquiry.product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+
+    if auth_header and product.seller_id and product.seller_id == current_user.id and current_user.role != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Self-enquiry not allowed: Artisans cannot submit buyer enquiries for their own products."
+        )
 
     buyer_name = enquiry.buyer_name.strip() if enquiry.buyer_name and enquiry.buyer_name.strip() else current_user.name
     buyer_phone = enquiry.buyer_phone.strip() if enquiry.buyer_phone and enquiry.buyer_phone.strip() else (current_user.phone or "N/A")
@@ -146,11 +153,18 @@ def list_enquiries(
 def place_order(
     order: OrderCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    auth_header: Optional[str] = Header(None, alias="Authorization")
 ):
     product = db.query(Product).filter(Product.id == order.product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+
+    if auth_header and product.seller_id and product.seller_id == current_user.id and current_user.role != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Self-purchase not allowed: Artisans cannot purchase their own listed crafts."
+        )
 
     # Atomic Row-Level Conditional Update: Prevents overselling & race conditions
     stmt = (

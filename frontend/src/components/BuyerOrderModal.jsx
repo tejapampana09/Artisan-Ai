@@ -22,6 +22,10 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
       onOpenAuth?.();
       return;
     }
+    if (user && product.seller_id === user.id) {
+      alert("Self-purchase not allowed: Artisans cannot purchase their own listed crafts.");
+      return;
+    }
     setSubmitting(true);
     try {
       if (isOrder) {
@@ -86,7 +90,28 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
           </div>
         </div>
 
-        {!user ? (
+        {user && product.seller_id === user.id ? (
+          <div className="mt-4 p-5 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 text-sm">Self-Purchase Disabled (మీ స్వంత ఉత్పత్తి)</h4>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                You are registered as the artisan creator of this craft. Artisans cannot purchase or submit enquiries for their own listed crafts.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+              >
+                Got It / Close
+              </button>
+            </div>
+          </div>
+        ) : !user ? (
           <div className="mt-4 p-5 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-4">
             <div className="w-12 h-12 mx-auto rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
               <ShoppingBag className="w-6 h-6" />

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Heart, ShoppingBag, Send, ShieldCheck, MapPin, Sparkles, Check } from 'lucide-react';
+import { X, Heart, ShoppingBag, Send, ShieldCheck, MapPin, Sparkles, Check, CheckCircle2 } from 'lucide-react';
 import { recordEvent } from '../api';
 
 export default function BuyerProductModal({ 
@@ -105,39 +105,51 @@ export default function BuyerProductModal({
             </div>
 
             {/* Action Buttons */}
-            <div className="pt-2 space-y-2">
-              <button
-                onClick={() => {
-                  if (!user) {
+            {user && product.seller_id === user.id ? (
+              <div className="pt-2 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-center space-y-1.5">
+                <div className="flex items-center justify-center space-x-1.5 text-amber-900 font-bold text-xs">
+                  <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                  <span>Your Listed Craft (మీ ఉత్పత్తి)</span>
+                </div>
+                <p className="text-[11px] text-amber-700 leading-relaxed">
+                  You are the master artisan who created this listing. Self-purchasing and self-enquiries are disabled on your own crafts.
+                </p>
+              </div>
+            ) : (
+              <div className="pt-2 space-y-2">
+                <button
+                  onClick={() => {
+                    if (!user) {
+                      onClose();
+                      onOpenAuth?.();
+                      return;
+                    }
                     onClose();
-                    onOpenAuth?.();
-                    return;
-                  }
-                  onClose();
-                  onOpenOrder(product);
-                }}
-                className="w-full inline-flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
-              >
-                <ShoppingBag className="w-4 h-4" />
-                <span>Buy Now (B2C Order)</span>
-              </button>
+                    onOpenOrder(product);
+                  }}
+                  className="w-full inline-flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>Buy Now (B2C Order)</span>
+                </button>
 
-              <button
-                onClick={() => {
-                  if (!user) {
+                <button
+                  onClick={() => {
+                    if (!user) {
+                      onClose();
+                      onOpenAuth?.();
+                      return;
+                    }
                     onClose();
-                    onOpenAuth?.();
-                    return;
-                  }
-                  onClose();
-                  onOpenEnquiry(product);
-                }}
-                className="w-full inline-flex items-center justify-center space-x-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold py-2 rounded-xl transition-all cursor-pointer"
-              >
-                <Send className="w-4 h-4 text-amber-700" />
-                <span>Request B2B Bulk Enquiry</span>
-              </button>
-            </div>
+                    onOpenEnquiry(product);
+                  }}
+                  className="w-full inline-flex items-center justify-center space-x-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold py-2 rounded-xl transition-all cursor-pointer"
+                >
+                  <Send className="w-4 h-4 text-amber-700" />
+                  <span>Request B2B Bulk Enquiry</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

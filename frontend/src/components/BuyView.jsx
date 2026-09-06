@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, ShoppingBag, Heart, Sparkles, Filter, MapPin, Send, Eye, Flame } from 'lucide-react';
+import { Search, ShoppingBag, Heart, Sparkles, Filter, MapPin, Send, Eye, Flame, CheckCircle2 } from 'lucide-react';
 import BuyerProductModal from './BuyerProductModal';
 import BuyerOrderModal from './BuyerOrderModal';
 import { getProducts, getTrendingProducts, recordEvent } from '../api';
@@ -326,19 +326,29 @@ export default function BuyView({ user, onOpenAuth }) {
                         <span>View</span>
                       </button>
 
-                      <button
-                        onClick={() => {
-                          if (!user) {
-                            onOpenAuth?.();
-                            return;
-                          }
-                          setOrderModal({ isOpen: true, product: p, mode: 'ORDER' });
-                        }}
-                        className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors cursor-pointer"
-                      >
-                        <ShoppingBag className="w-3.5 h-3.5" />
-                        <span>Buy Now</span>
-                      </button>
+                      {user && p.seller_id === user.id ? (
+                        <span 
+                          className="inline-flex items-center justify-center space-x-1 py-2 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl cursor-default"
+                          title="This is your own listed craft. Self-purchase is disabled."
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Your Craft</span>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            if (!user) {
+                              onOpenAuth?.();
+                              return;
+                            }
+                            setOrderModal({ isOpen: true, product: p, mode: 'ORDER' });
+                          }}
+                          className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors cursor-pointer"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                          <span>Buy Now</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
