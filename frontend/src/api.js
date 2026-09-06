@@ -7,8 +7,8 @@ export function getApiBase() {
     if ((hostname === 'localhost' || hostname === '127.0.0.1') && port === '5173') {
       return '/api';
     }
-    // When served from static S3/CloudFront without custom proxy, connect to active backend API
-    return 'http://localhost:8000/api';
+    // Live public HTTPS backend tunnel for AWS S3 and CloudFront deployment
+    return 'https://shaggy-cougars-wave.loca.lt/api';
   }
   return '/api';
 }
@@ -46,7 +46,10 @@ export function clearAuthToken() {
 
 export function getAuthHeaders(extra = {}) {
   const token = getAuthToken();
-  const headers = { ...extra };
+  const headers = { 
+    'Bypass-Tunnel-Remainder': 'true',
+    ...extra 
+  };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -77,7 +80,10 @@ export async function registerUser(userData) {
   try {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Bypass-Tunnel-Remainder': 'true'
+      },
       body: JSON.stringify(userData),
     });
     if (!res.ok) {
@@ -92,10 +98,7 @@ export async function registerUser(userData) {
   } catch (err) {
     console.error('Registration error:', err);
     if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
-      if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-        throw new Error('Mixed Content Error: HTTPS page cannot call HTTP local backend (127.0.0.1:8000). Please open the HTTP S3 website link: http://artisan-ai-frontend-339954341605.s3-website-us-east-1.amazonaws.com');
-      }
-      throw new Error('Unable to connect to backend server. Please ensure the backend is running on port 8000.');
+      throw new Error('Unable to connect to public backend server. Please verify network connection.');
     }
     throw err;
   }
@@ -105,7 +108,10 @@ export async function loginUser(credentials) {
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Bypass-Tunnel-Remainder': 'true'
+      },
       body: JSON.stringify(credentials),
     });
     if (!res.ok) {
