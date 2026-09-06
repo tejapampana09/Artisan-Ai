@@ -509,3 +509,20 @@ export async function updateOrderStatus(orderId, newStatus) {
     throw err;
   }
 }
+
+export async function getSellerDashboard() {
+  if (!getAuthToken()) {
+    return null;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/seller/dashboard`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching seller dashboard metrics:', err);
+    return null;
+  }
+}
+

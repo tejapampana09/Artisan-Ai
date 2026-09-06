@@ -574,4 +574,61 @@ def test_order_delivery_tracking_status_progression():
     b_orders = client.get("/api/marketplace/orders?role_view=buyer", headers=buyer_headers).json()
     assert b_orders[0]["status"] == "DELIVERED"
 
+def test_seller_dashboard_analytics_endpoint():
+    import uuid
+    uid = str(uuid.uuid4())[:8]
+
+    # Register Artisan
+    artisan_reg = client.post("/api/auth/register", json={
+        "name": f"Analytics Artisan {uid}",
+        "email": f"artisan.dash.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    artisan_headers = {"Authorization": f"Bearer {artisan_reg.json()['access_token']}"}
+
+    # Register Buyer
+    buyer_reg = client.post("/api/auth/register", json={
+        "name": f"Analytics Buyer {uid}",
+        "email": f"buyer.dash.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "BUYER"
+    })
+    buyer_headers = {"Authorization": f"Bearer {buyer_reg.json()['access_token']}"}
+
+    # Artisan creates product
+    prod_res = client.post("/api/products", json={
+        "title": f"Etikoppaka Lacquer Toy {uid}",
+        "category": "Wooden Toys",
+        "price": 500.0,
+        "stock": 20
+    }, headers=artisan_headers)
+    pid = prod_res.json()["id"]
+
+    # Buyer places order for 2 units
+    order_res = client.post("/api/marketplace/order", json={
+        "product_id": pid,
+        "quantity": 2,
+        "delivery_address": "Guntur, AP"
+    }, headers=buyer_headers)
+    assert order_res.status_code == 201
+
+    # Fetch seller dashboard
+    dash_res = client.get("/api/seller/dashboard", headers=artisan_headers)
+    assert dash_res.status_code == 200
+    dash_data = dash_res.json()
+
+    assert dash_data["total_revenue"] == 1000.0
+    assert dash_data["units_sold"] == 2
+    assert dash_data["total_orders"] == 1
+    assert "delivery_status" in dash_data
+    assert dash_data["delivery_status"]["confirmed"] == 1
+    assert len(dash_data["product_performance"]) >= 1
+
+    per_prod = [p for p in dash_data["product_performance"] if p["product_id"] == pid]
+    assert len(per_prod) == 1
+    assert per_prod[0]["units_sold"] == 2
+    assert per_prod[0]["revenue"] == 1000.0
+
+
 

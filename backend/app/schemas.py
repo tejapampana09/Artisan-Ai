@@ -203,3 +203,33 @@ class PriceDecisionResponse(BaseModel):
     demand_factor: float
     market_adjustment: float
     timestamp: datetime
+
+class ProductPerformance(BaseModel):
+    product_id: int
+    title: str
+    category: str
+    price: float
+    stock: int
+    status: str
+    image_url: Optional[str] = None
+    views: int = 0
+    units_sold: int = 0
+    revenue: float = 0.0
+    orders_count: int = 0
+
+class DeliveryStatusBreakdown(BaseModel):
+    confirmed: int = 0
+    processing: int = 0
+    shipped: int = 0
+    delivered: int = 0
+    cancelled: int = 0
+
+class SellerDashboardResponse(BaseModel):
+    total_revenue: float
+    units_sold: int
+    total_orders: int
+    total_views: int
+    total_enquiries: int
+    delivery_status: DeliveryStatusBreakdown
+    product_performance: List[ProductPerformance]
+

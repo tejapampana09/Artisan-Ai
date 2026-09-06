@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
 import { 
   PlusCircle, TrendingUp, Tag, Sparkles, Package, Wand2, RefreshCw,
   MessageSquare, ShoppingCart, Phone, ExternalLink, Store, ShieldCheck,
-  Send, Truck, Check, Clock, CheckCircle2
+  Send, Truck, Check, Clock, CheckCircle2, BarChart3, Eye, Layers
 } from 'lucide-react';
 import ProductList from './ProductList';
 import CreateProductModal from './CreateProductModal';
@@ -13,7 +12,7 @@ import MarketDemandWidget from './MarketDemandWidget';
 import { 
   getProducts, createProduct, updateProduct, deleteProduct, 
   getMarketDemand, getSellerOpportunities, getEnquiries, getOrders,
-  replyToEnquiry, updateOrderStatus
+  replyToEnquiry, updateOrderStatus, getSellerDashboard
 } from '../api';
 import { useOffline } from '../context/OfflineContext';
 import { 
@@ -59,6 +58,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
   const [editingReply, setEditingReply] = useState({});
   const [replyingEnquiryId, setReplyingEnquiryId] = useState(null);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null);
 
   const { isOffline, queueProductDraft, offlineQueue, removeDraft } = useOffline();
 
@@ -84,12 +84,13 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         setCopilotInsight(getCachedCopilotInsight());
         setOpportunities(getCachedOpportunities());
       } else {
-        const [prodsData, demandData, oppsData, enqsData, ordersData] = await Promise.all([
+        const [prodsData, demandData, oppsData, enqsData, ordersData, dashData] = await Promise.all([
           getProducts(),
           getMarketDemand(),
           getSellerOpportunities(),
           getEnquiries('seller'),
-          getOrders('seller')
+          getOrders('seller'),
+          getSellerDashboard()
         ]);
 
         // Cache products and intelligence locally for offline resilience
@@ -118,6 +119,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         setOpportunities(oppsData?.opportunities || []);
         setEnquiries(enqsData || []);
         setOrders(ordersData || []);
+        setDashboardData(dashData || null);
       }
     } catch (err) {
       console.error('Error loading seller dashboard, falling back to cache:', err);
@@ -489,6 +491,18 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
             </span>
           )}
         </button>
+
+        <button
+          onClick={() => setActiveTab('ANALYTICS')}
+          className={`inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'ANALYTICS'
+              ? 'bg-amber-700 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 text-amber-500" />
+          <span>📊 Business Analytics (విశ్లేషణలు)</span>
+        </button>
       </div>
 
       {/* Tab 1: Products List */}
@@ -774,6 +788,181 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Tab 4: Business & Sales Analytics */}
+      {activeTab === 'ANALYTICS' && (
+        <div className="space-y-6">
+          {/* Key Performance Indicators Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-5 rounded-2xl border border-amber-200/80 shadow-xs">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-amber-800 block">Total Sales / మొత్తం ఆదాయం</span>
+                  <span className="text-[11px] text-amber-600">Earnings from sales</span>
+                </div>
+                <div className="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center font-bold text-sm">
+                  ₹
+                </div>
+              </div>
+              <p className="text-3xl font-black text-amber-950 mt-2">
+                ₹{(dashboardData?.total_revenue || 0).toLocaleString('en-IN')}
+              </p>
+              <p className="text-[11px] text-amber-700 mt-1 font-medium">Direct earnings to artisan</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-5 rounded-2xl border border-emerald-200/80 shadow-xs">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block">Units Sold / అమ్మకాలు</span>
+                  <span className="text-[11px] text-emerald-600">Total items sold</span>
+                </div>
+                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
+                  <Package className="w-4 h-4" />
+                </div>
+              </div>
+              <p className="text-3xl font-black text-emerald-950 mt-2">
+                {dashboardData?.units_sold || 0} Crafts
+              </p>
+              <p className="text-[11px] text-emerald-700 mt-1 font-medium">Handcrafted items sent to customers</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 rounded-2xl border border-blue-200/80 shadow-xs">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-800 block">Craft Views / చూసిన సంఖ్య</span>
+                  <span className="text-[11px] text-blue-600">Product detail views</span>
+                </div>
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                  <Eye className="w-4 h-4" />
+                </div>
+              </div>
+              <p className="text-3xl font-black text-blue-950 mt-2">
+                {dashboardData?.total_views || 0} Views
+              </p>
+              <p className="text-[11px] text-blue-700 mt-1 font-medium">Buyer interest & search exposure</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-5 rounded-2xl border border-purple-200/80 shadow-xs">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-purple-800 block">Orders Placed / ఆర్డర్లు</span>
+                  <span className="text-[11px] text-purple-600">Total order requests</span>
+                </div>
+                <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center">
+                  <ShoppingCart className="w-4 h-4" />
+                </div>
+              </div>
+              <p className="text-3xl font-black text-purple-950 mt-2">
+                {dashboardData?.total_orders || 0} Orders
+              </p>
+              <p className="text-[11px] text-purple-700 mt-1 font-medium">Customer checkout requests</p>
+            </div>
+          </div>
+
+          {/* Delivery Status Pipeline Breakdown */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Truck className="w-4 h-4 text-amber-600" />
+              <span>Delivery Pipeline Breakdown / డెలివరీ ప్రగతి</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Live status of your orders across fulfillment stages</p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                <span className="text-[11px] font-bold text-slate-500 uppercase block">Confirmed / ఖరారైంది</span>
+                <span className="text-xl font-black text-slate-900 mt-1 block">{dashboardData?.delivery_status?.confirmed || 0}</span>
+              </div>
+              <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-center">
+                <span className="text-[11px] font-bold text-amber-700 uppercase block">Packed / ప్యాకింగ్</span>
+                <span className="text-xl font-black text-amber-900 mt-1 block">{dashboardData?.delivery_status?.processing || 0}</span>
+              </div>
+              <div className="p-3.5 bg-indigo-50 rounded-xl border border-indigo-200 text-center">
+                <span className="text-[11px] font-bold text-indigo-700 uppercase block">In Transit / రవాణాలో</span>
+                <span className="text-xl font-black text-indigo-900 mt-1 block">{dashboardData?.delivery_status?.shipped || 0}</span>
+              </div>
+              <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+                <span className="text-[11px] font-bold text-emerald-700 uppercase block">Delivered / చేరింది</span>
+                <span className="text-xl font-black text-emerald-900 mt-1 block">{dashboardData?.delivery_status?.delivered || 0}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Per-Product Analytics Table */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Per-Product Sales & View Metrics / ఉత్పత్తి వివరాలు</h3>
+                <p className="text-xs text-slate-500">Sales volume, total views, and revenue generated per craft listing</p>
+              </div>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                {(dashboardData?.product_performance || []).length} Products
+              </span>
+            </div>
+
+            {!dashboardData?.product_performance || dashboardData.product_performance.length === 0 ? (
+              <div className="p-10 text-center">
+                <BarChart3 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs text-slate-500">No product analytics recorded yet. Add crafts to track sales!</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-700">
+                  <thead className="bg-slate-100/70 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Craft Item / హస్తకళ</th>
+                      <th className="py-3 px-4">Price</th>
+                      <th className="py-3 px-4">Stock</th>
+                      <th className="py-3 px-4 text-center">Views / చూసిన వారు</th>
+                      <th className="py-3 px-4 text-center">Units Sold / విక్రయాలు</th>
+                      <th className="py-3 px-4 text-right">Total Revenue / మొత్తం రాబడి</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {dashboardData.product_performance.map((item) => (
+                      <tr key={item.product_id} className="hover:bg-amber-50/40 transition-colors">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-3">
+                            {item.image_url ? (
+                              <img src={item.image_url} alt={item.title} className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0 font-bold text-amber-800 text-[10px]">
+                                Craft
+                              </div>
+                            )}
+                            <div>
+                              <span className="font-bold text-slate-900 block">{item.title}</span>
+                              <span className="text-[10px] text-slate-400">ID: #{item.product_id}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 font-medium text-slate-800">
+                          ₹{item.price?.toLocaleString('en-IN')}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                            item.stock > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
+                          }`}>
+                            {item.stock} ready
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center font-semibold text-blue-700">
+                          👁️ {item.views}
+                        </td>
+                        <td className="py-3 px-4 text-center font-bold text-emerald-700">
+                          📦 {item.units_sold}
+                        </td>
+                        <td className="py-3 px-4 text-right font-black text-slate-900">
+                          ₹{item.revenue?.toLocaleString('en-IN')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
