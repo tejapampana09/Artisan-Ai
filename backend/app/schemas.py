@@ -127,6 +127,8 @@ class EnquiryResponse(BaseModel):
     product_id: int
     product_title: Optional[str] = None
     product_image: Optional[str] = None
+    seller_id: Optional[int] = None
+    seller_name: Optional[str] = None
     user_id: Optional[int] = None
     buyer_name: str
     buyer_phone: Optional[str] = None
@@ -148,6 +150,8 @@ class OrderResponse(BaseModel):
     product_id: int
     product_title: Optional[str] = None
     product_image: Optional[str] = None
+    seller_id: Optional[int] = None
+    seller_name: Optional[str] = None
     user_id: Optional[int] = None
     buyer_name: str
     buyer_phone: Optional[str] = None

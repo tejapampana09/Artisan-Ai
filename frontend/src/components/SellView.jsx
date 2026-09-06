@@ -64,8 +64,8 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
           getProducts(),
           getMarketDemand(),
           getSellerOpportunities(),
-          getEnquiries(),
-          getOrders()
+          getEnquiries('seller'),
+          getOrders('seller')
         ]);
 
         // Cache products and intelligence locally for offline resilience

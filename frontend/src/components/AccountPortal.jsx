@@ -9,28 +9,50 @@ import { getSavedProductIds, removeSavedProductId } from '../services/offlineSyn
 
 export default function AccountPortal({ user, onClose, onAuthChange, onNavigateMode }) {
   const [activeTab, setActiveTab] = useState('ORDERS'); // 'ORDERS' | 'WISHLIST' | 'ENQUIRIES' | 'PROFILE'
-  const [orders, setOrders] = useState([]);
-  const [enquiries, setEnquiries] = useState([]);
+  const [orderSubTab, setOrderSubTab] = useState('PURCHASES'); // 'PURCHASES' | 'SALES'
+  const [buyerOrders, setBuyerOrders] = useState([]);
+  const [sellerOrders, setSellerOrders] = useState([]);
+  const [buyerEnquiries, setBuyerEnquiries] = useState([]);
+  const [sellerEnquiries, setSellerEnquiries] = useState([]);
   const [wishlistProducts, setWishlistProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const isArtisan = user?.role === 'ARTISAN';
 
   const loadAccountData = async () => {
     setLoading(true);
     try {
-      const [allOrders, allEnqs, allProds] = await Promise.all([
-        getOrders(),
-        getEnquiries(),
-        getProducts()
-      ]);
+      if (isArtisan) {
+        const [myPurchases, mySales, mySentEnqs, myRecvEnqs, allProds] = await Promise.all([
+          getOrders('buyer'),
+          getOrders('seller'),
+          getEnquiries('buyer'),
+          getEnquiries('seller'),
+          getProducts()
+        ]);
+        setBuyerOrders(myPurchases || []);
+        setSellerOrders(mySales || []);
+        setBuyerEnquiries(mySentEnqs || []);
+        setSellerEnquiries(myRecvEnqs || []);
 
-      // Filter orders where user is the buyer
-      setOrders(allOrders || []);
-      setEnquiries(allEnqs || []);
+        const savedIds = getSavedProductIds(user?.id);
+        const favs = (allProds || []).filter(p => savedIds.includes(p.id));
+        setWishlistProducts(favs);
+      } else {
+        const [myPurchases, mySentEnqs, allProds] = await Promise.all([
+          getOrders('buyer'),
+          getEnquiries('buyer'),
+          getProducts()
+        ]);
+        setBuyerOrders(myPurchases || []);
+        setSellerOrders([]);
+        setBuyerEnquiries(mySentEnqs || []);
+        setSellerEnquiries([]);
 
-      // Load saved wishlist crafts
-      const savedIds = getSavedProductIds(user?.id);
-      const favs = (allProds || []).filter(p => savedIds.includes(p.id));
-      setWishlistProducts(favs);
+        const savedIds = getSavedProductIds(user?.id);
+        const favs = (allProds || []).filter(p => savedIds.includes(p.id));
+        setWishlistProducts(favs);
+      }
     } catch (err) {
       console.error('Failed to load account details:', err);
     } finally {
@@ -52,8 +74,6 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
     onAuthChange(null);
     onClose();
   };
-
-  const isArtisan = user?.role === 'ARTISAN';
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
@@ -96,11 +116,11 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
             >
               <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
               <span className="text-[11px] sm:text-xs truncate">My Orders</span>
-              {orders.length > 0 && (
+              {(buyerOrders.length > 0 || (isArtisan && sellerOrders.length > 0)) && (
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-1 ${
                   activeTab === 'ORDERS' ? 'bg-amber-100 text-amber-900' : 'bg-white/20 text-white'
                 }`}>
-                  {orders.length}
+                  {buyerOrders.length + (isArtisan ? sellerOrders.length : 0)}
                 </span>
               )}
             </button>
@@ -134,11 +154,11 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
             >
               <MessageSquare className="w-3.5 h-3.5 shrink-0" />
               <span className="text-[11px] sm:text-xs truncate">Enquiries</span>
-              {enquiries.length > 0 && (
+              {(buyerEnquiries.length > 0 || (isArtisan && sellerEnquiries.length > 0)) && (
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-1 ${
                   activeTab === 'ENQUIRIES' ? 'bg-amber-100 text-amber-900' : 'bg-white/20 text-white'
                 }`}>
-                  {enquiries.length}
+                  {buyerEnquiries.length + (isArtisan ? sellerEnquiries.length : 0)}
                 </span>
               )}
             </button>
@@ -166,13 +186,59 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
             </div>
           ) : (
             <>
-              {/* TAB 1: MY ORDERS */}
+              {/* TAB 1: ORDERS (DISTINGUISHED BUYER PURCHASES VS SELLER SALES) */}
               {activeTab === 'ORDERS' && (
                 <div className="space-y-3">
+                  {/* Artisan Sub-Tabs if user is a seller */}
+                  {isArtisan && (
+                    <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setOrderSubTab('PURCHASES')}
+                        className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${
+                          orderSubTab === 'PURCHASES'
+                            ? 'bg-white text-slate-900 shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900'
+                        }`}
+                      >
+                        <ShoppingBag className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>My Purchases (నేను కొన్నవి)</span>
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-50 text-indigo-800 font-extrabold">
+                          {buyerOrders.length}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setOrderSubTab('SALES')}
+                        className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${
+                          orderSubTab === 'SALES'
+                            ? 'bg-white text-slate-900 shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900'
+                        }`}
+                      >
+                        <Store className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Studio Sales (వచ్చిన ఆర్డర్లు)</span>
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 text-amber-900 font-extrabold">
+                          {sellerOrders.length}
+                        </span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Header Title */}
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                     <div>
-                      <h4 className="font-bold text-sm text-slate-900">Your Direct Orders (మీ ఆర్డర్‌లు)</h4>
-                      <p className="text-[11px] text-slate-500">Track real-time artisan shipments and purchase history</p>
+                      <h4 className="font-bold text-sm text-slate-900">
+                        {!isArtisan || orderSubTab === 'PURCHASES' 
+                          ? 'Your Craft Purchases (మీరు కొనుగోలు చేసినవి)' 
+                          : 'Customer Orders for Your Crafts (మీకు వచ్చిన ఆర్డర్లు)'}
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        {!isArtisan || orderSubTab === 'PURCHASES'
+                          ? 'Track authentic handmade creations ordered from master artisans'
+                          : 'Orders placed by marketplace buyers for your handcrafted creations'}
+                      </p>
                     </div>
                     <button 
                       onClick={loadAccountData} 
@@ -183,68 +249,133 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
                     </button>
                   </div>
 
-                  {orders.length === 0 ? (
-                    <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
-                      <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-100 flex items-center justify-center text-amber-700">
-                        <ShoppingBag className="w-6 h-6" />
+                  {/* Order Cards List */}
+                  {(!isArtisan || orderSubTab === 'PURCHASES') ? (
+                    buyerOrders.length === 0 ? (
+                      <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                        <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-100 flex items-center justify-center text-amber-700">
+                          <ShoppingBag className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-slate-800 text-sm">No Purchases Yet (ఇంకా ఏమీ కొనలేదు)</h5>
+                          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                            Support rural master artisans by ordering authentic handmade crafts directly from the marketplace.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            onClose();
+                            onNavigateMode?.('BUY');
+                          }}
+                          className="mt-2 inline-flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl text-xs font-bold shadow-md hover:from-amber-500 hover:to-orange-500 transition-all cursor-pointer"
+                        >
+                          <span>Explore Marketplace</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                      <div>
-                        <h5 className="font-bold text-slate-800 text-sm">No Orders Placed Yet (ఇంకా ఆర్డర్‌లు లేవు)</h5>
-                        <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                          Directly support traditional artisans by purchasing genuine handcrafted goods from the marketplace.
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          onClose();
-                          onNavigateMode?.('BUY');
-                        }}
-                        className="mt-2 inline-flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl text-xs font-bold shadow-md hover:from-amber-500 hover:to-orange-500 transition-all cursor-pointer"
-                      >
-                        <span>Explore Marketplace</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {orders.map((ord) => (
-                        <div key={ord.id} className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 transition-all space-y-2">
-                          <div className="flex justify-between items-start gap-2">
-                            <div className="flex items-center space-x-3">
-                              {ord.product_image ? (
-                                <img src={ord.product_image} alt={ord.product_title} className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
-                              ) : (
-                                <div className="w-12 h-12 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-800 font-bold shrink-0">
-                                  <Package className="w-6 h-6 text-amber-700" />
+                    ) : (
+                      <div className="space-y-2.5">
+                        {buyerOrders.map((ord) => (
+                          <div key={ord.id} className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 transition-all space-y-2">
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="flex items-center space-x-3">
+                                {ord.product_image ? (
+                                  <img src={ord.product_image} alt={ord.product_title} className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
+                                ) : (
+                                  <div className="w-12 h-12 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-800 font-bold shrink-0">
+                                    <Package className="w-6 h-6 text-amber-700" />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <h5 className="font-bold text-xs sm:text-sm text-slate-900 truncate">{ord.product_title}</h5>
+                                  <p className="text-[11px] text-slate-500">
+                                    Order #{ord.id} • {ord.quantity} unit(s) • ₹{ord.unit_price} / unit
+                                  </p>
+                                  {ord.seller_name && (
+                                    <p className="text-[10px] font-semibold text-amber-800">
+                                      Master Artisan: {ord.seller_name}
+                                    </p>
+                                  )}
                                 </div>
-                              )}
-                              <div className="min-w-0">
-                                <h5 className="font-bold text-xs sm:text-sm text-slate-900 truncate">{ord.product_title}</h5>
-                                <p className="text-[11px] text-slate-500">
-                                  Order #{ord.id} • {ord.quantity} unit(s) • ₹{ord.unit_price} / unit
-                                </p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="font-extrabold text-xs sm:text-sm text-slate-900 block">
+                                  ₹{ord.total_price.toLocaleString('en-IN')}
+                                </span>
+                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200 mt-0.5">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  <span>Purchased</span>
+                                </span>
                               </div>
                             </div>
-                            <div className="text-right shrink-0">
-                              <span className="font-extrabold text-xs sm:text-sm text-slate-900 block">
-                                ₹{ord.total_price.toLocaleString('en-IN')}
-                              </span>
-                              <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200 mt-0.5">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                <span>Confirmed</span>
-                              </span>
-                            </div>
-                          </div>
 
-                          {ord.delivery_address && (
-                            <div className="pt-1 text-[11px] text-slate-600 flex items-start space-x-1 bg-white p-2 rounded-xl border border-slate-100">
-                              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                              <span className="truncate">Delivery To: {ord.delivery_address}</span>
-                            </div>
-                          )}
+                            {ord.delivery_address && (
+                              <div className="pt-1 text-[11px] text-slate-600 flex items-start space-x-1 bg-white p-2 rounded-xl border border-slate-100">
+                                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                                <span className="truncate">Shipping to: {ord.delivery_address}</span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  ) : (
+                    sellerOrders.length === 0 ? (
+                      <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                        <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-100 flex items-center justify-center text-amber-700">
+                          <Store className="w-6 h-6" />
                         </div>
-                      ))}
-                    </div>
+                        <div>
+                          <h5 className="font-bold text-slate-800 text-sm">No Customer Orders Yet</h5>
+                          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                            When buyers purchase crafts from your studio catalog, incoming fulfillment orders will appear here.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {sellerOrders.map((ord) => (
+                          <div key={ord.id} className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 transition-all space-y-2">
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="flex items-center space-x-3">
+                                {ord.product_image ? (
+                                  <img src={ord.product_image} alt={ord.product_title} className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
+                                ) : (
+                                  <div className="w-12 h-12 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-800 font-bold shrink-0">
+                                    <Package className="w-6 h-6 text-amber-700" />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <h5 className="font-bold text-xs sm:text-sm text-slate-900 truncate">{ord.product_title}</h5>
+                                  <p className="text-[11px] text-slate-500">
+                                    Buyer: <strong>{ord.buyer_name}</strong> {ord.buyer_phone ? `(${ord.buyer_phone})` : ''}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500">
+                                    Quantity: {ord.quantity} unit(s) • ₹{ord.unit_price} each
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="font-extrabold text-xs sm:text-sm text-emerald-800 block">
+                                  + ₹{ord.total_price.toLocaleString('en-IN')}
+                                </span>
+                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 mt-0.5">
+                                  <Clock className="w-3 h-3 text-amber-600" />
+                                  <span>To Fulfill</span>
+                                </span>
+                              </div>
+                            </div>
+
+                            {ord.delivery_address && (
+                              <div className="pt-1 text-[11px] text-slate-600 flex items-start space-x-1 bg-white p-2 rounded-xl border border-slate-100">
+                                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                                <span className="truncate">Deliver to: {ord.delivery_address}</span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )
                   )}
                 </div>
               )}
@@ -327,57 +458,155 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
               {/* TAB 3: MY ENQUIRIES */}
               {activeTab === 'ENQUIRIES' && (
                 <div className="space-y-3">
+                  {/* Artisan Sub-Tabs if user is a seller */}
+                  {isArtisan && (
+                    <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setEnquirySubTab('SENT')}
+                        className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${
+                          enquirySubTab === 'SENT'
+                            ? 'bg-white text-slate-900 shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900'
+                        }`}
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>My Sent Enquiries (నేను పంపినవి)</span>
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-50 text-indigo-800 font-extrabold">
+                          {buyerEnquiries.length}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setEnquirySubTab('RECEIVED')}
+                        className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${
+                          enquirySubTab === 'RECEIVED'
+                            ? 'bg-white text-slate-900 shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900'
+                        }`}
+                      >
+                        <Store className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Received Leads (వచ్చిన విచారణలు)</span>
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 text-amber-900 font-extrabold">
+                          {sellerEnquiries.length}
+                        </span>
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                     <div>
-                      <h4 className="font-bold text-sm text-slate-900">Wholesale Enquiries (ఎన్‌క్వైరీలు)</h4>
-                      <p className="text-[11px] text-slate-500">Custom bulk orders and artisan negotiations</p>
+                      <h4 className="font-bold text-sm text-slate-900">
+                        {!isArtisan || enquirySubTab === 'SENT' 
+                          ? 'Wholesale / Custom Enquiries Sent (మీరు పంపినవి)' 
+                          : 'Inquiries Received From Buyers (కస్టమర్ విచారణలు)'}
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        {!isArtisan || enquirySubTab === 'SENT'
+                          ? 'Custom bulk requests and pre-orders you sent to artisans'
+                          : 'Wholesale requests received for your studio crafts'}
+                      </p>
                     </div>
                     <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
-                      {enquiries.length} leads
+                      {(!isArtisan || enquirySubTab === 'SENT') ? buyerEnquiries.length : sellerEnquiries.length} leads
                     </span>
                   </div>
 
-                  {enquiries.length === 0 ? (
-                    <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
-                      <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600">
-                        <MessageSquare className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h5 className="font-bold text-slate-800 text-sm">No Enquiries Submitted Yet</h5>
-                        <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                          Need custom sizes, bespoke craftsmanship, or wholesale lots? Submit enquiries directly to master artisans.
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {enquiries.map((enq) => (
-                        <div key={enq.id} className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 transition-all space-y-2">
-                          <div className="flex justify-between items-start gap-2">
-                            <div>
-                              <h5 className="font-bold text-xs sm:text-sm text-slate-900">{enq.product_title || `Craft #${enq.product_id}`}</h5>
-                              <p className="text-[11px] text-slate-500">Requested Quantity: <strong>{enq.quantity} units</strong></p>
-                            </div>
-                            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 shrink-0">
-                              Awaiting Response
-                            </span>
-                          </div>
-
-                          {enq.message && (
-                            <p className="text-xs text-slate-700 italic bg-white p-2.5 rounded-xl border border-slate-200/60 leading-relaxed">
-                              "{enq.message}"
-                            </p>
-                          )}
-
-                          <div className="flex justify-between items-center text-[10px] text-slate-400 pt-1">
-                            <span>Phone: {enq.buyer_phone}</span>
-                            {enq.created_at && (
-                              <span>{new Date(enq.created_at).toLocaleDateString()}</span>
-                            )}
-                          </div>
+                  {(!isArtisan || enquirySubTab === 'SENT') ? (
+                    buyerEnquiries.length === 0 ? (
+                      <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                        <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+                          <MessageSquare className="w-6 h-6" />
                         </div>
-                      ))}
-                    </div>
+                        <div>
+                          <h5 className="font-bold text-slate-800 text-sm">No Enquiries Sent Yet</h5>
+                          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                            Need custom sizes, bespoke craftsmanship, or wholesale lots? Submit enquiries directly to master artisans.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {buyerEnquiries.map((enq) => (
+                          <div key={enq.id} className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 transition-all space-y-2">
+                            <div className="flex justify-between items-start gap-2">
+                              <div>
+                                <h5 className="font-bold text-xs sm:text-sm text-slate-900">{enq.product_title || `Craft #${enq.product_id}`}</h5>
+                                <p className="text-[11px] text-slate-500">
+                                  Quantity: <strong>{enq.quantity} units requested</strong>
+                                  {enq.seller_name && ` • Artisan: ${enq.seller_name}`}
+                                </p>
+                              </div>
+                              <span className="text-[10px] font-bold text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-full border border-indigo-200 shrink-0">
+                                Sent to Artisan
+                              </span>
+                            </div>
+
+                            {enq.message && (
+                              <p className="text-xs text-slate-700 italic bg-white p-2.5 rounded-xl border border-slate-200/60 leading-relaxed">
+                                "{enq.message}"
+                              </p>
+                            )}
+
+                            <div className="flex justify-between items-center text-[10px] text-slate-400 pt-1">
+                              <span>Contact: {enq.buyer_phone}</span>
+                              {enq.created_at && (
+                                <span>{new Date(enq.created_at).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  ) : (
+                    sellerEnquiries.length === 0 ? (
+                      <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                        <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-100 flex items-center justify-center text-amber-700">
+                          <Store className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-slate-800 text-sm">No Buyer Enquiries Yet</h5>
+                          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                            Customer wholesale leads and bulk enquiries for your crafts will appear here.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {sellerEnquiries.map((enq) => (
+                          <div key={enq.id} className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 transition-all space-y-2">
+                            <div className="flex justify-between items-start gap-2">
+                              <div>
+                                <h5 className="font-bold text-xs sm:text-sm text-slate-900">{enq.product_title || `Craft #${enq.product_id}`}</h5>
+                                <p className="text-[11px] text-slate-500">
+                                  Buyer: <strong>{enq.buyer_name}</strong> • Phone: {enq.buyer_phone}
+                                </p>
+                                <p className="text-[10px] text-amber-800 font-bold">
+                                  Bulk Request: {enq.quantity} units
+                                </p>
+                              </div>
+                              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 shrink-0">
+                                Customer Lead
+                              </span>
+                            </div>
+
+                            {enq.message && (
+                              <p className="text-xs text-slate-700 italic bg-white p-2.5 rounded-xl border border-slate-200/60 leading-relaxed">
+                                "{enq.message}"
+                              </p>
+                            )}
+
+                            <div className="flex justify-between items-center text-[10px] text-slate-400 pt-1">
+                              <span>Phone: {enq.buyer_phone}</span>
+                              {enq.created_at && (
+                                <span>{new Date(enq.created_at).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
                   )}
                 </div>
               )}

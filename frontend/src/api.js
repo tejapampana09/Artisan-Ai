@@ -345,7 +345,9 @@ export async function getTrendingProducts() {
 
 export async function getEnquiries(params = {}) {
   try {
-    const query = new URLSearchParams(params).toString();
+    const query = typeof params === 'string'
+      ? `role_view=${encodeURIComponent(params)}`
+      : new URLSearchParams(params).toString();
     const url = query ? `${API_BASE}/marketplace/enquiries?${query}` : `${API_BASE}/marketplace/enquiries`;
     const res = await fetch(url, {
       headers: getAuthHeaders()
@@ -358,9 +360,13 @@ export async function getEnquiries(params = {}) {
   }
 }
 
-export async function getOrders() {
+export async function getOrders(params = {}) {
   try {
-    const res = await fetch(`${API_BASE}/marketplace/orders`, {
+    const query = typeof params === 'string'
+      ? `role_view=${encodeURIComponent(params)}`
+      : new URLSearchParams(params).toString();
+    const url = query ? `${API_BASE}/marketplace/orders?${query}` : `${API_BASE}/marketplace/orders`;
+    const res = await fetch(url, {
       headers: getAuthHeaders()
     });
     if (!res.ok) return [];

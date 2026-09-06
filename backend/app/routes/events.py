@@ -118,6 +118,7 @@ def submit_enquiry(
 @router.get("/marketplace/enquiries", response_model=List[EnquiryResponse])
 def list_enquiries(
     product_id: Optional[int] = Query(None),
+    role_view: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -125,12 +126,17 @@ def list_enquiries(
     if product_id:
         query = query.filter(Enquiry.product_id == product_id)
 
-    # Privacy isolation: Buyer sees own enquiries; Seller sees enquiries for own products; Admin sees all
-    if current_user.role != "ADMIN":
-        seller_product_ids = db.query(Product.id).filter(Product.seller_id == current_user.id)
+    seller_product_ids = [p.id for p in db.query(Product.id).filter(Product.seller_id == current_user.id).all()]
+
+    if role_view == "buyer":
+        query = query.filter(Enquiry.user_id == current_user.id)
+    elif role_view == "seller":
+        query = query.filter(Enquiry.product_id.in_(seller_product_ids))
+    elif current_user.role != "ADMIN":
         query = query.filter(
             (Enquiry.user_id == current_user.id) | (Enquiry.product_id.in_(seller_product_ids))
         )
+
     enquiries = query.order_by(Enquiry.id.desc()).all()
     res = []
     for e in enquiries:
@@ -140,6 +146,8 @@ def list_enquiries(
             product_id=e.product_id,
             product_title=prod.title if prod else f"Product #{e.product_id}",
             product_image=prod.image_url if prod else None,
+            seller_id=prod.seller_id if prod else None,
+            seller_name=prod.seller.name if (prod and prod.seller) else None,
             user_id=e.user_id,
             buyer_name=e.buyer_name,
             buyer_phone=e.buyer_phone,
@@ -229,6 +237,7 @@ def place_order(
 @router.get("/marketplace/orders", response_model=List[OrderResponse])
 def list_orders(
     product_id: Optional[int] = Query(None),
+    role_view: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -236,12 +245,17 @@ def list_orders(
     if product_id:
         query = query.filter(Order.product_id == product_id)
 
-    # Privacy isolation: Buyer sees own orders; Seller sees orders for own products; Admin sees all
-    if current_user.role != "ADMIN":
-        seller_product_ids = db.query(Product.id).filter(Product.seller_id == current_user.id)
+    seller_product_ids = [p.id for p in db.query(Product.id).filter(Product.seller_id == current_user.id).all()]
+
+    if role_view == "buyer":
+        query = query.filter(Order.user_id == current_user.id)
+    elif role_view == "seller":
+        query = query.filter(Order.product_id.in_(seller_product_ids))
+    elif current_user.role != "ADMIN":
         query = query.filter(
             (Order.user_id == current_user.id) | (Order.product_id.in_(seller_product_ids))
         )
+
     orders = query.order_by(Order.id.desc()).all()
     res = []
     for o in orders:
@@ -251,6 +265,8 @@ def list_orders(
             product_id=o.product_id,
             product_title=prod.title if prod else f"Product #{o.product_id}",
             product_image=prod.image_url if prod else None,
+            seller_id=prod.seller_id if prod else None,
+            seller_name=prod.seller.name if (prod and prod.seller) else None,
             user_id=o.user_id,
             buyer_name=o.buyer_name,
             buyer_phone=o.buyer_phone,
