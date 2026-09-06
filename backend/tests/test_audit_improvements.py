@@ -230,3 +230,58 @@ def test_order_inventory_concurrency_and_data_privacy():
     enquiries_list = enquiries_res.json()
     assert len(enquiries_list) >= 1
     assert enquiries_list[0]["buyer_name"] == "Kavita Rao"
+
+def test_production_security_and_strict_demo_isolation(monkeypatch):
+    from backend.app.services.auth import get_current_user, get_current_user_strict
+    from backend.app.database import SessionLocal
+    from fastapi import HTTPException
+
+    db = SessionLocal()
+    try:
+        # 1. get_current_user_strict unconditionally raises 401 if no Authorization header
+        with pytest.raises(HTTPException) as exc_info:
+            get_current_user_strict(db=db, auth_header=None)
+        assert exc_info.value.status_code == 401
+
+        # 2. When DEMO_MODE is False, get_current_user MUST reject unauthenticated requests with 401
+        import backend.app.services.auth as auth_service
+        monkeypatch.setattr(auth_service, "DEMO_MODE", False)
+        with pytest.raises(HTTPException) as exc_info:
+            get_current_user(db=db, auth_header=None)
+        assert exc_info.value.status_code == 401
+        assert "Authentication credentials were not provided" in exc_info.value.detail
+
+        # 3. When ENVIRONMENT is 'production', get_current_user MUST reject unauthenticated requests with 401
+        monkeypatch.setattr(auth_service, "DEMO_MODE", True)
+        monkeypatch.setattr(auth_service, "ENVIRONMENT", "production")
+        with pytest.raises(HTTPException) as exc_info:
+            get_current_user(db=db, auth_header=None)
+        assert exc_info.value.status_code == 401
+
+        # 4. In production, missing or predictable JWT_SECRET_KEY raises RuntimeError
+        import os
+        old_env = os.environ.get("ENVIRONMENT")
+        old_secret = os.environ.get("JWT_SECRET_KEY")
+        try:
+            os.environ["ENVIRONMENT"] = "production"
+            os.environ["JWT_SECRET_KEY"] = "sih_2026_artisan_ai_dev_secret_key_marginalized_artisans_safety_first"
+            # reloading config or testing logic
+            import importlib
+            import backend.app.config
+            with pytest.raises(RuntimeError) as exc_config:
+                importlib.reload(backend.app.config)
+            assert "CRITICAL SECURITY CONFIGURATION ERROR" in str(exc_config.value)
+        finally:
+            if old_env:
+                os.environ["ENVIRONMENT"] = old_env
+            else:
+                os.environ.pop("ENVIRONMENT", None)
+            if old_secret:
+                os.environ["JWT_SECRET_KEY"] = old_secret
+            else:
+                os.environ.pop("JWT_SECRET_KEY", None)
+            import importlib
+            import backend.app.config
+            importlib.reload(backend.app.config)
+    finally:
+        db.close()

@@ -6,6 +6,7 @@ from backend.app.database import get_db
 from backend.app.models import Product, User
 from backend.app.schemas import ProductCreate, ProductUpdate, ProductResponse
 from backend.app.services.auth import get_current_user
+from backend.app.seed import seed_sample_products, SAMPLE_PRODUCTS
 
 router = APIRouter(prefix="/api/products", tags=["Products"])
 
@@ -33,6 +34,10 @@ def list_products(
     seller_id: Optional[int] = Query(None),
     db: Session = Depends(get_db)
 ):
+    # Ensure baseline sample products exist if catalog count is lower than sample set
+    if db.query(Product).count() < len(SAMPLE_PRODUCTS):
+        seed_sample_products(db, seller_id or 1)
+
     query = db.query(Product)
     if category:
         query = query.filter(Product.category == category)

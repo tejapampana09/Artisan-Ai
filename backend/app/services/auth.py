@@ -10,7 +10,13 @@ from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
 from backend.app.models import User
-from backend.app.config import JWT_SECRET_KEY, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from backend.app.config import (
+    JWT_SECRET_KEY, 
+    JWT_ALGORITHM, 
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    DEMO_MODE,
+    ENVIRONMENT
+)
 
 def hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
@@ -99,11 +105,12 @@ def get_current_user(
     auth_header: Optional[str] = Header(None, alias="Authorization")
 ) -> User:
     """
-    Backward-compatible dependency:
-    1. If a Bearer token is provided, validates and returns that specific user.
-    2. If NO Bearer token is provided, safely defaults to the default artisan (Lakshmi Devi).
-       This preserves 100% backward compatibility for the SIH 1-click demo and existing test suites.
-    3. If an INVALID token is provided, strictly rejects with 401.
+    Controlled authentication dependency:
+    1. If a Bearer token is provided, strictly validates and returns that specific user.
+    2. If NO Bearer token is provided:
+       - In PRODUCTION or when DEMO_MODE is False: Strictly REJECTS with 401 Unauthorized.
+       - In non-production ONLY when DEMO_MODE is explicitly True: Grants access to the designated demo account.
+    3. If an INVALID token is provided: Strictly rejects with 401 Unauthorized in all environments.
     """
     token = extract_token_from_header(auth_header)
     if token:
@@ -123,7 +130,15 @@ def get_current_user(
             )
         return user
 
-    # Fallback to default demo user for backward compatibility
+    # Strict check: NEVER allow unauthenticated fallback in production or when DEMO_MODE is false
+    if ENVIRONMENT == "production" or not DEMO_MODE:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication credentials were not provided. In production or non-demo mode, a valid Bearer token is required.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    # Explicit DEMO_MODE fallback for local evaluation and developer testing
     user = db.query(User).first()
     if not user:
         user = User(

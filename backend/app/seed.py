@@ -69,9 +69,13 @@ SAMPLE_PRODUCTS = [
 ]
 
 def seed_sample_products(db: Session, seller_id: int):
-    count = db.query(Product).count()
-    if count == 0:
-        for p in SAMPLE_PRODUCTS:
+    """
+    Idempotent product seeding: ensures every baseline sample product
+    exists in the database, avoiding state drift between test runs or sessions.
+    """
+    for p in SAMPLE_PRODUCTS:
+        existing = db.query(Product).filter(Product.title == p["title"]).first()
+        if not existing:
             prod = Product(**p, seller_id=seller_id)
             db.add(prod)
-        db.commit()
+    db.commit()
