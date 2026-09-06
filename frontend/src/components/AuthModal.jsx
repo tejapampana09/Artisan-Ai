@@ -248,7 +248,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange }) {
                     value={resetIdentifier}
                     onChange={(e) => setResetIdentifier(e.target.value)}
                     required
-                    placeholder="e.g. tejapampana36@gmail.com or +919542696946"
+                    placeholder="artisan@domain.com or phone"
                     className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-hidden"
                   />
                 </div>
