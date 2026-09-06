@@ -549,3 +549,25 @@ export async function getSellerDashboard() {
   }
 }
 
+export async function downloadAnalyticsCSV() {
+  if (!getAuthToken()) return;
+  try {
+    const res = await fetch(`${API_BASE}/seller/analytics/export`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Artisan_Analytics_Report.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('Error downloading CSV report:', err);
+    alert('Failed to download CSV report: ' + err.message);
+  }
+}
+

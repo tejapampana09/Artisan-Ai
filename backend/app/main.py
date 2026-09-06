@@ -16,6 +16,7 @@ from backend.app.routes.intelligence import router as intelligence_router
 from backend.app.routes.pricing import router as pricing_router
 from backend.app.routes.sync import router as sync_router
 from backend.app.routes.auth import router as auth_router
+from backend.app.routes.ondc import router as ondc_router
 from backend.app.services.auth import get_current_user as auth_get_current_user
 
 # Create tables automatically only in development/test/demo environments.
@@ -52,6 +53,7 @@ app.include_router(events_router)
 app.include_router(intelligence_router)
 app.include_router(pricing_router)
 app.include_router(sync_router)
+app.include_router(ondc_router)
 
 @app.get("/api/health", response_model=HealthResponse)
 def health_check():

@@ -98,6 +98,13 @@ def get_current_user_strict(
             detail="User associated with token not found.",
             headers={"WWW-Authenticate": "Bearer"}
         )
+    token_ver = payload.get("ver")
+    if token_ver is not None and getattr(user, "token_version", 1) is not None and token_ver != user.token_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked due to a password update. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
     return user
 
 def get_current_user(
@@ -126,6 +133,13 @@ def get_current_user(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User associated with token not found.",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        token_ver = payload.get("ver")
+        if token_ver is not None and getattr(user, "token_version", 1) is not None and token_ver != user.token_version:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked due to a password update. Please log in again.",
                 headers={"WWW-Authenticate": "Bearer"}
             )
         return user

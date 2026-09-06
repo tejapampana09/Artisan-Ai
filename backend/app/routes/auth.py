@@ -56,7 +56,8 @@ def register_user(payload: UserRegister, db: Session = Depends(get_db)):
     access_token = create_access_token({
         "sub": str(new_user.id),
         "name": new_user.name,
-        "role": new_user.role
+        "role": new_user.role,
+        "ver": new_user.token_version or 1
     })
 
     return TokenResponse(
@@ -100,7 +101,8 @@ def login_user(payload: UserLogin, db: Session = Depends(get_db)):
     access_token = create_access_token({
         "sub": str(user.id),
         "name": user.name,
-        "role": user.role
+        "role": user.role,
+        "ver": user.token_version or 1
     })
 
     return TokenResponse(
@@ -140,6 +142,7 @@ def change_password(
     Authenticated password change.
     Identity is sourced exclusively from the Bearer JWT — no email/phone accepted.
     Verifies current_password before accepting new_password.
+    Increments token_version to invalidate prior JWT sessions.
     Returns a fresh JWT token on success.
     """
     if not verify_password(payload.current_password, current_user.hashed_password):
@@ -149,16 +152,15 @@ def change_password(
         )
 
     current_user.hashed_password = hash_password(payload.new_password)
+    current_user.token_version = (current_user.token_version or 1) + 1
     db.commit()
     db.refresh(current_user)
 
-    # Issue a fresh token; note existing tokens remain valid until their
-    # natural expiry (ACCESS_TOKEN_EXPIRE_MINUTES). For a stateless JWT
-    # system at this scale this is the accepted P0 trade-off.
     access_token = create_access_token({
         "sub": str(current_user.id),
         "name": current_user.name,
-        "role": current_user.role
+        "role": current_user.role,
+        "ver": current_user.token_version
     })
 
     return TokenResponse(

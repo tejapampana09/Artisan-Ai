@@ -13,7 +13,7 @@ import MarketDemandWidget from './MarketDemandWidget';
 import { 
   getProducts, createProduct, updateProduct, deleteProduct, 
   getMarketDemand, getSellerOpportunities, getEnquiries, getOrders,
-  replyToEnquiry, updateOrderStatus, getSellerDashboard
+  replyToEnquiry, updateOrderStatus, getSellerDashboard, downloadAnalyticsCSV
 } from '../api';
 import { useOffline } from '../context/OfflineContext';
 import { 
@@ -897,9 +897,19 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                 <h3 className="text-sm font-bold text-slate-900">Per-Product Sales & View Metrics / ఉత్పత్తి వివరాలు</h3>
                 <p className="text-xs text-slate-500">Sales volume, total views, and revenue generated per craft listing</p>
               </div>
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                {(dashboardData?.product_performance || []).length} Products
-              </span>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={downloadAnalyticsCSV}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center space-x-1.5 cursor-pointer"
+                  title="Download Sales & Cost Basis Report"
+                >
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>Export CSV Report</span>
+                </button>
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                  {(dashboardData?.product_performance || []).length} Products
+                </span>
+              </div>
             </div>
 
             {!dashboardData?.product_performance || dashboardData.product_performance.length === 0 ? (

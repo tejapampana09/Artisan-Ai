@@ -16,6 +16,7 @@ class User(Base):
     active_mode = Column(String, default="SELL", nullable=False) # "SELL" or "BUY"
     location = Column(String, nullable=True)
     craft = Column(String, nullable=True)
+    token_version = Column(Integer, default=1, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     products = relationship("Product", back_populates="seller")

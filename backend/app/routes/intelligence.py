@@ -120,3 +120,60 @@ def get_seller_dashboard(
         ),
         product_performance=perf_list
     )
+
+from fastapi.responses import Response
+import csv
+import io
+
+@router.get("/seller/analytics/export")
+def export_seller_analytics_csv(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Generates a downloadable CSV report of seller products, cost basis, margins, and sales volume."""
+    seller_products = db.query(Product).filter(Product.seller_id == current_user.id).all()
+    seller_product_ids = [p.id for p in seller_products]
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Write Header
+    writer.writerow([
+        "Product ID", "Title", "Category", "Listing Price (INR)", "Stock Available",
+        "Material Cost", "Labour Cost", "Packaging Cost", "Protected Margin %",
+        "Units Sold", "Total Revenue (INR)", "Status"
+    ])
+
+    if seller_product_ids:
+        orders = db.query(Order).filter(Order.product_id.in_(seller_product_ids)).all()
+        sales_map = {}
+        for ord in orders:
+            if (ord.status or "CONFIRMED").upper() != "CANCELLED":
+                if ord.product_id not in sales_map:
+                    sales_map[ord.product_id] = {"units": 0, "revenue": 0.0}
+                sales_map[ord.product_id]["units"] += ord.quantity
+                sales_map[ord.product_id]["revenue"] += float(ord.total_price or 0.0)
+
+        for p in seller_products:
+            st = sales_map.get(p.id, {"units": 0, "revenue": 0.0})
+            writer.writerow([
+                p.id,
+                p.title,
+                p.category,
+                f"{float(p.price):.2f}",
+                p.stock,
+                f"{float(p.material_cost):.2f}",
+                f"{float(p.labour_cost):.2f}",
+                f"{float(p.packaging_cost):.2f}",
+                f"{float(p.min_margin_pct * 100):.1f}%",
+                st["units"],
+                f"{st['revenue']:.2f}",
+                p.status
+            ])
+
+    filename = f"Artisan_Analytics_Report_{current_user.id}.csv"
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
