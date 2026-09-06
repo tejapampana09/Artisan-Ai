@@ -63,16 +63,22 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
 
   const handleRegister = async (e) => {
     e?.preventDefault();
+    const cleanedEmail = regEmail.trim();
+    const cleanedPhone = regPhone.trim();
+    if (!cleanedEmail && !cleanedPhone) {
+      setError('Please provide at least an email address or phone number.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       const res = await registerUser({
-        name: regName,
-        email: regEmail || null,
-        phone: regPhone || null,
+        name: regName.trim(),
+        email: cleanedEmail || null,
+        phone: cleanedPhone || null,
         role: regRole,
-        craft: regCraft,
-        location: regLocation,
+        craft: regCraft.trim() || null,
+        location: regLocation.trim() || null,
         password: regPassword,
         active_mode: regRole === 'ARTISAN' ? 'SELL' : 'BUY'
       });

@@ -24,16 +24,36 @@ def register_user(payload: UserRegister, request: Request, db: Session = Depends
     Enforces sliding window rate limits to prevent automated account creation.
     """
     rate_limiter.check_rate_limit(f"reg:{get_client_identifier(request)}", max_requests=5, window_seconds=60)
+
+    clean_email = payload.email.strip().lower() if (payload.email and payload.email.strip()) else None
+    clean_phone = payload.phone.strip() if (payload.phone and payload.phone.strip()) else None
+
+    if not clean_email and not clean_phone:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please provide at least an email address or phone number for registration."
+        )
+
     # Check if user with given email or phone exists
     filters = []
-    if payload.email:
-        filters.append(User.email == payload.email)
-    if payload.phone:
-        filters.append(User.phone == payload.phone)
+    if clean_email:
+        filters.append(User.email == clean_email)
+    if clean_phone:
+        filters.append(User.phone == clean_phone)
 
     if filters:
         existing = db.query(User).filter(or_(*filters)).first()
         if existing:
+            if clean_email and existing.email == clean_email:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A user with this email address is already registered."
+                )
+            if clean_phone and existing.phone == clean_phone:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A user with this phone number is already registered."
+                )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="A user with this email or phone number is already registered."
@@ -44,8 +64,8 @@ def register_user(payload: UserRegister, request: Request, db: Session = Depends
 
     new_user = User(
         name=payload.name.strip(),
-        email=payload.email.strip().lower() if payload.email else None,
-        phone=payload.phone.strip() if payload.phone else None,
+        email=clean_email,
+        phone=clean_phone,
         hashed_password=hash_password(payload.password),
         role=user_role,
         active_mode=user_active_mode,

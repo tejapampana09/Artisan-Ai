@@ -38,6 +38,25 @@ export function getAuthHeaders(extra = {}) {
   return headers;
 }
 
+export function formatApiError(errData, fallbackMsg = 'Request failed') {
+  if (!errData) return fallbackMsg;
+  if (typeof errData.detail === 'string') return errData.detail;
+  if (Array.isArray(errData.detail)) {
+    return errData.detail
+      .map(d => {
+        if (!d) return '';
+        if (typeof d === 'string') return d;
+        const field = d.loc && d.loc.length > 0 ? d.loc[d.loc.length - 1] : '';
+        const msg = d.msg || JSON.stringify(d);
+        return field ? `${field}: ${msg}` : msg;
+      })
+      .filter(Boolean)
+      .join('; ');
+  }
+  if (typeof errData.message === 'string') return errData.message;
+  return fallbackMsg;
+}
+
 // Authentication APIs
 export async function registerUser(userData) {
   try {
@@ -47,8 +66,8 @@ export async function registerUser(userData) {
       body: JSON.stringify(userData),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Registration failed' }));
-      throw new Error(err.detail || `HTTP error ${res.status}`);
+      const errData = await res.json().catch(() => ({ detail: 'Registration failed' }));
+      throw new Error(formatApiError(errData, `Registration failed (${res.status})`));
     }
     const data = await res.json();
     if (data.access_token) {
@@ -69,8 +88,8 @@ export async function loginUser(credentials) {
       body: JSON.stringify(credentials),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Invalid credentials' }));
-      throw new Error(err.detail || `HTTP error ${res.status}`);
+      const errData = await res.json().catch(() => ({ detail: 'Invalid credentials' }));
+      throw new Error(formatApiError(errData, `Login failed (${res.status})`));
     }
     const data = await res.json();
     if (data.access_token) {
@@ -91,8 +110,8 @@ export async function changePassword(payload) {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Password change failed' }));
-      throw new Error(err.detail || `HTTP error ${res.status}`);
+      const errData = await res.json().catch(() => ({ detail: 'Password change failed' }));
+      throw new Error(formatApiError(errData, `Password change failed (${res.status})`));
     }
     const data = await res.json();
     if (data.access_token) {

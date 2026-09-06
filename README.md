@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=fastapi)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19.0-61DAFB.svg?logo=react)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-8.2-646CFF.svg?logo=vite)](https://vitejs.dev)
-[![Test Suite](https://img.shields.io/badge/Tests-61%2F61%20Passing-brightgreen.svg)]()
+[![Test Suite](https://img.shields.io/badge/Tests-64%2F64%20Passing-brightgreen.svg)]()
 
 Artisan AI is a production-grade digital marketplace, smart cataloging engine, and business intelligence copilot designed for rural and marginalized Indian artisans. The platform eliminates digital literacy barriers by combining **Voice-First Multilingual Cataloging (Hindi, Telugu, Tamil, Bengali, English)**, **Explainable Dynamic Pricing with Cost Floor Protection**, **Closed-Loop Real-Time Demand Intelligence**, **Atomic Concurrency-Safe Inventory Management**, **Production-Grade PostgreSQL & Alembic Migrations**, and **Offline draft queue with idempotent batch synchronization and retry support**.
 

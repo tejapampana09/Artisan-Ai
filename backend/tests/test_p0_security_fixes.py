@@ -272,3 +272,72 @@ def test_ai_catalog_does_not_invent_fabricated_heritage_claims():
     data = res.json()
     assert "Authentic handcrafted heritage creation" not in data.get("description", "")
     assert "Authentic handcrafted heritage creation" not in data.get("craft_story", "")
+
+
+# =====================================================================
+# 5. REGISTRATION HARDENING TESTS
+# =====================================================================
+
+def test_registration_requires_email_or_phone():
+    """Verify registration fails with 400 if neither email nor phone is provided."""
+    res = client.post("/api/auth/register", json={
+        "name": "No Contact User",
+        "email": "   ",
+        "phone": "",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    assert res.status_code == 400
+    assert "at least an email address or phone number" in res.json()["detail"]
+
+def test_registration_strips_whitespace_and_normalizes():
+    """Verify whitespace is trimmed and email is lowercased during registration."""
+    uid = uuid.uuid4().hex[:6]
+    raw_email = f"  TEST.USER.{uid}@ArtisanAI.in  "
+    reg = client.post("/api/auth/register", json={
+        "name": "  Whitespace User  ",
+        "email": raw_email,
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    assert reg.status_code == 201
+    user_data = reg.json()["user"]
+    assert user_data["email"] == f"test.user.{uid}@artisanai.in"
+    assert user_data["name"] == "Whitespace User"
+
+def test_registration_differentiates_duplicate_email_or_phone():
+    """Verify duplicate registration provides specific error messages for email and phone."""
+    uid = uuid.uuid4().hex[:6]
+    email = f"dup.{uid}@artisanai.in"
+    phone = f"+91987{uid[:5]}"
+
+    # Initial registration
+    reg = client.post("/api/auth/register", json={
+        "name": "First User",
+        "email": email,
+        "phone": phone,
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    assert reg.status_code == 201
+
+    # Duplicate email
+    dup_email = client.post("/api/auth/register", json={
+        "name": "Second User",
+        "email": email,
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    assert dup_email.status_code == 400
+    assert "email address is already registered" in dup_email.json()["detail"]
+
+    # Duplicate phone
+    dup_phone = client.post("/api/auth/register", json={
+        "name": "Third User",
+        "phone": phone,
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    assert dup_phone.status_code == 400
+    assert "phone number is already registered" in dup_phone.json()["detail"]
+
