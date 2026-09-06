@@ -1,7 +1,7 @@
 from typing import List, Optional
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Header
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Header, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func, update
 
@@ -36,12 +36,19 @@ def record_event(
         if prod:
             category = prod.category
 
+    # Privacy Protection: Whitelist & sanitize metadata_info (reject freeform PII or long payloads)
+    clean_meta = None
+    if event_in.metadata_info:
+        raw_m = str(event_in.metadata_info).strip()
+        if len(raw_m) <= 100 and not any(k in raw_m.lower() for k in ["phone", "email", "@", "address", "password"]):
+            clean_meta = raw_m
+
     evt = Event(
         event_type=event_in.event_type,
         product_id=event_in.product_id,
         category=category,
-        query=event_in.query,
-        metadata_info=event_in.metadata_info,
+        query=event_in.query[:100] if event_in.query else None,
+        metadata_info=clean_meta,
         user_id=current_user.id if current_user else None,
         timestamp=datetime.now(timezone.utc)
     )
@@ -56,7 +63,8 @@ def get_events(
     category: Optional[str] = Query(None),
     product_id: Optional[int] = Query(None),
     limit: int = Query(50, le=100),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     query = db.query(Event)
     if event_type:
@@ -274,9 +282,11 @@ def place_order(
         return evt
     except Exception as e:
         db.rollback()
+        import logging
+        logging.getLogger("artisan_ai").error("Order transaction failed: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Order transaction failed: {str(e)}"
+            detail="Order transaction temporarily failed. Please try again."
         )
 
 @router.get("/marketplace/orders", response_model=List[OrderResponse])
@@ -395,11 +405,15 @@ def update_order_status(
     )
 
 @router.get("/marketplace/trending", response_model=List[ProductResponse])
-def get_trending_products(limit: int = Query(8, le=20), db: Session = Depends(get_db)):
+def get_trending_products(
+    limit: int = Query(6, le=20),
+    db: Session = Depends(get_db),
+    response: Response = None
+):
     """
-    Ranks products using the exact weighted Demand Engine scoring:
-    ORDER: 10, ENQUIRY: 6, SAVE: 4, SEARCH: 2, VIEW: 1
-    Ensures consistent marketplace & seller intelligence signals.
+    Weighted Demand Telemetry Engine:
+    Ranks products by recent consumer demand interaction scores.
+    Sourced from TRENDING_SIGNALS when telemetry exists; falls back to NEW_ARRIVALS when cold.
     """
     from sqlalchemy import case
 
@@ -427,9 +441,14 @@ def get_trending_products(limit: int = Query(8, le=20), db: Session = Depends(ge
         products = db.query(Product).filter(Product.id.in_(product_ids)).all()
         id_to_prod = {p.id: p for p in products}
         ordered = [id_to_prod[pid] for pid in product_ids if pid in id_to_prod]
+        if response:
+            response.headers["X-Trending-Source"] = "TRENDING_SIGNALS"
         return ordered[:limit]
 
+    if response:
+        response.headers["X-Trending-Source"] = "NEW_ARRIVALS"
     return db.query(Product).order_by(Product.id.desc()).limit(limit).all()
+
 @router.get("/recommendations", response_model=List[ProductResponse])
 def get_personalized_recommendations(
     limit: int = Query(8, le=20),

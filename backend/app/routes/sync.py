@@ -95,10 +95,11 @@ def batch_sync(
     try:
         # 1. Sync offline drafted products
         for prod_item in payload.products:
-            # Check persistent operation store for idempotency (tenant-isolated)
+            # Check persistent operation store for idempotency (tenant-isolated & entity-typed)
             if prod_item.client_operation_id:
                 existing_op = db.query(ProcessedOperation).filter(
                     ProcessedOperation.user_id == seller_id,
+                    ProcessedOperation.entity_type == "PRODUCT",
                     ProcessedOperation.client_operation_id == prod_item.client_operation_id
                 ).first()
                 if existing_op:
@@ -106,49 +107,63 @@ def batch_sync(
                     synced_products.append(SyncedProductResult(**cached_data))
                     continue
 
-            new_prod = Product(
-                title=prod_item.title,
-                description=prod_item.description,
-                craft_story=prod_item.craft_story,
-                category=prod_item.category,
-                materials=prod_item.materials,
-                price=Decimal(str(prod_item.price)),
-                stock=prod_item.stock,
-                image_url=prod_item.image_url,
-                enhanced_image_url=prod_item.enhanced_image_url,
-                status=prod_item.status if prod_item.status else "PUBLISHED",
-                material_cost=Decimal(str(prod_item.material_cost)),
-                labour_cost=Decimal(str(prod_item.labour_cost)),
-                packaging_cost=Decimal(str(prod_item.packaging_cost)),
-                min_margin_pct=Decimal(str(prod_item.min_margin_pct)),
-                seller_id=seller_id
-            )
-            db.add(new_prod)
-            db.flush()  # Flush to get assigned server ID
-            
-            res_product = SyncedProductResult(
-                client_temp_id=prod_item.client_temp_id,
-                server_id=new_prod.id,
-                title=new_prod.title,
-                status=new_prod.status
-            )
-            synced_products.append(res_product)
-
-            if prod_item.client_operation_id:
-                proc_op = ProcessedOperation(
-                    client_operation_id=prod_item.client_operation_id,
-                    user_id=seller_id,
-                    entity_type="PRODUCT",
-                    result_json=json.dumps(res_product.model_dump())
+            # Per-item savepoint isolates concurrent duplicate operation conflicts
+            savepoint = db.begin_nested()
+            try:
+                new_prod = Product(
+                    title=prod_item.title,
+                    description=prod_item.description,
+                    craft_story=prod_item.craft_story,
+                    category=prod_item.category,
+                    materials=prod_item.materials,
+                    price=Decimal(str(prod_item.price)),
+                    stock=prod_item.stock,
+                    image_url=prod_item.image_url,
+                    enhanced_image_url=prod_item.enhanced_image_url,
+                    status=prod_item.status if prod_item.status else "PUBLISHED",
+                    material_cost=Decimal(str(prod_item.material_cost)),
+                    labour_cost=Decimal(str(prod_item.labour_cost)),
+                    packaging_cost=Decimal(str(prod_item.packaging_cost)),
+                    min_margin_pct=Decimal(str(prod_item.min_margin_pct)),
+                    seller_id=seller_id
                 )
-                db.add(proc_op)
+                db.add(new_prod)
+                db.flush()  # Flush to get assigned server ID
+                
+                res_product = SyncedProductResult(
+                    client_temp_id=prod_item.client_temp_id,
+                    server_id=new_prod.id,
+                    title=new_prod.title,
+                    status=new_prod.status
+                )
+                synced_products.append(res_product)
+
+                if prod_item.client_operation_id:
+                    proc_op = ProcessedOperation(
+                        client_operation_id=prod_item.client_operation_id,
+                        user_id=seller_id,
+                        entity_type="PRODUCT",
+                        result_json=json.dumps(res_product.model_dump())
+                    )
+                    db.add(proc_op)
+                    db.flush()
+            except IntegrityError:
+                savepoint.rollback()
+                op = db.query(ProcessedOperation).filter(
+                    ProcessedOperation.user_id == seller_id,
+                    ProcessedOperation.entity_type == "PRODUCT",
+                    ProcessedOperation.client_operation_id == prod_item.client_operation_id
+                ).first()
+                if op:
+                    synced_products.append(SyncedProductResult(**json.loads(op.result_json)))
 
         # 2. Sync queued price decisions (ownership verified per item)
         for dec_item in payload.price_decisions:
-            # Check persistent operation store for idempotency (tenant-isolated)
+            # Check persistent operation store for idempotency (tenant-isolated & entity-typed)
             if dec_item.client_operation_id:
                 existing_op = db.query(ProcessedOperation).filter(
                     ProcessedOperation.user_id == seller_id,
+                    ProcessedOperation.entity_type == "PRICE_DECISION",
                     ProcessedOperation.client_operation_id == dec_item.client_operation_id
                 ).first()
                 if existing_op:
@@ -156,17 +171,79 @@ def batch_sync(
                     synced_decisions.append(SyncedDecisionResult(**cached_data))
                     continue
 
-            prod = db.query(Product).filter(Product.id == dec_item.product_id).first()
+            savepoint = db.begin_nested()
+            try:
+                prod = db.query(Product).filter(Product.id == dec_item.product_id).first()
 
-            # Item not found — skip, record clearly
-            if not prod:
-                res_dec = SyncedDecisionResult(
-                    product_id=dec_item.product_id,
+                # Item not found — skip, record clearly
+                if not prod:
+                    res_dec = SyncedDecisionResult(
+                        product_id=dec_item.product_id,
+                        decision=dec_item.decision,
+                        applied_price=dec_item.previous_price,
+                        status="SKIPPED_NOT_FOUND"
+                    )
+                    synced_decisions.append(res_dec)
+                    if dec_item.client_operation_id:
+                        proc_op = ProcessedOperation(
+                            client_operation_id=dec_item.client_operation_id,
+                            user_id=seller_id,
+                            entity_type="PRICE_DECISION",
+                            result_json=json.dumps(res_dec.model_dump())
+                        )
+                        db.add(proc_op)
+                        db.flush()
+                    continue
+
+                # Ownership check — JWT identity is the only source of truth
+                if prod.seller_id != current_user.id:
+                    res_dec = SyncedDecisionResult(
+                        product_id=dec_item.product_id,
+                        decision=dec_item.decision,
+                        applied_price=float(prod.price),
+                        status="REJECTED_UNAUTHORIZED"
+                    )
+                    synced_decisions.append(res_dec)
+                    if dec_item.client_operation_id:
+                        proc_op = ProcessedOperation(
+                            client_operation_id=dec_item.client_operation_id,
+                            user_id=seller_id,
+                            entity_type="PRICE_DECISION",
+                            result_json=json.dumps(res_dec.model_dump())
+                        )
+                        db.add(proc_op)
+                        db.flush()
+                    continue
+
+                # Authorized — apply decision
+                previous_price = prod.price
+                rec_price = Decimal(str(dec_item.recommended_price))
+                if dec_item.decision == "ACCEPT":
+                    applied_price = rec_price
+                    prod.price = applied_price
+                else:
+                    applied_price = previous_price
+
+                decision_record = PricingDecision(
+                    product_id=prod.id,
                     decision=dec_item.decision,
-                    applied_price=dec_item.previous_price,
-                    status="SKIPPED_NOT_FOUND"
+                    previous_price=previous_price,
+                    recommended_price=rec_price,
+                    applied_price=applied_price,
+                    demand_factor=Decimal(str(dec_item.demand_factor)),
+                    market_adjustment=Decimal(str(dec_item.market_adjustment)),
+                    reasoning_json=json.dumps({"sync": "offline_batch", "summary": dec_item.reasoning_summary or "Approved in offline mode"})
+                )
+                db.add(decision_record)
+                
+                res_dec = SyncedDecisionResult(
+                    product_id=prod.id,
+                    decision=dec_item.decision,
+                    applied_price=float(applied_price),
+                    status="APPLIED"
                 )
                 synced_decisions.append(res_dec)
+
                 if dec_item.client_operation_id:
                     proc_op = ProcessedOperation(
                         client_operation_id=dec_item.client_operation_id,
@@ -175,64 +252,16 @@ def batch_sync(
                         result_json=json.dumps(res_dec.model_dump())
                     )
                     db.add(proc_op)
-                continue
-
-            # Ownership check — JWT identity is the only source of truth
-            if prod.seller_id != current_user.id:
-                res_dec = SyncedDecisionResult(
-                    product_id=dec_item.product_id,
-                    decision=dec_item.decision,
-                    applied_price=float(prod.price),
-                    status="REJECTED_UNAUTHORIZED"
-                )
-                synced_decisions.append(res_dec)
-                if dec_item.client_operation_id:
-                    proc_op = ProcessedOperation(
-                        client_operation_id=dec_item.client_operation_id,
-                        user_id=seller_id,
-                        entity_type="PRICE_DECISION",
-                        result_json=json.dumps(res_dec.model_dump())
-                    )
-                    db.add(proc_op)
-                continue
-
-            # Authorized — apply decision
-            previous_price = prod.price
-            rec_price = Decimal(str(dec_item.recommended_price))
-            if dec_item.decision == "ACCEPT":
-                applied_price = rec_price
-                prod.price = applied_price
-            else:
-                applied_price = previous_price
-
-            decision_record = PricingDecision(
-                product_id=prod.id,
-                decision=dec_item.decision,
-                previous_price=previous_price,
-                recommended_price=rec_price,
-                applied_price=applied_price,
-                demand_factor=Decimal(str(dec_item.demand_factor)),
-                market_adjustment=Decimal(str(dec_item.market_adjustment)),
-                reasoning_json=json.dumps({"sync": "offline_batch", "summary": dec_item.reasoning_summary or "Approved in offline mode"})
-            )
-            db.add(decision_record)
-            
-            res_dec = SyncedDecisionResult(
-                product_id=prod.id,
-                decision=dec_item.decision,
-                applied_price=float(applied_price),
-                status="APPLIED"
-            )
-            synced_decisions.append(res_dec)
-
-            if dec_item.client_operation_id:
-                proc_op = ProcessedOperation(
-                    client_operation_id=dec_item.client_operation_id,
-                    user_id=seller_id,
-                    entity_type="PRICE_DECISION",
-                    result_json=json.dumps(res_dec.model_dump())
-                )
-                db.add(proc_op)
+                    db.flush()
+            except IntegrityError:
+                savepoint.rollback()
+                op = db.query(ProcessedOperation).filter(
+                    ProcessedOperation.user_id == seller_id,
+                    ProcessedOperation.entity_type == "PRICE_DECISION",
+                    ProcessedOperation.client_operation_id == dec_item.client_operation_id
+                ).first()
+                if op:
+                    synced_decisions.append(SyncedDecisionResult(**json.loads(op.result_json)))
 
         db.commit()
 
@@ -244,41 +273,13 @@ def batch_sync(
             total_items_synced=len(synced_products) + len(synced_decisions)
         )
 
-    except IntegrityError:
-        db.rollback()
-        # Concurrency race: operation was committed by a parallel request. Fetch stored results.
-        synced_products = []
-        synced_decisions = []
-        for prod_item in payload.products:
-            if prod_item.client_operation_id:
-                op = db.query(ProcessedOperation).filter(
-                    ProcessedOperation.user_id == seller_id,
-                    ProcessedOperation.client_operation_id == prod_item.client_operation_id
-                ).first()
-                if op:
-                    synced_products.append(SyncedProductResult(**json.loads(op.result_json)))
-
-        for dec_item in payload.price_decisions:
-            if dec_item.client_operation_id:
-                op = db.query(ProcessedOperation).filter(
-                    ProcessedOperation.user_id == seller_id,
-                    ProcessedOperation.client_operation_id == dec_item.client_operation_id
-                ).first()
-                if op:
-                    synced_decisions.append(SyncedDecisionResult(**json.loads(op.result_json)))
-
-        return BatchSyncResponse(
-            status="success",
-            synced_at=datetime.now(timezone.utc),
-            products_synced=synced_products,
-            price_decisions_synced=synced_decisions,
-            total_items_synced=len(synced_products) + len(synced_decisions)
-        )
     except Exception as e:
         db.rollback()
+        import logging
+        logging.getLogger("artisan_ai").error("Batch sync operation failed: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Batch sync failed: {str(e)}"
+            detail="Batch sync operation temporarily failed. Please try again."
         )
 
 @router.get("/status/{job_id}")

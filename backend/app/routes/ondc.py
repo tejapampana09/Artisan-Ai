@@ -17,8 +17,20 @@ from sqlalchemy import update
 
 from backend.app.database import get_db
 from backend.app.models import Product, Order, Event
+from backend.app.config import ONDC_PROTOTYPE_ENABLED
 
-router = APIRouter(prefix="/api/ondc", tags=["ONDC Integration Prototype"])
+def check_ondc_prototype_enabled():
+    if not ONDC_PROTOTYPE_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ONDC Integration Adapter Prototype is disabled in this environment."
+        )
+
+router = APIRouter(
+    prefix="/api/ondc", 
+    tags=["ONDC Integration Prototype"],
+    dependencies=[Depends(check_ondc_prototype_enabled)]
+)
 
 class ONDCSearchIntent(BaseModel):
     category: Optional[str] = None

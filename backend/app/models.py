@@ -161,7 +161,7 @@ class ProcessedOperation(Base):
     """
     __tablename__ = "processed_operations"
     __table_args__ = (
-        UniqueConstraint("user_id", "client_operation_id", name="uq_processed_op_user_client_op_id"),
+        UniqueConstraint("user_id", "entity_type", "client_operation_id", name="uq_processed_op_user_entity_client_op_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)

@@ -177,7 +177,7 @@ def get_optional_current_user(
     db: Session = Depends(get_db),
     auth_header: Optional[str] = Header(None, alias="Authorization")
 ) -> Optional[User]:
-    """Returns authenticated user if valid token present, else None without raising 401."""
+    """Returns authenticated user if valid non-revoked token present, else None without raising 401."""
     token = extract_token_from_header(auth_header)
     if not token:
         return None
@@ -185,6 +185,13 @@ def get_optional_current_user(
     if not payload or "sub" not in payload:
         return None
     try:
-        return db.query(User).filter(User.id == int(payload["sub"])).first()
+        user = db.query(User).filter(User.id == int(payload["sub"])).first()
+        if not user:
+            return None
+        token_ver = payload.get("ver")
+        user_ver = getattr(user, "token_version", 1) or 1
+        if token_ver is None or token_ver != user_ver:
+            return None
+        return user
     except Exception:
         return None

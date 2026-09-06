@@ -27,7 +27,10 @@ _raw_demo_mode = os.getenv("DEMO_MODE")
 if ENVIRONMENT == "production":
     DEMO_MODE: bool = False if _raw_demo_mode is None else (_raw_demo_mode.lower() in ("true", "1", "yes"))
 else:
-    DEMO_MODE: bool = _raw_demo_mode.lower() in ("true", "1", "yes") if _raw_demo_mode is not None else True
+    DEMO_MODE: bool = _raw_demo_mode.lower() in ("true", "1", "yes") if _raw_demo_mode is not None else False
+
+# ONDC Prototype feature flag (default False in production, True in non-production)
+ONDC_PROTOTYPE_ENABLED: bool = os.getenv("ONDC_PROTOTYPE_ENABLED", "false" if ENVIRONMENT == "production" else "true").lower() in ("true", "1", "yes")
 
 # Database URL
 raw_db_url: str = os.getenv("DATABASE_URL", "sqlite:///./artisan_ai.db")

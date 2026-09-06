@@ -316,7 +316,9 @@ export async function getEvents(params = {}) {
   try {
     const query = new URLSearchParams(params).toString();
     const url = query ? `${API_BASE}/events?${query}` : `${API_BASE}/events`;
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      headers: getAuthHeaders()
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch (err) {
