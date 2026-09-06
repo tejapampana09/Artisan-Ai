@@ -301,7 +301,7 @@ export async function recordEvent(eventData) {
   try {
     const res = await fetch(`${API_BASE}/events`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(eventData),
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);

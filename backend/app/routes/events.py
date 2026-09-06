@@ -347,6 +347,7 @@ def update_order_status(
             detail=f"Invalid status '{payload.status}'. Allowed: {', '.join(allowed_statuses)}"
         )
 
+    old_status = order.status
     is_seller = prod.seller_id == current_user.id or current_user.role == "ADMIN"
     is_buyer = order.user_id == current_user.id
 
@@ -363,6 +364,13 @@ def update_order_status(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied: You cannot update the status of this order."
+        )
+
+    # Business policy: Pre-fulfillment cancellation restores inventory once
+    if new_status == "CANCELLED" and old_status != "CANCELLED":
+        db.query(Product).filter(Product.id == prod.id).update(
+            {Product.stock: Product.stock + order.quantity},
+            synchronize_session=False
         )
 
     db.commit()

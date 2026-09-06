@@ -46,11 +46,14 @@ class SlidingWindowRateLimiter:
 rate_limiter = SlidingWindowRateLimiter()
 
 def get_client_identifier(request: Request, user_id: int = None) -> str:
-    """Derives client rate-limit key from user_id if present, else client IP address."""
+    """Derives client rate-limit key from user_id if present, else direct client socket IP address."""
     if user_id:
         return f"user:{user_id}"
+    
+    # Priority: direct socket client host to prevent client-side X-Forwarded-For header spoofing
     client_ip = request.client.host if request.client else "unknown_ip"
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        client_ip = forwarded.split(",")[0].strip()
+    if os.getenv("TRUST_FORWARDED_FOR", "false").lower() == "true":
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            client_ip = forwarded.split(",")[0].strip()
     return f"ip:{client_ip}"

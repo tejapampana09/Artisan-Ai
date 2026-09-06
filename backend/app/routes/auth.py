@@ -86,16 +86,10 @@ def login_user(payload: UserLogin, request: Request, db: Session = Depends(get_d
     ).first()
 
     if not user or not user.hashed_password:
-        # Check if default demo user is being logged in without password
-        if user and not user.hashed_password and payload.password == "artisan123":
-            # Allow demo user initial password set
-            user.hashed_password = hash_password(payload.password)
-            db.commit()
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials. Please check your email/phone and password."
-            )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials. Please check your email/phone and password."
+        )
 
     if not verify_password(payload.password, user.hashed_password):
         raise HTTPException(

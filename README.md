@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=fastapi)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19.0-61DAFB.svg?logo=react)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-8.2-646CFF.svg?logo=vite)](https://vitejs.dev)
-[![Test Suite](https://img.shields.io/badge/Tests-60%2F60%20Passing-brightgreen.svg)]()
+[![Test Suite](https://img.shields.io/badge/Tests-61%2F61%20Passing-brightgreen.svg)]()
 
 Artisan AI is a production-grade digital marketplace, smart cataloging engine, and business intelligence copilot designed for rural and marginalized Indian artisans. The platform eliminates digital literacy barriers by combining **Voice-First Multilingual Cataloging (Hindi, Telugu, Tamil, Bengali, English)**, **Explainable Dynamic Pricing with Cost Floor Protection**, **Closed-Loop Real-Time Demand Intelligence**, **Atomic Concurrency-Safe Inventory Management**, **Production-Grade PostgreSQL & Alembic Migrations**, and **Offline draft queue with idempotent batch synchronization and retry support**.
 
@@ -189,7 +189,7 @@ The repository contains an end-to-end automated test suite verifying every stage
 .venv\Scripts\python.exe -m pytest backend/tests/ -v
 ```
 
-### Test Coverage Summary (60/60 Passing):
+### Test Coverage Summary (61/61 Passing):
 - `test_p0_security_fixes.py`: Authenticated password change with token version invalidation (`token_version`), 501 Not Implemented status on public unauthenticated reset, seller ownership verification on batch sync decisions (`REJECTED_UNAUTHORIZED`), ONDC Beckn integration adapter prototype (removal of fabricated GI/certification claims), and database-level conditional atomic stock updates.
 - `test_p1_features.py`: Sliding window rate limiting returning HTTP 429 Too Many Requests, ONDC quote calculations, seller analytics CSV exports with protected cost basis, HTTP request observability headers (`X-Request-ID`, `X-Process-Time-Ms`), database-backed operation ID idempotency (`ProcessedOperation`), and tenant-isolated operation lookup (`user_id, client_operation_id`).
 - `test_production_database_foundation.py`: PostgreSQL URL normalization, strict production configuration validation, connection pool hardening (`pool_size=10`, `pre_ping=True`), exact `Decimal` / `NUMERIC(12, 2)` money calculations, check constraint enforcement, and fresh database Alembic migration.

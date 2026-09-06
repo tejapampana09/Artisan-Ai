@@ -291,3 +291,43 @@ def test_sync_idempotency_tenant_isolation():
     assert id1 != id2
 
 
+def test_order_cancellation_restores_inventory():
+    """Verify that cancelling an order restores the product's reserved stock."""
+    uid = uuid.uuid4().hex[:6]
+    seller = client.post("/api/auth/register", json={
+        "name": f"Stock Seller {uid}", "email": f"stock.seller.{uid}@artisanai.in", "password": "Password123!", "role": "ARTISAN"
+    })
+    seller_h = {"Authorization": f"Bearer {seller.json()['access_token']}"}
+
+    buyer = client.post("/api/auth/register", json={
+        "name": f"Stock Buyer {uid}", "email": f"stock.buyer.{uid}@artisanai.in", "password": "Password123!", "role": "BUYER"
+    })
+    buyer_h = {"Authorization": f"Bearer {buyer.json()['access_token']}"}
+
+    prod = client.post("/api/products", json={
+        "title": f"Restorable Item {uid}", "category": "Woodwork", "price": 500.0, "stock": 10
+    }, headers=seller_h).json()
+    pid = prod["id"]
+
+    # Place order of 3 units
+    ord_res = client.post("/api/marketplace/order", json={
+        "product_id": pid, "quantity": 3, "buyer_name": "Buyer Test", "buyer_phone": "+91 99999 88888", "delivery_address": "Test Street"
+    }, headers=buyer_h)
+    assert ord_res.status_code in [200, 201]
+    oid = ord_res.json()["id"]
+
+    # Check stock decremented to 7
+    p_check1 = client.get(f"/api/products/{pid}").json()
+    assert p_check1["stock"] == 7
+
+    # Cancel order
+    cancel_res = client.patch(f"/api/marketplace/orders/{oid}/status", json={"status": "CANCELLED"}, headers=buyer_h)
+    assert cancel_res.status_code == 200
+    assert cancel_res.json()["status"] == "CANCELLED"
+
+    # Check stock restored back to 10
+    p_check2 = client.get(f"/api/products/{pid}").json()
+    assert p_check2["stock"] == 10
+
+
+

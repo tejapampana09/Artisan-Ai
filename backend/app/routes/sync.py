@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from backend.app.database import get_db
 from backend.app.models import Product, PricingDecision, User, Event, ProcessedOperation
@@ -212,7 +213,7 @@ def batch_sync(
                 applied_price=applied_price,
                 demand_factor=Decimal(str(dec_item.demand_factor)),
                 market_adjustment=Decimal(str(dec_item.market_adjustment)),
-                reasoning_json=f'{{"sync": "offline_batch", "summary": "{dec_item.reasoning_summary or "Approved in offline mode"}"}}'
+                reasoning_json=json.dumps({"sync": "offline_batch", "summary": dec_item.reasoning_summary or "Approved in offline mode"})
             )
             db.add(decision_record)
             
@@ -243,6 +244,36 @@ def batch_sync(
             total_items_synced=len(synced_products) + len(synced_decisions)
         )
 
+    except IntegrityError:
+        db.rollback()
+        # Concurrency race: operation was committed by a parallel request. Fetch stored results.
+        synced_products = []
+        synced_decisions = []
+        for prod_item in payload.products:
+            if prod_item.client_operation_id:
+                op = db.query(ProcessedOperation).filter(
+                    ProcessedOperation.user_id == seller_id,
+                    ProcessedOperation.client_operation_id == prod_item.client_operation_id
+                ).first()
+                if op:
+                    synced_products.append(SyncedProductResult(**json.loads(op.result_json)))
+
+        for dec_item in payload.price_decisions:
+            if dec_item.client_operation_id:
+                op = db.query(ProcessedOperation).filter(
+                    ProcessedOperation.user_id == seller_id,
+                    ProcessedOperation.client_operation_id == dec_item.client_operation_id
+                ).first()
+                if op:
+                    synced_decisions.append(SyncedDecisionResult(**json.loads(op.result_json)))
+
+        return BatchSyncResponse(
+            status="success",
+            synced_at=datetime.now(timezone.utc),
+            products_synced=synced_products,
+            price_decisions_synced=synced_decisions,
+            total_items_synced=len(synced_products) + len(synced_decisions)
+        )
     except Exception as e:
         db.rollback()
         raise HTTPException(

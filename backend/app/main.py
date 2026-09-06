@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -89,9 +89,11 @@ def readiness_check(db: Session = Depends(get_db)):
             user_count=user_count
         )
     except Exception as e:
+        import logging
+        logging.getLogger("artisan_ai").error("Database readiness check failed: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Database connection failed: {str(e)}"
+            detail="Database temporarily unavailable"
         )
 
 @app.get("/api/me", response_model=UserResponse)
