@@ -318,6 +318,9 @@ export async function getMarketDemand() {
 }
 
 export async function getSellerOpportunities() {
+  if (!getAuthToken()) {
+    return { copilot_insight: null, opportunities: [], category_demand: [] };
+  }
   try {
     const res = await fetch(`${API_BASE}/seller/opportunities`, {
       headers: getAuthHeaders(),
@@ -331,6 +334,9 @@ export async function getSellerOpportunities() {
 }
 
 export async function getCopilotInsight() {
+  if (!getAuthToken()) {
+    return null;
+  }
   try {
     const res = await fetch(`${API_BASE}/seller/copilot-insight`, {
       headers: getAuthHeaders(),

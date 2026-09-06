@@ -16,45 +16,16 @@ from backend.app.routes.intelligence import router as intelligence_router
 from backend.app.routes.pricing import router as pricing_router
 from backend.app.routes.sync import router as sync_router
 from backend.app.routes.auth import router as auth_router
-from backend.app.services.auth import get_current_user as auth_get_current_user, hash_password
-from backend.app.seed import seed_sample_products
+from backend.app.services.auth import get_current_user as auth_get_current_user
 
 # Create tables automatically only in development/test/demo environments.
 # In production, schema management must be performed explicitly via Alembic migrations.
 if ENVIRONMENT != "production":
     Base.metadata.create_all(bind=engine)
 
-def ensure_default_user(db: Session) -> User:
-    user = db.query(User).first()
-    if not user:
-        user = User(
-            name="Lakshmi Devi",
-            email="lakshmi@artisanai.in",
-            phone="+91 98765 43210",
-            hashed_password=hash_password("artisan123"),
-            role="ARTISAN",
-            active_mode="SELL",
-            location="Machilipatnam, Andhra Pradesh",
-            craft="Hand-block Kalamkari"
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    elif not user.hashed_password:
-        user.hashed_password = hash_password("artisan123")
-        user.email = user.email or "lakshmi@artisanai.in"
-        db.commit()
-    return user
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if DEMO_MODE:
-        db = SessionLocal()
-        try:
-            user = ensure_default_user(db)
-            seed_sample_products(db, user.id)
-        finally:
-            db.close()
+    # Clean lifecycle: database connections and resource initialization
     yield
 
 app = FastAPI(
@@ -95,9 +66,6 @@ def readiness_check(db: Session = Depends(get_db)):
     try:
         # Check DB connection
         db.execute(text("SELECT 1"))
-        if DEMO_MODE:
-            user = ensure_default_user(db)
-            seed_sample_products(db, user.id)
         user_count = db.query(User).count()
         return ReadyResponse(
             status="ready",
@@ -105,7 +73,10 @@ def readiness_check(db: Session = Depends(get_db)):
             user_count=user_count
         )
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Database not ready: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database connection failed: {str(e)}"
+        )
 
 @app.get("/api/me", response_model=UserResponse)
 def get_user_me(current_user: User = Depends(auth_get_current_user)):

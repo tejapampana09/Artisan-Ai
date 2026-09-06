@@ -6,8 +6,6 @@ from backend.app.database import get_db
 from backend.app.models import Product, User
 from backend.app.schemas import ProductCreate, ProductUpdate, ProductResponse
 from backend.app.services.auth import get_current_user
-from backend.app.seed import seed_sample_products, SAMPLE_PRODUCTS
-from backend.app.config import DEMO_MODE
 
 from decimal import Decimal
 

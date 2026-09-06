@@ -4,8 +4,8 @@ import httpx
 from typing import Dict, Any, Optional
 from backend.app.config import GEMINI_API_KEY, AI_REQUEST_TIMEOUT_SECONDS, ENVIRONMENT, DEMO_MODE
 
-# Fallback presets keyed by detected keywords or craft category
-DEMO_CRAFT_KNOWLEDGE = {
+# Deterministic heritage craft knowledge base (used when offline or as robust fallback)
+HERITAGE_CRAFT_KNOWLEDGE_BASE = {
     "kalamkari": {
         "title": "Heritage Hand-drawn Srikalahasti Kalamkari Silk Dupatta",
         "category": "Kalamkari",
@@ -61,14 +61,14 @@ DEMO_CRAFT_KNOWLEDGE = {
 def detect_craft_profile(voice_text: str, category_hint: Optional[str] = None) -> Dict[str, Any]:
     text_lower = (voice_text + " " + (category_hint or "")).lower()
     if any(k in text_lower for k in ["kalamkari", "saree", "dupatta", "painting", "చెక్క", "కలంకారి"]):
-        return DEMO_CRAFT_KNOWLEDGE["kalamkari"]
+        return HERITAGE_CRAFT_KNOWLEDGE_BASE["kalamkari"]
     elif any(k in text_lower for k in ["wood", "toy", "horse", "channapatna", "బొమ్మ", "लकड़ी"]):
-        return DEMO_CRAFT_KNOWLEDGE["wooden"]
+        return HERITAGE_CRAFT_KNOWLEDGE_BASE["wooden"]
     elif any(k in text_lower for k in ["pottery", "blue", "ceramic", "vase", "bowl", "కుండ", "मिट्टी"]):
-        return DEMO_CRAFT_KNOWLEDGE["pottery"]
+        return HERITAGE_CRAFT_KNOWLEDGE_BASE["pottery"]
     elif any(k in text_lower for k in ["bidri", "silver", "metal", "inlay", "ప్లేట్", "బిద్రి"]):
-        return DEMO_CRAFT_KNOWLEDGE["bidri"]
-    return DEMO_CRAFT_KNOWLEDGE["default"]
+        return HERITAGE_CRAFT_KNOWLEDGE_BASE["bidri"]
+    return HERITAGE_CRAFT_KNOWLEDGE_BASE["default"]
 
 def enhance_image_url(image_url: Optional[str]) -> str:
     # Studio lighting / enhanced presentation indicator
@@ -88,11 +88,11 @@ async def generate_catalog_draft(
     """
     Multimodal AI Catalog Generation:
     1. If GEMINI_API_KEY is available: calls Gemini Vision/Language API.
-    2. If not available or on failure: activates deterministic DEMO FALLBACK.
-    Never lets an unavailable API key break the workflow.
+    2. If offline or network error: activates deterministic OFFLINE_CRAFT_ONTOLOGY.
+    Never lets an unavailable network break the artisan's workflow.
     """
     is_live = False
-    source = "DEMO FALLBACK"
+    source = "OFFLINE_CRAFT_ONTOLOGY"
 
     if GEMINI_API_KEY:
         try:
@@ -193,7 +193,7 @@ async def generate_catalog_draft(
         }
 
     return {
-        "source": "DEMO FALLBACK" if DEMO_MODE else "HEURISTIC_PREVIEW",
+        "source": "OFFLINE_CRAFT_ONTOLOGY",
         "title": profile["title"],
         "category": profile["category"],
         "materials": profile["materials"],

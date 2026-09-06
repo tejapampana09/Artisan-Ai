@@ -18,7 +18,7 @@ def test_ai_catalog_pipeline_and_approval():
     draft = ai_res.json()
 
     # Verify response schema and source indicator
-    assert draft["source"] in ["LIVE AI", "DEMO FALLBACK"]
+    assert draft["source"] in ["LIVE AI", "OFFLINE_CRAFT_ONTOLOGY"]
     assert len(draft["title"]) > 5
     assert draft["category"] == "Kalamkari"
     assert "Mulberry Silk" in draft["materials"] or len(draft["materials"]) > 3

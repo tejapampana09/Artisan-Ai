@@ -22,7 +22,7 @@ class AICatalogRequest(BaseModel):
     packaging_cost: Optional[float] = None
 
 class AICatalogDraftResponse(BaseModel):
-    source: str  # "LIVE AI" or "DEMO FALLBACK"
+    source: str  # "LIVE AI" or "OFFLINE_CRAFT_ONTOLOGY"
     title: str
     category: str
     materials: str

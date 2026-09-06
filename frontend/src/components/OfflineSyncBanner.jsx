@@ -32,7 +32,7 @@ export default function OfflineSyncBanner() {
               <div className="flex items-center space-x-2">
                 <span className="font-bold text-sm">Rural Cluster Offline Mode Active</span>
                 <span className="text-[10px] font-bold bg-white/20 uppercase px-2 py-0.5 rounded-full">
-                  Local Device Sandbox
+                  Local Offline Cache
                 </span>
               </div>
               <p className="text-xs text-amber-100 mt-0.5">
