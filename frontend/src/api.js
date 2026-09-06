@@ -234,7 +234,15 @@ export async function processAICatalog(data) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      const msg = typeof errData.detail === 'string'
+        ? errData.detail
+        : Array.isArray(errData.detail)
+          ? errData.detail.map((d) => d.msg || d.message).join(', ')
+          : `HTTP error ${res.status}`;
+      throw new Error(msg);
+    }
     return await res.json();
   } catch (err) {
     console.error('Error in AI catalog processing:', err);
@@ -249,7 +257,15 @@ export async function approveAndPublishAICatalog(data) {
       headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      const msg = typeof errData.detail === 'string'
+        ? errData.detail
+        : Array.isArray(errData.detail)
+          ? errData.detail.map((d) => d.msg || d.message).join(', ')
+          : `HTTP error ${res.status}`;
+      throw new Error(msg);
+    }
     return await res.json();
   } catch (err) {
     console.error('Error approving AI catalog:', err);

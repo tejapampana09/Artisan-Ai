@@ -69,25 +69,49 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
-  const handleImageFile = (e) => {
+  const compressImage = (file, maxWidth = 1000, quality = 0.8) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(event.target.result);
+        img.src = event.target.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const dataUrl = reader.result;
-      setCustomImageUrl(dataUrl);
-      setSelectedPhoto(null);
-      setImgErrorOriginal(false);
-      setImgErrorEnhanced(false);
-      if (aiDraft) {
-        setAiDraft((prev) => ({
-          ...prev,
-          image_url: dataUrl,
-          enhanced_image_url: dataUrl
-        }));
-      }
-    };
-    reader.readAsDataURL(file);
+    const dataUrl = await compressImage(file);
+    if (!dataUrl) return;
+    setCustomImageUrl(dataUrl);
+    setSelectedPhoto(null);
+    setImgErrorOriginal(false);
+    setImgErrorEnhanced(false);
+    if (aiDraft) {
+      setAiDraft((prev) => ({
+        ...prev,
+        image_url: dataUrl,
+        enhanced_image_url: dataUrl
+      }));
+    }
+    if (e.target) e.target.value = '';
   };
 
   // Sync sample prompt when photo or language changes

@@ -435,3 +435,21 @@ def test_telemetry_order_forgery_rejection():
     })
     assert res.status_code == 400
     assert "Direct submission" in res.json()["detail"]
+
+def test_ai_catalog_large_base64_image_support():
+    # Simulating a camera capture or image file upload converted to Base64 (e.g. 10,000+ chars)
+    dummy_base64 = "data:image/jpeg;base64," + ("A" * 15000)
+    res = client.post("/api/ai/process-catalog", json={
+        "voice_description": "Handcrafted terracotta water pot made with river clay",
+        "language": "en",
+        "image_url": dummy_base64,
+        "material_cost": 150.0,
+        "labour_cost": 200.0,
+        "packaging_cost": 50.0
+    })
+    # Must NOT fail with HTTP 422 Unprocessable Entity
+    assert res.status_code == 200
+    data = res.json()
+    assert data["image_url"] == dummy_base64
+    assert data["pricing_available"] is True
+
