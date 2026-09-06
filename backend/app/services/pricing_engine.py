@@ -1,7 +1,7 @@
 from typing import Dict, Any, List, Tuple
 from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy.orm import Session
-from backend.app.models import Product, Event
+from backend.app.models import Product, Event, PricingDecision
 from backend.app.services.demand_engine import calculate_category_demand
 
 # Deterministic safety constraint bounds
@@ -130,6 +130,28 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
 
     price_change_amount = (rounded_price - curr_price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     price_change_pct = round((float(price_change_amount) / float(curr_price) * 100.0), 1) if curr_price > 0 else 0.0
+
+    # Equilibrium Guard: If the artisan recently accepted this recommendation and no new buyer events
+    # have occurred since, the price has already reached market equilibrium. Do not compound again.
+    last_accepted = (
+        db.query(PricingDecision)
+        .filter(PricingDecision.product_id == product.id, PricingDecision.decision == "ACCEPT")
+        .order_by(PricingDecision.timestamp.desc())
+        .first()
+    )
+    if last_accepted and to_decimal(last_accepted.applied_price) == curr_price:
+        new_events_count = (
+            db.query(Event)
+            .filter(
+                (Event.product_id == product.id) | (Event.category == product.category),
+                Event.timestamp > last_accepted.timestamp
+            )
+            .count()
+        )
+        if new_events_count == 0:
+            rounded_price = curr_price
+            price_change_amount = Decimal("0.00")
+            price_change_pct = 0.0
 
     # 6. Event context for reasoning
     save_count = db.query(Event).filter(Event.product_id == product.id, Event.event_type == "SAVE").count()
