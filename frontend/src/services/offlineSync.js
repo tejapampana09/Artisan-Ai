@@ -127,6 +127,29 @@ export function setCachedCopilotInsight(insight) {
   }
 }
 
+const CACHED_OPPORTUNITIES_KEY = 'artisan_ai_cached_opportunities';
+
+export function getCachedOpportunities() {
+  try {
+    const raw = localStorage.getItem(CACHED_OPPORTUNITIES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function setCachedOpportunities(opps) {
+  try {
+    if (opps && opps.length > 0) {
+      localStorage.setItem(CACHED_OPPORTUNITIES_KEY, JSON.stringify(opps));
+    } else {
+      localStorage.removeItem(CACHED_OPPORTUNITIES_KEY);
+    }
+  } catch (e) {
+    console.error('Failed to cache opportunities', e);
+  }
+}
+
 // Sync execution helper
 export async function executeBatchSync() {
   const queue = getOfflineQueue();

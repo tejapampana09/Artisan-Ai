@@ -14,7 +14,12 @@ import {
   getMarketDemand, getSellerOpportunities, getEnquiries, getOrders 
 } from '../api';
 import { useOffline } from '../context/OfflineContext';
-import { getCachedProducts, setCachedProducts, getCachedDemands, setCachedDemands, getCachedCopilotInsight, setCachedCopilotInsight } from '../services/offlineSync';
+import { 
+  getCachedProducts, setCachedProducts, 
+  getCachedDemands, setCachedDemands, 
+  getCachedCopilotInsight, setCachedCopilotInsight,
+  getCachedOpportunities, setCachedOpportunities
+} from '../services/offlineSync';
 
 export default function SellView({ user, onOpenAuth, onSwitchMode }) {
   const [products, setProducts] = useState([]);
@@ -23,6 +28,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
   const [activeTab, setActiveTab] = useState('PRODUCTS'); // 'PRODUCTS' | 'ENQUIRIES' | 'ORDERS'
   const [demands, setDemands] = useState([]);
   const [copilotInsight, setCopilotInsight] = useState(null);
+  const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
@@ -52,6 +58,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         setProducts(merged);
         setDemands(getCachedDemands());
         setCopilotInsight(getCachedCopilotInsight());
+        setOpportunities(getCachedOpportunities());
       } else {
         const [prodsData, demandData, oppsData, enqsData, ordersData] = await Promise.all([
           getProducts(),
@@ -67,6 +74,9 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         if (oppsData?.copilot_insight) {
           setCachedCopilotInsight(oppsData.copilot_insight);
         }
+        if (oppsData?.opportunities) {
+          setCachedOpportunities(oppsData.opportunities);
+        }
 
         // Prepend any offline items that haven't synced yet
         const queuedDrafts = offlineQueue
@@ -80,7 +90,8 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
 
         setProducts([...queuedDrafts, ...prodsData]);
         setDemands(demandData);
-        setCopilotInsight(oppsData.copilot_insight);
+        setCopilotInsight(oppsData?.copilot_insight || null);
+        setOpportunities(oppsData?.opportunities || []);
         setEnquiries(enqsData || []);
         setOrders(ordersData || []);
       }
@@ -90,6 +101,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
       setProducts(cached);
       setDemands(getCachedDemands());
       setCopilotInsight(getCachedCopilotInsight());
+      setOpportunities(getCachedOpportunities());
     } finally {
       setLoading(false);
     }
@@ -290,6 +302,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
       {/* AI Business Copilot Recommendation Widget */}
       <CopilotWidget
         copilotInsight={copilotInsight}
+        opportunities={opportunities}
         onActionTaken={handleCopilotAction}
         onOpenEnquiries={() => setActiveTab('ENQUIRIES')}
       />

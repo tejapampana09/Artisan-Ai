@@ -170,9 +170,13 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
     copilot_insight = None
 
     for prod in seller_products:
-        cat_demand = category_demands.get(prod.category)
-        if not cat_demand:
-            continue
+        cat_demand = category_demands.get(prod.category) or {
+            "category": prod.category,
+            "demand_pct": 5,
+            "demand_pct_label": "+5%",
+            "benchmark_price_range": f"₹{int(prod.price)}",
+            "total_events": 0
+        }
 
         pricing_rec = calculate_price_recommendation(prod, db)
         rec_price = pricing_rec["recommended_price"]
@@ -181,39 +185,71 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
         enquiry_count = db.query(Event).filter(Event.product_id == prod.id, Event.event_type == "ENQUIRY").count()
 
         is_high_demand = cat_demand["demand_pct"] >= 15
-        is_low_inventory = prod.stock <= 8
+        is_low_inventory = prod.stock <= 8 and prod.stock > 0
+        is_out_of_stock = prod.stock <= 0
 
-        if is_high_demand:
+        if is_out_of_stock:
+            headline = f"{prod.title}: Out of stock alert"
+            action_text = f"Restock craft: 0 units available. Unmet buyer demand detected."
+            narrative = (
+                f"\"{prod.title}\" ({prod.category}) is currently completely out of stock. "
+                f"Craft a fresh batch of 5–10 units to capture active buyer interest and fulfill pre-orders."
+            )
+            urgency = "HIGH"
+        elif is_high_demand:
+            headline = f"{prod.title}: {prod.category} demand is increasing"
             action_text = f"Review price: ₹{int(prod.price)} → ₹{int(rec_price)}. Consider producing 10–15 more units."
+            narrative = (
+                f"{prod.category} demand is increasing (+{cat_demand['demand_pct']}%) for \"{prod.title}\". "
+                f"Your current price is ₹{int(prod.price):,}. Based on your protected margin (≥{int(pricing_rec['safety_constraints']['min_margin_percentage'])}%), "
+                f"demand signals, and comparable products ({cat_demand['benchmark_price_range']}), "
+                f"the recommended price is ₹{int(rec_price):,}. "
+                f"Review the full price explanation before making a decision. Your price will not change automatically."
+            )
+            urgency = "HIGH" if is_low_inventory else "MEDIUM"
+        elif is_low_inventory:
+            headline = f"{prod.title}: Low inventory signal"
+            action_text = f"Replenish inventory: only {prod.stock} units remaining."
+            narrative = (
+                f"Stock for \"{prod.title}\" ({prod.category}) is running low ({prod.stock} units left). "
+                f"Prepare additional craft units to prevent stockouts."
+            )
+            urgency = "MEDIUM"
+        else:
+            headline = f"{prod.title}: Steady market interest"
+            action_text = f"Maintain price ₹{int(prod.price):,} and protect artisan margins."
+            narrative = (
+                f"Market interest for \"{prod.title}\" ({prod.category}) is steady ({cat_demand['demand_pct_label']}). "
+                f"Your price of ₹{int(prod.price):,} satisfies minimum fair wage and margin safety constraints."
+            )
+            urgency = "LOW"
 
-            opp = {
-                "product_id": prod.id,
-                "product_title": prod.title,
-                "category": prod.category,
-                "demand_pct": cat_demand["demand_pct"],
-                "demand_label": cat_demand["demand_pct_label"],
-                "stock": prod.stock,
-                "buyer_saves": save_count,
-                "buyer_enquiries": enquiry_count,
-                "current_price": prod.price,
-                "recommended_price": rec_price,
-                "minimum_fair_price": pricing_rec["minimum_fair_price"],
-                "benchmark_range": cat_demand["benchmark_price_range"],
-                "headline": f"{prod.category} demand is increasing",
-                "narrative": (
-                    f"{prod.category} demand is increasing (+{cat_demand['demand_pct']}%). "
-                    f"Your current price is ₹{int(prod.price):,}. Based on your protected margin (≥{int(pricing_rec['safety_constraints']['min_margin_percentage'])}%), "
-                    f"demand signals, and comparable products ({cat_demand['benchmark_price_range']}), "
-                    f"the recommended price is ₹{int(rec_price):,}. "
-                    f"Review the full price explanation before making a decision. Your price will not change automatically."
-                ),
-                "next_best_action": action_text,
-                "urgency": "HIGH" if is_low_inventory else "MEDIUM"
-            }
-            opportunities.append(opp)
+        opp = {
+            "product_id": prod.id,
+            "product_title": prod.title,
+            "category": prod.category,
+            "demand_pct": cat_demand["demand_pct"],
+            "demand_label": cat_demand["demand_pct_label"],
+            "stock": prod.stock,
+            "buyer_saves": save_count,
+            "buyer_enquiries": enquiry_count,
+            "current_price": prod.price,
+            "recommended_price": rec_price,
+            "minimum_fair_price": pricing_rec["minimum_fair_price"],
+            "benchmark_range": cat_demand["benchmark_price_range"],
+            "headline": headline,
+            "narrative": narrative,
+            "next_best_action": action_text,
+            "urgency": urgency
+        }
+        opportunities.append(opp)
 
-            if not copilot_insight or opp["demand_pct"] > copilot_insight["demand_pct"]:
-                copilot_insight = opp
+        if not copilot_insight:
+            copilot_insight = opp
+        elif opp["urgency"] == "HIGH" and copilot_insight.get("urgency") != "HIGH":
+            copilot_insight = opp
+        elif opp["demand_pct"] > copilot_insight["demand_pct"]:
+            copilot_insight = opp
 
     if not copilot_insight and category_demands:
         top_cat = list(category_demands.values())[0]
