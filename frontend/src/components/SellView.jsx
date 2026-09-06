@@ -1,17 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, TrendingUp, Tag, Sparkles, Package, Wand2, RefreshCw } from 'lucide-react';
+import { 
+  PlusCircle, TrendingUp, Tag, Sparkles, Package, Wand2, RefreshCw,
+  MessageSquare, ShoppingCart, Phone, ExternalLink, Store
+} from 'lucide-react';
 import ProductList from './ProductList';
 import CreateProductModal from './CreateProductModal';
 import ProductDetailModal from './ProductDetailModal';
 import AICatalogStudioModal from './AICatalogStudioModal';
 import CopilotWidget from './CopilotWidget';
 import MarketDemandWidget from './MarketDemandWidget';
-import { getProducts, createProduct, updateProduct, deleteProduct, getMarketDemand, getSellerOpportunities } from '../api';
+import { 
+  getProducts, createProduct, updateProduct, deleteProduct, 
+  getMarketDemand, getSellerOpportunities, getEnquiries, getOrders 
+} from '../api';
 import { useOffline } from '../context/OfflineContext';
 import { getCachedProducts, setCachedProducts, getCachedDemands, setCachedDemands, getCachedCopilotInsight, setCachedCopilotInsight } from '../services/offlineSync';
 
-export default function SellView({ user }) {
+export default function SellView({ user, onOpenAuth }) {
   const [products, setProducts] = useState([]);
+  const [enquiries, setEnquiries] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState('PRODUCTS'); // 'PRODUCTS' | 'ENQUIRIES' | 'ORDERS'
   const [demands, setDemands] = useState([]);
   const [copilotInsight, setCopilotInsight] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,10 +53,12 @@ export default function SellView({ user }) {
         setDemands(getCachedDemands());
         setCopilotInsight(getCachedCopilotInsight());
       } else {
-        const [prodsData, demandData, oppsData] = await Promise.all([
+        const [prodsData, demandData, oppsData, enqsData, ordersData] = await Promise.all([
           getProducts(),
           getMarketDemand(),
-          getSellerOpportunities()
+          getSellerOpportunities(),
+          getEnquiries(),
+          getOrders()
         ]);
 
         // Cache products and intelligence locally for offline resilience
@@ -70,6 +81,8 @@ export default function SellView({ user }) {
         setProducts([...queuedDrafts, ...prodsData]);
         setDemands(demandData);
         setCopilotInsight(oppsData.copilot_insight);
+        setEnquiries(enqsData || []);
+        setOrders(ordersData || []);
       }
     } catch (err) {
       console.error('Error loading seller dashboard, falling back to cache:', err);
@@ -164,8 +177,33 @@ export default function SellView({ user }) {
     setIsCreateOpen(true);
   };
 
-  const totalUnits = products.reduce((sum, p) => sum + (p.stock || 0), 0);
-  const totalCatalogValue = products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0);
+  if (!user) {
+    return (
+      <div className="max-w-xl mx-auto my-14 bg-white rounded-3xl p-8 sm:p-12 border border-slate-200 shadow-xl text-center space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-600 to-orange-500 text-white flex items-center justify-center mx-auto shadow-md">
+          <Store className="w-8 h-8" />
+        </div>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Artisan Studio Login Required</h2>
+          <p className="text-xs sm:text-sm text-slate-500 mt-2 leading-relaxed max-w-md mx-auto">
+            You are currently signed out. Please sign in to access your private artisan studio, manage your craft catalog, review customer orders, and answer wholesale buyer enquiries.
+          </p>
+        </div>
+        <div className="pt-3 flex justify-center">
+          <button
+            onClick={onOpenAuth}
+            className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+          >
+            Sign In to Artisan Studio
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const myProducts = products.filter((p) => !p.seller_id || p.seller_id === user?.id || user?.role === 'ADMIN');
+  const totalUnits = myProducts.reduce((sum, p) => sum + (p.stock || 0), 0);
+  const totalCatalogValue = myProducts.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0);
   const topDemandCategory = demands && demands.length > 0 ? demands[0] : null;
 
   return (
@@ -188,7 +226,7 @@ export default function SellView({ user }) {
             </div>
             <h1 className="text-2xl font-bold tracking-tight">Namaste, {user?.name || 'Artisan'}!</h1>
             <p className="text-amber-100 text-sm mt-1">
-              Craft: <span className="font-semibold text-white">{user?.craft}</span> • Location: {user?.location}
+              Craft: <span className="font-semibold text-white">{user?.craft || 'Handicrafts'}</span> • Location: {user?.location || 'India'}
             </p>
           </div>
           <div className="flex items-center space-x-2.5 flex-wrap gap-y-2">
@@ -222,20 +260,21 @@ export default function SellView({ user }) {
         </div>
       </div>
 
-      {/* AI Business Copilot Recommendation Widget (Step 5 Core Brain) */}
+      {/* AI Business Copilot Recommendation Widget */}
       <CopilotWidget
         copilotInsight={copilotInsight}
         onActionTaken={handleCopilotAction}
+        onOpenEnquiries={() => setActiveTab('ENQUIRIES')}
       />
 
       {/* Live Calculated Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Live Catalog</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">My Crafts</span>
             <Package className="w-5 h-5 text-amber-600" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{products.length} Products</p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{myProducts.length} Products</p>
           <p className="text-xs text-slate-500 mt-1">{totalUnits} units total stock</p>
         </div>
 
@@ -271,24 +310,220 @@ export default function SellView({ user }) {
         </div>
       </div>
 
-      {/* Regional Craft Market Demand (Calculated from events) */}
+      {/* Regional Craft Market Demand */}
       <MarketDemandWidget demands={demands} />
 
-      {/* Product List Section */}
-      {loading ? (
-        <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center">
-          <div className="w-6 h-6 border-2 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-          <p className="text-xs text-slate-500">Loading catalog...</p>
+      {/* Studio Navigation Tabs */}
+      <div className="flex items-center space-x-2 border-b border-slate-200 pb-3 flex-wrap gap-y-2">
+        <button
+          onClick={() => setActiveTab('PRODUCTS')}
+          className={`inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'PRODUCTS'
+              ? 'bg-amber-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Package className="w-4 h-4" />
+          <span>My Crafts ({myProducts.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('ENQUIRIES')}
+          className={`inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
+            activeTab === 'ENQUIRIES'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4" />
+          <span>Buyer Enquiries ({enquiries.length})</span>
+          {enquiries.length > 0 && (
+            <span className="bg-amber-500 text-white text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ml-1">
+              {enquiries.length} New
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('ORDERS')}
+          className={`inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'ORDERS'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <ShoppingCart className="w-4 h-4" />
+          <span>Customer Orders ({orders.length})</span>
+          {orders.length > 0 && (
+            <span className="bg-emerald-500 text-white text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ml-1">
+              {orders.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Tab 1: Products List */}
+      {activeTab === 'PRODUCTS' && (
+        loading ? (
+          <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center">
+            <div className="w-6 h-6 border-2 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <p className="text-xs text-slate-500">Loading catalog...</p>
+          </div>
+        ) : (
+          <ProductList
+            products={myProducts}
+            currentUser={user}
+            onSelectProduct={handleSelectProduct}
+            onEditProduct={handleSelectProduct}
+            onDeleteProduct={handleDeleteProduct}
+            onAddProduct={() => setIsAIOpen(true)}
+          />
+        )
+      )}
+
+      {/* Tab 2: Buyer Enquiries List */}
+      {activeTab === 'ENQUIRIES' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Direct Buyer Wholesale Enquiries</h3>
+              <p className="text-xs text-slate-500">Inquiries and custom bulk requests received directly from buyers</p>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+              {enquiries.length} {enquiries.length === 1 ? 'Enquiry' : 'Enquiries'}
+            </span>
+          </div>
+
+          {enquiries.length === 0 ? (
+            <div className="p-12 text-center">
+              <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <h4 className="text-sm font-semibold text-slate-700">No buyer enquiries yet</h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                When buyers or retail partners request bulk crafts or custom work, their contact leads will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {enquiries.map((enq) => (
+                <div key={enq.id} className="p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start space-x-3.5">
+                    {enq.product_image ? (
+                      <img src={enq.product_image} alt={enq.product_title || 'Craft'} className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs" />
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 text-amber-700 font-bold text-xs">
+                        <Package className="w-6 h-6" />
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center space-x-2 flex-wrap">
+                        <h4 className="font-bold text-slate-900 text-sm">{enq.buyer_name}</h4>
+                        <span className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full text-[10px] border border-amber-300">
+                          Bulk Request: {enq.quantity} unit(s)
+                        </span>
+                      </div>
+                      <p className="text-xs font-medium text-slate-600 mt-0.5">
+                        Craft: <span className="font-semibold text-slate-800">{enq.product_title || `Product #${enq.product_id}`}</span>
+                      </p>
+                      {enq.message && (
+                        <p className="text-xs text-slate-700 mt-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 italic max-w-lg">
+                          "{enq.message}"
+                        </p>
+                      )}
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Received: {new Date(enq.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {enq.buyer_phone && (
+                    <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
+                      <a
+                        href={`tel:${enq.buyer_phone}`}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold transition-colors"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>Call {enq.buyer_phone}</span>
+                      </a>
+                      <a
+                        href={`https://wa.me/${enq.buyer_phone.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      ) : (
-        <ProductList
-          products={products}
-          currentUser={user}
-          onSelectProduct={handleSelectProduct}
-          onEditProduct={handleSelectProduct}
-          onDeleteProduct={handleDeleteProduct}
-          onAddProduct={() => setIsAIOpen(true)}
-        />
+      )}
+
+      {/* Tab 3: Customer Orders List */}
+      {activeTab === 'ORDERS' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Direct Customer Orders</h3>
+              <p className="text-xs text-slate-500">Confirmed orders placed by marketplace customers</p>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              {orders.length} {orders.length === 1 ? 'Order' : 'Orders'}
+            </span>
+          </div>
+
+          {orders.length === 0 ? (
+            <div className="p-12 text-center">
+              <ShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <h4 className="text-sm font-semibold text-slate-700">No customer orders yet</h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                Orders placed by buyers will appear here with delivery addresses and order totals.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {orders.map((ord) => (
+                <div key={ord.id} className="p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start space-x-3.5">
+                    {ord.product_image ? (
+                      <img src={ord.product_image} alt={ord.product_title || 'Craft'} className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs" />
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0 text-emerald-700 font-bold text-xs">
+                        <Package className="w-6 h-6" />
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center space-x-2 flex-wrap">
+                        <span className="font-bold text-slate-900 text-sm">Order #{ord.id}</span>
+                        <span className="bg-emerald-100 text-emerald-900 font-bold px-2 py-0.5 rounded-full text-[10px] border border-emerald-300">
+                          {ord.status}
+                        </span>
+                        <span className="text-xs font-bold text-slate-900">
+                          ₹{ord.total_price?.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <p className="text-xs font-medium text-slate-700 mt-0.5">
+                        Craft: <span className="font-semibold text-slate-900">{ord.product_title || `Product #${ord.product_id}`}</span> (Qty: {ord.quantity})
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Buyer: <strong className="text-slate-700">{ord.buyer_name}</strong> {ord.buyer_phone ? `(${ord.buyer_phone})` : ''}
+                      </p>
+                      <p className="text-xs text-slate-600 mt-1">
+                        Delivery Address: <span className="italic">{ord.delivery_address}</span>
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Ordered: {new Date(ord.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* AI Voice Catalog Studio Modal */}

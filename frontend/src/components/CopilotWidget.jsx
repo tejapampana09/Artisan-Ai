@@ -1,7 +1,7 @@
 import React from 'react';
 import { Bot, TrendingUp, Package, MessageSquare, ArrowUpRight, Sparkles, Check } from 'lucide-react';
 
-export default function CopilotWidget({ copilotInsight, onActionTaken }) {
+export default function CopilotWidget({ copilotInsight, onActionTaken, onOpenEnquiries }) {
   if (!copilotInsight) return null;
 
   return (
@@ -59,7 +59,11 @@ export default function CopilotWidget({ copilotInsight, onActionTaken }) {
             </div>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+          <div 
+            onClick={() => onOpenEnquiries && onOpenEnquiries()}
+            className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 cursor-pointer transition-colors"
+            title="Click to view buyer enquiries"
+          >
             <span className="text-[11px] text-slate-400 block">Buyer Enquiries</span>
             <div className="flex items-center space-x-1 mt-1">
               <MessageSquare className="w-4 h-4 text-indigo-400" />

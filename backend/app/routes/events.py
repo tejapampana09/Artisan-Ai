@@ -124,7 +124,23 @@ def list_enquiries(
         query = query.filter(
             (Enquiry.user_id == current_user.id) | (Enquiry.product_id.in_(seller_product_ids))
         )
-    return query.order_by(Enquiry.id.desc()).all()
+    enquiries = query.order_by(Enquiry.id.desc()).all()
+    res = []
+    for e in enquiries:
+        prod = e.product
+        res.append(EnquiryResponse(
+            id=e.id,
+            product_id=e.product_id,
+            product_title=prod.title if prod else f"Product #{e.product_id}",
+            product_image=prod.image_url if prod else None,
+            user_id=e.user_id,
+            buyer_name=e.buyer_name,
+            buyer_phone=e.buyer_phone,
+            quantity=e.quantity,
+            message=e.message,
+            created_at=e.created_at
+        ))
+    return res
 
 @router.post("/marketplace/order", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
 def place_order(
@@ -212,7 +228,26 @@ def list_orders(
         query = query.filter(
             (Order.user_id == current_user.id) | (Order.product_id.in_(seller_product_ids))
         )
-    return query.order_by(Order.id.desc()).all()
+    orders = query.order_by(Order.id.desc()).all()
+    res = []
+    for o in orders:
+        prod = o.product
+        res.append(OrderResponse(
+            id=o.id,
+            product_id=o.product_id,
+            product_title=prod.title if prod else f"Product #{o.product_id}",
+            product_image=prod.image_url if prod else None,
+            user_id=o.user_id,
+            buyer_name=o.buyer_name,
+            buyer_phone=o.buyer_phone,
+            quantity=o.quantity,
+            unit_price=float(o.unit_price),
+            total_price=float(o.total_price),
+            delivery_address=o.delivery_address,
+            status=o.status,
+            created_at=o.created_at
+        ))
+    return res
 
 @router.get("/marketplace/trending", response_model=List[ProductResponse])
 def get_trending_products(limit: int = Query(8, le=20), db: Session = Depends(get_db)):

@@ -98,7 +98,7 @@ function AppContent() {
         ) : (
           <div>
             {activeMode === 'SELL' ? (
-              <SellView user={user} key={`sell_${refreshTrigger}`} />
+              <SellView user={user} onOpenAuth={() => setIsAuthOpen(true)} key={`sell_${refreshTrigger}`} />
             ) : (
               <BuyView user={user} key={`buy_${refreshTrigger}`} />
             )}
@@ -115,6 +115,8 @@ function AppContent() {
           setUser(newUser);
           if (newUser?.active_mode) {
             setActiveMode(newUser.active_mode);
+          } else if (!newUser) {
+            setActiveMode('BUY');
           }
           handleRefreshAll();
         }}

@@ -90,7 +90,7 @@ export default function ProductList({ products, onSelectProduct, onEditProduct, 
               >
                 <Eye className="w-4 h-4" />
               </button>
-              {(!p.seller_id || !currentUser || p.seller_id === currentUser?.id) && (
+              {Boolean(currentUser && (currentUser.role === 'ADMIN' || !p.seller_id || p.seller_id === currentUser?.id)) && (
                 <>
                   <button
                     onClick={() => onEditProduct(p)}

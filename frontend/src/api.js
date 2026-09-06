@@ -343,6 +343,34 @@ export async function getTrendingProducts() {
   }
 }
 
+export async function getEnquiries(params = {}) {
+  try {
+    const query = new URLSearchParams(params).toString();
+    const url = query ? `${API_BASE}/marketplace/enquiries?${query}` : `${API_BASE}/marketplace/enquiries`;
+    const res = await fetch(url, {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching enquiries:', err);
+    return [];
+  }
+}
+
+export async function getOrders() {
+  try {
+    const res = await fetch(`${API_BASE}/marketplace/orders`, {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching orders:', err);
+    return [];
+  }
+}
+
 // Step 5: Market Intelligence APIs
 export async function getMarketDemand() {
   try {
