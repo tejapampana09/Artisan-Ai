@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { 
   PlusCircle, TrendingUp, Tag, Sparkles, Package, Wand2, RefreshCw,
   MessageSquare, ShoppingCart, Phone, ExternalLink, Store, ShieldCheck,
