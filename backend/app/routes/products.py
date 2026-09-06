@@ -7,6 +7,7 @@ from backend.app.models import Product, User
 from backend.app.schemas import ProductCreate, ProductUpdate, ProductResponse
 from backend.app.services.auth import get_current_user
 from backend.app.seed import seed_sample_products, SAMPLE_PRODUCTS
+from backend.app.config import DEMO_MODE
 
 router = APIRouter(prefix="/api/products", tags=["Products"])
 
@@ -16,7 +17,11 @@ def create_product(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    seller_id = product_in.seller_id or current_user.id
+    # Prevent seller spoofing: non-admin users cannot assign products to other sellers
+    if current_user.role == "ADMIN" and product_in.seller_id:
+        seller_id = product_in.seller_id
+    else:
+        seller_id = current_user.id
 
     product_data = product_in.model_dump()
     product_data["seller_id"] = seller_id
@@ -34,8 +39,8 @@ def list_products(
     seller_id: Optional[int] = Query(None),
     db: Session = Depends(get_db)
 ):
-    # Ensure baseline sample products exist if catalog count is lower than sample set
-    if db.query(Product).count() < len(SAMPLE_PRODUCTS):
+    # Ensure baseline sample products exist only in demo mode
+    if DEMO_MODE and db.query(Product).count() < len(SAMPLE_PRODUCTS):
         seed_sample_products(db, seller_id or 1)
 
     query = db.query(Product)

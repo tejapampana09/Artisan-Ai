@@ -48,11 +48,11 @@ class ModeUpdateRequest(BaseModel):
 
 # Product Schemas
 class ProductBase(BaseModel):
-    title: str
-    description: Optional[str] = None
-    craft_story: Optional[str] = None
-    category: str
-    materials: Optional[str] = None
+    title: str = Field(..., min_length=2, max_length=200)
+    description: Optional[str] = Field(None, max_length=3000)
+    craft_story: Optional[str] = Field(None, max_length=3000)
+    category: str = Field(..., min_length=2, max_length=100)
+    materials: Optional[str] = Field(None, max_length=500)
     price: float = Field(ge=0.0)
     stock: int = Field(default=1, ge=0)
     image_url: Optional[str] = None
@@ -68,11 +68,11 @@ class ProductCreate(ProductBase):
     pass
 
 class ProductUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    craft_story: Optional[str] = None
-    category: Optional[str] = None
-    materials: Optional[str] = None
+    title: Optional[str] = Field(None, min_length=2, max_length=200)
+    description: Optional[str] = Field(None, max_length=3000)
+    craft_story: Optional[str] = Field(None, max_length=3000)
+    category: Optional[str] = Field(None, min_length=2, max_length=100)
+    materials: Optional[str] = Field(None, max_length=500)
     price: Optional[float] = Field(default=None, ge=0.0)
     stock: Optional[int] = Field(default=None, ge=0)
     image_url: Optional[str] = None
@@ -95,8 +95,8 @@ class EventCreate(BaseModel):
     event_type: str = Field(..., pattern="^(SEARCH|VIEW|SAVE|ENQUIRY|ORDER)$")
     product_id: Optional[int] = None
     category: Optional[str] = None
-    query: Optional[str] = None
-    metadata_info: Optional[str] = None
+    query: Optional[str] = Field(None, max_length=200)
+    metadata_info: Optional[str] = Field(None, max_length=1000)
 
 class EventResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -111,10 +111,10 @@ class EventResponse(BaseModel):
 
 class EnquiryCreate(BaseModel):
     product_id: int
-    buyer_name: str
-    buyer_phone: str
+    buyer_name: Optional[str] = Field(default="", max_length=100)
+    buyer_phone: Optional[str] = Field(default="", max_length=25)
     quantity: int = Field(default=1, ge=1)
-    message: Optional[str] = None
+    message: Optional[str] = Field(None, max_length=1000)
 
 class EnquiryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -129,10 +129,10 @@ class EnquiryResponse(BaseModel):
 
 class OrderCreate(BaseModel):
     product_id: int
-    buyer_name: str
-    buyer_phone: Optional[str] = None
+    buyer_name: Optional[str] = Field(default="", max_length=100)
+    buyer_phone: Optional[str] = Field(default=None, max_length=25)
     quantity: int = Field(default=1, ge=1)
-    delivery_address: str
+    delivery_address: str = Field(..., min_length=3, max_length=500)
 
 class OrderResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

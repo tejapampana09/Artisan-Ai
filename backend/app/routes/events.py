@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, update
 
 from backend.app.database import get_db
 from backend.app.models import Event, Product, User, Order, Enquiry
@@ -10,11 +10,23 @@ from backend.app.schemas import (
     EventCreate, EventResponse, EnquiryCreate, EnquiryResponse, 
     OrderCreate, OrderResponse, ProductResponse
 )
+from backend.app.services.auth import get_current_user
 
 router = APIRouter(prefix="/api", tags=["Events & Marketplace"])
 
 @router.post("/events", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
-def record_event(event_in: EventCreate, db: Session = Depends(get_db)):
+def record_event(
+    event_in: EventCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Security: Disallow client-spoofed ORDER / ENQUIRY events via telemetry
+    if event_in.event_type.upper() in ("ORDER", "ENQUIRY"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Direct submission of '{event_in.event_type}' via telemetry is not permitted. Use the official /api/marketplace/order or /api/marketplace/enquire endpoints."
+        )
+
     category = event_in.category
 
     # If product_id given and no category, extract from product
@@ -23,16 +35,13 @@ def record_event(event_in: EventCreate, db: Session = Depends(get_db)):
         if prod:
             category = prod.category
 
-    user = db.query(User).first()
-    user_id = user.id if user else None
-
     evt = Event(
         event_type=event_in.event_type,
         product_id=event_in.product_id,
         category=category,
         query=event_in.query,
         metadata_info=event_in.metadata_info,
-        user_id=user_id,
+        user_id=current_user.id if current_user else None,
         timestamp=datetime.now(timezone.utc)
     )
     db.add(evt)
@@ -58,16 +67,24 @@ def get_events(
     return query.order_by(Event.id.desc()).limit(limit).all()
 
 @router.post("/marketplace/enquire", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
-def submit_enquiry(enquiry: EnquiryCreate, db: Session = Depends(get_db)):
+def submit_enquiry(
+    enquiry: EnquiryCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     product = db.query(Product).filter(Product.id == enquiry.product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
+    buyer_name = enquiry.buyer_name.strip() if enquiry.buyer_name and enquiry.buyer_name.strip() else current_user.name
+    buyer_phone = enquiry.buyer_phone.strip() if enquiry.buyer_phone and enquiry.buyer_phone.strip() else (current_user.phone or "N/A")
+
     # 1. Store structured enquiry in dedicated secure relation
     enquiry_record = Enquiry(
         product_id=product.id,
-        buyer_name=enquiry.buyer_name.strip(),
-        buyer_phone=enquiry.buyer_phone.strip(),
+        user_id=current_user.id,
+        buyer_name=buyer_name,
+        buyer_phone=buyer_phone,
         quantity=enquiry.quantity,
         message=enquiry.message.strip() if enquiry.message else None,
         created_at=datetime.now(timezone.utc)
@@ -81,6 +98,7 @@ def submit_enquiry(enquiry: EnquiryCreate, db: Session = Depends(get_db)):
         event_type="ENQUIRY",
         product_id=product.id,
         category=product.category,
+        user_id=current_user.id,
         metadata_info=sanitized_meta,
         timestamp=datetime.now(timezone.utc)
     )
@@ -92,41 +110,58 @@ def submit_enquiry(enquiry: EnquiryCreate, db: Session = Depends(get_db)):
 @router.get("/marketplace/enquiries", response_model=List[EnquiryResponse])
 def list_enquiries(
     product_id: Optional[int] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     query = db.query(Enquiry)
     if product_id:
         query = query.filter(Enquiry.product_id == product_id)
+
+    # Privacy isolation: Buyer sees own enquiries; Seller sees enquiries for own products; Admin sees all
+    if current_user.role != "ADMIN":
+        seller_product_ids = db.query(Product.id).filter(Product.seller_id == current_user.id)
+        query = query.filter(
+            (Enquiry.user_id == current_user.id) | (Enquiry.product_id.in_(seller_product_ids))
+        )
     return query.order_by(Enquiry.id.desc()).all()
 
 @router.post("/marketplace/order", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
-def place_order(order: OrderCreate, db: Session = Depends(get_db)):
+def place_order(
+    order: OrderCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     product = db.query(Product).filter(Product.id == order.product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # Strict Stock Integrity & Concurrency Validation
-    if product.stock <= 0:
+    # Atomic Row-Level Conditional Update: Prevents overselling & race conditions
+    stmt = (
+        update(Product)
+        .where(Product.id == order.product_id, Product.stock >= order.quantity)
+        .values(stock=Product.stock - order.quantity)
+    )
+    result = db.execute(stmt)
+    if result.rowcount == 0:
+        db.rollback()
+        prod_check = db.query(Product).filter(Product.id == order.product_id).first()
+        available = prod_check.stock if prod_check else 0
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Product '{product.title}' is currently out of stock."
-        )
-    if product.stock < order.quantity:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Insufficient stock: requested {order.quantity} units, but only {product.stock} available."
+            detail=f"Insufficient stock: requested {order.quantity} units, but only {available} available."
         )
 
-    # Atomic Single Transaction: Validate -> Decrement Stock -> Create Order -> Record Event -> Commit
     try:
-        product.stock -= order.quantity
         total_price = round(product.price * order.quantity, 2)
+        buyer_name = order.buyer_name.strip() if order.buyer_name and order.buyer_name.strip() else current_user.name
+        buyer_phone = order.buyer_phone.strip() if order.buyer_phone and order.buyer_phone.strip() else (current_user.phone or None)
 
-        # 1. Dedicated structured order record
+        # 1. Dedicated structured order record tied to authenticated user
         order_record = Order(
             product_id=product.id,
-            buyer_name=order.buyer_name.strip(),
-            buyer_phone=order.buyer_phone.strip() if order.buyer_phone else None,
+            user_id=current_user.id,
+            buyer_name=buyer_name,
+            buyer_phone=buyer_phone,
             quantity=order.quantity,
             unit_price=product.price,
             total_price=total_price,
@@ -143,13 +178,13 @@ def place_order(order: OrderCreate, db: Session = Depends(get_db)):
             event_type="ORDER",
             product_id=product.id,
             category=product.category,
+            user_id=current_user.id,
             metadata_info=sanitized_meta,
             timestamp=datetime.now(timezone.utc)
         )
         db.add(evt)
         db.commit()
         db.refresh(evt)
-        db.refresh(product)
         return evt
     except Exception as e:
         db.rollback()
@@ -161,11 +196,19 @@ def place_order(order: OrderCreate, db: Session = Depends(get_db)):
 @router.get("/marketplace/orders", response_model=List[OrderResponse])
 def list_orders(
     product_id: Optional[int] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     query = db.query(Order)
     if product_id:
         query = query.filter(Order.product_id == product_id)
+
+    # Privacy isolation: Buyer sees own orders; Seller sees orders for own products; Admin sees all
+    if current_user.role != "ADMIN":
+        seller_product_ids = db.query(Product.id).filter(Product.seller_id == current_user.id)
+        query = query.filter(
+            (Order.user_id == current_user.id) | (Order.product_id.in_(seller_product_ids))
+        )
     return query.order_by(Order.id.desc()).all()
 
 @router.get("/marketplace/trending", response_model=List[ProductResponse])

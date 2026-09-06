@@ -285,3 +285,107 @@ def test_production_security_and_strict_demo_isolation(monkeypatch):
             importlib.reload(backend.app.config)
     finally:
         db.close()
+
+def test_seller_spoofing_prevention():
+    uid = uuid.uuid4().hex[:6]
+    # Register regular artisan user
+    reg = client.post("/api/auth/register", json={
+        "name": "Honest Weaver",
+        "email": f"weaver.{uid}@artisanai.in",
+        "phone": f"+91 95555 {uid[:5]}",
+        "password": "Password123!",
+        "role": "ARTISAN",
+        "craft": "Handloom Weaving"
+    })
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    user_id = reg.json()["user"]["id"]
+
+    # Attempt to spoof seller_id = 999999
+    prod_res = client.post("/api/products", json={
+        "title": f"Spoofed Silk Scarf {uid}",
+        "category": "Pochampally Ikat",
+        "price": 1200.0,
+        "stock": 5,
+        "seller_id": 999999
+    }, headers=headers)
+    assert prod_res.status_code == 201
+    created_prod = prod_res.json()
+    # Server MUST override with authenticated user's id
+    assert created_prod["seller_id"] == user_id
+    assert created_prod["seller_id"] != 999999
+
+def test_order_privacy_and_role_isolation():
+    uid1 = uuid.uuid4().hex[:6]
+    uid2 = uuid.uuid4().hex[:6]
+
+    # Seller 1
+    seller_reg = client.post("/api/auth/register", json={
+        "name": f"Seller One {uid1}",
+        "email": f"seller1.{uid1}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    seller_token = seller_reg.json()["access_token"]
+    seller_headers = {"Authorization": f"Bearer {seller_token}"}
+    seller_id = seller_reg.json()["user"]["id"]
+
+    # Seller 1 creates Product
+    prod = client.post("/api/products", json={
+        "title": f"Private Craft {uid1}",
+        "category": "Dokra",
+        "price": 2000.0,
+        "stock": 10
+    }, headers=seller_headers).json()
+    pid = prod["id"]
+
+    # Buyer A
+    buyer_reg = client.post("/api/auth/register", json={
+        "name": f"Buyer Alpha {uid1}",
+        "email": f"buyer.alpha.{uid1}@artisanai.in",
+        "password": "Password123!",
+        "role": "BUYER"
+    })
+    buyer_token = buyer_reg.json()["access_token"]
+    buyer_headers = {"Authorization": f"Bearer {buyer_token}"}
+
+    # Buyer A orders Product
+    order_res = client.post("/api/marketplace/order", json={
+        "product_id": pid,
+        "buyer_name": "Buyer Alpha",
+        "quantity": 1,
+        "delivery_address": "Alpha Secret Road, Delhi"
+    }, headers=buyer_headers)
+    assert order_res.status_code == 201
+
+    # Buyer B (Another buyer)
+    buyer2_reg = client.post("/api/auth/register", json={
+        "name": f"Buyer Beta {uid2}",
+        "email": f"buyer.beta.{uid2}@artisanai.in",
+        "password": "Password123!",
+        "role": "BUYER"
+    })
+    buyer2_token = buyer2_reg.json()["access_token"]
+    buyer2_headers = {"Authorization": f"Bearer {buyer2_token}"}
+
+    # Buyer B queries orders -> MUST NOT see Buyer A's order!
+    buyer2_orders = client.get("/api/marketplace/orders", headers=buyer2_headers).json()
+    assert all(o["delivery_address"] != "Alpha Secret Road, Delhi" for o in buyer2_orders)
+
+    # Buyer A queries orders -> Can see their own order
+    buyer1_orders = client.get("/api/marketplace/orders", headers=buyer_headers).json()
+    assert any(o["delivery_address"] == "Alpha Secret Road, Delhi" for o in buyer1_orders)
+
+    # Seller 1 queries orders -> Can see orders for their craft
+    seller_orders = client.get("/api/marketplace/orders", headers=seller_headers).json()
+    assert any(o["delivery_address"] == "Alpha Secret Road, Delhi" for o in seller_orders)
+
+def test_telemetry_order_forgery_rejection():
+    # Attempting to forge an ORDER event via generic /api/events must be rejected with 400
+    res = client.post("/api/events", json={
+        "event_type": "ORDER",
+        "product_id": 1,
+        "category": "Kalamkari"
+    })
+    assert res.status_code == 400
+    assert "Direct submission" in res.json()["detail"]

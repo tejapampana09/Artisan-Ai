@@ -8,7 +8,7 @@ from sqlalchemy import text
 from backend.app.database import engine, Base, SessionLocal, get_db
 from backend.app.models import User
 from backend.app.schemas import HealthResponse, ReadyResponse, UserResponse, ModeUpdateRequest
-from backend.app.config import get_cors_origins
+from backend.app.config import get_cors_origins, DEMO_MODE
 from backend.app.routes.products import router as products_router
 from backend.app.routes.ai_catalog import router as ai_router
 from backend.app.routes.events import router as events_router
@@ -46,12 +46,13 @@ def ensure_default_user(db: Session) -> User:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db = SessionLocal()
-    try:
-        user = ensure_default_user(db)
-        seed_sample_products(db, user.id)
-    finally:
-        db.close()
+    if DEMO_MODE:
+        db = SessionLocal()
+        try:
+            user = ensure_default_user(db)
+            seed_sample_products(db, user.id)
+        finally:
+            db.close()
     yield
 
 app = FastAPI(
@@ -92,8 +93,9 @@ def readiness_check(db: Session = Depends(get_db)):
     try:
         # Check DB connection
         db.execute(text("SELECT 1"))
-        user = ensure_default_user(db)
-        seed_sample_products(db, user.id)
+        if DEMO_MODE:
+            user = ensure_default_user(db)
+            seed_sample_products(db, user.id)
         user_count = db.query(User).count()
         return ReadyResponse(
             status="ready",
