@@ -7,8 +7,8 @@ export function getApiBase() {
     if ((hostname === 'localhost' || hostname === '127.0.0.1') && port === '5173') {
       return '/api';
     }
-    // Live public HTTPS backend tunnel for AWS S3 and CloudFront deployment
-    return 'https://shaggy-cougars-wave.loca.lt/api';
+    // Live Cloudflare HTTPS backend tunnel for AWS CloudFront & S3 deployment
+    return 'https://particularly-bald-delhi-allowed.trycloudflare.com/api';
   }
   return '/api';
 }
