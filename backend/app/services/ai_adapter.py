@@ -1,114 +1,171 @@
-import re
+"""
+Multimodal AI Catalog Adapter.
+
+Primary Architectural Rules:
+1. Live Gemini AI: Used when GEMINI_API_KEY is present and service succeeds.
+   Factual product claims and AI suggestions are treated as editable drafts requiring
+   artisan verification before publishing. Factual claims must originate from the
+   artisan or be clearly marked as AI-generated drafts.
+2. Production Fallback: In production (or when DEMO_MODE is False), failure of the AI provider
+   strictly returns a transparent MANUAL_DRAFT using ONLY information provided by the artisan.
+   Never fabricates heritage claims, geographic GI tags, raw materials, or fake selling prices.
+3. Demo Isolation: Deterministic sample craft profiles are isolated in backend.app.demo.craft_profiles
+   and are ONLY reachable when DEMO_MODE is explicitly True and ENVIRONMENT != 'production'.
+"""
+
+import os
 import json
 import httpx
-from typing import Dict, Any, Optional
-from backend.app.config import GEMINI_API_KEY, AI_REQUEST_TIMEOUT_SECONDS, ENVIRONMENT, DEMO_MODE
+from typing import Dict, Any, Optional, Tuple
+from decimal import Decimal, ROUND_HALF_UP
 
-# Deterministic heritage craft knowledge base (used when offline or as robust fallback)
-HERITAGE_CRAFT_KNOWLEDGE_BASE = {
-    "kalamkari": {
-        "title": "Heritage Hand-drawn Srikalahasti Kalamkari Silk Dupatta",
-        "category": "Kalamkari",
-        "materials": "Pure Mulberry Silk, Natural Indigo, Madder Root, Bamboo Pen",
-        "description": "Exquisite hand-painted Kalamkari textile art featuring mythological motifs and flowing floral vines, cured in organic milk and river water.",
-        "craft_story": "Rooted in Andhra Pradesh's temple traditions, each motif is drawn freehand with a sharp bamboo kalam. The cloth undergoes up to 17 intricate steps of natural dyeing, washing, and sun-curing.",
-        "tags": ["Kalamkari", "Handpainted", "Natural Dyes", "Mulberry Silk", "GI Craft", "Sustainable"],
-        "suggested_price": 1350.0,
-        "estimated_cost": {"material": 480.0, "labour": 460.0, "packaging": 60.0},
-    },
-    "wooden": {
-        "title": "Traditional Channapatna Lacquer Wood Stacking Toy Set",
-        "category": "Wooden Toys",
-        "materials": "Wrightia Tinctoria (Ivory Wood), Natural Lac, Turmeric & Spinach Extracts",
-        "description": "Eco-friendly, completely non-toxic traditional Indian wooden stacking toy hand-turned on traditional lathes for safe toddler play.",
-        "craft_story": "Originating from Karnataka's Toy Town of Channapatna, this GI-tagged craft utilizes ivory wood that is turned at high speed while colored vegetable lac is friction-applied.",
-        "tags": ["Channapatna", "Wooden Toys", "Non-Toxic", "GI Tagged", "Heritage Craft"],
-        "suggested_price": 890.0,
-        "estimated_cost": {"material": 260.0, "labour": 330.0, "packaging": 50.0},
-    },
-    "pottery": {
-        "title": "Jaipur Hand-glazed Cobalt Blue Pottery Decorative Bowl",
-        "category": "Blue Pottery",
-        "materials": "Ground Quartz, Multani Mitti, Glass, Natural Cobalt Mineral Glaze",
-        "description": "Signature Egyptian and Persian inspired low-fire ceramic crafted without clay, adorned with royal blue arabesque flourishes.",
-        "craft_story": "Practiced for over two centuries in Jaipur, Rajasthan, this delicate craft requires hand-grinding quartz crystals and natural copper/cobalt oxides before single kiln-firing.",
-        "tags": ["Blue Pottery", "Jaipur Art", "Cobalt Glaze", "Handmade Ceramics", "Heritage"],
-        "suggested_price": 1450.0,
-        "estimated_cost": {"material": 450.0, "labour": 550.0, "packaging": 100.0},
-    },
-    "bidri": {
-        "title": "Imperial Bidriware Pure Silver Wire Inlay Decorative Plate",
-        "category": "Bidriware",
-        "materials": "Zinc-Copper Alloy Base, 99.9% Pure Silver Wire, Fort Mud Oxidation",
-        "description": "Striking velvet-black metal craft with lustrous silver wire hand-hammered into engraved floral damascene patterns.",
-        "craft_story": "Developed in Bidar during the Bahmani Sultanate, the blackened finish is magically created using a rare mineral-rich soil paste collected exclusively from the Bidar Fort grounds.",
-        "tags": ["Bidriware", "Silver Inlay", "GI Tagged", "Imperial Metalcraft", "Bidar"],
-        "suggested_price": 2250.0,
-        "estimated_cost": {"material": 750.0, "labour": 850.0, "packaging": 120.0},
-    },
-    "default": {
-        "title": "Authentic Handcrafted Artisan Heritage Creation",
-        "category": "Handloom",
-        "materials": "Natural Indigenous Fibres & Organic Vegetable Dyes",
-        "description": "Authentic handmade creation produced by generational Indian artisans using sustainable, time-tested traditional techniques.",
-        "craft_story": "Carrying forward indigenous artistic traditions passed down through generations, crafted with patience and deep respect for natural materials.",
-        "tags": ["Handmade", "Indian Heritage", "Artisan Direct", "Sustainable Craft"],
-        "suggested_price": 1150.0,
-        "estimated_cost": {"material": 380.0, "labour": 420.0, "packaging": 50.0},
+from backend.app.config import (
+    GEMINI_API_KEY, 
+    AI_REQUEST_TIMEOUT_SECONDS
+)
+
+def to_decimal(val, default="0.00") -> Decimal:
+    if val is None:
+        return Decimal(default)
+    return Decimal(str(val))
+
+def calculate_pricing_from_costs(
+    mat: Optional[Any] = None,
+    lab: Optional[Any] = None,
+    pkg: Optional[Any] = None
+) -> Tuple[Optional[Decimal], Optional[Decimal], bool, str]:
+    """
+    Computes (min_fair_price, suggested_price, pricing_available, pricing_source)
+    using Decimal arithmetic to prevent precision issues.
+    Enforces a strict 20% minimum fair profit margin over total direct cost basis.
+    Returns (None, None, False, "AWAITING_ARTISAN_INPUT") if no positive costs provided.
+    """
+    has_costs = any(
+        c is not None and Decimal(str(c)) > 0
+        for c in [mat, lab, pkg]
+    )
+    if not has_costs:
+        return None, None, False, "AWAITING_ARTISAN_INPUT"
+
+    m = to_decimal(mat, "0.00")
+    l = to_decimal(lab, "0.00")
+    p = to_decimal(pkg, "0.00")
+    cost_basis = (m + l + p).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    min_fair = (cost_basis * Decimal("1.20")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    suggested = (cost_basis * Decimal("1.40")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return min_fair, suggested, True, "COST_PLUS_MARGIN"
+
+def build_production_manual_draft(
+    voice_description: str,
+    language: str = "en",
+    image_url: Optional[str] = None,
+    category_hint: Optional[str] = None,
+    material_cost: Optional[Any] = None,
+    labour_cost: Optional[Any] = None,
+    packaging_cost: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """
+    Constructs a 100% honest manual draft when AI is unavailable in production.
+    - Zero fabrication of craft stories, GI status, materials, or fake selling prices.
+    - Preserves artisan's exact words.
+    - Derives title honestly from first line (up to 80 chars) or 'Craft Draft (Pending Title)'.
+    - If costs are missing, pricing is left as None (pricing_available=False).
+    """
+    clean_desc = (voice_description or "").strip()
+    clean_image = (image_url or "").strip()
+    clean_cat = (category_hint or "").strip() or None
+
+    first_line = clean_desc.split("\n")[0].strip()
+    if len(first_line) > 3:
+        title = first_line[:80].strip()
+    elif clean_cat:
+        title = f"Handcrafted {clean_cat}"
+    else:
+        title = "Craft Draft (Pending Title)"
+
+    min_fair, suggested, pricing_avail, pricing_src = calculate_pricing_from_costs(
+        material_cost, labour_cost, packaging_cost
+    )
+
+    mat_dec = to_decimal(material_cost) if material_cost is not None else None
+    lab_dec = to_decimal(labour_cost) if labour_cost is not None else None
+    pkg_dec = to_decimal(packaging_cost) if packaging_cost is not None else None
+
+    return {
+        "source": "MANUAL_DRAFT",
+        "is_live_ai": False,
+        "is_demo_data": False,
+        "requires_artisan_verification": True,
+        "title": title,
+        "category": clean_cat or "Handcrafted",
+        "materials": "",
+        "description": clean_desc or "Artisan handcrafted creation.",
+        "craft_story": "",
+        "tags": [clean_cat] if clean_cat else [],
+        "suggested_price": suggested,
+        "min_fair_price": min_fair,
+        "material_cost": mat_dec,
+        "labour_cost": lab_dec,
+        "packaging_cost": pkg_dec,
+        "min_margin_pct": Decimal("0.20"),
+        "pricing_available": pricing_avail,
+        "pricing_source": pricing_src,
+        "image_url": clean_image,
+        "enhanced_image_url": clean_image,
+        "transcription": clean_desc,
+        "language_detected": language,
+        "lifecycle_state": "MANUAL_DRAFT",
+        "notice": "Live AI generation is temporarily unavailable. Your original description has been preserved as an editable manual draft. Please complete and verify details manually."
     }
-}
-
-def detect_craft_profile(voice_text: str, category_hint: Optional[str] = None) -> Dict[str, Any]:
-    text_lower = (voice_text + " " + (category_hint or "")).lower()
-    if any(k in text_lower for k in ["kalamkari", "saree", "dupatta", "painting", "చెక్క", "కలంకారి"]):
-        return HERITAGE_CRAFT_KNOWLEDGE_BASE["kalamkari"]
-    elif any(k in text_lower for k in ["wood", "toy", "horse", "channapatna", "బొమ్మ", "लकड़ी"]):
-        return HERITAGE_CRAFT_KNOWLEDGE_BASE["wooden"]
-    elif any(k in text_lower for k in ["pottery", "blue", "ceramic", "vase", "bowl", "కుండ", "मिट्टी"]):
-        return HERITAGE_CRAFT_KNOWLEDGE_BASE["pottery"]
-    elif any(k in text_lower for k in ["bidri", "silver", "metal", "inlay", "ప్లేట్", "బిద్రి"]):
-        return HERITAGE_CRAFT_KNOWLEDGE_BASE["bidri"]
-    return HERITAGE_CRAFT_KNOWLEDGE_BASE["default"]
-
-def enhance_image_url(image_url: Optional[str]) -> str:
-    # Studio lighting / enhanced presentation indicator
-    if not image_url:
-        return "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80"
-    return image_url
 
 async def generate_catalog_draft(
     voice_description: str,
     language: str = "en",
     image_url: Optional[str] = None,
     category_hint: Optional[str] = None,
-    material_cost: Optional[float] = None,
-    labour_cost: Optional[float] = None,
-    packaging_cost: Optional[float] = None,
+    material_cost: Optional[Any] = None,
+    labour_cost: Optional[Any] = None,
+    packaging_cost: Optional[Any] = None,
+    force_fallback: bool = False
 ) -> Dict[str, Any]:
     """
-    Multimodal AI Catalog Generation:
-    1. If GEMINI_API_KEY is available: calls Gemini Vision/Language API.
-    2. If offline or network error: activates deterministic OFFLINE_CRAFT_ONTOLOGY.
-    Never lets an unavailable network break the artisan's workflow.
+    Generates an AI Catalog Draft with strict provenance and safety boundaries:
+    - LIVE_AI: Live Gemini 2.5 Flash assisted drafting with disclaimer.
+    - MANUAL_DRAFT: Transparent production fallback without fabricated facts or prices.
+    - DEMO_FALLBACK: Isolated deterministic sample data (only in explicit non-prod demo mode).
     """
-    is_live = False
-    source = "OFFLINE_CRAFT_ONTOLOGY"
+    clean_desc = (voice_description or "").strip()
+    clean_image = (image_url or "").strip()
+    clean_category_hint = (category_hint or "").strip() or None
 
-    if GEMINI_API_KEY:
+    has_user_costs = any(
+        c is not None and Decimal(str(c)) > 0 
+        for c in [material_cost, labour_cost, packaging_cost]
+    )
+
+    # -------------------------------------------------------------------------
+    # 1. LIVE GEMINI AI PATHWAY
+    # -------------------------------------------------------------------------
+    if GEMINI_API_KEY and not force_fallback:
         try:
             prompt = f"""
             You are Artisan AI's cataloging assistant for traditional Indian artisans.
-            Analyze this artisan description: "{voice_description}".
-            Language used: {language}. Craft hint: {category_hint or 'Not specified'}.
-            Return JSON with:
+            The artisan provided this description: "{clean_desc}".
+            Language used: {language}. Craft hint: {clean_category_hint or 'Not specified'}.
+            
+            Assist by structuring this into a product draft.
+            IMPORTANT GUIDELINE:
+            Do not invent unverified GI certifications or false claims not implied by the artisan's words.
+            
+            Return a valid JSON object with:
             - title: Catchy, market-ready title (max 10 words)
             - category: One of Kalamkari, Wooden Toys, Blue Pottery, Bidriware, Pochampally Ikat, Terracotta, Handloom, Other
-            - materials: Comma-separated list of authentic materials
+            - materials: Comma-separated list of materials derived from description
             - description: Professional 2-3 sentence product overview
-            - craft_story: Rich cultural narrative about technique and artisan heritage (2-3 sentences)
-            - tags: Array of 5-6 strings
-            - suggested_price: Fair selling price in INR (float)
-            - estimated_cost: object with material, labour, packaging
+            - craft_story: Cultural or artisanal narrative based on the description
+            - tags: Array of 4-6 relevant discovery strings
+            - suggested_price: Fair selling price in INR as a number
+            - estimated_cost: object with keys "material", "labour", "packaging" as numbers
             """
             async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
                 res = await client.post(
@@ -123,70 +180,122 @@ async def generate_catalog_draft(
                     data = res.json()
                     content = data["candidates"][0]["content"]["parts"][0]["text"]
                     parsed = json.loads(content)
-                    # Validate mandatory fields
+
+                    # Validate required core fields from AI
                     if "title" in parsed and "category" in parsed:
-                        parsed["source"] = "LIVE AI"
-                        parsed["image_url"] = image_url or enhance_image_url(image_url)
-                        parsed["enhanced_image_url"] = enhance_image_url(image_url)
-                        parsed["transcription"] = voice_description
-                        parsed["language_detected"] = language
-                        parsed["lifecycle_state"] = "AI_GENERATED"
-                        
-                        # Populate cost basis if present
-                        est_cost = parsed.get("estimated_cost", {})
-                        mat = float(material_cost if material_cost is not None else est_cost.get("material", 400.0))
-                        lab = float(labour_cost if labour_cost is not None else est_cost.get("labour", 450.0))
-                        pkg = float(packaging_cost if packaging_cost is not None else est_cost.get("packaging", 50.0))
-                        min_fair = (mat + lab + pkg) * 1.20
+                        # Prioritize user costs over AI estimated costs
+                        if has_user_costs:
+                            min_fair, suggested, pricing_available, pricing_source = calculate_pricing_from_costs(
+                                material_cost, labour_cost, packaging_cost
+                            )
+                            mat = to_decimal(material_cost, "0.00")
+                            lab = to_decimal(labour_cost, "0.00")
+                            pkg = to_decimal(packaging_cost, "0.00")
+                        else:
+                            est_cost = parsed.get("estimated_cost", {})
+                            mat = to_decimal(est_cost.get("material"), "0.00")
+                            lab = to_decimal(est_cost.get("labour"), "0.00")
+                            pkg = to_decimal(est_cost.get("packaging"), "0.00")
+                            cost_basis = (mat + lab + pkg).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                            min_fair = (cost_basis * Decimal("1.20")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                            raw_sugg = to_decimal(parsed.get("suggested_price"), str(min_fair))
+                            suggested = max(min_fair, raw_sugg).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                            pricing_source = "AI_ESTIMATE"
+                            pricing_available = True
 
-                        parsed["material_cost"] = mat
-                        parsed["labour_cost"] = lab
-                        parsed["packaging_cost"] = pkg
-                        parsed["min_margin_pct"] = 0.20
-                        parsed["min_fair_price"] = round(min_fair, 2)
-                        if "suggested_price" not in parsed or float(parsed["suggested_price"]) < min_fair:
-                            parsed["suggested_price"] = round(min_fair * 1.15, 2)
-
-                        return parsed
+                        return {
+                            "source": "LIVE_AI",
+                            "is_live_ai": True,
+                            "is_demo_data": False,
+                            "requires_artisan_verification": True,
+                            "title": parsed.get("title", clean_desc[:80]),
+                            "category": parsed.get("category", clean_category_hint or "Handloom"),
+                            "materials": parsed.get("materials", "Craft materials as stated by artisan"),
+                            "description": parsed.get("description", clean_desc),
+                            "craft_story": parsed.get("craft_story", clean_desc),
+                            "tags": parsed.get("tags", [clean_category_hint or "Handmade"]),
+                            "suggested_price": suggested,
+                            "min_fair_price": min_fair,
+                            "material_cost": mat,
+                            "labour_cost": lab,
+                            "packaging_cost": pkg,
+                            "min_margin_pct": Decimal("0.20"),
+                            "pricing_available": pricing_available,
+                            "pricing_source": pricing_source,
+                            "image_url": clean_image,
+                            "enhanced_image_url": clean_image,
+                            "transcription": clean_desc,
+                            "language_detected": language,
+                            "lifecycle_state": "AI_GENERATED",
+                            "notice": "AI-generated draft. Factual heritage, materials, and pricing claims must be verified by the artisan before publishing."
+                        }
         except Exception as e:
-            print(f"[AI Adapter] Live Gemini call unavailable or timed out ({e}). Engaging fallback handler.")
+            print(f"[AI Adapter] Live Gemini call unavailable or timed out ({e}).")
 
-    # Determine execution flow based on environment
-    is_production = ENVIRONMENT == "production"
+    # -------------------------------------------------------------------------
+    # 2. DEMO / DEVELOPMENT FALLBACK (Strictly isolated to non-production demo)
+    # -------------------------------------------------------------------------
+    env = os.getenv("ENVIRONMENT", "development").lower()
+    raw_demo = os.getenv("DEMO_MODE")
+    is_production = env == "production"
+    demo_enabled = (raw_demo.lower() in ("true", "1", "yes")) if raw_demo is not None else (not is_production)
 
-    profile = detect_craft_profile(voice_description, category_hint)
-    
-    # Cost structure calculation
-    mat = material_cost if material_cost is not None and material_cost > 0 else (profile["estimated_cost"]["material"] if not is_production else 350.0)
-    lab = labour_cost if labour_cost is not None and labour_cost > 0 else (profile["estimated_cost"]["labour"] if not is_production else 400.0)
-    pkg = packaging_cost if packaging_cost is not None and packaging_cost > 0 else (profile["estimated_cost"]["packaging"] if not is_production else 50.0)
-    
-    base_cost = mat + lab + pkg
-    min_fair = round(base_cost * 1.20)
-    suggested = max(min_fair, profile["suggested_price"])
+    if demo_enabled and not is_production:
+        from backend.app.demo.craft_profiles import detect_demo_craft_profile
+        profile = detect_demo_craft_profile(clean_desc, clean_category_hint)
+        if profile:
+            if has_user_costs:
+                min_fair, suggested, _, pricing_source = calculate_pricing_from_costs(
+                    material_cost, labour_cost, packaging_cost
+                )
+                mat = to_decimal(material_cost, "0.00")
+                lab = to_decimal(labour_cost, "0.00")
+                pkg = to_decimal(packaging_cost, "0.00")
+            else:
+                mat = profile["estimated_cost"]["material"]
+                lab = profile["estimated_cost"]["labour"]
+                pkg = profile["estimated_cost"]["packaging"]
+                cost_basis = (mat + lab + pkg).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                min_fair = (cost_basis * Decimal("1.20")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                suggested = max(min_fair, profile["suggested_price"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                pricing_source = "DEMO_PROFILE_ESTIMATE"
 
-    # When live Gemini AI is unavailable or offline:
-    # Construct an authentic draft directly from artisan's real voice/text input without fake images or canned stories.
-    raw_title = voice_description.strip().split("\n")[0][:60].strip()
-    title = raw_title if len(raw_title) > 3 else f"Handcrafted {category_hint or profile['category']}"
-    return {
-        "source": "MANUAL_DRAFT",
-        "title": title,
-        "category": category_hint or profile["category"],
-        "materials": "To be specified by artisan during review",
-        "description": voice_description.strip() or "Artisan handcrafted creation.",
-        "craft_story": voice_description.strip() or "Artisan handcrafted creation.",
-        "tags": [category_hint or profile["category"], "Handmade"],
-        "suggested_price": suggested,
-        "material_cost": mat,
-        "labour_cost": lab,
-        "packaging_cost": pkg,
-        "min_margin_pct": 0.20,
-        "min_fair_price": min_fair,
-        "image_url": image_url or "",
-        "enhanced_image_url": image_url or "",
-        "transcription": voice_description,
-        "language_detected": language,
-        "lifecycle_state": "MANUAL_DRAFT",
-        "notice": "Live AI generation service unavailable. Product draft created directly from your craft notes."
-    }
+            return {
+                "source": "DEMO_FALLBACK",
+                "is_live_ai": False,
+                "is_demo_data": True,
+                "requires_artisan_verification": True,
+                "title": profile["title"],
+                "category": clean_category_hint or profile["category"],
+                "materials": profile["materials"],
+                "description": profile["description"],
+                "craft_story": profile["craft_story"],
+                "tags": profile["tags"],
+                "suggested_price": suggested,
+                "min_fair_price": min_fair,
+                "material_cost": mat,
+                "labour_cost": lab,
+                "packaging_cost": pkg,
+                "min_margin_pct": Decimal("0.20"),
+                "pricing_available": True,
+                "pricing_source": pricing_source,
+                "image_url": clean_image,
+                "enhanced_image_url": clean_image,
+                "transcription": clean_desc,
+                "language_detected": language,
+                "lifecycle_state": "AI_GENERATED",
+                "notice": "Demo catalog draft generated using sample data."
+            }
+
+    # -------------------------------------------------------------------------
+    # 3. PRODUCTION FALLBACK (100% Honest Manual Draft — No Fabrications)
+    # -------------------------------------------------------------------------
+    return build_production_manual_draft(
+        voice_description=clean_desc,
+        language=language,
+        image_url=clean_image,
+        category_hint=clean_category_hint,
+        material_cost=material_cost,
+        labour_cost=labour_cost,
+        packaging_cost=packaging_cost
+    )

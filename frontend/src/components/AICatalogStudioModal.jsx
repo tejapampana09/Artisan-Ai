@@ -130,29 +130,35 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     const mat = Number(costs.material) || 0;
     const lab = Number(costs.labour) || 0;
     const pkg = Number(costs.packaging) || 0;
-    const effectiveImg = customImageUrl.trim() || selectedPhoto?.url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80';
+    const effectiveImg = customImageUrl.trim() || selectedPhoto?.url || '';
     const effectiveCat = selectedPhoto?.category || null;
 
     if (isOffline) {
       // Zero network dependency local processing in rural offline mode
       setTimeout(() => {
         const costBasis = mat + lab + pkg;
-        const minFair = costBasis > 0 ? Math.round(costBasis * 1.20) : 800;
-        const rawTitle = voiceText.trim().split('\n')[0].slice(0, 45) || (selectedPhoto ? selectedPhoto.name : 'Handcrafted Heritage Creation');
+        const minFair = costBasis > 0 ? Math.round(costBasis * 1.20) : null;
+        const rawTitle = voiceText.trim().split('\n')[0].slice(0, 50) || (selectedPhoto ? selectedPhoto.name : 'Craft Draft (Pending Title)');
         const offlineDraft = {
           title: rawTitle,
-          category: effectiveCat || 'Handloom',
-          materials: effectiveCat === 'Kalamkari' ? 'Pure Tussar Silk, Organic Madder Root & Indigo' : 'Natural Artisanal Raw Materials',
+          category: effectiveCat || 'Handcrafted',
+          materials: '',
           description: voiceText.trim() || 'Authentic handcrafted creation recorded offline by artisan.',
-          craft_story: 'Centuries-old tribal technique preserved across generations in rural handicraft clusters. Voice transcription processed locally on-device.',
-          suggested_price: Math.max(minFair, 1100),
-          material_cost: mat,
-          labour_cost: lab,
-          packaging_cost: pkg,
+          craft_story: '',
+          suggested_price: costBasis > 0 ? Math.round(costBasis * 1.40) : null,
+          min_fair_price: minFair,
+          pricing_available: costBasis > 0,
+          pricing_source: costBasis > 0 ? 'COST_PLUS_MARGIN' : 'AWAITING_ARTISAN_INPUT',
+          notice: costBasis > 0 ? 'Saved locally in rural offline mode.' : 'Saved locally in rural offline mode. Cost inputs omitted; please set selling price manually.',
+          material_cost: mat || null,
+          labour_cost: lab || null,
+          packaging_cost: pkg || null,
           min_margin_pct: 0.20,
           image_url: effectiveImg,
           enhanced_image_url: effectiveImg,
-          ai_engine_used: 'Offline Edge Pipeline (Rural PWA Fallback)'
+          source: 'MANUAL_DRAFT',
+          is_live_ai: false,
+          language_detected: selectedLang
         };
         setAiDraft(offlineDraft);
         setStep('REVIEW');
@@ -186,6 +192,12 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   };
 
   const handleApproveAndPublish = async () => {
+    const finalPrice = Number(aiDraft.suggested_price);
+    if (!finalPrice || finalPrice <= 0) {
+      alert('Please enter a valid selling price before publishing.');
+      return;
+    }
+
     setPublishing(true);
     if (isOffline) {
       queueProductDraft({
@@ -194,7 +206,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         materials: aiDraft.materials,
         description: aiDraft.description,
         craft_story: aiDraft.craft_story,
-        price: aiDraft.suggested_price,
+        price: finalPrice,
         stock: 5,
         material_cost: aiDraft.material_cost,
         labour_cost: aiDraft.labour_cost,
@@ -217,7 +229,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         materials: aiDraft.materials,
         description: aiDraft.description,
         craft_story: aiDraft.craft_story,
-        price: aiDraft.suggested_price,
+        price: finalPrice,
         stock: 5,
         material_cost: aiDraft.material_cost,
         labour_cost: aiDraft.labour_cost,
@@ -449,18 +461,24 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         {step === 'REVIEW' && aiDraft && (
           <div className="mt-4 space-y-4 max-h-[75vh] overflow-y-auto pr-1">
             {/* AI Source Indicator Badge */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 gap-2">
               <div className="flex items-center space-x-2">
                 <span className="text-xs text-slate-500 font-medium">Pipeline Source:</span>
                 <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
-                  aiDraft.source === 'LIVE AI'
+                  aiDraft.source === 'LIVE AI' || aiDraft.source === 'LIVE_AI'
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : aiDraft.source === 'MANUAL_DRAFT'
+                    ? 'bg-amber-50 text-amber-800 border-amber-300'
                     : 'bg-purple-50 text-purple-800 border-purple-300'
                 }`}>
-                  {aiDraft.source}
+                  {aiDraft.source === 'LIVE_AI' || aiDraft.source === 'LIVE AI'
+                    ? 'Live AI Assisted Draft'
+                    : aiDraft.source === 'MANUAL_DRAFT'
+                    ? 'Manual Draft (AI Unavailable)'
+                    : 'Demo Sample Draft'}
                 </span>
                 <span className="text-[11px] text-slate-400">
-                  (Language: {aiDraft.language_detected.toUpperCase()})
+                  (Language: {aiDraft.language_detected?.toUpperCase() || 'EN'})
                 </span>
               </div>
               <span className="text-[11px] text-amber-700 font-semibold flex items-center space-x-1">
@@ -469,27 +487,60 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
               </span>
             </div>
 
-            {/* Side-by-Side Image Presentation (Original vs Enhanced) */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                AI Image Enhancement (Studio Lighting & Background Tuning)
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="border border-slate-200 rounded-xl overflow-hidden relative">
-                  <span className="absolute top-2 left-2 bg-slate-900/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
-                    Original Capture
-                  </span>
-                  <img src={aiDraft.image_url} alt="Original" className="w-full h-36 object-cover" />
-                </div>
-                <div className="border-2 border-amber-500/50 rounded-xl overflow-hidden relative shadow-xs">
-                  <span className="absolute top-2 left-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center space-x-1">
-                    <Sparkles className="w-2.5 h-2.5" />
-                    <span>AI Studio Enhanced</span>
-                  </span>
-                  <img src={aiDraft.enhanced_image_url} alt="Enhanced" className="w-full h-36 object-cover" />
+            {/* Notice Banner */}
+            {aiDraft.notice && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start space-x-2">
+                <ShieldCheck className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                <div>
+                  <span className="font-semibold">Notice: </span>
+                  {aiDraft.notice}
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Image Presentation */}
+            {aiDraft.image_url ? (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Craft Image Presentation (Original vs AI Enhanced)
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="border border-slate-200 rounded-xl overflow-hidden relative">
+                    <span className="absolute top-2 left-2 bg-slate-900/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
+                      Original Capture
+                    </span>
+                    <img src={aiDraft.image_url} alt="Original" className="w-full h-36 object-cover" />
+                  </div>
+                  <div className="border-2 border-amber-500/50 rounded-xl overflow-hidden relative shadow-xs">
+                    <span className="absolute top-2 left-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center space-x-1">
+                      <Sparkles className="w-2.5 h-2.5" />
+                      <span>AI Studio Enhanced</span>
+                    </span>
+                    <img src={aiDraft.enhanced_image_url || aiDraft.image_url} alt="Enhanced" className="w-full h-36 object-cover" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center space-x-2.5">
+                  <ImageIcon className="w-5 h-5 text-slate-400 shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-slate-700">No Image Provided</p>
+                    <p className="text-[11px] text-slate-500">Provide an image URL now or add photos later from the catalog.</p>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Paste image URL here..."
+                  value={aiDraft.image_url || ''}
+                  onChange={(e) => {
+                    handleDraftChange('image_url', e.target.value);
+                    handleDraftChange('enhanced_image_url', e.target.value);
+                  }}
+                  className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white w-full sm:w-60 focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+            )}
 
             {/* Editable Draft Fields */}
             <div className="space-y-3">
@@ -517,7 +568,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Materials</label>
                   <input
                     type="text"
-                    value={aiDraft.materials}
+                    value={aiDraft.materials || ''}
+                    placeholder="e.g. Mulberry Silk, Natural Indigo"
                     onChange={(e) => handleDraftChange('materials', e.target.value)}
                     className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2"
                   />
@@ -538,7 +590,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Heritage & Cultural Craft Story</label>
                 <textarea
                   rows="2"
-                  value={aiDraft.craft_story}
+                  value={aiDraft.craft_story || ''}
+                  placeholder="Craft story will appear here if generated or can be added manually..."
                   onChange={(e) => handleDraftChange('craft_story', e.target.value)}
                   className="w-full text-xs border border-amber-200 rounded-lg p-2.5 bg-amber-50/40 text-slate-800 italic focus:ring-1 focus:ring-amber-500"
                 />
@@ -557,27 +610,56 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
               </div>
 
               {/* Pricing Breakdown & Approval */}
-              <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                <div>
-                  <div className="flex items-center space-x-1.5 text-xs text-emerald-900 font-bold">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>Deterministic Minimum Fair Price: ₹{aiDraft.min_fair_price}</span>
+              {aiDraft.pricing_available && aiDraft.suggested_price != null ? (
+                <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div>
+                    <div className="flex items-center space-x-1.5 text-xs text-emerald-900 font-bold">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>Deterministic Minimum Fair Price: ₹{aiDraft.min_fair_price}</span>
+                    </div>
+                    <p className="text-[11px] text-emerald-700">
+                      Cost Basis: ₹{((Number(aiDraft.material_cost) || 0) + (Number(aiDraft.labour_cost) || 0) + (Number(aiDraft.packaging_cost) || 0))} + 20% protected artisan margin
+                    </p>
                   </div>
-                  <p className="text-[11px] text-emerald-700">Cost: ₹{aiDraft.material_cost + aiDraft.labour_cost + aiDraft.packaging_cost} + 20% protected artisan margin</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-semibold text-slate-700">Selling Price:</span>
-                  <div className="flex items-center">
-                    <span className="text-xs font-bold text-slate-800 mr-1">₹</span>
-                    <input
-                      type="number"
-                      value={aiDraft.suggested_price}
-                      onChange={(e) => handleDraftChange('suggested_price', parseFloat(e.target.value) || 0)}
-                      className="w-24 text-xs font-bold border border-emerald-300 rounded-lg px-2 py-1 text-slate-900 bg-white text-right"
-                    />
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-semibold text-slate-700">Selling Price:</span>
+                    <div className="flex items-center">
+                      <span className="text-xs font-bold text-slate-800 mr-1">₹</span>
+                      <input
+                        type="number"
+                        value={aiDraft.suggested_price ?? ''}
+                        onChange={(e) => handleDraftChange('suggested_price', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                        className="w-24 text-xs font-bold border border-emerald-300 rounded-lg px-2 py-1 text-slate-900 bg-white text-right"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div>
+                    <div className="flex items-center space-x-1.5 text-xs text-amber-900 font-bold">
+                      <ShieldCheck className="w-4 h-4 text-amber-600" />
+                      <span>Pricing Not Calculated (Cost Inputs Omitted)</span>
+                    </div>
+                    <p className="text-[11px] text-amber-700">
+                      Please enter your selling price manually to complete this listing.
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <label className="text-xs font-semibold text-slate-700">Set Selling Price:</label>
+                    <div className="flex items-center">
+                      <span className="text-xs font-bold text-slate-800 mr-1">₹</span>
+                      <input
+                        type="number"
+                        placeholder="e.g. 1200"
+                        value={aiDraft.suggested_price ?? ''}
+                        onChange={(e) => handleDraftChange('suggested_price', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                        className="w-28 text-xs font-bold border border-amber-300 rounded-lg px-2 py-1 text-slate-900 bg-white text-right focus:ring-1 focus:ring-amber-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Approval Footer */}
