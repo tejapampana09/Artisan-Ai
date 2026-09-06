@@ -197,3 +197,55 @@ def test_auth_rate_limiting_enforced():
     assert "rate limit exceeded" in exc_info.value.detail.lower()
     headers_lower = {k.lower(): v for k, v in exc_info.value.headers.items()}
     assert "retry-after" in headers_lower
+
+
+# =====================================================================
+# 5. P1-C: PERSISTENT SYNC IDEMPOTENCY TEST
+# =====================================================================
+
+def test_sync_idempotency_client_operation_id():
+    """
+    Verify that repeating a sync payload with the same client_operation_id
+    returns the stored result without creating duplicate products or records in DB.
+    """
+    uid = uuid.uuid4().hex[:6]
+    reg = client.post("/api/auth/register", json={
+        "name": f"Idem Seller {uid}",
+        "email": f"idem.seller.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+
+    op_id = f"op_sync_{uuid.uuid4().hex[:8]}"
+
+    sync_payload = {
+        "products": [
+            {
+                "client_temp_id": "temp_1",
+                "client_operation_id": op_id,
+                "title": f"Idempotent Terracotta Pot {uid}",
+                "category": "Pottery",
+                "price": 350.0,
+                "stock": 10
+            }
+        ]
+    }
+
+    # First sync call
+    res1 = client.post("/api/sync/batch", json=sync_payload, headers=headers)
+    assert res1.status_code == 200
+    res1_data = res1.json()
+    assert len(res1_data["products_synced"]) == 1
+    server_id_1 = res1_data["products_synced"][0]["server_id"]
+
+    # Second sync call with exact same client_operation_id (network retry simulation)
+    res2 = client.post("/api/sync/batch", json=sync_payload, headers=headers)
+    assert res2.status_code == 200
+    res2_data = res2.json()
+    assert len(res2_data["products_synced"]) == 1
+    server_id_2 = res2_data["products_synced"][0]["server_id"]
+
+    # Guaranteed idempotency: returns the EXACT SAME server product ID, no duplicate row created
+    assert server_id_1 == server_id_2
+

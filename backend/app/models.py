@@ -152,3 +152,18 @@ class PricingDecision(Base):
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     product = relationship("Product", back_populates="pricing_decisions")
+
+class ProcessedOperation(Base):
+    """
+    Persistent storage for client_operation_id to guarantee true database-level idempotency
+    across offline batch sync retries. Prevents duplicate product creations or pricing decision mutations.
+    """
+    __tablename__ = "processed_operations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    client_operation_id = Column(String, unique=True, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    entity_type = Column(String, nullable=False) # "PRODUCT" or "PRICE_DECISION"
+    result_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+

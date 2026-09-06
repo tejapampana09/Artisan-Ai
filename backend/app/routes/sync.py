@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
@@ -6,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
-from backend.app.models import Product, PricingDecision, User, Event
+from backend.app.models import Product, PricingDecision, User, Event, ProcessedOperation
 from backend.app.services.auth import get_current_user
 
 router = APIRouter(prefix="/api/sync", tags=["Offline Sync"])
@@ -83,7 +84,7 @@ def batch_sync(
 ):
     """
     Atomically process batch sync queue uploaded from offline PWA / mobile client.
-    Ensures zero data loss for artisans reconnecting after rural network outages.
+    Guarantees true database-level idempotency via ProcessedOperation lookup.
     """
     seller_id = current_user.id
 
@@ -93,6 +94,16 @@ def batch_sync(
     try:
         # 1. Sync offline drafted products
         for prod_item in payload.products:
+            # Check persistent operation store for idempotency
+            if prod_item.client_operation_id:
+                existing_op = db.query(ProcessedOperation).filter(
+                    ProcessedOperation.client_operation_id == prod_item.client_operation_id
+                ).first()
+                if existing_op:
+                    cached_data = json.loads(existing_op.result_json)
+                    synced_products.append(SyncedProductResult(**cached_data))
+                    continue
+
             new_prod = Product(
                 title=prod_item.title,
                 description=prod_item.description,
@@ -113,41 +124,73 @@ def batch_sync(
             db.add(new_prod)
             db.flush()  # Flush to get assigned server ID
             
-            synced_products.append(
-                SyncedProductResult(
-                    client_temp_id=prod_item.client_temp_id,
-                    server_id=new_prod.id,
-                    title=new_prod.title,
-                    status=new_prod.status
-                )
+            res_product = SyncedProductResult(
+                client_temp_id=prod_item.client_temp_id,
+                server_id=new_prod.id,
+                title=new_prod.title,
+                status=new_prod.status
             )
+            synced_products.append(res_product)
+
+            if prod_item.client_operation_id:
+                proc_op = ProcessedOperation(
+                    client_operation_id=prod_item.client_operation_id,
+                    user_id=seller_id,
+                    entity_type="PRODUCT",
+                    result_json=json.dumps(res_product.model_dump())
+                )
+                db.add(proc_op)
 
         # 2. Sync queued price decisions (ownership verified per item)
         for dec_item in payload.price_decisions:
+            # Check persistent operation store for idempotency
+            if dec_item.client_operation_id:
+                existing_op = db.query(ProcessedOperation).filter(
+                    ProcessedOperation.client_operation_id == dec_item.client_operation_id
+                ).first()
+                if existing_op:
+                    cached_data = json.loads(existing_op.result_json)
+                    synced_decisions.append(SyncedDecisionResult(**cached_data))
+                    continue
+
             prod = db.query(Product).filter(Product.id == dec_item.product_id).first()
 
             # Item not found — skip, record clearly
             if not prod:
-                synced_decisions.append(
-                    SyncedDecisionResult(
-                        product_id=dec_item.product_id,
-                        decision=dec_item.decision,
-                        applied_price=dec_item.previous_price,
-                        status="SKIPPED_NOT_FOUND"
-                    )
+                res_dec = SyncedDecisionResult(
+                    product_id=dec_item.product_id,
+                    decision=dec_item.decision,
+                    applied_price=dec_item.previous_price,
+                    status="SKIPPED_NOT_FOUND"
                 )
+                synced_decisions.append(res_dec)
+                if dec_item.client_operation_id:
+                    proc_op = ProcessedOperation(
+                        client_operation_id=dec_item.client_operation_id,
+                        user_id=seller_id,
+                        entity_type="PRICE_DECISION",
+                        result_json=json.dumps(res_dec.model_dump())
+                    )
+                    db.add(proc_op)
                 continue
 
             # Ownership check — JWT identity is the only source of truth
             if prod.seller_id != current_user.id:
-                synced_decisions.append(
-                    SyncedDecisionResult(
-                        product_id=dec_item.product_id,
-                        decision=dec_item.decision,
-                        applied_price=float(prod.price),
-                        status="REJECTED_UNAUTHORIZED"
-                    )
+                res_dec = SyncedDecisionResult(
+                    product_id=dec_item.product_id,
+                    decision=dec_item.decision,
+                    applied_price=float(prod.price),
+                    status="REJECTED_UNAUTHORIZED"
                 )
+                synced_decisions.append(res_dec)
+                if dec_item.client_operation_id:
+                    proc_op = ProcessedOperation(
+                        client_operation_id=dec_item.client_operation_id,
+                        user_id=seller_id,
+                        entity_type="PRICE_DECISION",
+                        result_json=json.dumps(res_dec.model_dump())
+                    )
+                    db.add(proc_op)
                 continue
 
             # Authorized — apply decision
@@ -171,14 +214,22 @@ def batch_sync(
             )
             db.add(decision_record)
             
-            synced_decisions.append(
-                SyncedDecisionResult(
-                    product_id=prod.id,
-                    decision=dec_item.decision,
-                    applied_price=float(applied_price),
-                    status="APPLIED"
-                )
+            res_dec = SyncedDecisionResult(
+                product_id=prod.id,
+                decision=dec_item.decision,
+                applied_price=float(applied_price),
+                status="APPLIED"
             )
+            synced_decisions.append(res_dec)
+
+            if dec_item.client_operation_id:
+                proc_op = ProcessedOperation(
+                    client_operation_id=dec_item.client_operation_id,
+                    user_id=seller_id,
+                    entity_type="PRICE_DECISION",
+                    result_json=json.dumps(res_dec.model_dump())
+                )
+                db.add(proc_op)
 
         db.commit()
 
