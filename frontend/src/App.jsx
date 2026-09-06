@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
+import LandingPage from './components/LandingPage';
 import SellView from './components/SellView';
 import BuyView from './components/BuyView';
 import OfflineSyncBanner from './components/OfflineSyncBanner';
@@ -9,7 +10,7 @@ import { checkHealth, checkReady, getCurrentUser, updateUserMode, getAuthToken }
 import { Sparkles } from 'lucide-react';
 
 function AppContent() {
-  const [activeMode, setActiveMode] = useState('SELL');
+  const [activeMode, setActiveMode] = useState('HOME');
   const [user, setUser] = useState(null);
   const [healthStatus, setHealthStatus] = useState(null);
   const [readyStatus, setReadyStatus] = useState(null);
@@ -28,6 +29,7 @@ function AppContent() {
         setHealthStatus(health);
         setReadyStatus(ready);
         setUser(null);
+        setActiveMode('HOME');
         return;
       }
 
@@ -45,10 +47,12 @@ function AppContent() {
         }
       } else {
         setUser(null);
+        setActiveMode('HOME');
       }
     } catch (e) {
       console.error('Initial load failed', e);
       setUser(null);
+      setActiveMode('HOME');
     } finally {
       setLoading(false);
     }
@@ -60,7 +64,7 @@ function AppContent() {
 
   const handleToggleMode = async (newMode) => {
     setActiveMode(newMode);
-    if (!isOffline) {
+    if (!isOffline && user && (newMode === 'SELL' || newMode === 'BUY')) {
       const updated = await updateUserMode(newMode);
       if (updated) {
         setUser(updated);
@@ -97,7 +101,13 @@ function AppContent() {
           </div>
         ) : (
           <div>
-            {activeMode === 'SELL' ? (
+            {activeMode === 'HOME' ? (
+              <LandingPage
+                onSelectMode={handleToggleMode}
+                onOpenAuth={() => setIsAuthOpen(true)}
+                user={user}
+              />
+            ) : activeMode === 'SELL' ? (
               <SellView user={user} onOpenAuth={() => setIsAuthOpen(true)} key={`sell_${refreshTrigger}`} />
             ) : (
               <BuyView user={user} key={`buy_${refreshTrigger}`} />
@@ -116,7 +126,7 @@ function AppContent() {
           if (newUser?.active_mode) {
             setActiveMode(newUser.active_mode);
           } else if (!newUser) {
-            setActiveMode('BUY');
+            setActiveMode('HOME');
           }
           handleRefreshAll();
         }}
@@ -129,7 +139,7 @@ function AppContent() {
             <span>© 2026 <strong>Artisan AI Technologies</strong>. Enterprise SaaS Platform for Rural Craft Communities.</span>
           </div>
           <div className="flex items-center space-x-4">
-            <span>Workspace: <strong className="text-slate-800">{activeMode === 'SELL' ? 'Artisan Studio' : 'Buyer Marketplace'}</strong></span>
+            <span>Workspace: <strong className="text-slate-800">{activeMode === 'HOME' ? 'Home Showcase' : activeMode === 'SELL' ? 'Artisan Studio' : 'Buyer Marketplace'}</strong></span>
             <span>Sync: <strong className={isOffline ? 'text-orange-600' : 'text-emerald-600'}>{isOffline ? 'Offline (Local Cache)' : 'Live (Cloud DB)'}</strong></span>
             <span>Database: <strong className={readyStatus?.status === 'ready' ? 'text-emerald-600' : 'text-amber-600'}>{readyStatus?.database || 'Connected'}</strong></span>
           </div>
