@@ -241,55 +241,25 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
             </form>
           )}
 
-          {/* Tab 3: Forgot / Reset Password */}
+          {/* Tab 3: Forgot / Reset Password — Disabled (secure OTP flow not yet implemented) */}
           {tab === 'forgot' && (
-            <form onSubmit={handleResetPassword} className="space-y-3.5 text-xs">
-              <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3 text-slate-700">
-                <p className="font-bold text-slate-900 mb-0.5 flex items-center space-x-1.5">
+            <div className="space-y-4 text-xs">
+              <div className="bg-amber-50/80 border border-amber-300 rounded-xl p-4 text-slate-700">
+                <p className="font-bold text-slate-900 mb-1 flex items-center space-x-1.5">
                   <KeyRound className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Reset Your Password</span>
+                  <span>Password Reset Unavailable</span>
                 </p>
-                <p className="text-[11px] text-slate-600">Enter your registered email or phone to reset your password and instantly sign in.</p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Public password reset via email or phone is currently disabled. A secure
+                  OTP/email-verified reset flow has not yet been implemented.
+                </p>
               </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Registered Email or Phone</label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    value={resetIdentifier}
-                    onChange={(e) => setResetIdentifier(e.target.value)}
-                    required
-                    placeholder="artisan@domain.com or phone"
-                    className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-hidden"
-                  />
-                </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 text-[11px] text-blue-800 leading-relaxed">
+                <strong>If you remember your password:</strong> sign in normally below.<br />
+                <strong>If you are already logged in:</strong> you can change your password
+                securely from your account settings using your current password.
               </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">New Password (min 6 chars)</label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-hidden"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-2 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
-              >
-                {loading ? 'Updating Password...' : 'Reset Password & Sign In'}
-              </button>
 
               <div className="text-center pt-1">
                 <button
@@ -300,7 +270,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                   ← Back to Sign In
                 </button>
               </div>
-            </form>
+            </div>
           )}
 
           {/* Tab 2: Register */}

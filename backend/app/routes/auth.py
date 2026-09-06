@@ -4,7 +4,7 @@ from sqlalchemy import or_
 
 from backend.app.database import get_db
 from backend.app.models import User
-from backend.app.schemas import UserRegister, UserLogin, ResetPasswordRequest, TokenResponse, UserResponse
+from backend.app.schemas import UserRegister, UserLogin, ResetPasswordRequest, ChangePasswordRequest, TokenResponse, UserResponse
 from backend.app.services.auth import (
     hash_password,
     verify_password,
@@ -109,40 +109,62 @@ def login_user(payload: UserLogin, db: Session = Depends(get_db)):
         user=user
     )
 
-@router.post("/reset-password", response_model=TokenResponse)
-def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+@router.post("/reset-password", status_code=status.HTTP_501_NOT_IMPLEMENTED)
+def reset_password_disabled():
     """
-    Resets password for an existing account identified by email or phone.
-    Returns a fresh JWT token for seamless sign-in.
-    """
-    identifier = payload.email_or_phone.strip()
-    user = db.query(User).filter(
-        or_(
-            User.email == identifier.lower(),
-            User.phone == identifier
-        )
-    ).first()
+    Public password reset via email/phone is disabled.
 
-    if not user:
+    A secure reset flow requires a cryptographically signed one-time token
+    delivered through a verified channel (SMS OTP / email link) with
+    server-side expiry. That infrastructure is not yet implemented.
+
+    To change your password, use POST /api/auth/change-password with a
+    valid Bearer token and your current password.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail=(
+            "Password reset by email/phone is not available. "
+            "A secure OTP/email-verified reset flow has not been implemented yet. "
+            "If you are logged in, use POST /api/auth/change-password instead."
+        )
+    )
+
+@router.post("/change-password", response_model=TokenResponse)
+def change_password(
+    payload: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_strict)
+):
+    """
+    Authenticated password change.
+    Identity is sourced exclusively from the Bearer JWT — no email/phone accepted.
+    Verifies current_password before accepting new_password.
+    Returns a fresh JWT token on success.
+    """
+    if not verify_password(payload.current_password, current_user.hashed_password):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No account found with this email or phone number. Please check or create a new account."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect."
         )
 
-    user.hashed_password = hash_password(payload.new_password)
+    current_user.hashed_password = hash_password(payload.new_password)
     db.commit()
-    db.refresh(user)
+    db.refresh(current_user)
 
+    # Issue a fresh token; note existing tokens remain valid until their
+    # natural expiry (ACCESS_TOKEN_EXPIRE_MINUTES). For a stateless JWT
+    # system at this scale this is the accepted P0 trade-off.
     access_token = create_access_token({
-        "sub": str(user.id),
-        "name": user.name,
-        "role": user.role
+        "sub": str(current_user.id),
+        "name": current_user.name,
+        "role": current_user.role
     })
 
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        user=user
+        user=current_user
     )
 
 @router.get("/me", response_model=UserResponse)

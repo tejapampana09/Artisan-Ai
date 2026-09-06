@@ -13,7 +13,7 @@ from backend.app.services.auth import get_current_user
 router = APIRouter(prefix="/api/ai", tags=["AI Cataloging"])
 
 class AICatalogRequest(BaseModel):
-    voice_description: Optional[str] = Field(default="Authentic handcrafted creation", description="Artisan voice note or text description")
+    voice_description: Optional[str] = Field(default="", description="Artisan voice note or text description")
     language: str = Field("en", max_length=10, description="Language code e.g. en, te, hi")
     image_url: Optional[str] = Field(None, description="User-provided photo URL or Base64 data URI")
     category_hint: Optional[str] = Field(None, max_length=100, description="Optional craft category hint")

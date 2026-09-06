@@ -54,6 +54,7 @@ class SyncedDecisionResult(BaseModel):
     product_id: int
     decision: str
     applied_price: float
+    status: str  # APPLIED | SKIPPED_NOT_FOUND | REJECTED_UNAUTHORIZED
 
 class BatchSyncResponse(BaseModel):
     status: str
@@ -119,12 +120,35 @@ def batch_sync(
                 )
             )
 
-        # 2. Sync queued price decisions
+        # 2. Sync queued price decisions (ownership verified per item)
         for dec_item in payload.price_decisions:
             prod = db.query(Product).filter(Product.id == dec_item.product_id).first()
+
+            # Item not found — skip, record clearly
             if not prod:
+                synced_decisions.append(
+                    SyncedDecisionResult(
+                        product_id=dec_item.product_id,
+                        decision=dec_item.decision,
+                        applied_price=dec_item.previous_price,
+                        status="SKIPPED_NOT_FOUND"
+                    )
+                )
                 continue
 
+            # Ownership check — JWT identity is the only source of truth
+            if prod.seller_id != current_user.id:
+                synced_decisions.append(
+                    SyncedDecisionResult(
+                        product_id=dec_item.product_id,
+                        decision=dec_item.decision,
+                        applied_price=float(prod.price),
+                        status="REJECTED_UNAUTHORIZED"
+                    )
+                )
+                continue
+
+            # Authorized — apply decision
             previous_price = prod.price
             rec_price = Decimal(str(dec_item.recommended_price))
             if dec_item.decision == "ACCEPT":
@@ -149,7 +173,8 @@ def batch_sync(
                 SyncedDecisionResult(
                     product_id=prod.id,
                     decision=dec_item.decision,
-                    applied_price=applied_price
+                    applied_price=float(applied_price),
+                    status="APPLIED"
                 )
             )
 

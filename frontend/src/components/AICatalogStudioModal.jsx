@@ -195,7 +195,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
           title: rawTitle,
           category: effectiveCat || 'Handcrafted',
           materials: '',
-          description: voiceText.trim() || 'Authentic handcrafted creation recorded offline by artisan.',
+          description: voiceText.trim() || '',
           craft_story: '',
           suggested_price: costBasis > 0 ? Math.round(costBasis * 1.40) : null,
           min_fair_price: minFair,
@@ -221,7 +221,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
     try {
       const res = await processAICatalog({
-        voice_description: voiceText.trim() || (selectedPhoto ? selectedPhoto.en : 'Authentic handcrafted heritage creation'),
+        voice_description: voiceText.trim(),
         language: selectedLang,
         image_url: effectiveImg,
         category_hint: effectiveCat,

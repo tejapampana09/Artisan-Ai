@@ -68,7 +68,7 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
         material_cost: mat,
         labour_cost: lab,
         packaging_cost: pkg,
-        image_url: formData.image_url.trim() || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80'
+        image_url: formData.image_url.trim() || null
       };
       await onCreated(payload);
       onClose();

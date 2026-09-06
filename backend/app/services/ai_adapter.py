@@ -99,7 +99,7 @@ def build_production_manual_draft(
         "title": title,
         "category": clean_cat or "Handcrafted",
         "materials": "",
-        "description": clean_desc or "Artisan handcrafted creation.",
+        "description": clean_desc,
         "craft_story": "",
         "tags": [clean_cat] if clean_cat else [],
         "suggested_price": suggested,

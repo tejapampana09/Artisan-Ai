@@ -83,6 +83,28 @@ export async function loginUser(credentials) {
   }
 }
 
+export async function changePassword(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/auth/change-password`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Password change failed' }));
+      throw new Error(err.detail || `HTTP error ${res.status}`);
+    }
+    const data = await res.json();
+    if (data.access_token) {
+      setAuthToken(data.access_token);
+    }
+    return data;
+  } catch (err) {
+    console.error('Change password error:', err);
+    throw err;
+  }
+}
+
 export async function resetPassword(payload) {
   try {
     const res = await fetch(`${API_BASE}/auth/reset-password`, {
@@ -104,6 +126,7 @@ export async function resetPassword(payload) {
     throw err;
   }
 }
+
 
 export function logoutUser() {
   clearAuthToken();
