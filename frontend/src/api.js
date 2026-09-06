@@ -66,8 +66,8 @@ export async function registerUser(userData) {
       body: JSON.stringify(userData),
     });
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({ detail: 'Registration failed' }));
-      throw new Error(formatApiError(errData, `Registration failed (${res.status})`));
+      const errData = await res.json().catch(() => ({ detail: `Registration failed (HTTP ${res.status})` }));
+      throw new Error(formatApiError(errData, `Registration failed (HTTP ${res.status})`));
     }
     const data = await res.json();
     if (data.access_token) {
@@ -76,6 +76,9 @@ export async function registerUser(userData) {
     return data;
   } catch (err) {
     console.error('Registration error:', err);
+    if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
+      throw new Error('Unable to connect to backend server. Please ensure the backend is running on port 8000.');
+    }
     throw err;
   }
 }
@@ -88,8 +91,8 @@ export async function loginUser(credentials) {
       body: JSON.stringify(credentials),
     });
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({ detail: 'Invalid credentials' }));
-      throw new Error(formatApiError(errData, `Login failed (${res.status})`));
+      const errData = await res.json().catch(() => ({ detail: `Invalid credentials (HTTP ${res.status})` }));
+      throw new Error(formatApiError(errData, `Login failed (HTTP ${res.status})`));
     }
     const data = await res.json();
     if (data.access_token) {
@@ -98,6 +101,9 @@ export async function loginUser(credentials) {
     return data;
   } catch (err) {
     console.error('Login error:', err);
+    if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
+      throw new Error('Unable to connect to backend server. Please ensure the backend is running on port 8000.');
+    }
     throw err;
   }
 }
