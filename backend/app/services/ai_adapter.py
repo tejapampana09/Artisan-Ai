@@ -168,10 +168,10 @@ async def generate_catalog_draft(
             - estimated_cost: object with keys "material", "labour", "packaging" as numbers
             """
             models_to_try = [
-                os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest"),
-                "gemini-flash-lite-latest",
-                "gemini-3.1-flash-lite",
-                "gemini-3.6-flash"
+                os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+                "gemini-2.5-flash",
+                "gemini-2.0-flash",
+                "gemini-1.5-flash"
             ]
             async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
                 res = None
