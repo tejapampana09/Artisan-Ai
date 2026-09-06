@@ -65,10 +65,9 @@ raw_cors = os.getenv(
 )
 
 def get_cors_origins() -> List[str]:
-    # In production, restrict to configured domains; in development allow configured + localhost
+    if ENVIRONMENT == "development":
+        return ["*"]
     origins = [origin.strip() for origin in raw_cors.split(",") if origin.strip()]
-    if ENVIRONMENT == "development" and "*" not in origins:
-        origins.extend(["http://localhost:5173", "http://127.0.0.1:5173"])
     return list(set(origins))
 
 # AI API configuration

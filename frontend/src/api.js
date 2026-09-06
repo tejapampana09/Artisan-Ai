@@ -8,7 +8,7 @@ export function getApiBase() {
       return '/api';
     }
     // Live Cloudflare HTTPS backend tunnel for AWS CloudFront & S3 deployment
-    return 'https://particularly-bald-delhi-allowed.trycloudflare.com/api';
+    return 'https://evanescence-introducing-calling-key.trycloudflare.com/api';
   }
   return '/api';
 }
