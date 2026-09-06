@@ -1,16 +1,43 @@
-# React + Vite
+# Artisan AI — Frontend Web Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The Artisan AI frontend is a high-performance React 19 Single Page Application built with Vite and Tailwind CSS. It is engineered with dual-mode operational views (**Artisan Studio** and **Buyer Marketplace**), voice recording multimodal AI cataloging, and rural-first offline synchronization.
 
-Currently, two official plugins are available:
+## 🚀 Key Frontend Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. **Dual-Mode Artisan/Buyer Workspace**:
+   - **Artisan Studio (`SELL`)**: Manage product catalog, review AI price recommendations, track regional demand indices, and review AI copilot insights.
+   - **Buyer Marketplace (`BUY`)**: Direct-to-artisan craft marketplace with category filtering, detailed craft stories, wishlist saving, customer enquiry forms, and instant order placement.
+2. **Voice-First AI Multimodal Cataloging**:
+   - Integrates with Google Gemini Multimodal models for automatic craft title generation, cultural heritage storytelling, authentic materials detection, and cost floor calculations in Hindi, Telugu, Tamil, Bengali, and English.
+3. **Zero-Data-Loss Rural Offline First Resilience**:
+   - Client-side IndexedDB / `localStorage` caching and action queueing.
+   - Allows artisans to draft crafts and approve price decisions during rural network dropouts, automatically reconciling via `/api/sync/batch` upon reconnection.
+4. **Role-Based Auth & Safe Money Presentation**:
+   - JWT authentication integration with auto-attached Bearer headers.
+   - Indian Rupee (`₹`) precision formatting for all cost baselines and catalog valuations.
 
-## React Compiler
+## 🛠️ Development & Build Scripts
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+# Install dependencies
+npm install
 
-## Expanding the Oxlint configuration
+# Start Vite local development server (with proxy to FastAPI backend on 8000)
+npm run dev
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+# Run Oxlint static analysis
+npm run lint
+
+# Compile optimized production bundle
+npm run build
+
+# Preview production build locally
+npm run preview
+```
+
+## 🌐 Environment Configuration
+
+By default, Vite proxies `/api` requests to `http://127.0.0.1:8000`.
+For decoupled cloud deployments (e.g. Vercel frontend + Render/Fly backend):
+Set `VITE_API_BASE=https://api.yourdomain.com/api` in your deployment environment or `.env` file.
+

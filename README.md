@@ -202,53 +202,52 @@ The repository contains an end-to-end automated test suite verifying every stage
 
 ---
 
-## 🎯 SIH 2026 Judge Demonstration Guide
+## 🎯 Platform Demonstration & Verification Guide
 
-Follow these 8 steps to demonstrate the complete, verified functionality:
+Follow these 8 steps to demonstrate the complete, verified platform workflow:
 
-1. **Account & Role Isolation**:
-   - Open the web application. Click on the user profile pill in the navbar.
-   - Observe the pre-provisioned demo artisan account (**Lakshmi Devi — Kalamkari Specialist**).
-   - Test creating an account or logging in as another seller to observe strict data isolation.
+1. **Secure Registration & Account Isolation**:
+   - Open the web application at `http://localhost:5173`. Click the user account badge in the navbar.
+   - Register a new Artisan or Connoisseur (Buyer) account with your own name, phone, craft, and location.
+   - Each artisan enjoys multi-tenant security: products, pricing decisions, and catalog revenues remain strictly isolated to the authenticated seller.
 
-2. **AI Voice Catalog Studio**:
-   - In **SELL** mode, click **"+ AI Voice Studio"**.
-   - Select a craft photo and speak or select an Indian artisan prompt (e.g., Telugu Kalamkari story).
-   - Watch the AI generate a rich cultural title, craft narrative, tags, and itemized cost breakdown.
-   - Edit any field and click **"Approve & Publish Craft"** to demonstrate human-in-the-loop control.
+2. **Multilingual AI Voice Cataloging**:
+   - In **Artisan Studio** (`SELL` mode), click **"AI Voice Catalog"**.
+   - Speak or enter an artisan description in any regional Indian language (e.g., Telugu Kalamkari story, Hindi pottery narrative).
+   - Powered by **Google Gemini 2.5 Flash**, the system outputs an evocative commercial title, rich cultural heritage storytelling, verified materials list, and transparent cost-floor calculations.
+   - Edit any field and click **"Save & Publish Craft"** to maintain human-in-the-loop sovereign control.
 
-3. **Buyer Commerce View**:
-   - Toggle the navbar switch from **SELL** to **BUY**.
-   - Browse the live craft marketplace with regional filters (Andhra Pradesh, Odisha, Rajasthan).
-   - View detailed craft stories and material certifications.
+3. **Buyer Marketplace Commerce**:
+   - Toggle the workspace switch from **Artisan Studio** to **Buyer Marketplace** (`BUY` mode).
+   - Browse authentic craft listings with regional filters (Andhra Pradesh, Bastar, Rajasthan, Karnataka).
+   - Inspect verified GI certifications, cultural stories, and artisan craft heritage.
 
-4. **Market Telemetry Generation**:
-   - In **BUY** mode, view crafts, save favorites, submit enquiries, and place orders.
-   - Note that order submission prompts for delivery details and instantly decrements inventory in real time.
+4. **Telemetry & Real-Time Market Events**:
+   - In **BUY** mode, view crafts, save items to your wishlist, submit craft enquiries, and place orders.
+   - Order placement executes within an atomic database transaction that decrements stock with concurrency protection.
 
 5. **Closed-Loop Market Intelligence**:
-   - Switch back to **SELL** mode.
-   - Observe the **"Regional Craft Demand"** widget: the demand score for the interacted category has dynamically surged based on real weighted signals!
-   - View the **"AI Business Copilot"** card outlining specific pricing and stock recommendations.
+   - Switch back to **Artisan Studio** (`SELL` mode).
+   - Inspect the **"Regional Craft Demand"** widget: the demand index for interacted categories surges dynamically based on weighted consumer telemetry.
+   - Review the **"AI Business Copilot"** card providing actionable pricing and inventory advice.
 
-6. **Explainable Dynamic Pricing**:
-   - Click on any product card in the catalog.
-   - Scroll to the **"Explainable Dynamic Pricing"** section:
-     - **Min Safe Price Floor**: Displays exact cost basis (Material + Labour + Packaging) + guaranteed ≥ 20% margin.
-     - **Demand Surge Factor**: Derived from live market event weightings.
-     - **Artisan Final Authority**: Click **"Accept New Price"** or **"Keep Current Price"** — prices never update without the artisan's explicit consent.
+6. **Explainable Dynamic Pricing with Cost Floors**:
+   - Select any product in your catalog.
+   - Review the **"Explainable Dynamic Pricing"** interface:
+     - **Cost Floor Guarantee**: Strict cost basis (Material + Labour + Packaging) + guaranteed ≥ 20% margin.
+     - **Bounded Demand Surge**: Dynamic adjustment strictly bounded within non-exploitative limits.
+     - **Artisan Final Authority**: Click **"Accept Recommendation"** or **"Keep Current Price"** — prices never update without explicit artisan consent.
 
-7. **Multi-Seller Security**:
-   - Notice that if viewing a product belonging to another artisan, editing and pricing decision buttons are automatically locked with a clear permission banner.
+7. **Multi-Seller Data Protection**:
+   - If an artisan inspects a piece crafted by another creator, editing forms and pricing actions are disabled with clear ownership indicators.
 
-8. **Offline Resilience Simulation**:
-   - In the top banner, click **"Simulate Offline Mode"**.
-   - Create a new craft draft or accept a price recommendation while disconnected from the cloud.
-   - The action is safely stored in the local client queue.
-   - Click **"Reconnect to Cloud"**: the batch sync automatically pushes all pending drafts and decisions to the server.
+8. **Rural Offline First Synchronization**:
+   - In the top navbar, toggle the network control to **Offline Cache**.
+   - Draft a craft or approve a price recommendation during simulated rural network outages.
+   - Reconnect to the cloud: the client batch queue automatically reconciles via `POST /api/sync/batch` with zero data loss.
 
 ---
 
 ## 📜 License & Acknowledgments
 
-Developed for the **Smart India Hackathon 2026** under Problem Statement ID **26090** (*Heritage & Culture*). Designed to empower the traditional artisans and handloom weavers of India with equitable, transparent artificial intelligence.
+Engineered to empower traditional Indian artisans and handloom communities with transparent, ethical, and explainable artificial intelligence.

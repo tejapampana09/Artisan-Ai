@@ -112,23 +112,42 @@ async def generate_catalog_draft(
             """
             async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
                 res = await client.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}",
-                    json={"contents": [{"parts": [{"text": prompt}]}]},
+                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}",
+                    json={
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {"response_mime_type": "application/json"}
+                    },
                     headers={"Content-Type": "application/json"}
                 )
                 if res.status_code == 200:
                     data = res.json()
                     content = data["candidates"][0]["content"]["parts"][0]["text"]
-                    json_match = re.search(r"\{.*\}", content, re.DOTALL)
-                    if json_match:
-                        parsed = json.loads(json_match.group(0))
-                        # Validate mandatory fields
-                        if "title" in parsed and "category" in parsed:
-                            parsed["source"] = "LIVE AI"
-                            parsed["enhanced_image_url"] = enhance_image_url(image_url)
-                            parsed["transcription"] = voice_description
-                            parsed["lifecycle_state"] = "AI_GENERATED"
-                            return parsed
+                    parsed = json.loads(content)
+                    # Validate mandatory fields
+                    if "title" in parsed and "category" in parsed:
+                        parsed["source"] = "LIVE AI"
+                        parsed["image_url"] = image_url or enhance_image_url(image_url)
+                        parsed["enhanced_image_url"] = enhance_image_url(image_url)
+                        parsed["transcription"] = voice_description
+                        parsed["language_detected"] = language
+                        parsed["lifecycle_state"] = "AI_GENERATED"
+                        
+                        # Populate cost basis if present
+                        est_cost = parsed.get("estimated_cost", {})
+                        mat = float(material_cost if material_cost is not None else est_cost.get("material", 400.0))
+                        lab = float(labour_cost if labour_cost is not None else est_cost.get("labour", 450.0))
+                        pkg = float(packaging_cost if packaging_cost is not None else est_cost.get("packaging", 50.0))
+                        min_fair = (mat + lab + pkg) * 1.20
+
+                        parsed["material_cost"] = mat
+                        parsed["labour_cost"] = lab
+                        parsed["packaging_cost"] = pkg
+                        parsed["min_margin_pct"] = 0.20
+                        parsed["min_fair_price"] = round(min_fair, 2)
+                        if "suggested_price" not in parsed or float(parsed["suggested_price"]) < min_fair:
+                            parsed["suggested_price"] = round(min_fair * 1.15, 2)
+
+                        return parsed
         except Exception as e:
             print(f"[AI Adapter] Live Gemini call unavailable or timed out ({e}). Engaging fallback handler.")
 
