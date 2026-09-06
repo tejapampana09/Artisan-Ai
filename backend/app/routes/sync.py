@@ -156,6 +156,13 @@ def batch_sync(
                 ).first()
                 if op:
                     synced_products.append(SyncedProductResult(**json.loads(op.result_json)))
+                else:
+                    synced_products.append(SyncedProductResult(
+                        client_temp_id=prod_item.client_temp_id,
+                        server_id=0,
+                        title=prod_item.title,
+                        status="FAILED_CONCURRENT_RETRY"
+                    ))
 
         # 2. Sync queued price decisions (ownership verified per item)
         for dec_item in payload.price_decisions:
@@ -262,6 +269,13 @@ def batch_sync(
                 ).first()
                 if op:
                     synced_decisions.append(SyncedDecisionResult(**json.loads(op.result_json)))
+                else:
+                    synced_decisions.append(SyncedDecisionResult(
+                        product_id=dec_item.product_id,
+                        decision=dec_item.decision,
+                        applied_price=dec_item.previous_price,
+                        status="FAILED_CONCURRENT_RETRY"
+                    ))
 
         db.commit()
 
