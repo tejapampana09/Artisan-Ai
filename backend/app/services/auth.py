@@ -109,7 +109,7 @@ def get_current_user(
     1. If a Bearer token is provided, strictly validates and returns that specific user.
     2. If NO Bearer token is provided:
        - In PRODUCTION or when DEMO_MODE is False: Strictly REJECTS with 401 Unauthorized.
-       - In non-production ONLY when DEMO_MODE is explicitly True: Grants access to the designated demo account.
+       - In non-production ONLY when DEMO_MODE is explicitly True: Grants access to the designated test/dev account.
     3. If an INVALID token is provided: Strictly rejects with 401 Unauthorized in all environments.
     """
     token = extract_token_from_header(auth_header)
@@ -134,11 +134,11 @@ def get_current_user(
     if ENVIRONMENT == "production" or not DEMO_MODE:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication credentials were not provided. In production or non-demo mode, a valid Bearer token is required.",
+            detail="Authentication credentials were not provided. Expected Bearer token.",
             headers={"WWW-Authenticate": "Bearer"}
         )
 
-    # Explicit DEMO_MODE fallback for local evaluation and developer testing
+    # Explicit fallback for testing / local evaluation when DEMO_MODE is True
     user = db.query(User).filter(User.email == "lakshmi@artisanai.in").first()
     if not user:
         user = db.query(User).filter(User.role == "ARTISAN").first()

@@ -38,7 +38,7 @@ DEV_FALLBACK_JWT_SECRET: str = "artisan_ai_dev_secret_key_marginalized_artisans_
 _env_jwt_secret = os.getenv("JWT_SECRET_KEY")
 JWT_SECRET_KEY: str = _env_jwt_secret or (DEV_FALLBACK_JWT_SECRET if ENVIRONMENT != "production" else "")
 
-def validate_production_config(env: str, demo_mode: bool, database_url: str, jwt_secret: str) -> bool:
+def validate_production_config(env: str, demo_mode: bool = False, database_url: str = "", jwt_secret: str = "") -> bool:
     """Strict configuration validator for production deployments."""
     if env == "production":
         if demo_mode:

@@ -21,9 +21,14 @@ def test_ai_catalog_pipeline_and_approval():
     assert draft["source"] in ["LIVE_AI", "LIVE AI", "MANUAL_DRAFT", "DEMO_FALLBACK"]
     assert len(draft["title"]) > 3
     assert len(draft["category"]) > 0
-    assert len(draft["materials"]) > 0
-    assert len(draft["craft_story"]) > 10
-    assert len(draft["tags"]) >= 2
+    if draft["source"] in ["LIVE_AI", "LIVE AI", "DEMO_FALLBACK"]:
+        assert len(draft["materials"]) > 0
+        assert len(draft["craft_story"]) > 10
+        assert len(draft["tags"]) >= 2
+    else:
+        assert isinstance(draft["materials"], str)
+        assert isinstance(draft["craft_story"], str)
+        assert isinstance(draft["tags"], list)
     
     # Verify deterministic pricing boundary
     from decimal import Decimal

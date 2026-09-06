@@ -11,10 +11,6 @@ from backend.app.services.ai_adapter import (
     build_production_manual_draft,
     calculate_pricing_from_costs
 )
-from backend.app.demo.craft_profiles import (
-    detect_demo_craft_profile,
-    DEMO_CRAFT_PROFILES
-)
 
 client = TestClient(app)
 
@@ -64,21 +60,17 @@ def test_1_live_gemini_success():
         assert draft["pricing_source"] == "COST_PLUS_MARGIN"
 
 
-def test_2_production_failure_no_hardcoded_profiles():
-    """When live AI fails in production, predefined craft profiles must NEVER be used."""
-    with patch.dict(os.environ, {"ENVIRONMENT": "production", "DEMO_MODE": "false"}):
-        draft = asyncio.run(generate_catalog_draft(
-            voice_description="చెన్నపట్న బొమ్మలు చెక్కతో చేసినవి పిల్లలకు సురక్షితం",
-            language="te",
-            force_fallback=True
-        ))
+def test_2_production_failure_strictly_manual_draft():
+    """When live AI fails, the output is strictly MANUAL_DRAFT with no demo data."""
+    draft = asyncio.run(generate_catalog_draft(
+        voice_description="చెన్నపట్న బొమ్మలు చెక్కతో చేసినవి పిల్లలకు సురక్షితం",
+        language="te",
+        force_fallback=True
+    ))
 
-        # Must NOT use Channapatna Wooden Toy demo profile
-        assert draft["source"] == "MANUAL_DRAFT"
-        assert draft["is_live_ai"] is False
-        assert draft.get("is_demo_data", False) is False
-        assert "Channapatna Wooden Rolling Toy" not in draft["title"]
-        assert "Ivory Wood" not in draft["materials"]
+    assert draft["source"] == "MANUAL_DRAFT"
+    assert draft["is_live_ai"] is False
+    assert draft["requires_artisan_verification"] is True
 
 
 def test_3_production_failure_does_not_invent_materials():
@@ -146,31 +138,21 @@ def test_7_production_failure_no_stock_unsplash_photo():
     assert draft_with_img["image_url"] == "https://artisan-cloud.org/my-bell.jpg"
 
 
-def test_8_demo_fallback_strictly_isolated():
-    """Demo fallback activates ONLY when DEMO_MODE is true and not in production."""
-    with patch.dict(os.environ, {"ENVIRONMENT": "production", "DEMO_MODE": "true"}):
-        with pytest.raises(RuntimeError) as exc_info:
-            detect_demo_craft_profile("kalamkari silk saree")
-        assert "Production safety violation" in str(exc_info.value)
-
-    # In non-production with DEMO_MODE=false, demo profile must not activate
-    with patch.dict(os.environ, {"ENVIRONMENT": "development", "DEMO_MODE": "false"}):
-        profile = detect_demo_craft_profile("kalamkari silk saree")
-        assert profile is None
+def test_8_demo_module_purged():
+    """Verify backend.app.demo module is completely deleted from the codebase."""
+    with pytest.raises(ModuleNotFoundError):
+        import backend.app.demo.craft_profiles  # noqa
 
 
-def test_9_demo_fallback_clearly_labeled():
-    """When demo fallback is explicitly enabled in dev, it must be labeled DEMO_FALLBACK."""
-    with patch.dict(os.environ, {"ENVIRONMENT": "development", "DEMO_MODE": "true"}):
-        draft = asyncio.run(generate_catalog_draft(
-            voice_description="kalamkari silk saree",
-            language="en",
-            force_fallback=True
-        ))
-        assert draft["source"] == "DEMO_FALLBACK"
-        assert draft["is_demo_data"] is True
-        assert draft["category"] == "Kalamkari"
-        assert "Kalamkari" in draft["title"]
+def test_9_fallback_never_uses_demo_source():
+    """Verify fallback source is strictly MANUAL_DRAFT, never DEMO_FALLBACK."""
+    draft = asyncio.run(generate_catalog_draft(
+        voice_description="kalamkari silk saree",
+        language="en",
+        force_fallback=True
+    ))
+    assert draft["source"] == "MANUAL_DRAFT"
+    assert "DEMO" not in draft["source"]
 
 
 def test_10_cost_based_pricing_uses_decimal_precision():
@@ -182,9 +164,6 @@ def test_10_cost_based_pricing_uses_decimal_precision():
     )
     assert avail is True
     assert src == "COST_PLUS_MARGIN"
-    # Cost basis = 123.45 + 67.89 + 10.00 = 201.34
-    # min_fair = 201.34 * 1.20 = 241.608 -> 241.61
-    # suggested = 201.34 * 1.40 = 281.876 -> 281.88
     assert isinstance(min_fair, Decimal)
     assert isinstance(suggested, Decimal)
     assert min_fair == Decimal("241.61")

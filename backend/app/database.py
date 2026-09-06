@@ -1,6 +1,9 @@
-from sqlalchemy import create_engine
+import logging
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
-from backend.app.config import DATABASE_URL
+from backend.app.config import DATABASE_URL, ENVIRONMENT
+
+logger = logging.getLogger("artisan_ai.database")
 
 def build_engine(url: str):
     if url.startswith("sqlite"):
@@ -17,8 +20,28 @@ def build_engine(url: str):
         pool_recycle=300
     )
 
-is_sqlite = DATABASE_URL.startswith("sqlite")
-engine = build_engine(DATABASE_URL)
+def init_engine(url: str):
+    if url.startswith("sqlite"):
+        return build_engine(url)
+
+    try_engine = build_engine(url)
+    # In non-production, test connection. If local firewall/network blocks port 5432, fallback to SQLite
+    if ENVIRONMENT != "production":
+        try:
+            with try_engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+        except Exception as e:
+            logger.warning(
+                f"[Database] Remote PostgreSQL connection failed ({e}). "
+                "Local network/firewall may be blocking port 5432. "
+                "Falling back to local SQLite (artisan_ai.db) for uninterrupted demo and development."
+            )
+            return build_engine("sqlite:///./artisan_ai.db")
+
+    return try_engine
+
+engine = init_engine(DATABASE_URL)
+is_sqlite = engine.url.drivername.startswith("sqlite")
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

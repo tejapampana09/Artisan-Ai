@@ -467,15 +467,11 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
                   aiDraft.source === 'LIVE AI' || aiDraft.source === 'LIVE_AI'
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                    : aiDraft.source === 'MANUAL_DRAFT'
-                    ? 'bg-amber-50 text-amber-800 border-amber-300'
-                    : 'bg-purple-50 text-purple-800 border-purple-300'
+                    : 'bg-amber-50 text-amber-800 border-amber-300'
                 }`}>
                   {aiDraft.source === 'LIVE_AI' || aiDraft.source === 'LIVE AI'
                     ? 'Live AI Assisted Draft'
-                    : aiDraft.source === 'MANUAL_DRAFT'
-                    ? 'Manual Draft (AI Unavailable)'
-                    : 'Demo Sample Draft'}
+                    : 'Manual Draft (AI Unavailable)'}
                 </span>
                 <span className="text-[11px] text-slate-400">
                   (Language: {aiDraft.language_detected?.toUpperCase() || 'EN'})

@@ -233,62 +233,7 @@ async def generate_catalog_draft(
             print(f"[AI Adapter] Live Gemini call unavailable or timed out ({e}).")
 
     # -------------------------------------------------------------------------
-    # 2. DEMO / DEVELOPMENT FALLBACK (Strictly isolated to non-production demo)
-    # -------------------------------------------------------------------------
-    env = os.getenv("ENVIRONMENT", "development").lower()
-    raw_demo = os.getenv("DEMO_MODE")
-    is_production = env == "production"
-    demo_enabled = (raw_demo.lower() in ("true", "1", "yes")) if raw_demo is not None else (not is_production)
-
-    if demo_enabled and not is_production:
-        from backend.app.demo.craft_profiles import detect_demo_craft_profile
-        profile = detect_demo_craft_profile(clean_desc, clean_category_hint)
-        if profile:
-            if has_user_costs:
-                min_fair, suggested, _, pricing_source = calculate_pricing_from_costs(
-                    material_cost, labour_cost, packaging_cost
-                )
-                mat = to_decimal(material_cost, "0.00")
-                lab = to_decimal(labour_cost, "0.00")
-                pkg = to_decimal(packaging_cost, "0.00")
-            else:
-                mat = profile["estimated_cost"]["material"]
-                lab = profile["estimated_cost"]["labour"]
-                pkg = profile["estimated_cost"]["packaging"]
-                cost_basis = (mat + lab + pkg).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                min_fair = (cost_basis * Decimal("1.20")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                suggested = max(min_fair, profile["suggested_price"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                pricing_source = "DEMO_PROFILE_ESTIMATE"
-
-            return {
-                "source": "DEMO_FALLBACK",
-                "is_live_ai": False,
-                "is_demo_data": True,
-                "requires_artisan_verification": True,
-                "title": profile["title"],
-                "category": clean_category_hint or profile["category"],
-                "materials": profile["materials"],
-                "description": profile["description"],
-                "craft_story": profile["craft_story"],
-                "tags": profile["tags"],
-                "suggested_price": suggested,
-                "min_fair_price": min_fair,
-                "material_cost": mat,
-                "labour_cost": lab,
-                "packaging_cost": pkg,
-                "min_margin_pct": Decimal("0.20"),
-                "pricing_available": True,
-                "pricing_source": pricing_source,
-                "image_url": clean_image,
-                "enhanced_image_url": clean_image,
-                "transcription": clean_desc,
-                "language_detected": language,
-                "lifecycle_state": "AI_GENERATED",
-                "notice": "Demo catalog draft generated using sample data."
-            }
-
-    # -------------------------------------------------------------------------
-    # 3. PRODUCTION FALLBACK (100% Honest Manual Draft — No Fabrications)
+    # 2. PRODUCTION MANUAL DRAFT (100% Honest Draft — Zero Fabrications)
     # -------------------------------------------------------------------------
     return build_production_manual_draft(
         voice_description=clean_desc,

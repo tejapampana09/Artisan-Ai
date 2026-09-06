@@ -8,7 +8,7 @@ from sqlalchemy import text
 from backend.app.database import engine, Base, SessionLocal, get_db
 from backend.app.models import User
 from backend.app.schemas import HealthResponse, ReadyResponse, UserResponse, ModeUpdateRequest
-from backend.app.config import get_cors_origins, DEMO_MODE, ENVIRONMENT
+from backend.app.config import get_cors_origins, ENVIRONMENT
 from backend.app.routes.products import router as products_router
 from backend.app.routes.ai_catalog import router as ai_router
 from backend.app.routes.events import router as events_router
