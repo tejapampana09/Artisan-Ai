@@ -37,7 +37,8 @@ def test_1_live_gemini_success():
         }]
     }
 
-    with patch("httpx.AsyncClient.post", return_value=mock_gemini_response):
+    with patch("backend.app.services.ai_adapter.GEMINI_API_KEY", "mock-test-gemini-key"), \
+         patch("httpx.AsyncClient.post", return_value=mock_gemini_response):
         draft = asyncio.run(generate_catalog_draft(
             voice_description="Handwoven cotton sari with natural dye",
             language="te",
