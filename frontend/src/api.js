@@ -1,4 +1,19 @@
-const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+export function getApiBase() {
+  if (import.meta.env.VITE_API_BASE) {
+    return import.meta.env.VITE_API_BASE;
+  }
+  if (typeof window !== 'undefined') {
+    const { hostname, port } = window.location;
+    if ((hostname === 'localhost' || hostname === '127.0.0.1') && port === '5173') {
+      return '/api';
+    }
+    // When served from static S3/CloudFront without custom proxy, connect to active backend API
+    return 'http://127.0.0.1:8000/api';
+  }
+  return '/api';
+}
+
+const API_BASE = getApiBase();
 const AUTH_TOKEN_KEY = 'artisan_ai_auth_token';
 
 export function getAuthToken() {
