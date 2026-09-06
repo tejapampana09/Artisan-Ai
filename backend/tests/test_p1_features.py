@@ -87,7 +87,8 @@ def test_ondc_beckn_gateway_flow():
     search_data = search_res.json()
     assert "context" in search_data
     items = search_data["message"]["catalog"]["bpp/providers"][0]["items"]
-    assert any(item["id"] == str(pid) for item in items)
+    target_item = next(item for item in items if item["id"] == str(pid))
+    assert "ondc_certified" not in target_item  # Guarantee zero overclaiming
 
     # 2. ONDC /select (Quote)
     select_res = client.post("/api/ondc/select", json={
@@ -96,7 +97,7 @@ def test_ondc_beckn_gateway_flow():
     })
     assert select_res.status_code == 200
     quote_val = float(select_res.json()["message"]["order"]["quote"]["price"]["value"])
-    assert quote_val == 5050.0  # (2500 * 2) + 50 delivery
+    assert quote_val == 5050.0  # (2500 * 2) + 50 estimated delivery
 
     # 3. ONDC /init
     init_res = client.post("/api/ondc/init", json={
@@ -108,7 +109,7 @@ def test_ondc_beckn_gateway_flow():
     })
     assert init_res.status_code == 200
 
-    # 4. ONDC /confirm (Order creation & stock decrement)
+    # 4. ONDC /confirm (Order creation & atomic stock decrement)
     confirm_res = client.post("/api/ondc/confirm", json={
         "product_id": pid,
         "quantity": 2,
@@ -122,6 +123,17 @@ def test_ondc_beckn_gateway_flow():
     # Verify stock decremented from 5 to 3
     get_prod = client.get(f"/api/products/{pid}")
     assert get_prod.json()["stock"] == 3
+
+    # Attempting to confirm 4 units when only 3 remain fails with 400 (atomic DB update rejection)
+    fail_confirm = client.post("/api/ondc/confirm", json={
+        "product_id": pid,
+        "quantity": 4,
+        "buyer_name": "ONDC Buyer 2",
+        "buyer_phone": "+91 91111 33333",
+        "delivery_address": "Chennai, Tamil Nadu"
+    })
+    assert fail_confirm.status_code == 400
+    assert "stock unavailable" in fail_confirm.json()["detail"].lower()
 
 
 # =====================================================================

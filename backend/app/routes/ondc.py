@@ -1,11 +1,10 @@
 """
-ONDC (Open Network for Digital Commerce) Beckn Protocol Adapter Router.
-Enables traditional Indian artisans to publish craft listings onto the national ONDC network.
-Supported Beckn APIs:
-- POST /api/ondc/search  (Catalog discovery)
-- POST /api/ondc/select  (Quote generation)
-- POST /api/ondc/init    (Order initialization)
-- POST /api/ondc/confirm (Atomic order confirmation & stock decrement)
+ONDC / Beckn Integration Adapter Prototype Router.
+Provides a local integration prototype of Beckn protocol schema endpoints
+for catalog discovery, quote generation, and order handling.
+
+Note: This is an integration prototype adapter, not live network integration
+or official ONDC certification.
 """
 
 from decimal import Decimal
@@ -14,11 +13,12 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy import update
 
 from backend.app.database import get_db
 from backend.app.models import Product, Order, Event
 
-router = APIRouter(prefix="/api/ondc", tags=["ONDC Gateway"])
+router = APIRouter(prefix="/api/ondc", tags=["ONDC Integration Prototype"])
 
 class ONDCSearchIntent(BaseModel):
     category: Optional[str] = None
@@ -48,7 +48,7 @@ class ONDCConfirmRequest(BaseModel):
 
 @router.post("/search")
 def ondc_search(req: ONDCSearchRequest, db: Session = Depends(get_db)):
-    """ONDC /search catalog discovery endpoint."""
+    """ONDC /search catalog discovery endpoint (Prototype Adapter)."""
     query = db.query(Product).filter(Product.status == "PUBLISHED", Product.stock > 0)
     if req.intent:
         if req.intent.category:
@@ -74,8 +74,7 @@ def ondc_search(req: ONDCSearchRequest, db: Session = Depends(get_db)):
             "quantity": {
                 "available": {"count": p.stock}
             },
-            "fulfillment_id": "F1_EXPRESS",
-            "ondc_certified": True
+            "fulfillment_id": "F1_PROTOTYPE_EXPRESS"
         })
 
     return {
@@ -91,7 +90,7 @@ def ondc_search(req: ONDCSearchRequest, db: Session = Depends(get_db)):
                 "bpp/providers": [
                     {
                         "id": "ARTISAN_AI_BPP",
-                        "descriptor": {"name": "Artisan AI Marketplace Gateway"},
+                        "descriptor": {"name": "Artisan AI Marketplace Gateway (Prototype)"},
                         "items": items
                     }
                 ]
@@ -101,18 +100,18 @@ def ondc_search(req: ONDCSearchRequest, db: Session = Depends(get_db)):
 
 @router.post("/select")
 def ondc_select(req: ONDCSelectRequest, db: Session = Depends(get_db)):
-    """ONDC /select quote generation endpoint."""
+    """ONDC /select quote generation endpoint (Prototype Adapter)."""
     product = db.query(Product).filter(Product.id == req.product_id).first()
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found on ONDC registry")
+        raise HTTPException(status_code=404, detail="Product not found on local ONDC registry")
 
     if product.stock < req.quantity:
         raise HTTPException(status_code=400, detail="Insufficient stock for requested quantity")
 
     unit_price = Decimal(str(product.price))
     item_total = unit_price * req.quantity
-    delivery_fee = Decimal("50.00")
-    grand_total = item_total + delivery_fee
+    estimated_delivery_fee = Decimal("50.00")
+    grand_total = item_total + estimated_delivery_fee
 
     return {
         "context": {
@@ -127,7 +126,7 @@ def ondc_select(req: ONDCSelectRequest, db: Session = Depends(get_db)):
                     "price": {"currency": "INR", "value": str(grand_total)},
                     "breakup": [
                         {"title": product.title, "price": {"currency": "INR", "value": str(item_total)}},
-                        {"title": "Delivery & Handloom Logistics", "price": {"currency": "INR", "value": str(delivery_fee)}}
+                        {"title": "Estimated Delivery Fee (Prototype Adapter)", "price": {"currency": "INR", "value": str(estimated_delivery_fee)}}
                     ]
                 }
             }
@@ -136,13 +135,14 @@ def ondc_select(req: ONDCSelectRequest, db: Session = Depends(get_db)):
 
 @router.post("/init")
 def ondc_init(req: ONDCInitRequest, db: Session = Depends(get_db)):
-    """ONDC /init order drafting endpoint."""
+    """ONDC /init order drafting endpoint (Prototype Adapter)."""
     product = db.query(Product).filter(Product.id == req.product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
     unit_price = Decimal(str(product.price))
-    grand_total = (unit_price * req.quantity) + Decimal("50.00")
+    estimated_delivery_fee = Decimal("50.00")
+    grand_total = (unit_price * req.quantity) + estimated_delivery_fee
 
     return {
         "context": {"action": "on_init", "timestamp": datetime.now(timezone.utc).isoformat()},
@@ -159,19 +159,32 @@ def ondc_init(req: ONDCInitRequest, db: Session = Depends(get_db)):
 
 @router.post("/confirm")
 def ondc_confirm(req: ONDCConfirmRequest, db: Session = Depends(get_db)):
-    """ONDC /confirm atomic order creation endpoint."""
+    """
+    ONDC /confirm atomic order creation endpoint.
+    Uses database-level conditional update (WHERE stock >= quantity) to prevent race conditions.
+    """
     product = db.query(Product).filter(Product.id == req.product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    if product.stock < req.quantity:
-        raise HTTPException(status_code=400, detail="Stock unavailable")
+    # Atomic Database-Level Conditional Decrement (prevents race conditions under concurrency)
+    stmt = (
+        update(Product)
+        .where(Product.id == req.product_id, Product.stock >= req.quantity)
+        .values(stock=Product.stock - req.quantity)
+    )
+    result = db.execute(stmt)
+    if result.rowcount == 0:
+        db.rollback()
+        prod_check = db.query(Product).filter(Product.id == req.product_id).first()
+        available = prod_check.stock if prod_check else 0
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Stock unavailable or concurrent order collision: requested {req.quantity}, available {available}."
+        )
 
     unit_price = Decimal(str(product.price))
     total_price = unit_price * req.quantity
-
-    # Atomic stock decrement
-    product.stock -= req.quantity
 
     new_order = Order(
         product_id=product.id,
@@ -191,7 +204,7 @@ def ondc_confirm(req: ONDCConfirmRequest, db: Session = Depends(get_db)):
         event_type="ORDER",
         product_id=product.id,
         category=product.category,
-        metadata_info=f'{{"source": "ONDC_GATEWAY", "quantity": {req.quantity}}}'
+        metadata_info=f'{{"source": "ONDC_GATEWAY_PROTOTYPE", "quantity": {req.quantity}}}'
     ))
 
     db.commit()
