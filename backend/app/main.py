@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from backend.app.database import engine, Base, SessionLocal, get_db
-from backend.app.models import User
+from backend.app.models import User, Product, Order, Enquiry, Event, PricingDecision
 from backend.app.schemas import HealthResponse, ReadyResponse, UserResponse, ModeUpdateRequest
 from backend.app.config import get_cors_origins, ENVIRONMENT
 from backend.app.routes.products import router as products_router
@@ -44,6 +44,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+import uuid
+import time
+from fastapi import Request
+
+@app.middleware("http")
+async def add_observability_headers(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    start_time = time.time()
+    response = await call_next(request)
+    duration_ms = round((time.time() - start_time) * 1000, 2)
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Process-Time-Ms"] = str(duration_ms)
+    return response
 
 # Include Routers
 app.include_router(auth_router)

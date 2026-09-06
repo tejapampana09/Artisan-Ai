@@ -429,28 +429,50 @@ def get_personalized_recommendations(
     current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """
-    Buyer Recommendation Engine (Section 10 in Architecture Document):
-    SEARCH + VIEW + SAVE + ENQUIRY + PURCHASE -> INTEREST PROFILE -> PERSONALIZED RECOMMENDATIONS
-    Cold-start fallback: Top trending & published items if no prior user behavioral history.
+    Buyer Weighted Recommendation Engine:
+    Aggregates user's personal behavioral events weighted by interaction strength:
+    ORDER (10) > ENQUIRY (6) > SAVE (4) > SEARCH (2) > VIEW (1)
+    Excludes products already purchased by the user.
+    Cold-start fallback: Top trending & published items.
     """
     if current_user:
-        recent_cats = (
-            db.query(Event.category)
+        from sqlalchemy import case
+        # Exclude products already ordered by this user
+        purchased_pids = [
+            o.product_id for o in db.query(Order.product_id).filter(Order.user_id == current_user.id).all()
+        ]
+
+        weighted_affinity = func.sum(
+            case(
+                (Event.event_type == "ORDER", 10),
+                (Event.event_type == "ENQUIRY", 6),
+                (Event.event_type == "SAVE", 4),
+                (Event.event_type == "SEARCH", 2),
+                (Event.event_type == "VIEW", 1),
+                else_=1
+            )
+        ).label("affinity")
+
+        user_cat_affinities = (
+            db.query(Event.category, weighted_affinity)
             .filter(Event.user_id == current_user.id, Event.category.isnot(None))
-            .order_by(Event.id.desc())
-            .limit(10)
+            .group_by(Event.category)
+            .order_by(weighted_affinity.desc())
+            .limit(5)
             .all()
         )
-        cat_names = [c[0] for c in recent_cats if c[0]]
-        if cat_names:
-            personalized = (
-                db.query(Product)
-                .filter(Product.status == "PUBLISHED", Product.category.in_(cat_names))
-                .order_by(Product.id.desc())
-                .limit(limit)
-                .all()
+
+        top_cats = [row[0] for row in user_cat_affinities if row[0]]
+        if top_cats:
+            query = db.query(Product).filter(
+                Product.status == "PUBLISHED",
+                Product.category.in_(top_cats)
             )
-            if len(personalized) >= 3:
+            if purchased_pids:
+                query = query.filter(~Product.id.in_(purchased_pids))
+
+            personalized = query.order_by(Product.id.desc()).limit(limit).all()
+            if len(personalized) >= 1:
                 return personalized
 
     return get_trending_products(limit=limit, db=db)

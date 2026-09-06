@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
@@ -12,15 +12,18 @@ from backend.app.services.auth import (
     get_current_user_strict,
     get_current_user
 )
+from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def register_user(payload: UserRegister, db: Session = Depends(get_db)):
+def register_user(payload: UserRegister, request: Request, db: Session = Depends(get_db)):
     """
     Registers a new artisan or buyer with secure password hashing.
     Generates and returns a JWT access token.
+    Enforces sliding window rate limits to prevent automated account creation.
     """
+    rate_limiter.check_rate_limit(f"reg:{get_client_identifier(request)}", max_requests=5, window_seconds=60)
     # Check if user with given email or phone exists
     filters = []
     if payload.email:
@@ -67,11 +70,13 @@ def register_user(payload: UserRegister, db: Session = Depends(get_db)):
     )
 
 @router.post("/login", response_model=TokenResponse)
-def login_user(payload: UserLogin, db: Session = Depends(get_db)):
+def login_user(payload: UserLogin, request: Request, db: Session = Depends(get_db)):
     """
     Authenticates a user via email or phone number and password.
     Returns JWT access token.
+    Enforces sliding window rate limits (max 5 attempts per 60 seconds).
     """
+    rate_limiter.check_rate_limit(f"login:{get_client_identifier(request)}", max_requests=5, window_seconds=60)
     identifier = payload.email_or_phone.strip()
     user = db.query(User).filter(
         or_(
@@ -135,6 +140,7 @@ def reset_password_disabled():
 @router.post("/change-password", response_model=TokenResponse)
 def change_password(
     payload: ChangePasswordRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_strict)
 ):
@@ -145,6 +151,7 @@ def change_password(
     Increments token_version to invalidate prior JWT sessions.
     Returns a fresh JWT token on success.
     """
+    rate_limiter.check_rate_limit(f"chpwd:{get_client_identifier(request, current_user.id)}", max_requests=5, window_seconds=60)
     if not verify_password(payload.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

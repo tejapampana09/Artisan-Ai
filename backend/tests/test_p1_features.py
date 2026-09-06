@@ -165,3 +165,35 @@ def test_seller_analytics_csv_export():
     assert "Product ID" in csv_text
     assert "Listing Price (INR)" in csv_text
     assert f"Channapatna Craft {uid}" in csv_text
+
+
+# =====================================================================
+# 4. P1-A & OBSERVABILITY: RATE LIMITING & REQUEST HEADERS
+# =====================================================================
+
+def test_request_observability_headers():
+    """Verify X-Request-ID and X-Process-Time-Ms headers are injected."""
+    res = client.get("/api/health")
+    assert res.status_code == 200
+    assert "x-request-id" in res.headers
+    assert "x-process-time-ms" in res.headers
+
+def test_auth_rate_limiting_enforced():
+    """Verify that sliding window rate limiter triggers HTTP 429 Too Many Requests."""
+    from backend.app.services.rate_limiter import rate_limiter
+    from fastapi import HTTPException
+
+    key = f"test_rate_limit:ip:127.0.0.1_{uuid.uuid4().hex[:4]}"
+
+    # First 5 calls allowed
+    for _ in range(5):
+        rate_limiter.check_rate_limit(key, max_requests=5, window_seconds=60)
+
+    # 6th call raises HTTP 429
+    with pytest.raises(HTTPException) as exc_info:
+        rate_limiter.check_rate_limit(key, max_requests=5, window_seconds=60)
+
+    assert exc_info.value.status_code == 429
+    assert "rate limit exceeded" in exc_info.value.detail.lower()
+    headers_lower = {k.lower(): v for k, v in exc_info.value.headers.items()}
+    assert "retry-after" in headers_lower

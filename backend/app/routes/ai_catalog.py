@@ -63,8 +63,16 @@ class CatalogApproveRequest(BaseModel):
     enhanced_image_url: Optional[str] = None
     status: str = "PUBLISHED"
 
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
+
 @router.post("/process-catalog", response_model=AICatalogDraftResponse)
-async def process_voice_and_image(req: AICatalogRequest):
+async def process_voice_and_image(req: AICatalogRequest, request: Request):
+    """
+    Multimodal AI cataloging endpoint.
+    Enforces rate limits (max 10 generations per minute per client).
+    """
+    rate_limiter.check_rate_limit(f"aicat:{get_client_identifier(request)}", max_requests=10, window_seconds=60)
     draft = await generate_catalog_draft(
         voice_description=req.voice_description,
         language=req.language,

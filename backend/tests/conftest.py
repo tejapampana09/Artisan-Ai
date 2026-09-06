@@ -7,22 +7,29 @@ REPO_ROOT = str(Path(__file__).resolve().parent.parent.parent)
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
-TEST_DB_URL = "sqlite:///./test_runner.db"
+TEST_DB_URL = "sqlite:///:memory:"
 os.environ["DATABASE_URL"] = TEST_DB_URL
 os.environ["DEMO_MODE"] = "true"
 
-from backend.app.database import Base, build_engine, get_db
+from backend.app.database import Base, get_db
 import backend.app.database as db_module
-from backend.app.main import app
 
-# Re-bind database module to isolated test database
-test_engine = build_engine(TEST_DB_URL)
+# Isolated in-memory SQLite engine with StaticPool for fast, 100% clean test execution
+test_engine = create_engine(
+    TEST_DB_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
 db_module.engine = test_engine
 db_module.SessionLocal = TestingSessionLocal
+
+from backend.app.main import app
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_test_database():
@@ -50,6 +57,9 @@ def setup_test_database():
         db = TestingSessionLocal()
         try:
             yield db
+        except Exception:
+            db.rollback()
+            raise
         finally:
             db.close()
 
@@ -59,9 +69,3 @@ def setup_test_database():
 
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=test_engine)
-    test_engine.dispose()
-    if os.path.exists("./test_runner.db"):
-        try:
-            os.remove("./test_runner.db")
-        except OSError:
-            pass
