@@ -5,7 +5,7 @@ import BuyView from './components/BuyView';
 import OfflineSyncBanner from './components/OfflineSyncBanner';
 import AuthModal from './components/AuthModal';
 import { OfflineProvider, useOffline } from './context/OfflineContext';
-import { checkHealth, checkReady, getCurrentUser, updateUserMode } from './api';
+import { checkHealth, checkReady, getCurrentUser, updateUserMode, getAuthToken } from './api';
 import { Sparkles } from 'lucide-react';
 
 function AppContent() {
@@ -21,6 +21,16 @@ function AppContent() {
 
   const loadInitialData = async () => {
     try {
+      const token = getAuthToken();
+      if (!token) {
+        // No authenticated session in localStorage
+        const [health, ready] = await Promise.all([checkHealth(), checkReady()]);
+        setHealthStatus(health);
+        setReadyStatus(ready);
+        setUser(null);
+        return;
+      }
+
       const [health, ready, userData] = await Promise.all([
         checkHealth(),
         checkReady(),
@@ -28,14 +38,17 @@ function AppContent() {
       ]);
       setHealthStatus(health);
       setReadyStatus(ready);
-      if (userData) {
+      if (userData && !userData.detail && !userData.error) {
         setUser(userData);
         if (userData.active_mode) {
           setActiveMode(userData.active_mode);
         }
+      } else {
+        setUser(null);
       }
     } catch (e) {
       console.error('Initial load failed', e);
+      setUser(null);
     } finally {
       setLoading(false);
     }

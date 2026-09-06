@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 
 TEST_DB_URL = "sqlite:///./test_runner.db"
 os.environ["DATABASE_URL"] = TEST_DB_URL
+os.environ["DEMO_MODE"] = "true"
 
 from backend.app.database import Base, build_engine, get_db
 import backend.app.database as db_module
