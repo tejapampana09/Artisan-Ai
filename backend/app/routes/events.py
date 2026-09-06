@@ -8,8 +8,8 @@ from sqlalchemy import func, update
 from backend.app.database import get_db
 from backend.app.models import Event, Product, User, Order, Enquiry
 from backend.app.schemas import (
-    EventCreate, EventResponse, EnquiryCreate, EnquiryResponse, 
-    OrderCreate, OrderResponse, ProductResponse
+    EventCreate, EventResponse, EnquiryCreate, EnquiryReply, EnquiryResponse, 
+    OrderCreate, OrderStatusUpdate, OrderResponse, ProductResponse
 )
 from backend.app.services.auth import get_current_user, get_optional_current_user
 
@@ -153,9 +153,54 @@ def list_enquiries(
             buyer_phone=e.buyer_phone,
             quantity=e.quantity,
             message=e.message,
+            artisan_reply=e.artisan_reply,
+            replied_at=e.replied_at,
             created_at=e.created_at
         ))
     return res
+
+@router.put("/marketplace/enquiries/{enquiry_id}/reply", response_model=EnquiryResponse)
+def reply_enquiry(
+    enquiry_id: int,
+    payload: EnquiryReply,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    enquiry = db.query(Enquiry).filter(Enquiry.id == enquiry_id).first()
+    if not enquiry:
+        raise HTTPException(status_code=404, detail="Enquiry not found")
+
+    prod = enquiry.product
+    if not prod:
+        raise HTTPException(status_code=404, detail="Product associated with enquiry not found")
+
+    if prod.seller_id != current_user.id and current_user.role != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: Only the artisan who crafted this item can reply to this enquiry."
+        )
+
+    enquiry.artisan_reply = payload.artisan_reply.strip()
+    enquiry.replied_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(enquiry)
+
+    return EnquiryResponse(
+        id=enquiry.id,
+        product_id=enquiry.product_id,
+        product_title=prod.title if prod else f"Product #{enquiry.product_id}",
+        product_image=prod.image_url if prod else None,
+        seller_id=prod.seller_id if prod else None,
+        seller_name=prod.seller.name if (prod and prod.seller) else None,
+        user_id=enquiry.user_id,
+        buyer_name=enquiry.buyer_name,
+        buyer_phone=enquiry.buyer_phone,
+        quantity=enquiry.quantity,
+        message=enquiry.message,
+        artisan_reply=enquiry.artisan_reply,
+        replied_at=enquiry.replied_at,
+        created_at=enquiry.created_at
+    )
 
 @router.post("/marketplace/order", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
 def place_order(
@@ -278,6 +323,68 @@ def list_orders(
             created_at=o.created_at
         ))
     return res
+
+@router.patch("/marketplace/orders/{order_id}/status", response_model=OrderResponse)
+def update_order_status(
+    order_id: int,
+    payload: OrderStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    prod = order.product
+    if not prod:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    allowed_statuses = ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"]
+    new_status = payload.status.upper().strip()
+    if new_status not in allowed_statuses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status '{payload.status}'. Allowed: {', '.join(allowed_statuses)}"
+        )
+
+    is_seller = prod.seller_id == current_user.id or current_user.role == "ADMIN"
+    is_buyer = order.user_id == current_user.id
+
+    if is_seller:
+        order.status = new_status
+    elif is_buyer and new_status == "CANCELLED":
+        if order.status in ["SHIPPED", "DELIVERED"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Order cannot be cancelled once shipped or delivered."
+            )
+        order.status = "CANCELLED"
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: You cannot update the status of this order."
+        )
+
+    db.commit()
+    db.refresh(order)
+
+    return OrderResponse(
+        id=order.id,
+        product_id=order.product_id,
+        product_title=prod.title if prod else f"Product #{order.product_id}",
+        product_image=prod.image_url if prod else None,
+        seller_id=prod.seller_id if prod else None,
+        seller_name=prod.seller.name if (prod and prod.seller) else None,
+        user_id=order.user_id,
+        buyer_name=order.buyer_name,
+        buyer_phone=order.buyer_phone,
+        quantity=order.quantity,
+        unit_price=float(order.unit_price),
+        total_price=float(order.total_price),
+        delivery_address=order.delivery_address,
+        status=order.status,
+        created_at=order.created_at
+    )
 
 @router.get("/marketplace/trending", response_model=List[ProductResponse])
 def get_trending_products(limit: int = Query(8, le=20), db: Session = Depends(get_db)):

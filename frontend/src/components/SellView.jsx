@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   PlusCircle, TrendingUp, Tag, Sparkles, Package, Wand2, RefreshCw,
-  MessageSquare, ShoppingCart, Phone, ExternalLink, Store, ShieldCheck
+  MessageSquare, ShoppingCart, Phone, ExternalLink, Store, ShieldCheck,
+  Send, Truck, Check, Clock, CheckCircle2
 } from 'lucide-react';
 import ProductList from './ProductList';
 import CreateProductModal from './CreateProductModal';
@@ -11,7 +12,8 @@ import CopilotWidget from './CopilotWidget';
 import MarketDemandWidget from './MarketDemandWidget';
 import { 
   getProducts, createProduct, updateProduct, deleteProduct, 
-  getMarketDemand, getSellerOpportunities, getEnquiries, getOrders 
+  getMarketDemand, getSellerOpportunities, getEnquiries, getOrders,
+  replyToEnquiry, updateOrderStatus
 } from '../api';
 import { useOffline } from '../context/OfflineContext';
 import { 
@@ -20,6 +22,23 @@ import {
   getCachedCopilotInsight, setCachedCopilotInsight,
   getCachedOpportunities, setCachedOpportunities
 } from '../services/offlineSync';
+
+const TRACKING_STEPS = [
+  { key: 'CONFIRMED', label: 'Confirmed', labelTe: 'ఖరారైంది' },
+  { key: 'PROCESSING', label: 'Packed', labelTe: 'ప్యాక్ అయింది' },
+  { key: 'SHIPPED', label: 'In Transit', labelTe: 'రవాణాలో ఉంది' },
+  { key: 'DELIVERED', label: 'Delivered', labelTe: 'చేరింది' }
+];
+
+const getStepIndex = (status) => {
+  switch ((status || '').toUpperCase()) {
+    case 'CONFIRMED': return 0;
+    case 'PROCESSING': return 1;
+    case 'SHIPPED': return 2;
+    case 'DELIVERED': return 3;
+    default: return -1;
+  }
+};
 
 export default function SellView({ user, onOpenAuth, onSwitchMode }) {
   const [products, setProducts] = useState([]);
@@ -35,6 +54,11 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [notification, setNotification] = useState('');
+
+  const [replyTexts, setReplyTexts] = useState({});
+  const [editingReply, setEditingReply] = useState({});
+  const [replyingEnquiryId, setReplyingEnquiryId] = useState(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
   const { isOffline, queueProductDraft, offlineQueue, removeDraft } = useOffline();
 
@@ -114,6 +138,35 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
   const showNotification = (msg) => {
     setNotification(msg);
     setTimeout(() => setNotification(''), 3500);
+  };
+
+  const handleSendReply = async (enquiryId) => {
+    const text = replyTexts[enquiryId];
+    if (!text || !text.trim()) return;
+    setReplyingEnquiryId(enquiryId);
+    try {
+      const updatedEnq = await replyToEnquiry(enquiryId, text.trim());
+      setEnquiries(prev => prev.map(e => e.id === enquiryId ? updatedEnq : e));
+      showNotification('Response sent to buyer! / మీ స్పందన పంపబడింది!');
+      setEditingReply(prev => ({ ...prev, [enquiryId]: false }));
+    } catch (err) {
+      alert('Failed to send reply: ' + (err.message || 'Error occurred'));
+    } finally {
+      setReplyingEnquiryId(null);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    setUpdatingOrderId(orderId);
+    try {
+      const updatedOrd = await updateOrderStatus(orderId, newStatus);
+      setOrders(prev => prev.map(o => o.id === orderId ? updatedOrd : o));
+      showNotification(`Order status updated to ${newStatus}! / ఆర్డర్ స్టేటస్ అప్‌డేట్ అయింది!`);
+    } catch (err) {
+      alert('Failed to update status: ' + (err.message || 'Error occurred'));
+    } finally {
+      setUpdatingOrderId(null);
+    }
   };
 
   const handleCreateProduct = async (formData) => {
@@ -505,7 +558,50 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                           "{enq.message}"
                         </p>
                       )}
-                      <p className="text-[11px] text-slate-400 mt-1">
+
+                      {/* Artisan Response Section */}
+                      {enq.artisan_reply && !editingReply[enq.id] ? (
+                        <div className="mt-2.5 p-2.5 bg-indigo-50/90 border border-indigo-200 rounded-xl max-w-lg">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-indigo-900 flex items-center">
+                              <MessageSquare className="w-3 h-3 text-indigo-600 inline mr-1" />
+                              Your Response / మీ స్పందన:
+                            </span>
+                            <button 
+                              onClick={() => setEditingReply(prev => ({ ...prev, [enq.id]: true }))}
+                              className="text-[10px] font-bold text-indigo-700 hover:underline cursor-pointer"
+                            >
+                              Edit Response
+                            </button>
+                          </div>
+                          <p className="text-xs text-indigo-950 font-medium mt-0.5">"{enq.artisan_reply}"</p>
+                          {enq.replied_at && (
+                            <p className="text-[10px] text-indigo-500 mt-0.5">
+                              Sent: {new Date(enq.replied_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-2.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-lg">
+                          <input
+                            type="text"
+                            placeholder="Type response to buyer (e.g. Yes, ready in 10 days / ధర వివరాలు)..."
+                            value={replyTexts[enq.id] !== undefined ? replyTexts[enq.id] : (enq.artisan_reply || '')}
+                            onChange={(e) => setReplyTexts(prev => ({ ...prev, [enq.id]: e.target.value }))}
+                            className="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white shadow-2xs"
+                          />
+                          <button
+                            onClick={() => handleSendReply(enq.id)}
+                            disabled={replyingEnquiryId === enq.id || !(replyTexts[enq.id] !== undefined ? replyTexts[enq.id] : (enq.artisan_reply || '')).trim()}
+                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center space-x-1 shrink-0"
+                          >
+                            <Send className="w-3 h-3" />
+                            <span>{replyingEnquiryId === enq.id ? 'Sending...' : 'Send Reply'}</span>
+                          </button>
+                        </div>
+                      )}
+
+                      <p className="text-[11px] text-slate-400 mt-2">
                         Received: {new Date(enq.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
                       </p>
                     </div>
@@ -561,42 +657,121 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {orders.map((ord) => (
-                <div key={ord.id} className="p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-start space-x-3.5">
-                    {ord.product_image ? (
-                      <img src={ord.product_image} alt={ord.product_title || 'Craft'} className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs" />
-                    ) : (
-                      <div className="w-14 h-14 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0 text-emerald-700 font-bold text-xs">
-                        <Package className="w-6 h-6" />
+              {orders.map((ord) => {
+                const currentIdx = getStepIndex(ord.status);
+                return (
+                  <div key={ord.id} className="p-5 hover:bg-slate-50/80 transition-colors flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-start space-x-3.5">
+                        {ord.product_image ? (
+                          <img src={ord.product_image} alt={ord.product_title || 'Craft'} className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs" />
+                        ) : (
+                          <div className="w-14 h-14 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0 text-emerald-700 font-bold text-xs">
+                            <Package className="w-6 h-6" />
+                          </div>
+                        )}
+                        <div>
+                          <div className="flex items-center space-x-2 flex-wrap">
+                            <span className="font-bold text-slate-900 text-sm">Order #{ord.id}</span>
+                            <span className={`font-bold px-2 py-0.5 rounded-full text-[10px] border ${
+                              ord.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-900 border-emerald-300' :
+                              ord.status === 'SHIPPED' ? 'bg-indigo-100 text-indigo-900 border-indigo-300' :
+                              ord.status === 'PROCESSING' ? 'bg-amber-100 text-amber-900 border-amber-300' :
+                              'bg-slate-100 text-slate-800 border-slate-300'
+                            }`}>
+                              {ord.status}
+                            </span>
+                            <span className="text-xs font-bold text-slate-900">
+                              ₹{ord.total_price?.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <p className="text-xs font-medium text-slate-700 mt-0.5">
+                            Craft: <span className="font-semibold text-slate-900">{ord.product_title || `Product #${ord.product_id}`}</span> (Qty: {ord.quantity})
+                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Buyer: <strong className="text-slate-700">{ord.buyer_name}</strong> {ord.buyer_phone ? `(${ord.buyer_phone})` : ''}
+                          </p>
+                          <p className="text-xs text-slate-600 mt-1">
+                            Delivery Address: <span className="italic">{ord.delivery_address}</span>
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-1">
+                            Ordered: {new Date(ord.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                    <div>
-                      <div className="flex items-center space-x-2 flex-wrap">
-                        <span className="font-bold text-slate-900 text-sm">Order #{ord.id}</span>
-                        <span className="bg-emerald-100 text-emerald-900 font-bold px-2 py-0.5 rounded-full text-[10px] border border-emerald-300">
-                          {ord.status}
-                        </span>
-                        <span className="text-xs font-bold text-slate-900">
-                          ₹{ord.total_price?.toLocaleString('en-IN')}
-                        </span>
+
+                      {/* Status Action Buttons for Artisan */}
+                      <div className="shrink-0 self-end sm:self-center">
+                        {ord.status === 'CONFIRMED' && (
+                          <button
+                            onClick={() => handleUpdateOrderStatus(ord.id, 'PROCESSING')}
+                            disabled={updatingOrderId === ord.id}
+                            className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer"
+                          >
+                            <Package className="w-3.5 h-3.5" />
+                            <span>{updatingOrderId === ord.id ? 'Updating...' : 'Mark as Packed 📦'}</span>
+                          </button>
+                        )}
+                        {ord.status === 'PROCESSING' && (
+                          <button
+                            onClick={() => handleUpdateOrderStatus(ord.id, 'SHIPPED')}
+                            disabled={updatingOrderId === ord.id}
+                            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer"
+                          >
+                            <Truck className="w-3.5 h-3.5" />
+                            <span>{updatingOrderId === ord.id ? 'Updating...' : 'Dispatch & Ship 🚚'}</span>
+                          </button>
+                        )}
+                        {ord.status === 'SHIPPED' && (
+                          <button
+                            onClick={() => handleUpdateOrderStatus(ord.id, 'DELIVERED')}
+                            disabled={updatingOrderId === ord.id}
+                            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>{updatingOrderId === ord.id ? 'Updating...' : 'Mark Delivered ✅'}</span>
+                          </button>
+                        )}
+                        {ord.status === 'DELIVERED' && (
+                          <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-xl inline-flex items-center space-x-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Order Completed ✅</span>
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs font-medium text-slate-700 mt-0.5">
-                        Craft: <span className="font-semibold text-slate-900">{ord.product_title || `Product #${ord.product_id}`}</span> (Qty: {ord.quantity})
-                      </p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Buyer: <strong className="text-slate-700">{ord.buyer_name}</strong> {ord.buyer_phone ? `(${ord.buyer_phone})` : ''}
-                      </p>
-                      <p className="text-xs text-slate-600 mt-1">
-                        Delivery Address: <span className="italic">{ord.delivery_address}</span>
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        Ordered: {new Date(ord.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-                      </p>
+                    </div>
+
+                    {/* Flipkart-Style Visual Delivery Tracker Bar */}
+                    <div className="w-full mt-2 p-3 bg-slate-50/90 rounded-2xl border border-slate-200">
+                      <div className="flex items-center justify-between relative">
+                        {TRACKING_STEPS.map((step, idx) => {
+                          const isDone = currentIdx > idx || ord.status === 'DELIVERED';
+                          const isCurrent = currentIdx === idx;
+                          return (
+                            <div key={step.key} className="flex-1 flex flex-col items-center relative z-10">
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-2xs ${
+                                isDone 
+                                  ? 'bg-emerald-600 text-white' 
+                                  : isCurrent 
+                                    ? 'bg-amber-500 text-white ring-4 ring-amber-100 animate-pulse' 
+                                    : 'bg-slate-200 text-slate-500'
+                              }`}>
+                                {isDone ? <Check className="w-4 h-4" /> : (idx + 1)}
+                              </div>
+                              <span className={`text-[11px] font-bold mt-1 text-center ${
+                                isCurrent ? 'text-amber-700 font-extrabold' : isDone ? 'text-emerald-700' : 'text-slate-400'
+                              }`}>
+                                {step.label}
+                              </span>
+                              <span className="text-[9px] text-slate-400 text-center">{step.labelTe}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

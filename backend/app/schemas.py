@@ -120,6 +120,9 @@ class EnquiryCreate(BaseModel):
     quantity: int = Field(default=1, ge=1)
     message: Optional[str] = Field(None, max_length=1000)
 
+class EnquiryReply(BaseModel):
+    artisan_reply: str = Field(..., min_length=1, max_length=1000)
+
 class EnquiryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -134,6 +137,8 @@ class EnquiryResponse(BaseModel):
     buyer_phone: Optional[str] = None
     quantity: int
     message: Optional[str] = None
+    artisan_reply: Optional[str] = None
+    replied_at: Optional[datetime] = None
     created_at: datetime
 
 class OrderCreate(BaseModel):
@@ -142,6 +147,9 @@ class OrderCreate(BaseModel):
     buyer_phone: Optional[str] = Field(default=None, max_length=25)
     quantity: int = Field(default=1, ge=1)
     delivery_address: str = Field(..., min_length=3, max_length=500)
+
+class OrderStatusUpdate(BaseModel):
+    status: str = Field(..., description="Order status: CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED")
 
 class OrderResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

@@ -474,3 +474,38 @@ export async function syncBatch(batchData) {
   }
 }
 
+export async function replyToEnquiry(enquiryId, replyText) {
+  try {
+    const res = await fetch(`${API_BASE}/marketplace/enquiries/${enquiryId}/reply`, {
+      method: 'PUT',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ artisan_reply: replyText }),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || `HTTP error ${res.status}`);
+    }
+    return await res.json();
+  } catch (err) {
+    console.error('Error replying to enquiry:', err);
+    throw err;
+  }
+}
+
+export async function updateOrderStatus(orderId, newStatus) {
+  try {
+    const res = await fetch(`${API_BASE}/marketplace/orders/${orderId}/status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || `HTTP error ${res.status}`);
+    }
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating order status:', err);
+    throw err;
+  }
+}

@@ -105,6 +105,8 @@ class Enquiry(Base):
     buyer_phone = Column(String, nullable=False)
     quantity = Column(Integer, nullable=False, default=1)
     message = Column(Text, nullable=True)
+    artisan_reply = Column(Text, nullable=True)
+    replied_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     product = relationship("Product", back_populates="enquiries")

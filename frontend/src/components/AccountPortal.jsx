@@ -2,20 +2,44 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, User, ShoppingBag, Heart, MessageSquare, LogOut, Package, 
   MapPin, Phone, Mail, Store, ShieldCheck, ChevronRight, RefreshCw, 
-  Trash2, ExternalLink, Sparkles, CheckCircle2, Clock
+  Trash2, ExternalLink, Sparkles, CheckCircle2, Clock,
+  Send, Truck, Check
 } from 'lucide-react';
-import { getOrders, getEnquiries, getProducts, logoutUser } from '../api';
+import { getOrders, getEnquiries, getProducts, logoutUser, replyToEnquiry, updateOrderStatus } from '../api';
 import { getSavedProductIds, removeSavedProductId } from '../services/offlineSync';
+
+const TRACKING_STEPS = [
+  { key: 'CONFIRMED', label: 'Confirmed', labelTe: 'ఖరారైంది' },
+  { key: 'PROCESSING', label: 'Packed', labelTe: 'ప్యాక్ అయింది' },
+  { key: 'SHIPPED', label: 'In Transit', labelTe: 'రవాణాలో ఉంది' },
+  { key: 'DELIVERED', label: 'Delivered', labelTe: 'చేరింది' }
+];
+
+const getStepIndex = (status) => {
+  switch ((status || '').toUpperCase()) {
+    case 'CONFIRMED': return 0;
+    case 'PROCESSING': return 1;
+    case 'SHIPPED': return 2;
+    case 'DELIVERED': return 3;
+    default: return -1;
+  }
+};
 
 export default function AccountPortal({ user, onClose, onAuthChange, onNavigateMode }) {
   const [activeTab, setActiveTab] = useState('ORDERS'); // 'ORDERS' | 'WISHLIST' | 'ENQUIRIES' | 'PROFILE'
   const [orderSubTab, setOrderSubTab] = useState('PURCHASES'); // 'PURCHASES' | 'SALES'
+  const [enquirySubTab, setEnquirySubTab] = useState('SENT'); // 'SENT' | 'RECEIVED'
   const [buyerOrders, setBuyerOrders] = useState([]);
   const [sellerOrders, setSellerOrders] = useState([]);
   const [buyerEnquiries, setBuyerEnquiries] = useState([]);
   const [sellerEnquiries, setSellerEnquiries] = useState([]);
   const [wishlistProducts, setWishlistProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [replyTexts, setReplyTexts] = useState({});
+  const [editingReply, setEditingReply] = useState({});
+  const [replyingEnquiryId, setReplyingEnquiryId] = useState(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
   const isArtisan = user?.role === 'ARTISAN';
 
@@ -73,6 +97,35 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
     logoutUser();
     onAuthChange(null);
     onClose();
+  };
+
+  const handleSendReply = async (enquiryId) => {
+    const text = replyTexts[enquiryId];
+    if (!text || !text.trim()) return;
+    setReplyingEnquiryId(enquiryId);
+    try {
+      const updatedEnq = await replyToEnquiry(enquiryId, text.trim());
+      setSellerEnquiries(prev => prev.map(e => e.id === enquiryId ? updatedEnq : e));
+      setBuyerEnquiries(prev => prev.map(e => e.id === enquiryId ? updatedEnq : e));
+      setEditingReply(prev => ({ ...prev, [enquiryId]: false }));
+    } catch (err) {
+      alert('Failed to send reply: ' + (err.message || 'Error occurred'));
+    } finally {
+      setReplyingEnquiryId(null);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    setUpdatingOrderId(orderId);
+    try {
+      const updatedOrd = await updateOrderStatus(orderId, newStatus);
+      setSellerOrders(prev => prev.map(o => o.id === orderId ? updatedOrd : o));
+      setBuyerOrders(prev => prev.map(o => o.id === orderId ? updatedOrd : o));
+    } catch (err) {
+      alert('Failed to update status: ' + (err.message || 'Error occurred'));
+    } finally {
+      setUpdatingOrderId(null);
+    }
   };
 
   return (
@@ -274,49 +327,86 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
                         </button>
                       </div>
                     ) : (
-                      <div className="space-y-2.5">
-                        {buyerOrders.map((ord) => (
-                          <div key={ord.id} className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 transition-all space-y-2">
-                            <div className="flex justify-between items-start gap-2">
-                              <div className="flex items-center space-x-3">
-                                {ord.product_image ? (
-                                  <img src={ord.product_image} alt={ord.product_title} className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
-                                ) : (
-                                  <div className="w-12 h-12 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-800 font-bold shrink-0">
-                                    <Package className="w-6 h-6 text-amber-700" />
-                                  </div>
-                                )}
-                                <div className="min-w-0">
-                                  <h5 className="font-bold text-xs sm:text-sm text-slate-900 truncate">{ord.product_title}</h5>
-                                  <p className="text-[11px] text-slate-500">
-                                    Order #{ord.id} • {ord.quantity} unit(s) • ₹{ord.unit_price} / unit
-                                  </p>
-                                  {ord.seller_name && (
-                                    <p className="text-[10px] font-semibold text-amber-800">
-                                      Master Artisan: {ord.seller_name}
-                                    </p>
+                      <div className="space-y-3">
+                        {buyerOrders.map((ord) => {
+                          const currentIdx = getStepIndex(ord.status);
+                          return (
+                            <div key={ord.id} className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 transition-all space-y-2">
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="flex items-center space-x-3">
+                                  {ord.product_image ? (
+                                    <img src={ord.product_image} alt={ord.product_title} className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
+                                  ) : (
+                                    <div className="w-12 h-12 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-800 font-bold shrink-0">
+                                      <Package className="w-6 h-6 text-amber-700" />
+                                    </div>
                                   )}
+                                  <div className="min-w-0">
+                                    <h5 className="font-bold text-xs sm:text-sm text-slate-900 truncate">{ord.product_title}</h5>
+                                    <p className="text-[11px] text-slate-500">
+                                      Order #{ord.id} • {ord.quantity} unit(s) • ₹{ord.unit_price} / unit
+                                    </p>
+                                    {ord.seller_name && (
+                                      <p className="text-[10px] font-semibold text-amber-800">
+                                        Master Artisan: {ord.seller_name}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <span className="font-extrabold text-xs sm:text-sm text-slate-900 block">
+                                    ₹{ord.total_price.toLocaleString('en-IN')}
+                                  </span>
+                                  <span className={`inline-flex items-center space-x-1 text-[10px] font-bold px-2 py-0.5 rounded-full border mt-0.5 ${
+                                    ord.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                                    ord.status === 'SHIPPED' ? 'bg-indigo-100 text-indigo-800 border-indigo-300' :
+                                    ord.status === 'PROCESSING' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                                    'bg-slate-200 text-slate-800 border-slate-300'
+                                  }`}>
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                    <span>{ord.status}</span>
+                                  </span>
                                 </div>
                               </div>
-                              <div className="text-right shrink-0">
-                                <span className="font-extrabold text-xs sm:text-sm text-slate-900 block">
-                                  ₹{ord.total_price.toLocaleString('en-IN')}
-                                </span>
-                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200 mt-0.5">
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                  <span>Purchased</span>
-                                </span>
+
+                              {/* Delivery Address */}
+                              {ord.delivery_address && (
+                                <div className="pt-1 text-[11px] text-slate-600 flex items-start space-x-1 bg-white p-2 rounded-xl border border-slate-100">
+                                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                                  <span className="truncate">Shipping to: {ord.delivery_address}</span>
+                                </div>
+                              )}
+
+                              {/* Flipkart-Style Visual Delivery Progress Bar */}
+                              <div className="w-full mt-2 p-2 bg-white rounded-xl border border-slate-200">
+                                <div className="flex items-center justify-between relative">
+                                  {TRACKING_STEPS.map((step, idx) => {
+                                    const isDone = currentIdx > idx || ord.status === 'DELIVERED';
+                                    const isCurrent = currentIdx === idx;
+                                    return (
+                                      <div key={step.key} className="flex-1 flex flex-col items-center relative z-10">
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                                          isDone 
+                                            ? 'bg-emerald-600 text-white' 
+                                            : isCurrent 
+                                              ? 'bg-amber-500 text-white ring-3 ring-amber-100 animate-pulse' 
+                                              : 'bg-slate-200 text-slate-500'
+                                        }`}>
+                                          {isDone ? <Check className="w-3.5 h-3.5" /> : (idx + 1)}
+                                        </div>
+                                        <span className={`text-[10px] font-bold mt-1 text-center ${
+                                          isCurrent ? 'text-amber-700 font-extrabold' : isDone ? 'text-emerald-700' : 'text-slate-400'
+                                        }`}>
+                                          {step.label}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             </div>
-
-                            {ord.delivery_address && (
-                              <div className="pt-1 text-[11px] text-slate-600 flex items-start space-x-1 bg-white p-2 rounded-xl border border-slate-100">
-                                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                                <span className="truncate">Shipping to: {ord.delivery_address}</span>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )
                   ) : (
@@ -333,47 +423,116 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
                         </div>
                       </div>
                     ) : (
-                      <div className="space-y-2.5">
-                        {sellerOrders.map((ord) => (
-                          <div key={ord.id} className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 transition-all space-y-2">
-                            <div className="flex justify-between items-start gap-2">
-                              <div className="flex items-center space-x-3">
-                                {ord.product_image ? (
-                                  <img src={ord.product_image} alt={ord.product_title} className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
-                                ) : (
-                                  <div className="w-12 h-12 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-800 font-bold shrink-0">
-                                    <Package className="w-6 h-6 text-amber-700" />
+                      <div className="space-y-3">
+                        {sellerOrders.map((ord) => {
+                          const currentIdx = getStepIndex(ord.status);
+                          return (
+                            <div key={ord.id} className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 transition-all space-y-2">
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="flex items-center space-x-3">
+                                  {ord.product_image ? (
+                                    <img src={ord.product_image} alt={ord.product_title} className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
+                                  ) : (
+                                    <div className="w-12 h-12 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-800 font-bold shrink-0">
+                                      <Package className="w-6 h-6 text-amber-700" />
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <h5 className="font-bold text-xs sm:text-sm text-slate-900 truncate">{ord.product_title}</h5>
+                                    <p className="text-[11px] text-slate-500">
+                                      Buyer: <strong>{ord.buyer_name}</strong> {ord.buyer_phone ? `(${ord.buyer_phone})` : ''}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500">
+                                      Quantity: {ord.quantity} unit(s) • ₹{ord.unit_price} each
+                                    </p>
                                   </div>
-                                )}
-                                <div className="min-w-0">
-                                  <h5 className="font-bold text-xs sm:text-sm text-slate-900 truncate">{ord.product_title}</h5>
-                                  <p className="text-[11px] text-slate-500">
-                                    Buyer: <strong>{ord.buyer_name}</strong> {ord.buyer_phone ? `(${ord.buyer_phone})` : ''}
-                                  </p>
-                                  <p className="text-[10px] text-slate-500">
-                                    Quantity: {ord.quantity} unit(s) • ₹{ord.unit_price} each
-                                  </p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <span className="font-extrabold text-xs sm:text-sm text-emerald-800 block">
+                                    + ₹{ord.total_price.toLocaleString('en-IN')}
+                                  </span>
+                                  <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 mt-0.5">
+                                    <Clock className="w-3 h-3 text-amber-600" />
+                                    <span>{ord.status}</span>
+                                  </span>
                                 </div>
                               </div>
-                              <div className="text-right shrink-0">
-                                <span className="font-extrabold text-xs sm:text-sm text-emerald-800 block">
-                                  + ₹{ord.total_price.toLocaleString('en-IN')}
-                                </span>
-                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 mt-0.5">
-                                  <Clock className="w-3 h-3 text-amber-600" />
-                                  <span>To Fulfill</span>
-                                </span>
+
+                              {ord.delivery_address && (
+                                <div className="pt-1 text-[11px] text-slate-600 flex items-start space-x-1 bg-white p-2 rounded-xl border border-slate-100">
+                                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                                  <span className="truncate">Deliver to: {ord.delivery_address}</span>
+                                </div>
+                              )}
+
+                              {/* Flipkart-Style Delivery Tracker & Controls */}
+                              <div className="w-full mt-2 p-2 bg-white rounded-xl border border-slate-200">
+                                <div className="flex items-center justify-between relative">
+                                  {TRACKING_STEPS.map((step, idx) => {
+                                    const isDone = currentIdx > idx || ord.status === 'DELIVERED';
+                                    const isCurrent = currentIdx === idx;
+                                    return (
+                                      <div key={step.key} className="flex-1 flex flex-col items-center relative z-10">
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                                          isDone 
+                                            ? 'bg-emerald-600 text-white' 
+                                            : isCurrent 
+                                              ? 'bg-amber-500 text-white ring-3 ring-amber-100 animate-pulse' 
+                                              : 'bg-slate-200 text-slate-500'
+                                        }`}>
+                                          {isDone ? <Check className="w-3.5 h-3.5" /> : (idx + 1)}
+                                        </div>
+                                        <span className={`text-[10px] font-bold mt-1 text-center ${
+                                          isCurrent ? 'text-amber-700 font-extrabold' : isDone ? 'text-emerald-700' : 'text-slate-400'
+                                        }`}>
+                                          {step.label}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+
+                                <div className="mt-2.5 pt-2 border-t border-slate-100 flex justify-end">
+                                  {ord.status === 'CONFIRMED' && (
+                                    <button
+                                      onClick={() => handleUpdateOrderStatus(ord.id, 'PROCESSING')}
+                                      disabled={updatingOrderId === ord.id}
+                                      className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center space-x-1 cursor-pointer"
+                                    >
+                                      <Package className="w-3 h-3" />
+                                      <span>Mark as Packed 📦</span>
+                                    </button>
+                                  )}
+                                  {ord.status === 'PROCESSING' && (
+                                    <button
+                                      onClick={() => handleUpdateOrderStatus(ord.id, 'SHIPPED')}
+                                      disabled={updatingOrderId === ord.id}
+                                      className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center space-x-1 cursor-pointer"
+                                    >
+                                      <Truck className="w-3 h-3" />
+                                      <span>Dispatch & Ship 🚚</span>
+                                    </button>
+                                  )}
+                                  {ord.status === 'SHIPPED' && (
+                                    <button
+                                      onClick={() => handleUpdateOrderStatus(ord.id, 'DELIVERED')}
+                                      disabled={updatingOrderId === ord.id}
+                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center space-x-1 cursor-pointer"
+                                    >
+                                      <Check className="w-3 h-3" />
+                                      <span>Mark Delivered ✅</span>
+                                    </button>
+                                  )}
+                                  {ord.status === 'DELIVERED' && (
+                                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                                      Completed ✅
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
-
-                            {ord.delivery_address && (
-                              <div className="pt-1 text-[11px] text-slate-600 flex items-start space-x-1 bg-white p-2 rounded-xl border border-slate-100">
-                                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                                <span className="truncate">Deliver to: {ord.delivery_address}</span>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )
                   )}
@@ -549,6 +708,29 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
                               </p>
                             )}
 
+                            {/* Artisan Response Display */}
+                            {enq.artisan_reply ? (
+                              <div className="p-2.5 bg-indigo-50/90 border border-indigo-200 rounded-xl">
+                                <span className="text-[11px] font-bold text-indigo-900 flex items-center">
+                                  <MessageSquare className="w-3.5 h-3.5 text-indigo-600 inline mr-1" />
+                                  Artisan Response / కళాకారుడి స్పందన:
+                                </span>
+                                <p className="text-xs text-indigo-950 font-semibold mt-0.5">"{enq.artisan_reply}"</p>
+                                {enq.replied_at && (
+                                  <p className="text-[10px] text-indigo-500 mt-0.5">
+                                    Replied: {new Date(enq.replied_at).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="p-2 bg-amber-50/80 border border-amber-200 rounded-xl">
+                                <p className="text-[11px] text-amber-800 font-medium flex items-center space-x-1">
+                                  <Clock className="w-3 h-3 text-amber-600 inline mr-1" />
+                                  <span>Awaiting Artisan Response / కళాకారుడి సమాధానం కోసం వేచి ఉంది</span>
+                                </p>
+                              </div>
+                            )}
+
                             <div className="flex justify-between items-center text-[10px] text-slate-400 pt-1">
                               <span>Contact: {enq.buyer_phone}</span>
                               {enq.created_at && (
@@ -595,6 +777,43 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
                               <p className="text-xs text-slate-700 italic bg-white p-2.5 rounded-xl border border-slate-200/60 leading-relaxed">
                                 "{enq.message}"
                               </p>
+                            )}
+
+                            {/* Reply Input for Artisan */}
+                            {enq.artisan_reply && !editingReply[enq.id] ? (
+                              <div className="p-2.5 bg-indigo-50/90 border border-indigo-200 rounded-xl">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-bold text-indigo-900 flex items-center">
+                                    <MessageSquare className="w-3 h-3 text-indigo-600 inline mr-1" />
+                                    Your Response / మీ స్పందన:
+                                  </span>
+                                  <button 
+                                    onClick={() => setEditingReply(prev => ({ ...prev, [enq.id]: true }))}
+                                    className="text-[10px] font-bold text-indigo-700 hover:underline cursor-pointer"
+                                  >
+                                    Edit Response
+                                  </button>
+                                </div>
+                                <p className="text-xs text-indigo-950 font-medium mt-0.5">"{enq.artisan_reply}"</p>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2 pt-1">
+                                <input
+                                  type="text"
+                                  placeholder="Type response to buyer (e.g. Yes, ready in 10 days / ధర వివరాలు)..."
+                                  value={replyTexts[enq.id] !== undefined ? replyTexts[enq.id] : (enq.artisan_reply || '')}
+                                  onChange={(e) => setReplyTexts(prev => ({ ...prev, [enq.id]: e.target.value }))}
+                                  className="flex-1 px-3 py-1 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white"
+                                />
+                                <button
+                                  onClick={() => handleSendReply(enq.id)}
+                                  disabled={replyingEnquiryId === enq.id || !(replyTexts[enq.id] !== undefined ? replyTexts[enq.id] : (enq.artisan_reply || '')).trim()}
+                                  className="px-3 py-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center space-x-1 shrink-0"
+                                >
+                                  <Send className="w-3 h-3" />
+                                  <span>{replyingEnquiryId === enq.id ? 'Sending...' : 'Reply'}</span>
+                                </button>
+                              </div>
                             )}
 
                             <div className="flex justify-between items-center text-[10px] text-slate-400 pt-1">

@@ -453,3 +453,125 @@ def test_ai_catalog_large_base64_image_support():
     assert data["image_url"] == dummy_base64
     assert data["pricing_available"] is True
 
+def test_enquiry_reply_flow():
+    import uuid
+    uid = str(uuid.uuid4())[:8]
+
+    # Register Artisan
+    artisan_reg = client.post("/api/auth/register", json={
+        "name": f"Artisan ReplyTest {uid}",
+        "email": f"artisan.reply.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    artisan_token = artisan_reg.json()["access_token"]
+    artisan_headers = {"Authorization": f"Bearer {artisan_token}"}
+
+    # Register Buyer
+    buyer_reg = client.post("/api/auth/register", json={
+        "name": f"Buyer ReplyTest {uid}",
+        "email": f"buyer.reply.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "BUYER"
+    })
+    buyer_token = buyer_reg.json()["access_token"]
+    buyer_headers = {"Authorization": f"Bearer {buyer_token}"}
+
+    # Artisan creates product
+    prod_res = client.post("/api/products", json={
+        "title": "Custom Kalamkari Wall Hanging",
+        "category": "Kalamkari",
+        "price": 3500.0,
+        "stock": 2
+    }, headers=artisan_headers)
+    pid = prod_res.json()["id"]
+
+    # Buyer submits wholesale enquiry
+    enq_res = client.post("/api/marketplace/enquire", json={
+        "product_id": pid,
+        "quantity": 5,
+        "message": "Can you customize this with peacocks?",
+        "buyer_name": "Buyer ReplyTest",
+        "buyer_phone": "+91 99999 88888"
+    }, headers=buyer_headers)
+    assert enq_res.status_code == 201
+
+    enq_list = client.get("/api/marketplace/enquiries?role_view=seller", headers=artisan_headers).json()
+    assert len(enq_list) > 0
+    enq_id = enq_list[0]["id"]
+
+    # Artisan sends reply
+    reply_res = client.put(f"/api/marketplace/enquiries/{enq_id}/reply", json={
+        "artisan_reply": "Yes, we can customize with peacocks in 10 days!"
+    }, headers=artisan_headers)
+    assert reply_res.status_code == 200
+    assert reply_res.json()["artisan_reply"] == "Yes, we can customize with peacocks in 10 days!"
+
+    # Buyer inspects enquiries and sees artisan reply
+    buyer_enqs = client.get("/api/marketplace/enquiries?role_view=buyer", headers=buyer_headers).json()
+    matching = [e for e in buyer_enqs if e["id"] == enq_id]
+    assert len(matching) == 1
+    assert matching[0]["artisan_reply"] == "Yes, we can customize with peacocks in 10 days!"
+
+def test_order_delivery_tracking_status_progression():
+    import uuid
+    uid = str(uuid.uuid4())[:8]
+
+    # Register Artisan & Buyer
+    artisan_reg = client.post("/api/auth/register", json={
+        "name": f"Artisan TrackTest {uid}",
+        "email": f"artisan.track.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    artisan_headers = {"Authorization": f"Bearer {artisan_reg.json()['access_token']}"}
+
+    buyer_reg = client.post("/api/auth/register", json={
+        "name": f"Buyer TrackTest {uid}",
+        "email": f"buyer.track.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "BUYER"
+    })
+    buyer_headers = {"Authorization": f"Bearer {buyer_reg.json()['access_token']}"}
+
+    # Artisan creates product
+    prod_res = client.post("/api/products", json={
+        "title": "Channapatna Wooden Toy Car",
+        "category": "Wooden Toys",
+        "price": 450.0,
+        "stock": 10
+    }, headers=artisan_headers)
+    pid = prod_res.json()["id"]
+
+    # Buyer places order
+    order_res = client.post("/api/marketplace/order", json={
+        "product_id": pid,
+        "quantity": 1,
+        "delivery_address": "MG Road, Vijayawada"
+    }, headers=buyer_headers)
+    assert order_res.status_code == 201
+
+    orders = client.get("/api/marketplace/orders?role_view=seller", headers=artisan_headers).json()
+    ord_id = orders[0]["id"]
+    assert orders[0]["status"] == "CONFIRMED"
+
+    # Progression: CONFIRMED -> PROCESSING
+    p1 = client.patch(f"/api/marketplace/orders/{ord_id}/status", json={"status": "PROCESSING"}, headers=artisan_headers)
+    assert p1.status_code == 200
+    assert p1.json()["status"] == "PROCESSING"
+
+    # Progression: PROCESSING -> SHIPPED
+    p2 = client.patch(f"/api/marketplace/orders/{ord_id}/status", json={"status": "SHIPPED"}, headers=artisan_headers)
+    assert p2.status_code == 200
+    assert p2.json()["status"] == "SHIPPED"
+
+    # Progression: SHIPPED -> DELIVERED
+    p3 = client.patch(f"/api/marketplace/orders/{ord_id}/status", json={"status": "DELIVERED"}, headers=artisan_headers)
+    assert p3.status_code == 200
+    assert p3.json()["status"] == "DELIVERED"
+
+    # Buyer views order -> sees status DELIVERED
+    b_orders = client.get("/api/marketplace/orders?role_view=buyer", headers=buyer_headers).json()
+    assert b_orders[0]["status"] == "DELIVERED"
+
+
