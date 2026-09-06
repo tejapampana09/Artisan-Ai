@@ -1,5 +1,17 @@
 import os
+from pathlib import Path
 from typing import List
+
+# Load environment variables from .env file if available
+try:
+    from dotenv import load_dotenv
+    root_env = Path(__file__).resolve().parent.parent.parent / ".env"
+    if root_env.exists():
+        load_dotenv(dotenv_path=root_env)
+    else:
+        load_dotenv()
+except ImportError:
+    pass
 
 def normalize_database_url(url: str) -> str:
     if url.startswith("postgres://"):

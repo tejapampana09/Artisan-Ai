@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 const AUTH_TOKEN_KEY = 'artisan_ai_auth_token';
 
 export function getAuthToken() {
