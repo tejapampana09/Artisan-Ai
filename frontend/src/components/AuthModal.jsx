@@ -19,8 +19,8 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange }) {
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regRole, setRegRole] = useState('ARTISAN');
-  const [regCraft, setRegCraft] = useState('Hand-block Kalamkari');
-  const [regLocation, setRegLocation] = useState('Machilipatnam, Andhra Pradesh');
+  const [regCraft, setRegCraft] = useState('');
+  const [regLocation, setRegLocation] = useState('');
   const [regPassword, setRegPassword] = useState('');
 
   const handleLogin = async (e) => {

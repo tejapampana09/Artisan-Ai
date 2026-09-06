@@ -67,7 +67,6 @@ function AppContent() {
         onToggleMode={handleToggleMode}
         user={user}
         readyStatus={readyStatus}
-        onOpenGuide={() => setIsJudgeGuideOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
       />
 

@@ -18,14 +18,14 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
     category: 'Kalamkari',
     description: '',
     craft_story: '',
-    materials: 'Natural Cotton, Herbal Dyes',
-    price: 1100,
-    stock: 5,
-    material_cost: 400,
-    labour_cost: 350,
-    packaging_cost: 50,
+    materials: '',
+    price: '',
+    stock: 1,
+    material_cost: '',
+    labour_cost: '',
+    packaging_cost: '',
     min_margin_pct: 0.20,
-    image_url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80',
+    image_url: '',
     status: 'PUBLISHED'
   });
 
@@ -38,12 +38,15 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
     const { name, value, type } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'number' ? parseFloat(value) || 0 : value,
+      [name]: type === 'number' ? (value === '' ? '' : parseFloat(value)) : value,
     }));
   };
 
-  const costBasis = formData.material_cost + formData.labour_cost + formData.packaging_cost;
-  const minFairPrice = Math.round(costBasis * (1 + formData.min_margin_pct));
+  const mat = Number(formData.material_cost) || 0;
+  const lab = Number(formData.labour_cost) || 0;
+  const pkg = Number(formData.packaging_cost) || 0;
+  const costBasis = mat + lab + pkg;
+  const minFairPrice = costBasis > 0 ? Math.round(costBasis * (1 + (Number(formData.min_margin_pct) || 0.20))) : 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,10 +54,23 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
       setError('Title is required');
       return;
     }
+    if (!formData.price || Number(formData.price) <= 0) {
+      setError('A valid listing price is required');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
-      await onCreated(formData);
+      const payload = {
+        ...formData,
+        price: Number(formData.price),
+        stock: Number(formData.stock) || 1,
+        material_cost: mat,
+        labour_cost: lab,
+        packaging_cost: pkg,
+        image_url: formData.image_url.trim() || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80'
+      };
+      await onCreated(payload);
       onClose();
     } catch (err) {
       setError(err.message || 'Failed to create product');
@@ -176,6 +192,7 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
                   type="number"
                   name="material_cost"
                   min="0"
+                  placeholder="0"
                   value={formData.material_cost}
                   onChange={handleChange}
                   className="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white"
@@ -187,6 +204,7 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
                   type="number"
                   name="labour_cost"
                   min="0"
+                  placeholder="0"
                   value={formData.labour_cost}
                   onChange={handleChange}
                   className="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white"
@@ -198,6 +216,7 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
                   type="number"
                   name="packaging_cost"
                   min="0"
+                  placeholder="0"
                   value={formData.packaging_cost}
                   onChange={handleChange}
                   className="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white"
@@ -214,6 +233,7 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
                 name="price"
                 min="0"
                 required
+                placeholder="e.g. 2400"
                 value={formData.price}
                 onChange={handleChange}
                 className="w-full text-sm font-bold border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -224,6 +244,7 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
               <input
                 type="text"
                 name="image_url"
+                placeholder="https://... (or leave blank)"
                 value={formData.image_url}
                 onChange={handleChange}
                 className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-600"

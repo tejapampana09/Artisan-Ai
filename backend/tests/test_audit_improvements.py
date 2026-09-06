@@ -264,7 +264,7 @@ def test_production_security_and_strict_demo_isolation(monkeypatch):
         old_secret = os.environ.get("JWT_SECRET_KEY")
         try:
             os.environ["ENVIRONMENT"] = "production"
-            os.environ["JWT_SECRET_KEY"] = "sih_2026_artisan_ai_dev_secret_key_marginalized_artisans_safety_first"
+            os.environ["JWT_SECRET_KEY"] = "artisan_ai_dev_secret_key_marginalized_artisans_safety_first"
             # reloading config or testing logic
             import importlib
             import backend.app.config

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, ShoppingBag, Heart, Sparkles, Filter, MapPin, Send, Eye, Flame } from 'lucide-react';
 import BuyerProductModal from './BuyerProductModal';
 import BuyerOrderModal from './BuyerOrderModal';
-import LiveEventTicker from './LiveEventTicker';
 import { getProducts, getTrendingProducts, recordEvent } from '../api';
 
 const CATEGORIES = [
@@ -184,9 +183,6 @@ export default function BuyView({ user }) {
         ))}
       </div>
 
-      {/* Live Event Ticker (Proves real-time SQLite event tracking) */}
-      <LiveEventTicker refreshTrigger={tickerTrigger} />
-
       {/* Trending Products Carousel */}
       {trending.length > 0 && selectedCategory === 'All Crafts' && !searchQuery && (
         <div className="space-y-3">
@@ -357,11 +353,12 @@ export default function BuyView({ user }) {
         onOpenEnquiry={(prod) => setOrderModal({ isOpen: true, product: prod, mode: 'ENQUIRY' })}
       />
 
-      {/* Order / B2B Enquiry Modal (tracks ORDER or ENQUIRY events) */}
+      {/* Order / B2B Enquiry Modal */}
       <BuyerOrderModal
         product={orderModal.product}
         mode={orderModal.mode}
         isOpen={orderModal.isOpen}
+        user={user}
         onClose={() => setOrderModal({ isOpen: false, product: null, mode: 'ORDER' })}
         onSuccess={(msg) => {
           showNotification(msg);

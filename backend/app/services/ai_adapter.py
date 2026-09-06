@@ -12,7 +12,7 @@ DEMO_CRAFT_KNOWLEDGE = {
         "materials": "Pure Mulberry Silk, Natural Indigo, Madder Root, Bamboo Pen",
         "description": "Exquisite hand-painted Kalamkari textile art featuring mythological motifs and flowing floral vines, cured in organic milk and river water.",
         "craft_story": "Rooted in Andhra Pradesh's temple traditions, each motif is drawn freehand with a sharp bamboo kalam. The cloth undergoes up to 17 intricate steps of natural dyeing, washing, and sun-curing.",
-        "tags": ["Kalamkari", "Handpainted", "Natural Dyes", "Mulberry Silk", "GI Craft", "SIH2026"],
+        "tags": ["Kalamkari", "Handpainted", "Natural Dyes", "Mulberry Silk", "GI Craft", "Sustainable"],
         "suggested_price": 1350.0,
         "estimated_cost": {"material": 480.0, "labour": 460.0, "packaging": 60.0},
     },

@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -7,6 +8,7 @@ from backend.app.database import get_db
 from backend.app.models import Product, User
 from backend.app.schemas import ProductResponse
 from backend.app.services.ai_adapter import generate_catalog_draft
+from backend.app.services.auth import get_current_user
 
 router = APIRouter(prefix="/api/ai", tags=["AI Cataloging"])
 
@@ -69,26 +71,27 @@ async def process_voice_and_image(req: AICatalogRequest):
     return AICatalogDraftResponse(**draft)
 
 @router.post("/approve-and-publish", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
-def approve_and_publish_product(req: CatalogApproveRequest, db: Session = Depends(get_db)):
-    user = db.query(User).first()
-    seller_id = user.id if user else None
-
+def approve_and_publish_product(
+    req: CatalogApproveRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     product = Product(
         title=req.title,
         category=req.category,
         materials=req.materials,
         description=req.description,
         craft_story=req.craft_story,
-        price=req.price,
+        price=Decimal(str(req.price)),
         stock=req.stock,
-        material_cost=req.material_cost,
-        labour_cost=req.labour_cost,
-        packaging_cost=req.packaging_cost,
-        min_margin_pct=req.min_margin_pct,
+        material_cost=Decimal(str(req.material_cost)) if req.material_cost is not None else Decimal("0.00"),
+        labour_cost=Decimal(str(req.labour_cost)) if req.labour_cost is not None else Decimal("0.00"),
+        packaging_cost=Decimal(str(req.packaging_cost)) if req.packaging_cost is not None else Decimal("0.00"),
+        min_margin_pct=Decimal(str(req.min_margin_pct)) if req.min_margin_pct is not None else Decimal("0.20"),
         image_url=req.image_url,
         enhanced_image_url=req.enhanced_image_url,
         status=req.status,
-        seller_id=seller_id
+        seller_id=current_user.id
     )
     db.add(product)
     db.commit()

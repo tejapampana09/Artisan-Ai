@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 import { X, ShoppingBag, Send, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { placeOrder, submitEnquiry } from '../api';
 
-export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClose, onSuccess }) {
+export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClose, onSuccess, user }) {
   if (!isOpen || !product) return null;
 
   const isOrder = mode === 'ORDER';
   const [formData, setFormData] = useState({
-    buyer_name: 'Anita Sharma',
-    buyer_phone: '+91 98765 00000',
+    buyer_name: user?.name || '',
+    buyer_phone: user?.phone || '',
     quantity: isOrder ? 1 : 10,
-    delivery_address: '42 MG Road, Bengaluru, Karnataka - 560001',
-    message: isOrder ? '' : 'Looking for wholesale pricing and batch delivery for craft boutique exhibition.'
+    delivery_address: user?.location || '',
+    message: ''
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -26,7 +26,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
           quantity: formData.quantity,
           delivery_address: formData.delivery_address
         });
-        onSuccess(`Order confirmed for ${formData.quantity} unit(s) of "${product.title}"! (ORDER event stored)`);
+        onSuccess(`Order placed successfully for ${formData.quantity} unit(s) of "${product.title}"!`);
       } else {
         await submitEnquiry({
           product_id: product.id,
@@ -35,7 +35,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
           quantity: formData.quantity,
           message: formData.message
         });
-        onSuccess(`Enquiry sent for ${formData.quantity} units to artisan! (ENQUIRY event stored)`);
+        onSuccess(`Wholesale enquiry submitted for ${formData.quantity} units to artisan!`);
       }
       onClose();
     } catch (err) {
@@ -82,6 +82,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
               type="text"
               required
               value={formData.buyer_name}
+              placeholder="Enter your full name"
               onChange={(e) => setFormData({ ...formData, buyer_name: e.target.value })}
               className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:ring-1 focus:ring-indigo-500"
             />
@@ -94,6 +95,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
                 type="text"
                 required
                 value={formData.buyer_phone}
+                placeholder="+91 98765 43210"
                 onChange={(e) => setFormData({ ...formData, buyer_phone: e.target.value })}
                 className="w-full border border-slate-200 rounded-xl px-3 py-2"
               />
@@ -119,6 +121,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
                 rows="2"
                 required
                 value={formData.delivery_address}
+                placeholder="Enter complete shipping address (street, city, pin code)..."
                 onChange={(e) => setFormData({ ...formData, delivery_address: e.target.value })}
                 className="w-full border border-slate-200 rounded-xl p-2.5"
               />
@@ -129,6 +132,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
               <textarea
                 rows="2"
                 value={formData.message}
+                placeholder="Describe wholesale requirements, custom specifications, or expected delivery timeline..."
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                 className="w-full border border-slate-200 rounded-xl p-2.5"
               />

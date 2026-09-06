@@ -21,8 +21,8 @@ class UserResponse(BaseModel):
     email: Optional[str] = None
     role: Optional[str] = "ARTISAN"
     active_mode: str
-    location: str
-    craft: str
+    location: Optional[str] = None
+    craft: Optional[str] = None
 
 class UserRegister(BaseModel):
     name: str = Field(..., min_length=2)

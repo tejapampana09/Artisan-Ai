@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
 from backend.app.models import Product, PricingDecision, User, Event
+from backend.app.services.auth import get_current_user
 
 router = APIRouter(prefix="/api/sync", tags=["Offline Sync"])
 
@@ -71,13 +73,16 @@ def get_sync_status(db: Session = Depends(get_db)):
     }
 
 @router.post("/batch", response_model=BatchSyncResponse, status_code=status.HTTP_200_OK)
-def batch_sync(payload: BatchSyncRequest, db: Session = Depends(get_db)):
+def batch_sync(
+    payload: BatchSyncRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Atomically process batch sync queue uploaded from offline PWA / mobile client.
     Ensures zero data loss for artisans reconnecting after rural network outages.
     """
-    user = db.query(User).first()
-    seller_id = user.id if user else None
+    seller_id = current_user.id
 
     synced_products = []
     synced_decisions = []
@@ -91,15 +96,15 @@ def batch_sync(payload: BatchSyncRequest, db: Session = Depends(get_db)):
                 craft_story=prod_item.craft_story,
                 category=prod_item.category,
                 materials=prod_item.materials,
-                price=prod_item.price,
+                price=Decimal(str(prod_item.price)),
                 stock=prod_item.stock,
                 image_url=prod_item.image_url,
                 enhanced_image_url=prod_item.enhanced_image_url,
                 status=prod_item.status if prod_item.status else "PUBLISHED",
-                material_cost=prod_item.material_cost,
-                labour_cost=prod_item.labour_cost,
-                packaging_cost=prod_item.packaging_cost,
-                min_margin_pct=prod_item.min_margin_pct,
+                material_cost=Decimal(str(prod_item.material_cost)),
+                labour_cost=Decimal(str(prod_item.labour_cost)),
+                packaging_cost=Decimal(str(prod_item.packaging_cost)),
+                min_margin_pct=Decimal(str(prod_item.min_margin_pct)),
                 seller_id=seller_id
             )
             db.add(new_prod)
@@ -121,8 +126,9 @@ def batch_sync(payload: BatchSyncRequest, db: Session = Depends(get_db)):
                 continue
 
             previous_price = prod.price
+            rec_price = Decimal(str(dec_item.recommended_price))
             if dec_item.decision == "ACCEPT":
-                applied_price = dec_item.recommended_price
+                applied_price = rec_price
                 prod.price = applied_price
             else:
                 applied_price = previous_price
@@ -131,10 +137,10 @@ def batch_sync(payload: BatchSyncRequest, db: Session = Depends(get_db)):
                 product_id=prod.id,
                 decision=dec_item.decision,
                 previous_price=previous_price,
-                recommended_price=dec_item.recommended_price,
+                recommended_price=rec_price,
                 applied_price=applied_price,
-                demand_factor=dec_item.demand_factor,
-                market_adjustment=dec_item.market_adjustment,
+                demand_factor=Decimal(str(dec_item.demand_factor)),
+                market_adjustment=Decimal(str(dec_item.market_adjustment)),
                 reasoning_json=f'{{"sync": "offline_batch", "summary": "{dec_item.reasoning_summary or "Approved in offline mode"}"}}'
             )
             db.add(decision_record)

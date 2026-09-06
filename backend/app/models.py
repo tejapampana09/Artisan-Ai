@@ -8,14 +8,14 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, default="Lakshmi Devi", nullable=False)
+    name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=True)
     hashed_password = Column(String, nullable=True)
-    phone = Column(String, default="+91 98765 43210")
-    role = Column(String, default="ARTISAN") # "ARTISAN", "BUYER", "ADMIN"
-    active_mode = Column(String, default="SELL") # "SELL" or "BUY"
-    location = Column(String, default="Machilipatnam, Andhra Pradesh")
-    craft = Column(String, default="Hand-block Kalamkari")
+    phone = Column(String, nullable=True)
+    role = Column(String, default="ARTISAN", nullable=False) # "ARTISAN", "BUYER", "ADMIN"
+    active_mode = Column(String, default="SELL", nullable=False) # "SELL" or "BUY"
+    location = Column(String, nullable=True)
+    craft = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     products = relationship("Product", back_populates="seller")

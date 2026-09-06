@@ -8,7 +8,7 @@ import CopilotWidget from './CopilotWidget';
 import MarketDemandWidget from './MarketDemandWidget';
 import { getProducts, createProduct, updateProduct, deleteProduct, getMarketDemand, getSellerOpportunities } from '../api';
 import { useOffline } from '../context/OfflineContext';
-import { getCachedProducts, setCachedProducts } from '../services/offlineSync';
+import { getCachedProducts, setCachedProducts, getCachedDemands, setCachedDemands, getCachedCopilotInsight, setCachedCopilotInsight } from '../services/offlineSync';
 
 export default function SellView({ user }) {
   const [products, setProducts] = useState([]);
@@ -41,18 +41,8 @@ export default function SellView({ user }) {
         // Deduplicate
         const merged = [...queuedDrafts, ...cached.filter(c => !c.isOfflineDraft)];
         setProducts(merged);
-        setDemands([
-          { category: 'Kalamkari', demand_score: 95, base_benchmark: '₹1,150 - ₹1,400', demand_pct_label: '+32% (Offline Cache)' },
-          { category: 'Dokra', demand_score: 82, base_benchmark: '₹1,350 - ₹1,650', demand_pct_label: '+18% (Offline Cache)' }
-        ]);
-        setCopilotInsight({
-          product_id: 1,
-          type: 'PRICE_OPTIMIZATION',
-          title: 'Offline Cached Insight: Kalamkari High Demand',
-          message: 'Buyer interactions indicate strong demand. Ready to analyze upon cloud reconnection.',
-          action_label: 'View Local Recommendation',
-          metric: '+32% cluster surge'
-        });
+        setDemands(getCachedDemands());
+        setCopilotInsight(getCachedCopilotInsight());
       } else {
         const [prodsData, demandData, oppsData] = await Promise.all([
           getProducts(),
@@ -60,8 +50,12 @@ export default function SellView({ user }) {
           getSellerOpportunities()
         ]);
 
-        // Cache products locally
+        // Cache products and intelligence locally for offline resilience
         setCachedProducts(prodsData);
+        setCachedDemands(demandData);
+        if (oppsData?.copilot_insight) {
+          setCachedCopilotInsight(oppsData.copilot_insight);
+        }
 
         // Prepend any offline items that haven't synced yet
         const queuedDrafts = offlineQueue
@@ -81,6 +75,8 @@ export default function SellView({ user }) {
       console.error('Error loading seller dashboard, falling back to cache:', err);
       const cached = getCachedProducts();
       setProducts(cached);
+      setDemands(getCachedDemands());
+      setCopilotInsight(getCachedCopilotInsight());
     } finally {
       setLoading(false);
     }
@@ -170,7 +166,7 @@ export default function SellView({ user }) {
 
   const totalUnits = products.reduce((sum, p) => sum + (p.stock || 0), 0);
   const totalCatalogValue = products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0);
-  const topDemandCategory = demands.length > 0 ? demands[0] : { category: 'Kalamkari', demand_pct_label: '+32%' };
+  const topDemandCategory = demands && demands.length > 0 ? demands[0] : null;
 
   return (
     <div className="space-y-6">
@@ -257,8 +253,12 @@ export default function SellView({ user }) {
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Top Market Demand</span>
             <TrendingUp className="w-5 h-5 text-emerald-600" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{topDemandCategory.demand_pct_label}</p>
-          <p className="text-xs text-emerald-600 font-medium mt-1">{topDemandCategory.category} category</p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">
+            {topDemandCategory ? topDemandCategory.demand_pct_label : 'Syncing'}
+          </p>
+          <p className="text-xs text-emerald-600 font-medium mt-1">
+            {topDemandCategory ? `${topDemandCategory.category} category` : 'Market intelligence live'}
+          </p>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">

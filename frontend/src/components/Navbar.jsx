@@ -2,7 +2,7 @@ import React from 'react';
 import { Store, ShoppingBag, CheckCircle2, AlertCircle, Sparkles, UserCheck, Wifi, WifiOff, Award } from 'lucide-react';
 import { useOffline } from '../context/OfflineContext';
 
-export default function Navbar({ activeMode, onToggleMode, user, readyStatus, onOpenGuide, onOpenAuth }) {
+export default function Navbar({ activeMode, onToggleMode, user, readyStatus, onOpenAuth }) {
   const isSell = activeMode === 'SELL';
   const { isOffline, toggleOfflineMode, queueCount } = useOffline();
 

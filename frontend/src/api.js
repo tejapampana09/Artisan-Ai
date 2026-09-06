@@ -224,7 +224,7 @@ export async function approveAndPublishAICatalog(data) {
   try {
     const res = await fetch(`${API_BASE}/ai/approve-and-publish`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -268,7 +268,7 @@ export async function submitEnquiry(data) {
   try {
     const res = await fetch(`${API_BASE}/marketplace/enquire`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -283,7 +283,7 @@ export async function placeOrder(data) {
   try {
     const res = await fetch(`${API_BASE}/marketplace/order`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -319,7 +319,9 @@ export async function getMarketDemand() {
 
 export async function getSellerOpportunities() {
   try {
-    const res = await fetch(`${API_BASE}/seller/opportunities`);
+    const res = await fetch(`${API_BASE}/seller/opportunities`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -330,7 +332,9 @@ export async function getSellerOpportunities() {
 
 export async function getCopilotInsight() {
   try {
-    const res = await fetch(`${API_BASE}/seller/copilot-insight`);
+    const res = await fetch(`${API_BASE}/seller/copilot-insight`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -381,7 +385,7 @@ export async function syncBatch(batchData) {
   try {
     const res = await fetch(`${API_BASE}/sync/batch`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(batchData),
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);

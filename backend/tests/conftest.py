@@ -35,7 +35,9 @@ def setup_test_database():
             name="Lakshmi Devi",
             email="lakshmi@artisanai.in",
             role="ARTISAN",
-            active_mode="SELL"
+            active_mode="SELL",
+            location="Machilipatnam, Andhra Pradesh",
+            craft="Hand-block Kalamkari"
         )
         session.add(user)
         session.commit()

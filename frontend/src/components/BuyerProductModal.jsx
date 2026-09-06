@@ -61,7 +61,7 @@ export default function BuyerProductModal({
                     ? 'bg-rose-600 text-white shadow-rose-600/30 scale-110'
                     : 'bg-white/80 text-slate-600 hover:text-rose-600 hover:bg-white'
                 }`}
-                title="Save to Wishlist (fires SAVE event)"
+                title={isSaved ? "Remove from Wishlist" : "Save to Wishlist"}
               >
                 <Heart className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
               </button>

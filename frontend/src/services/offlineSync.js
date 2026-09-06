@@ -86,6 +86,47 @@ export function setCachedProducts(products) {
   }
 }
 
+const CACHED_DEMANDS_KEY = 'artisan_ai_cached_demands';
+const CACHED_COPILOT_KEY = 'artisan_ai_cached_copilot';
+
+export function getCachedDemands() {
+  try {
+    const raw = localStorage.getItem(CACHED_DEMANDS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function setCachedDemands(demands) {
+  try {
+    localStorage.setItem(CACHED_DEMANDS_KEY, JSON.stringify(demands));
+  } catch (e) {
+    console.error('Failed to cache demands', e);
+  }
+}
+
+export function getCachedCopilotInsight() {
+  try {
+    const raw = localStorage.getItem(CACHED_COPILOT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setCachedCopilotInsight(insight) {
+  try {
+    if (insight) {
+      localStorage.setItem(CACHED_COPILOT_KEY, JSON.stringify(insight));
+    } else {
+      localStorage.removeItem(CACHED_COPILOT_KEY);
+    }
+  } catch (e) {
+    console.error('Failed to cache copilot insight', e);
+  }
+}
+
 // Sync execution helper
 export async function executeBatchSync() {
   const queue = getOfflineQueue();
