@@ -3,6 +3,7 @@ import { Search, ShoppingBag, Heart, Sparkles, Filter, MapPin, Send, Eye, Flame,
 import BuyerProductModal from './BuyerProductModal';
 import BuyerOrderModal from './BuyerOrderModal';
 import { getProducts, getTrendingProducts, recordEvent } from '../api';
+import { getSavedProductIds, saveProductId, removeSavedProductId } from '../services/offlineSync';
 
 const CATEGORIES = [
   'All Crafts',
@@ -18,7 +19,7 @@ export default function BuyView({ user, onOpenAuth }) {
   const [trending, setTrending] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All Crafts');
   const [searchQuery, setSearchQuery] = useState('');
-  const [savedProductIds, setSavedProductIds] = useState(new Set());
+  const [savedProductIds, setSavedProductIds] = useState(() => new Set(getSavedProductIds(user?.id)));
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [orderModal, setOrderModal] = useState({ isOpen: false, product: null, mode: 'ORDER' });
@@ -97,8 +98,10 @@ export default function BuyView({ user, onOpenAuth }) {
     const updated = new Set(savedProductIds);
     if (isSaved) {
       updated.delete(product.id);
+      removeSavedProductId(user?.id, product.id);
     } else {
       updated.add(product.id);
+      saveProductId(user?.id, product.id);
       await recordEvent({
         event_type: 'SAVE',
         product_id: product.id,

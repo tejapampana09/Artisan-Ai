@@ -145,6 +145,7 @@ function AppContent() {
           }
           handleRefreshAll();
         }}
+        onNavigateMode={handleToggleMode}
       />
 
       {/* Enterprise Platform Status Bar */}

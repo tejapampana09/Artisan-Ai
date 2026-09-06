@@ -150,6 +150,43 @@ export function setCachedOpportunities(opps) {
   }
 }
 
+// Wishlist / Saved items persistence
+export function getSavedProductIds(userId) {
+  try {
+    const key = `artisan_ai_wishlist_${userId || 'guest'}`;
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveProductId(userId, productId) {
+  try {
+    const ids = getSavedProductIds(userId);
+    if (!ids.includes(productId)) {
+      ids.push(productId);
+      const key = `artisan_ai_wishlist_${userId || 'guest'}`;
+      localStorage.setItem(key, JSON.stringify(ids));
+    }
+    return ids;
+  } catch {
+    return [];
+  }
+}
+
+export function removeSavedProductId(userId, productId) {
+  try {
+    let ids = getSavedProductIds(userId);
+    ids = ids.filter(id => id !== productId);
+    const key = `artisan_ai_wishlist_${userId || 'guest'}`;
+    localStorage.setItem(key, JSON.stringify(ids));
+    return ids;
+  } catch {
+    return [];
+  }
+}
+
 // Sync execution helper
 export async function executeBatchSync() {
   const queue = getOfflineQueue();
