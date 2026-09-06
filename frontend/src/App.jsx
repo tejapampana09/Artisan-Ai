@@ -44,7 +44,7 @@ function AppContent() {
         setUser(userData);
         if (userData.role === 'BUYER') {
           setActiveMode('BUY');
-        } else if (userData.active_mode) {
+        } else if (userData.active_mode && userData.active_mode !== 'HOME') {
           setActiveMode(userData.active_mode);
         } else {
           setActiveMode('SELL');
@@ -67,9 +67,13 @@ function AppContent() {
   }, [refreshTrigger]);
 
   const handleToggleMode = async (newMode) => {
-    setActiveMode(newMode);
-    if (!isOffline && user && (newMode === 'SELL' || newMode === 'BUY')) {
-      const updated = await updateUserMode(newMode);
+    let targetMode = newMode;
+    if (user && targetMode === 'HOME') {
+      targetMode = user.role === 'BUYER' ? 'BUY' : 'SELL';
+    }
+    setActiveMode(targetMode);
+    if (!isOffline && user && (targetMode === 'SELL' || targetMode === 'BUY')) {
+      const updated = await updateUserMode(targetMode);
       if (updated) {
         setUser(updated);
       }
@@ -132,12 +136,12 @@ function AppContent() {
         user={user}
         onAuthChange={(newUser) => {
           setUser(newUser);
-          if (newUser?.role === 'BUYER') {
-            setActiveMode('BUY');
-          } else if (newUser?.active_mode) {
-            setActiveMode(newUser.active_mode);
-          } else if (!newUser) {
+          if (!newUser) {
             setActiveMode('HOME');
+          } else if (newUser.role === 'BUYER') {
+            setActiveMode('BUY');
+          } else {
+            setActiveMode(newUser.active_mode && newUser.active_mode !== 'HOME' ? newUser.active_mode : 'SELL');
           }
           handleRefreshAll();
         }}

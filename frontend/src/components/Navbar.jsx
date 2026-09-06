@@ -9,11 +9,11 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
     <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo & Title (Clickable to Home) */}
+          {/* Logo & Title (Clickable to Home or Studio/Marketplace depending on auth) */}
           <div 
-            onClick={() => onToggleMode('HOME')}
+            onClick={() => onToggleMode(!user ? 'HOME' : user.role === 'BUYER' ? 'BUY' : 'SELL')}
             className="flex items-center space-x-3 cursor-pointer group"
-            title="Return to Home / Entry Page"
+            title={!user ? "Return to Home / Entry Page" : user.role === 'BUYER' ? "Go to Marketplace" : "Go to Artisan Studio"}
           >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-500 to-amber-400 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
               <Sparkles className="w-5 h-5" />
@@ -29,21 +29,23 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
             </div>
           </div>
 
-          {/* Mode Switcher: Home | Artisan Studio | Buyer Marketplace */}
+          {/* Mode Switcher */}
           <div className="flex items-center">
             <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200 shadow-inner">
-              <button
-                id="home-mode-toggle"
-                onClick={() => onToggleMode('HOME')}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                  activeMode === 'HOME'
-                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Home className="w-3.5 h-3.5 text-amber-600" />
-                <span className="hidden sm:inline">Home</span>
-              </button>
+              {!user && (
+                <button
+                  id="home-mode-toggle"
+                  onClick={() => onToggleMode('HOME')}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                    activeMode === 'HOME'
+                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Home className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Home</span>
+                </button>
+              )}
               {user?.role !== 'BUYER' && (
                 <button
                   id="sell-mode-toggle"

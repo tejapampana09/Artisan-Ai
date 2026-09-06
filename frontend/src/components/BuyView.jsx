@@ -308,9 +308,15 @@ export default function BuyView({ user, onOpenAuth }) {
                         <span className="text-[10px] text-slate-400 block">Direct Fair Price</span>
                         <span className="text-base font-extrabold text-slate-900">₹{p.price.toLocaleString('en-IN')}</span>
                       </div>
-                      <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                        {p.stock} in stock
-                      </span>
+                      {p.stock > 0 ? (
+                        <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                          {p.stock} in stock
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                          Out of Stock
+                        </span>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
@@ -334,6 +340,21 @@ export default function BuyView({ user, onOpenAuth }) {
                           <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
                           <span>Your Craft</span>
                         </span>
+                      ) : p.stock <= 0 ? (
+                        <button
+                          onClick={() => {
+                            if (!user) {
+                              onOpenAuth?.();
+                              return;
+                            }
+                            setOrderModal({ isOpen: true, product: p, mode: 'ENQUIRY' });
+                          }}
+                          className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-colors cursor-pointer"
+                          title="Out of stock for direct checkout. Click to request a custom batch or pre-order."
+                        >
+                          <Send className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Pre-Order</span>
+                        </button>
                       ) : (
                         <button
                           onClick={() => {

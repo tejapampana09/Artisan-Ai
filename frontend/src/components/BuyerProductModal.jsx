@@ -76,7 +76,13 @@ export default function BuyerProductModal({
               </div>
               <div className="text-right">
                 <span className="text-slate-500 block text-[11px]">Stock Status:</span>
-                <span className="font-semibold text-emerald-700">{product.stock} units available</span>
+                {product.stock > 0 ? (
+                  <span className="font-semibold text-emerald-700">{product.stock} units available</span>
+                ) : (
+                  <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                    Out of Stock (అందుబాటులో లేదు)
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -117,21 +123,31 @@ export default function BuyerProductModal({
               </div>
             ) : (
               <div className="pt-2 space-y-2">
-                <button
-                  onClick={() => {
-                    if (!user) {
+                {product.stock <= 0 ? (
+                  <button
+                    disabled
+                    className="w-full inline-flex items-center justify-center space-x-2 bg-slate-100 text-slate-400 border border-slate-200 font-bold py-2.5 rounded-xl cursor-not-allowed"
+                  >
+                    <ShoppingBag className="w-4 h-4 text-slate-400" />
+                    <span>Out of Stock (అందుబాటులో లేదు)</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (!user) {
+                        onClose();
+                        onOpenAuth?.();
+                        return;
+                      }
                       onClose();
-                      onOpenAuth?.();
-                      return;
-                    }
-                    onClose();
-                    onOpenOrder(product);
-                  }}
-                  className="w-full inline-flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
-                >
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>Buy Now (B2C Order)</span>
-                </button>
+                      onOpenOrder(product);
+                    }}
+                    className="w-full inline-flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>Buy Now (B2C Order)</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => {
@@ -146,7 +162,7 @@ export default function BuyerProductModal({
                   className="w-full inline-flex items-center justify-center space-x-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold py-2 rounded-xl transition-all cursor-pointer"
                 >
                   <Send className="w-4 h-4 text-amber-700" />
-                  <span>Request B2B Bulk Enquiry</span>
+                  <span>{product.stock <= 0 ? 'Request Custom Pre-Order' : 'Request B2B Bulk Enquiry'}</span>
                 </button>
               </div>
             )}

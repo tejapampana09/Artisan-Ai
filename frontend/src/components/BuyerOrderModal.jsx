@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
-import { X, ShoppingBag, Send, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { X, ShoppingBag, Send, CheckCircle2, ShieldCheck, Package } from 'lucide-react';
 import { placeOrder, submitEnquiry } from '../api';
 
 export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClose, onSuccess, user, onOpenAuth }) {
   if (!isOpen || !product) return null;
 
-  const isOrder = mode === 'ORDER';
+  const [currentMode, setCurrentMode] = useState(mode);
+
+  React.useEffect(() => {
+    setCurrentMode(mode);
+  }, [mode, isOpen]);
+
+  const isOrder = currentMode === 'ORDER';
   const [formData, setFormData] = useState({
     buyer_name: user?.name || '',
     buyer_phone: user?.phone || '',
@@ -24,6 +30,10 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
     }
     if (user && product.seller_id === user.id) {
       alert("Self-purchase not allowed: Artisans cannot purchase their own listed crafts.");
+      return;
+    }
+    if (isOrder && product.stock <= 0) {
+      alert("This craft is currently out of stock for direct checkout. Please submit a pre-order enquiry instead.");
       return;
     }
     setSubmitting(true);
@@ -142,6 +152,41 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
               </button>
             </div>
           </div>
+        ) : isOrder && product.stock <= 0 ? (
+          <div className="mt-4 p-5 rounded-2xl bg-rose-50 border border-rose-200 text-center space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-rose-100 flex items-center justify-center text-rose-600">
+              <Package className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 text-sm">Craft Out of Stock (ప్రస్తుతం అందుబాటులో లేదు)</h4>
+              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                All ready units of this craft have been sold out. Direct instant checkout is temporarily unavailable.
+              </p>
+              <p className="text-xs text-amber-800 font-medium mt-1">
+                You can submit a custom pre-order enquiry to the master artisan to craft a fresh batch for you!
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-2 px-3 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs hover:bg-white transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentMode('ENQUIRY');
+                  setFormData(prev => ({ ...prev, quantity: 5 }));
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer inline-flex items-center justify-center space-x-1.5"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Submit Pre-Order</span>
+              </button>
+            </div>
+          </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-4 space-y-3 text-xs">
           <div>
@@ -173,7 +218,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
               <input
                 type="number"
                 min="1"
-                max={isOrder ? product.stock : 500}
+                max={isOrder ? Math.max(1, product.stock) : 500}
                 required
                 value={formData.quantity}
                 onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
