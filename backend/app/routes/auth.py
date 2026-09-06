@@ -36,15 +36,18 @@ def register_user(payload: UserRegister, db: Session = Depends(get_db)):
                 detail="A user with this email or phone number is already registered."
             )
 
+    user_role = (payload.role or "ARTISAN").upper()
+    user_active_mode = "BUY" if user_role == "BUYER" else (payload.active_mode or "SELL")
+
     new_user = User(
         name=payload.name.strip(),
         email=payload.email.strip().lower() if payload.email else None,
         phone=payload.phone.strip() if payload.phone else None,
         hashed_password=hash_password(payload.password),
-        role=(payload.role or "ARTISAN").upper(),
-        active_mode=payload.active_mode or "SELL",
+        role=user_role,
+        active_mode=user_active_mode,
         location=payload.location or "India",
-        craft=payload.craft or "Handcrafted Goods"
+        craft=payload.craft or ("Connoisseur Collection" if user_role == "BUYER" else "Handcrafted Goods")
     )
     db.add(new_user)
     db.commit()

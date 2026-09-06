@@ -32,7 +32,7 @@ class UserRegister(BaseModel):
     role: Optional[str] = "ARTISAN"
     location: Optional[str] = "India"
     craft: Optional[str] = "Traditional Crafts"
-    active_mode: Optional[str] = "SELL"
+    active_mode: Optional[str] = None
 
 class UserLogin(BaseModel):
     email_or_phone: str

@@ -42,8 +42,12 @@ function AppContent() {
       setReadyStatus(ready);
       if (userData && !userData.detail && !userData.error) {
         setUser(userData);
-        if (userData.active_mode) {
+        if (userData.role === 'BUYER') {
+          setActiveMode('BUY');
+        } else if (userData.active_mode) {
           setActiveMode(userData.active_mode);
+        } else {
+          setActiveMode('SELL');
         }
       } else {
         setUser(null);
@@ -108,7 +112,12 @@ function AppContent() {
                 user={user}
               />
             ) : activeMode === 'SELL' ? (
-              <SellView user={user} onOpenAuth={() => setIsAuthOpen(true)} key={`sell_${refreshTrigger}`} />
+              <SellView 
+                user={user} 
+                onOpenAuth={() => setIsAuthOpen(true)} 
+                onSwitchMode={handleToggleMode}
+                key={`sell_${refreshTrigger}`} 
+              />
             ) : (
               <BuyView user={user} onOpenAuth={() => setIsAuthOpen(true)} key={`buy_${refreshTrigger}`} />
             )}
@@ -123,7 +132,9 @@ function AppContent() {
         user={user}
         onAuthChange={(newUser) => {
           setUser(newUser);
-          if (newUser?.active_mode) {
+          if (newUser?.role === 'BUYER') {
+            setActiveMode('BUY');
+          } else if (newUser?.active_mode) {
             setActiveMode(newUser.active_mode);
           } else if (!newUser) {
             setActiveMode('HOME');

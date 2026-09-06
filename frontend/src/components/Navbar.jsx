@@ -44,18 +44,20 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
                 <Home className="w-3.5 h-3.5 text-amber-600" />
                 <span className="hidden sm:inline">Home</span>
               </button>
-              <button
-                id="sell-mode-toggle"
-                onClick={() => onToggleMode('SELL')}
-                className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                  activeMode === 'SELL'
-                    ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/30 font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Store className="w-3.5 h-3.5" />
-                <span>Artisan Studio</span>
-              </button>
+              {user?.role !== 'BUYER' && (
+                <button
+                  id="sell-mode-toggle"
+                  onClick={() => onToggleMode('SELL')}
+                  className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                    activeMode === 'SELL'
+                      ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/30 font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  <span>Artisan Studio</span>
+                </button>
+              )}
               <button
                 id="buy-mode-toggle"
                 onClick={() => onToggleMode('BUY')}

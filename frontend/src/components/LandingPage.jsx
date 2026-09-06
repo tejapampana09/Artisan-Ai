@@ -105,26 +105,32 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
 
           {/* Action CTAs */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-4">
-            <button
-              id="landing-artisan-cta"
-              onClick={() => {
-                if (user) {
-                  onSelectMode('SELL');
-                } else {
-                  onOpenAuth();
-                }
-              }}
-              className="flex items-center justify-center space-x-3 px-7 py-3.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-base shadow-lg shadow-amber-600/30 transition-all hover:scale-[1.02] cursor-pointer"
-            >
-              <Store className="w-5 h-5" />
-              <span>{user ? 'Enter Artisan Studio (స్టూడియో)' : 'Artisan Sign In / Join (కళాకారుడు)'}</span>
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </button>
+            {user?.role !== 'BUYER' && (
+              <button
+                id="landing-artisan-cta"
+                onClick={() => {
+                  if (user) {
+                    onSelectMode('SELL');
+                  } else {
+                    onOpenAuth();
+                  }
+                }}
+                className="flex items-center justify-center space-x-3 px-7 py-3.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-base shadow-lg shadow-amber-600/30 transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                <Store className="w-5 h-5" />
+                <span>{user ? 'Enter Artisan Studio (స్టూడియో)' : 'Artisan Sign In / Join (కళాకారుడు)'}</span>
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </button>
+            )}
 
             <button
               id="landing-buyer-cta"
               onClick={() => onSelectMode('BUY')}
-              className="flex items-center justify-center space-x-3 px-7 py-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-slate-600 text-white font-bold text-base transition-all hover:scale-[1.02] cursor-pointer backdrop-blur-sm"
+              className={`flex items-center justify-center space-x-3 px-7 py-3.5 rounded-xl font-bold text-base transition-all hover:scale-[1.02] cursor-pointer ${
+                user?.role === 'BUYER'
+                  ? 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white shadow-lg shadow-indigo-600/30'
+                  : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-slate-600 text-white backdrop-blur-sm'
+              }`}
             >
               <ShoppingBag className="w-5 h-5 text-amber-300" />
               <span>Explore Marketplace (హస్తకళలు కొనండి)</span>
@@ -344,21 +350,27 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
           Join thousands of rural artisans bringing timeless cultural crafts directly into homes worldwide.
         </p>
         <div className="flex justify-center gap-3 pt-2">
-          <button
-            onClick={() => {
-              if (user) {
-                onSelectMode('SELL');
-              } else {
-                onOpenAuth();
-              }
-            }}
-            className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-sm"
-          >
-            Start as Artisan
-          </button>
+          {user?.role !== 'BUYER' && (
+            <button
+              onClick={() => {
+                if (user) {
+                  onSelectMode('SELL');
+                } else {
+                  onOpenAuth();
+                }
+              }}
+              className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-sm"
+            >
+              Start as Artisan
+            </button>
+          )}
           <button
             onClick={() => onSelectMode('BUY')}
-            className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer"
+            className={`px-6 py-2.5 rounded-xl font-bold text-xs transition-colors cursor-pointer ${
+              user?.role === 'BUYER'
+                ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'
+                : 'bg-slate-900 hover:bg-slate-800 text-white'
+            }`}
           >
             Shop Handmade Crafts
           </button>

@@ -16,7 +16,7 @@ import {
 import { useOffline } from '../context/OfflineContext';
 import { getCachedProducts, setCachedProducts, getCachedDemands, setCachedDemands, getCachedCopilotInsight, setCachedCopilotInsight } from '../services/offlineSync';
 
-export default function SellView({ user, onOpenAuth }) {
+export default function SellView({ user, onOpenAuth, onSwitchMode }) {
   const [products, setProducts] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -195,6 +195,33 @@ export default function SellView({ user, onOpenAuth }) {
             className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
           >
             Sign In to Artisan Studio
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (user?.role === 'BUYER') {
+    return (
+      <div className="max-w-xl mx-auto my-14 bg-white rounded-3xl p-8 sm:p-12 border border-slate-200 shadow-xl text-center space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-500 text-white flex items-center justify-center mx-auto shadow-md">
+          <ShoppingCart className="w-8 h-8" />
+        </div>
+        <div>
+          <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200 mb-2">
+            Buyer Account (కొనుగోలుదారు)
+          </span>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">You are logged in as a Buyer</h2>
+          <p className="text-xs sm:text-sm text-slate-500 mt-2 leading-relaxed max-w-md mx-auto">
+            Namaste <strong>{user.name}</strong>! Your account is registered as a <strong>Connoisseur / Buyer</strong>. Artisan Studio is reserved for master craft creators to list crafts, configure pricing, and manage inventory.
+          </p>
+        </div>
+        <div className="pt-3 flex justify-center">
+          <button
+            onClick={() => onSwitchMode?.('BUY')}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+          >
+            Explore Buyer Marketplace (హస్తకళలు కొనండి)
           </button>
         </div>
       </div>
