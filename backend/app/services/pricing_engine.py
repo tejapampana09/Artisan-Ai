@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy.orm import Session
 from backend.app.models import Product, Event, PricingDecision
@@ -210,3 +210,47 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
         "reasoning": reasoning,
         "safety_constraints": safety_constraints
     }
+
+def process_auto_smart_pricing(product: Product, db: Session) -> Optional[PricingDecision]:
+    """
+    Autonomous Dynamic Pricing Execution.
+    If product.auto_smart_pricing_enabled is True:
+    - Calculates current price recommendation.
+    - If recommended price differs from current price:
+      1. Automatically updates product.price = recommended_price.
+      2. Creates a PricingDecision audit record with decision="AUTO_APPLIED".
+      3. Returns the decision record.
+    """
+    import json
+    from datetime import datetime, timezone
+
+    if not getattr(product, "auto_smart_pricing_enabled", False):
+        return None
+
+    rec = calculate_price_recommendation(product, db)
+    prev_price = Decimal(str(product.price)).quantize(Decimal("0.01"))
+    rec_price = Decimal(str(rec["recommended_price"])).quantize(Decimal("0.01"))
+
+    # Only apply if there is an actual price change recommendation
+    if prev_price == rec_price:
+        return None
+
+    # Apply price change automatically
+    product.price = rec_price
+
+    decision_record = PricingDecision(
+        product_id=product.id,
+        decision="AUTO_APPLIED",
+        previous_price=prev_price,
+        recommended_price=rec_price,
+        applied_price=rec_price,
+        demand_factor=Decimal(str(rec["demand_factor"])).quantize(Decimal("0.0001")),
+        market_adjustment=Decimal(str(rec["market_adjustment"])).quantize(Decimal("0.0001")),
+        reasoning_json=json.dumps(rec["reasoning"]),
+        timestamp=datetime.now(timezone.utc)
+    )
+    db.add(decision_record)
+    db.commit()
+    db.refresh(decision_record)
+    db.refresh(product)
+    return decision_record

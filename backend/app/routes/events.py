@@ -68,6 +68,14 @@ def record_event(
     db.add(evt)
     db.commit()
     db.refresh(evt)
+
+    # Autonomous Dynamic Pricing Trigger
+    if event_in.product_id:
+        target_prod = db.query(Product).filter(Product.id == event_in.product_id).first()
+        if target_prod and getattr(target_prod, "auto_smart_pricing_enabled", False):
+            from backend.app.services.pricing_engine import process_auto_smart_pricing
+            process_auto_smart_pricing(target_prod, db)
+
     return evt
 
 @router.get("/events", response_model=List[EventResponse])

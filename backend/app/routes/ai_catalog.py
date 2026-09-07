@@ -104,7 +104,8 @@ async def process_voice_and_image(req: AICatalogRequest, request: Request):
         category_hint=req.category_hint,
         material_cost=req.material_cost,
         labour_cost=req.labour_cost,
-        packaging_cost=req.packaging_cost
+        packaging_cost=req.packaging_cost,
+        other_cost=req.other_cost
     )
     return AICatalogDraftResponse(**draft)
 

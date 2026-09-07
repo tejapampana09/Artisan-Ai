@@ -48,7 +48,8 @@ def get_models_to_try() -> list:
 def calculate_pricing_from_costs(
     mat: Optional[Any] = None,
     lab: Optional[Any] = None,
-    pkg: Optional[Any] = None
+    pkg: Optional[Any] = None,
+    oth: Optional[Any] = None
 ) -> Tuple[Optional[Decimal], Optional[Decimal], bool, str]:
     """
     Computes (min_fair_price, suggested_price, pricing_available, pricing_source)
@@ -58,7 +59,7 @@ def calculate_pricing_from_costs(
     """
     has_costs = any(
         c is not None and Decimal(str(c)) > 0
-        for c in [mat, lab, pkg]
+        for c in [mat, lab, pkg, oth]
     )
     if not has_costs:
         return None, None, False, "AWAITING_ARTISAN_INPUT"
@@ -66,7 +67,8 @@ def calculate_pricing_from_costs(
     m = to_decimal(mat, "0.00")
     l = to_decimal(lab, "0.00")
     p = to_decimal(pkg, "0.00")
-    cost_basis = (m + l + p).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    o = to_decimal(oth, "0.00")
+    cost_basis = (m + l + p + o).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     min_fair = (cost_basis * Decimal("1.20")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     suggested = (cost_basis * Decimal("1.40")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     return min_fair, suggested, True, "COST_PLUS_MARGIN"
@@ -79,6 +81,7 @@ def build_production_manual_draft(
     material_cost: Optional[Any] = None,
     labour_cost: Optional[Any] = None,
     packaging_cost: Optional[Any] = None,
+    other_cost: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     Constructs a 100% honest manual draft when AI is unavailable in production.
@@ -100,12 +103,13 @@ def build_production_manual_draft(
         title = "Craft Draft (Pending Title)"
 
     min_fair, suggested, pricing_avail, pricing_src = calculate_pricing_from_costs(
-        material_cost, labour_cost, packaging_cost
+        material_cost, labour_cost, packaging_cost, other_cost
     )
 
     mat_dec = to_decimal(material_cost) if material_cost is not None else None
     lab_dec = to_decimal(labour_cost) if labour_cost is not None else None
     pkg_dec = to_decimal(packaging_cost) if packaging_cost is not None else None
+    oth_dec = to_decimal(other_cost) if other_cost is not None else None
 
     return {
         "source": "MANUAL_DRAFT",
@@ -127,6 +131,7 @@ def build_production_manual_draft(
         "material_cost": mat_dec,
         "labour_cost": lab_dec,
         "packaging_cost": pkg_dec,
+        "other_cost": oth_dec,
         "min_margin_pct": Decimal("0.20"),
         "pricing_available": pricing_avail,
         "pricing_source": pricing_src,
@@ -146,6 +151,7 @@ async def generate_catalog_draft(
     material_cost: Optional[Any] = None,
     labour_cost: Optional[Any] = None,
     packaging_cost: Optional[Any] = None,
+    other_cost: Optional[Any] = None,
     force_fallback: bool = False
 ) -> Dict[str, Any]:
     """
@@ -160,7 +166,7 @@ async def generate_catalog_draft(
 
     has_user_costs = any(
         c is not None and Decimal(str(c)) > 0 
-        for c in [material_cost, labour_cost, packaging_cost]
+        for c in [material_cost, labour_cost, packaging_cost, other_cost]
     )
 
     # -------------------------------------------------------------------------
@@ -189,7 +195,7 @@ async def generate_catalog_draft(
             - materials: Comma-separated list of materials derived from description
             - tags: Array of 4-6 relevant discovery strings
             - suggested_price: Fair selling price in INR as a number
-            - estimated_cost: object with keys "material", "labour", "packaging" as numbers
+            - estimated_cost: object with keys "material", "labour", "packaging", "other" as numbers
             """
             models_to_try = get_models_to_try()
             async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
@@ -227,17 +233,19 @@ async def generate_catalog_draft(
                         # Prioritize user costs over AI estimated costs
                         if has_user_costs:
                             min_fair, suggested, pricing_available, pricing_source = calculate_pricing_from_costs(
-                                material_cost, labour_cost, packaging_cost
+                                material_cost, labour_cost, packaging_cost, other_cost
                             )
                             mat = to_decimal(material_cost, "0.00")
                             lab = to_decimal(labour_cost, "0.00")
                             pkg = to_decimal(packaging_cost, "0.00")
+                            oth = to_decimal(other_cost, "0.00")
                         else:
                             est_cost = parsed.get("estimated_cost", {})
                             mat = to_decimal(est_cost.get("material"), "0.00")
                             lab = to_decimal(est_cost.get("labour"), "0.00")
                             pkg = to_decimal(est_cost.get("packaging"), "0.00")
-                            cost_basis = (mat + lab + pkg).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                            oth = to_decimal(est_cost.get("other"), "0.00")
+                            cost_basis = (mat + lab + pkg + oth).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                             min_fair = (cost_basis * Decimal("1.20")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                             raw_sugg = to_decimal(parsed.get("suggested_price"), str(min_fair))
                             suggested = max(min_fair, raw_sugg).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -275,6 +283,7 @@ async def generate_catalog_draft(
                             "material_cost": mat,
                             "labour_cost": lab,
                             "packaging_cost": pkg,
+                            "other_cost": oth,
                             "min_margin_pct": Decimal("0.20"),
                             "pricing_available": pricing_available,
                             "pricing_source": pricing_source,
@@ -299,7 +308,8 @@ async def generate_catalog_draft(
         category_hint=clean_category_hint,
         material_cost=material_cost,
         labour_cost=labour_cost,
-        packaging_cost=packaging_cost
+        packaging_cost=packaging_cost,
+        other_cost=other_cost
     )
 
 

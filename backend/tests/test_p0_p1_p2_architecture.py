@@ -81,3 +81,58 @@ def test_toggle_smart_pricing_endpoint():
     toggle_res2 = client.patch(f"/api/products/{pid}/toggle-smart-pricing", headers=headers)
     assert toggle_res2.status_code == 200
     assert toggle_res2.json()["auto_smart_pricing_enabled"] is False
+
+def test_ai_catalog_other_cost_pipeline():
+    """
+    Verifies Fix 1: /api/ai/process-catalog includes other_cost in AI catalog draft generation.
+    """
+    res = client.post("/api/ai/process-catalog", json={
+        "voice_description": "Handcrafted Kalamkari Saree with natural dyes",
+        "language": "en",
+        "category_hint": "Kalamkari",
+        "material_cost": 500.0,
+        "labour_cost": 300.0,
+        "packaging_cost": 100.0,
+        "other_cost": 100.0  # Total cost_basis = 1000.0 => min_fair_price = 1200.0
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert float(data["other_cost"]) == 100.0
+    assert float(data["min_fair_price"]) == 1200.0
+
+def test_auto_smart_pricing_execution():
+    """
+    Verifies Fix 2: Autonomous price update & AUTO_APPLIED audit decision record creation when auto_smart_pricing_enabled is True.
+    """
+    uid = uuid.uuid4().hex[:6]
+    artisan_res = client.post("/api/auth/register", json={
+        "name": f"Smart Artisan {uid}",
+        "email": f"smart.artisan.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    token = artisan_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Create product with low initial price (500) but cost_basis = 1000 (min_fair = 1200)
+    create_res = client.post("/api/products", json={
+        "title": "Autonomous Smart Pricing Craft",
+        "category": "Kalamkari",
+        "price": 500.0,
+        "material_cost": 500.0,
+        "labour_cost": 300.0,
+        "packaging_cost": 100.0,
+        "other_cost": 100.0,
+        "auto_smart_pricing_enabled": True
+    }, headers=headers)
+    assert create_res.status_code == 201
+    pid = create_res.json()["id"]
+
+    # Trigger evaluation endpoint
+    eval_res = client.post(f"/api/products/{pid}/evaluate-auto-pricing", headers=headers)
+    assert eval_res.status_code == 200
+    eval_data = eval_res.json()
+    assert eval_data["auto_pricing_applied"] is True
+    assert eval_data["current_price"] >= 1200.0
+    assert eval_data["decision"] == "AUTO_APPLIED"
+

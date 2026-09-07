@@ -11,7 +11,10 @@ from backend.app.schemas import (
     PriceDecisionRequest,
     PriceDecisionResponse
 )
-from backend.app.services.pricing_engine import calculate_price_recommendation
+from backend.app.services.pricing_engine import (
+    calculate_price_recommendation,
+    process_auto_smart_pricing
+)
 from backend.app.services.auth import get_current_user
 
 router = APIRouter(prefix="/api/products", tags=["Explainable Dynamic Pricing"])
@@ -102,9 +105,73 @@ def toggle_smart_pricing(
     product.auto_smart_pricing_enabled = not bool(getattr(product, "auto_smart_pricing_enabled", False))
     db.commit()
     db.refresh(product)
+
+    # Autonomous execution: if enabled, immediately run auto-pricing cycle
+    decision_record = None
+    if product.auto_smart_pricing_enabled:
+        decision_record = process_auto_smart_pricing(product, db)
+
     return {
         "product_id": product.id,
         "auto_smart_pricing_enabled": product.auto_smart_pricing_enabled,
+        "auto_pricing_applied": decision_record is not None,
+        "decision": decision_record.decision if decision_record else None,
+        "applied_price": float(decision_record.applied_price) if decision_record else float(product.price),
         "message": f"Auto Smart Pricing is now {'ENABLED' if product.auto_smart_pricing_enabled else 'DISABLED'}"
+    }
+
+@router.post("/{product_id}/evaluate-auto-pricing")
+def evaluate_auto_pricing(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Evaluates and applies autonomous dynamic pricing for a product if auto_smart_pricing_enabled is True.
+    """
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with id {product_id} not found"
+        )
+    if product.seller_id and current_user.id and product.seller_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to execute pricing evaluation for this product."
+        )
+
+    decision_record = process_auto_smart_pricing(product, db)
+    return {
+        "product_id": product.id,
+        "auto_smart_pricing_enabled": product.auto_smart_pricing_enabled,
+        "auto_pricing_applied": decision_record is not None,
+        "current_price": float(product.price),
+        "decision": decision_record.decision if decision_record else "NO_CHANGE"
+    }
+
+@router.post("/auto-pricing/run-all-cycles")
+def run_all_auto_pricing_cycles(db: Session = Depends(get_db)):
+    """
+    Scheduled / System cycle endpoint: Runs auto-pricing evaluation on all products with auto_smart_pricing_enabled == True.
+    """
+    products = db.query(Product).filter(Product.auto_smart_pricing_enabled == True).all()
+    applied_count = 0
+    records = []
+    for p in products:
+        rec = process_auto_smart_pricing(p, db)
+        if rec:
+            applied_count += 1
+            records.append({
+                "product_id": p.id,
+                "previous_price": float(rec.previous_price),
+                "applied_price": float(rec.applied_price),
+                "decision": rec.decision
+            })
+    return {
+        "status": "COMPLETED",
+        "total_smart_products": len(products),
+        "applied_updates_count": applied_count,
+        "updates": records
     }
 
