@@ -47,6 +47,55 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+def ensure_sqlite_schema(eng):
+    if not eng.url.drivername.startswith("sqlite"):
+        return
+    with eng.connect() as conn:
+        # Check users table columns
+        res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+        user_cols = [row[1] for row in res]
+        if user_cols:
+            if "avatar_url" not in user_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url TEXT"))
+            if "bio" not in user_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN bio TEXT"))
+            if "craft_specialization" not in user_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN craft_specialization VARCHAR"))
+            if "experience_years" not in user_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN experience_years INTEGER DEFAULT 0"))
+            if "verification_status" not in user_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN verification_status VARCHAR DEFAULT 'UNVERIFIED'"))
+
+        # Check products table columns
+        res_prod = conn.execute(text("PRAGMA table_info(products)")).fetchall()
+        prod_cols = [row[1] for row in res_prod]
+        if prod_cols:
+            if "craft_process" not in prod_cols:
+                conn.execute(text("ALTER TABLE products ADD COLUMN craft_process TEXT"))
+            if "region_of_origin" not in prod_cols:
+                conn.execute(text("ALTER TABLE products ADD COLUMN region_of_origin VARCHAR"))
+            if "handmade_pct" not in prod_cols:
+                conn.execute(text("ALTER TABLE products ADD COLUMN handmade_pct INTEGER DEFAULT 100"))
+            if "production_time_days" not in prod_cols:
+                conn.execute(text("ALTER TABLE products ADD COLUMN production_time_days INTEGER DEFAULT 3"))
+            if "secondary_images" not in prod_cols:
+                conn.execute(text("ALTER TABLE products ADD COLUMN secondary_images TEXT"))
+            if "verification_status" not in prod_cols:
+                conn.execute(text("ALTER TABLE products ADD COLUMN verification_status VARCHAR DEFAULT 'UNVERIFIED'"))
+
+        # Check orders table columns
+        res_ord = conn.execute(text("PRAGMA table_info(orders)")).fetchall()
+        ord_cols = [row[1] for row in res_ord]
+        if ord_cols:
+            if "cancellation_status" not in ord_cols:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN cancellation_status VARCHAR DEFAULT 'NONE'"))
+            if "cancellation_reason" not in ord_cols:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN cancellation_reason TEXT"))
+            if "tracking_history" not in ord_cols:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN tracking_history TEXT"))
+
+        conn.commit()
+
 def get_db():
     db = SessionLocal()
     try:

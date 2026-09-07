@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from backend.app.database import engine, Base, get_db
+from backend.app.database import engine, Base, get_db, ensure_sqlite_schema
 from backend.app.models import User, Product, Order, Enquiry, Event, PricingDecision, ProcessedOperation
 from backend.app.schemas import HealthResponse, ReadyResponse, UserResponse, ModeUpdateRequest
 from backend.app.config import get_cors_origins, ENVIRONMENT
