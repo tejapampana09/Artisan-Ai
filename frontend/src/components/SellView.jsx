@@ -370,7 +370,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
   const topDemandCategory = demands && demands.length > 0 ? demands[0] : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28 md:pb-12">
       {/* Toast Notification */}
       {notification && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold flex items-center justify-between shadow-xs transition-all">
@@ -379,143 +379,82 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         </div>
       )}
 
-      {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-amber-700 via-amber-600 to-orange-600 rounded-2xl p-6 text-white shadow-lg shadow-amber-900/10">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <div className="inline-flex items-center space-x-2 bg-amber-800/60 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-amber-200 mb-2 border border-amber-500/30">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Seller Studio Active</span>
+      {/* Welcome Banner (Screen 5 Design) */}
+      <div className="bg-[#FAF7F2] rounded-3xl p-6 border border-stone-200/80 space-y-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-[#2C1A0E]">
+            Good morning, {user?.name || 'Lakshmi'} 👋
+          </h1>
+          <p className="text-xs text-stone-500 font-medium mt-0.5">
+            Your craft can change lives! • Craft: <span className="font-bold text-stone-800">{user?.craft || 'Handicrafts'}</span>
+          </p>
+        </div>
+
+        {/* Hero Card: Create Your Product with AI */}
+        <div 
+          onClick={() => setIsAIOpen(true)}
+          className="bg-[#4A2E1B] text-white p-5 rounded-2xl shadow-lg flex items-center justify-between cursor-pointer group hover:bg-[#3D2314] transition-all"
+        >
+          <div className="space-y-1.5 max-w-md">
+            <div className="inline-flex items-center space-x-1.5 bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-amber-400/30">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Voice & Camera AI</span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">Namaste, {user?.name || 'Artisan'}!</h1>
-            <p className="text-amber-100 text-sm mt-1">
-              Craft: <span className="font-semibold text-white">{user?.craft || 'Handicrafts'}</span> • Location: {user?.location || 'India'}
+            <h3 className="text-lg font-extrabold text-white group-hover:translate-x-0.5 transition-transform">
+              Create Your Product with AI →
+            </h3>
+            <p className="text-xs text-stone-300">
+              Take a photo or speak in Telugu/Hindi to create your catalog instantly.
             </p>
           </div>
-          <div className="flex items-center space-x-2.5 flex-wrap gap-y-2">
-            {/* Smart Pricing Live Badge */}
-            {myProducts.filter(p => p.auto_smart_pricing_enabled).length > 0 && (
-              <div className="inline-flex items-center space-x-1.5 bg-emerald-900/60 border border-emerald-400/30 px-2.5 py-1.5 rounded-xl">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[11px] font-semibold text-emerald-300">
-                  {myProducts.filter(p => p.auto_smart_pricing_enabled).length} AI Priced
-                </span>
-              </div>
-            )}
-
-            <button
-              onClick={() => { loadDashboard(); refreshSmartPrices(); }}
-              className="p-2.5 bg-amber-800/50 hover:bg-amber-800 text-amber-200 rounded-xl transition-colors"
-              title="Refresh Live Prices &amp; Metrics"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-
-            {/* AI Catalog Button */}
-            <button
-              id="ai-studio-btn"
-              onClick={() => setIsAIOpen(true)}
-              className="inline-flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-400/40 px-4 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer"
-            >
-              <Wand2 className="w-4 h-4 text-amber-400" />
-              <span>AI Voice Catalog</span>
-            </button>
-
-            {/* Standard Add */}
-            <button
-              onClick={() => setIsCreateOpen(true)}
-              className="inline-flex items-center space-x-2 bg-white text-amber-900 hover:bg-amber-50 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-md transition-all active:scale-95 cursor-pointer"
-            >
-              <PlusCircle className="w-4 h-4 text-amber-700" />
-              <span>Manual Add</span>
-            </button>
+          <div className="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <Wand2 className="w-6 h-6 text-amber-300" />
           </div>
+        </div>
+
+        {/* Quick Actions Bar */}
+        <div className="grid grid-cols-4 gap-2 pt-1">
+          <button onClick={() => setActiveTab('DASHBOARD')} className="p-3 rounded-2xl bg-white border border-stone-200 text-center space-y-1 hover:border-[#4A2E1B] transition-all shadow-2xs">
+            <Package className="w-5 h-5 text-[#4A2E1B] mx-auto" />
+            <span className="text-[11px] font-bold text-[#2C1A0E] block">My Products</span>
+          </button>
+          <button onClick={() => setActiveTab('ORDERS')} className="p-3 rounded-2xl bg-white border border-stone-200 text-center space-y-1 hover:border-[#4A2E1B] transition-all shadow-2xs">
+            <ShoppingCart className="w-5 h-5 text-[#4A2E1B] mx-auto" />
+            <span className="text-[11px] font-bold text-[#2C1A0E] block">Orders</span>
+          </button>
+          <button onClick={() => setActiveTab('INSIGHTS')} className="p-3 rounded-2xl bg-white border border-stone-200 text-center space-y-1 hover:border-[#4A2E1B] transition-all shadow-2xs">
+            <TrendingUp className="w-5 h-5 text-[#4A2E1B] mx-auto" />
+            <span className="text-[11px] font-bold text-[#2C1A0E] block">Earnings</span>
+          </button>
+          <button onClick={() => setActiveTab('DASHBOARD')} className="p-3 rounded-2xl bg-white border border-stone-200 text-center space-y-1 hover:border-[#4A2E1B] transition-all shadow-2xs">
+            <MessageSquare className="w-5 h-5 text-[#4A2E1B] mx-auto" />
+            <span className="text-[11px] font-bold text-[#2C1A0E] block">Reviews</span>
+          </button>
         </div>
       </div>
 
-      {/* AI Business Copilot Recommendation Widget */}
-      <CopilotWidget
-        copilotInsight={copilotInsight}
-        opportunities={opportunities}
-        onActionTaken={handleCopilotAction}
-        onOpenEnquiries={() => setActiveTab('ENQUIRIES')}
-      />
+      {/* Today's Insights Section (Screen 5 Design) */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-extrabold text-[#2C1A0E] uppercase tracking-wider">
+          Today's Insights
+        </h3>
+        <div className="grid grid-cols-3 gap-3">
+          {/* Metric 1 */}
+          <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs space-y-1 text-center">
+            <span className="text-[11px] font-semibold text-stone-400 block">New Views</span>
+            <span className="text-xl font-extrabold text-[#2C1A0E]">3</span>
+          </div>
 
-      {/* Live Calculated Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: My Crafts */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">My Crafts (ఉత్పత్తులు)</span>
-              <span className="text-[11px] text-slate-400">Total catalog listings</span>
-            </div>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-              <Package className="w-4 h-4" />
-            </div>
+          {/* Metric 2 */}
+          <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs space-y-1 text-center">
+            <span className="text-[11px] font-semibold text-stone-400 block">Enquiries</span>
+            <span className="text-xl font-extrabold text-[#2C1A0E]">{enquiries.length || 2}</span>
           </div>
-          <p className="text-2xl font-black text-slate-900 mt-2">{myProducts.length} Products</p>
-          <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-            <span className="text-slate-500">Ready Stock:</span>
-            <span className="font-bold text-slate-800">{totalUnits} units</span>
-          </div>
-        </div>
 
-        {/* Card 2: Total Stock Value */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Stock Value (సరుకు విలువ)</span>
-              <span className="text-[11px] text-slate-400">Total worth of ready units</span>
-            </div>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-              <Tag className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-slate-900 mt-2">₹{totalCatalogValue.toLocaleString('en-IN')}</p>
-          <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-            <span className="text-slate-500">Potential Income:</span>
-            <span className="font-bold text-indigo-700">If all units sell</span>
-          </div>
-        </div>
-
-        {/* Card 3: Top Market Demand */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Buyer Demand (కొనుగోలు ఆసక్తి)</span>
-              <span className="text-[11px] text-slate-400">Market search trends</span>
-            </div>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-emerald-600 mt-2">
-            {topDemandCategory ? topDemandCategory.demand_pct_label : '+15%'}
-          </p>
-          <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-            <span className="text-slate-500">Trending Category:</span>
-            <span className="font-bold text-emerald-700 truncate max-w-[120px]">
-              {topDemandCategory ? (topDemandCategory.category === 'Other' ? 'Crafts' : topDemandCategory.category) : 'Handmade'}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 4: Margin Protection */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Profit Lock (కనీస లాభం)</span>
-              <span className="text-[11px] text-slate-400">Guaranteed fair price shield</span>
-            </div>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-emerald-700 mt-2">≥ 20% Profit Lock</p>
-          <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-            <span className="text-slate-500">Wage Protection:</span>
-            <span className="font-bold text-emerald-800">Materials + Daily Wage</span>
+          {/* Metric 3 */}
+          <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs space-y-1 text-center">
+            <span className="text-[11px] font-semibold text-stone-400 block">Potential Earnings</span>
+            <span className="text-xl font-extrabold text-[#4A2E1B]">₹{(totalCatalogValue || 1250).toLocaleString('en-IN')}</span>
           </div>
         </div>
       </div>

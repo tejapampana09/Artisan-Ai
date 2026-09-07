@@ -108,8 +108,71 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
   };
 
   return (
-    <div className="space-y-16 pb-12 animate-fade-in">
-      {/* Hero Section */}
+    <div className="space-y-12 pb-12 animate-fade-in">
+      {/* Role Selection (Screen 3 Design) */}
+      <section className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-stone-200/80 max-w-2xl mx-auto space-y-6">
+        <div className="text-center space-y-1">
+          <span className="text-[11px] font-bold text-stone-400 uppercase tracking-widest">Step 2 of 3</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#2C1A0E]">
+            How would you like to use Artisan AI?
+          </h2>
+          <p className="text-xs text-stone-500">
+            Choose your journey
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          {/* Role 1: Artisan */}
+          <div
+            onClick={() => {
+              if (user) {
+                onSelectMode('SELL');
+              } else {
+                onOpenAuth();
+              }
+            }}
+            className="group p-5 rounded-2xl bg-[#FAF7F2] border-2 border-stone-200/80 hover:border-[#4A2E1B] transition-all cursor-pointer flex flex-col justify-between space-y-4 hover:shadow-md"
+          >
+            <div className="space-y-1">
+              <div className="w-10 h-10 rounded-xl bg-[#4A2E1B] text-white flex items-center justify-center shadow-xs">
+                <Store className="w-5 h-5" />
+              </div>
+              <h3 className="font-extrabold text-base text-[#2C1A0E] group-hover:text-[#4A2E1B] pt-2">
+                I am an Artisan
+              </h3>
+              <p className="text-xs text-stone-500">
+                Sell your craft with AI
+              </p>
+            </div>
+            <div className="flex items-center justify-between text-xs font-bold text-[#4A2E1B]">
+              <span>Get Started</span>
+              <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Role 2: Buyer */}
+          <div
+            onClick={() => onSelectMode('BUY')}
+            className="group p-5 rounded-2xl bg-[#FAF7F2] border-2 border-stone-200/80 hover:border-[#4A2E1B] transition-all cursor-pointer flex flex-col justify-between space-y-4 hover:shadow-md"
+          >
+            <div className="space-y-1">
+              <div className="w-10 h-10 rounded-xl bg-amber-700 text-white flex items-center justify-center shadow-xs">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+              <h3 className="font-extrabold text-base text-[#2C1A0E] group-hover:text-[#4A2E1B] pt-2">
+                I am a Buyer
+              </h3>
+              <p className="text-xs text-stone-500">
+                Discover unique handmade products
+              </p>
+            </div>
+            <div className="flex items-center justify-between text-xs font-bold text-[#4A2E1B]">
+              <span>Explore Marketplace</span>
+              <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+        </div>
+      </section>
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-900 via-stone-900 to-slate-950 text-white p-8 md:p-14 shadow-2xl border border-amber-500/20">
         {/* Background decorative ambient glow */}
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>

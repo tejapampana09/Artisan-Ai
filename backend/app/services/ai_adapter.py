@@ -175,26 +175,39 @@ async def generate_catalog_draft(
     if GEMINI_API_KEY and not force_fallback:
         try:
             prompt = f"""
-            You are Artisan AI's cataloging assistant for traditional Indian artisans.
-            The artisan provided this description: "{clean_desc}".
+            You are Artisan AI's master cataloging assistant and expert market pricing strategist for traditional Indian handicrafts.
+            The artisan provided this input description: "{clean_desc}".
             Language used: {language}. Craft hint: {clean_category_hint or 'Not specified'}.
             
-            Assist by structuring this into a product draft.
-            IMPORTANT GUIDELINE:
-            Do not invent unverified GI certifications or false claims not implied by the artisan's words.
-            Provide both the native language fields (in '{language}') AND clear English translation fields so buyers across India and globally can understand the listing.
-            
+            Perform two core tasks:
+            1. AI HERITAGE STORY & CATALOG DECISION:
+               - Craft a compelling, authentic Heritage Craft Story (`craft_story`) that captures the traditional craftsmanship, cultural legacy, and artistic value of this item.
+               - Generate a professional product title, engaging description, materials list, and discovery tags.
+               - Provide both native language fields (in '{language}') AND clear English translation fields so buyers across India and globally can understand the listing.
+
+            2. MARKET-BASED PRICE RECOMMENDATION (SIMILAR PRODUCTS):
+               - Base the `suggested_price` (in INR) on current real-world market prices for SIMILAR handmade products in India within this craft category:
+                 * Kalamkari: ₹1,200 - ₹3,500
+                 * Kondapalli / Wooden Toys: ₹500 - ₹1,800
+                 * Jaipur Blue Pottery: ₹450 - ₹1,600
+                 * Bidriware Craft: ₹1,500 - ₹4,500
+                 * Pochampally Ikat: ₹1,800 - ₹5,000
+                 * Terracotta / Clay Art: ₹350 - ₹1,200
+                 * Handloom Weaves: ₹1,200 - ₹4,200
+               - Determine `suggested_price` dynamically based on item complexity, material quality, and market benchmarks for similar products.
+               - Break down estimated cost components into `estimated_cost` object with keys "material", "labour", "packaging", "other" (all numbers in INR) ensuring a fair 25-40% profit margin above cost.
+
             Return a valid JSON object with:
             - title: Catchy, market-ready title in language '{language}' (max 10 words)
             - description: Professional 2-3 sentence product overview in language '{language}'
-            - craft_story: Cultural or artisanal narrative in language '{language}' based on description
+            - craft_story: Cultural or artisanal narrative in language '{language}' highlighting traditional heritage
             - title_en: Clear English translation of title
             - description_en: Clear English translation of description
             - craft_story_en: Clear English translation of craft_story
             - category: One of Kalamkari, Wooden Toys, Blue Pottery, Bidriware, Pochampally Ikat, Terracotta, Handloom, Other
-            - materials: Comma-separated list of materials derived from description
+            - materials: Comma-separated list of authentic materials derived from description
             - tags: Array of 4-6 relevant discovery strings
-            - suggested_price: Fair selling price in INR as a number
+            - suggested_price: Optimal market selling price in INR based on similar products
             - estimated_cost: object with keys "material", "labour", "packaging", "other" as numbers
             """
             models_to_try = get_models_to_try()

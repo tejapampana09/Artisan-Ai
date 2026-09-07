@@ -6,6 +6,7 @@ import BuyView from './components/BuyView';
 import OfflineSyncBanner from './components/OfflineSyncBanner';
 import AuthModal from './components/AuthModal';
 import NotificationCenter from './components/NotificationCenter';
+import SplashScreen from './components/SplashScreen';
 import { OfflineProvider, useOffline } from './context/OfflineContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { checkHealth, checkReady, getCurrentUser, updateUserMode, getAuthToken } from './api/index.js';
@@ -20,6 +21,8 @@ function AppContent() {
   const [user, setUser] = useState(null);
   const [readyStatus, setReadyStatus] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashFading, setSplashFading] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isDownloadAppOpen, setIsDownloadAppOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -83,6 +86,19 @@ function AppContent() {
     loadInitialData();
   }, [refreshTrigger]);
 
+  useEffect(() => {
+    if (!loading) {
+      const fadeTimer = setTimeout(() => {
+        setSplashFading(true);
+        const hideTimer = setTimeout(() => {
+          setShowSplash(false);
+        }, 1000);
+        return () => clearTimeout(hideTimer);
+      }, 2000);
+      return () => clearTimeout(fadeTimer);
+    }
+  }, [loading]);
+
   const handleToggleMode = async (newMode) => {
     let targetMode = newMode;
     if (user && targetMode === 'HOME') {
@@ -102,7 +118,8 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#FAF7F2] text-[#2C1A0E] flex flex-col font-sans relative overflow-x-hidden">
+      {showSplash && <SplashScreen fadeOut={splashFading} />}
       <NotificationCenter />
       <LanguageSelectorModal />
       <DownloadAppModal 

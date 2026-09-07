@@ -132,7 +132,7 @@ export default function BuyView({ user, onOpenAuth }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28 md:pb-12">
       {/* Toast Notification */}
       {notification && (
         <div className="p-3 bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-xl text-xs font-semibold flex items-center justify-between shadow-xs transition-all">
@@ -141,112 +141,122 @@ export default function BuyView({ user, onOpenAuth }) {
         </div>
       )}
 
-      {/* Hero Banner */}
-      <div className="bg-gradient-to-r from-indigo-950 via-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-xl shadow-indigo-950/20">
-        <div className="max-w-3xl">
-          <div className="inline-flex items-center space-x-2 bg-indigo-800/80 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-indigo-200 mb-2 border border-indigo-500/30">
-            <ShoppingBag className="w-3.5 h-3.5" />
-            <span>{t('buyerMarketplaceBanner', 'Buyer Marketplace (Closed-Loop Market Linkage)')}</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('directHeritageTitle', 'Direct Heritage Crafts from Traditional Artisans')}</h1>
-          <p className="text-indigo-200 text-xs sm:text-sm mt-1 leading-relaxed">
-            {t('directHeritageSub', 'Eliminate middlemen. Every view, save, and order directly feeds our Market Intelligence Engine to empower rural makers with fair prices.')}
+      {/* Header Banner (Screen 6 Design) */}
+      <div className="bg-[#FAF7F2] rounded-3xl p-6 border border-stone-200/80 space-y-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#2C1A0E] tracking-tight">
+            Discover Handmade Treasures
+          </h1>
+          <p className="text-xs text-stone-500 font-medium mt-1">
+            Real People. Real Crafts. Real Impact.
           </p>
         </div>
 
-        {/* Search Bar & Filter Toggle */}
-        <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-2xl">
-          <div className="flex-1 flex items-center bg-white/10 backdrop-blur-md rounded-2xl p-1.5 border border-white/20 shadow-inner">
-            <Search className="w-5 h-5 text-indigo-300 ml-2.5 mr-2 shrink-0" />
-            <input
-              id="marketplace-search-input"
-              type="text"
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder={t('searchPlaceholderMarketplace', 'Search Kalamkari, woodcraft, story, materials...')}
-              className="w-full bg-transparent text-white placeholder-indigo-300 text-sm focus:outline-none"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => handleSearchChange('')}
-                className="text-indigo-300 hover:text-white text-xs px-2 cursor-pointer"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-center space-x-1.5 border transition-all cursor-pointer ${
-              showFilters || minPrice || maxPrice
-                ? 'bg-amber-500 text-slate-950 border-amber-400 font-extrabold shadow-md'
-                : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
-            }`}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            <span>{t('filters', 'Filters')}</span>
-            {(minPrice || maxPrice) && <span className="w-2 h-2 rounded-full bg-amber-950"></span>}
-          </button>
+        {/* Search Bar */}
+        <div className="flex items-center bg-white rounded-2xl p-2.5 px-3.5 border border-stone-200 shadow-xs">
+          <Search className="w-4 h-4 text-stone-400 mr-2 shrink-0" />
+          <input
+            id="marketplace-search-input"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Search for handmade products..."
+            className="w-full bg-transparent text-stone-900 placeholder-stone-400 text-xs focus:outline-none"
+          />
+          {searchQuery && (
+            <button onClick={() => handleSearchChange('')} className="text-stone-400 text-xs px-1">
+              Clear
+            </button>
+          )}
         </div>
 
-        {/* Filter Drawer / Panel */}
-        {showFilters && (
-          <div className="mt-4 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            <div>
-              <label className="text-indigo-200 font-bold block mb-1">Min Price (₹)</label>
-              <input
-                type="number"
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
-                placeholder="e.g. 100"
-                className="w-full p-2 rounded-xl bg-white/10 text-white border border-white/20 placeholder-indigo-300 text-xs focus:outline-none"
-              />
+        {/* Hero Spotlight Banner */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#3D2314] via-[#4A2E1B] to-[#5C3A21] text-white p-6 sm:p-8 shadow-xl border border-amber-900/40">
+          {/* Ambient Glows */}
+          <div className="w-48 h-48 rounded-full bg-amber-500/10 absolute -right-10 -bottom-10 blur-2xl pointer-events-none" />
+          <div className="w-32 h-32 rounded-full bg-orange-500/10 absolute top-0 right-1/3 blur-xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            {/* Left Content */}
+            <div className="space-y-3 max-w-lg">
+              <div className="inline-flex items-center space-x-2 bg-amber-400/15 border border-amber-400/30 px-3 py-1 rounded-full text-[11px] font-bold text-amber-300 backdrop-blur-md">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Direct Artisan Marketplace • ONDC Integrated</span>
+              </div>
+              
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+                Authentic Crafts, Brighter Lives
+              </h2>
+
+              <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-normal">
+                Connecting traditional Indian artisans directly with conscious buyers. Every purchase guarantees fair wages and preserves timeless cultural heritage.
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] font-bold text-amber-200">
+                <span className="bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">✨ GI Tagged Art</span>
+                <span className="bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">🛡️ ≥ 20% Fair Profit</span>
+                <span className="bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">🤝 Zero Middleman</span>
+              </div>
+
+              <div className="pt-2 flex items-center space-x-3">
+                <button 
+                  onClick={() => handleCategorySelect('All Crafts')}
+                  className="inline-flex items-center space-x-2 bg-white text-[#4A2E1B] hover:bg-stone-100 active:scale-95 px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-md transition-all cursor-pointer"
+                >
+                  <ShoppingBag className="w-4 h-4 text-[#4A2E1B]" />
+                  <span>Shop Heritage Collection →</span>
+                </button>
+              </div>
             </div>
-            <div>
-              <label className="text-indigo-200 font-bold block mb-1">Max Price (₹)</label>
-              <input
-                type="number"
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
-                placeholder="e.g. 5000"
-                className="w-full p-2 rounded-xl bg-white/10 text-white border border-white/20 placeholder-indigo-300 text-xs focus:outline-none"
-              />
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={() => {
-                  setMinPrice('');
-                  setMaxPrice('');
-                  setSearchQuery('');
-                  setSelectedCategory('All Crafts');
-                  loadMarketplace({});
-                }}
-                className="w-full py-2 bg-indigo-900/60 hover:bg-indigo-900 text-indigo-200 hover:text-white rounded-xl border border-indigo-700 font-bold flex items-center justify-center space-x-1 transition-colors cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>{t('resetFilters', 'Reset Filters')}</span>
-              </button>
+
+            {/* Right Visual Card Preview */}
+            <div className="hidden sm:flex items-center space-x-3 shrink-0 self-center">
+              <div className="w-40 h-44 rounded-2xl overflow-hidden relative shadow-2xl border-2 border-white/20 transform rotate-2 hover:rotate-0 transition-transform">
+                <img 
+                  src="https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=400&q=80" 
+                  alt="Kalamkari Saree" 
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-2.5 text-white">
+                  <span className="text-[10px] font-bold text-amber-300">Kalamkari Craft</span>
+                  <span className="text-xs font-black">₹1,499</span>
+                </div>
+              </div>
+
+              <div className="w-36 h-40 rounded-2xl overflow-hidden relative shadow-2xl border-2 border-white/20 transform -rotate-3 hover:rotate-0 transition-transform hidden md:block">
+                <img 
+                  src="https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=400&q=80" 
+                  alt="Jaipur Blue Pottery" 
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-2.5 text-white">
+                  <span className="text-[10px] font-bold text-amber-300">Blue Pottery</span>
+                  <span className="text-xs font-black">₹699</span>
+                </div>
+              </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Category Chips */}
-      <div className="flex items-center space-x-2 overflow-x-auto pb-1">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => handleCategorySelect(cat)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-              selectedCategory === cat
-                ? 'bg-indigo-600 text-white shadow-sm font-bold'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            {getCategoryTranslation(cat)}
-          </button>
-        ))}
+      {/* Category Chips (Screen 6 Design) */}
+      <div className="space-y-2">
+        <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest px-1">Categories</h3>
+        <div className="flex items-center space-x-2.5 overflow-x-auto pb-2 no-scrollbar">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => handleCategorySelect(cat)}
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
+                selectedCategory === cat
+                  ? 'bg-[#4A2E1B] text-white border-[#4A2E1B] shadow-sm'
+                  : 'bg-white text-stone-700 border-stone-200 hover:border-amber-700/40'
+              }`}
+            >
+              {getCategoryTranslation(cat)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Trending Products Carousel */}
@@ -447,7 +457,7 @@ export default function BuyView({ user, onOpenAuth }) {
         )}
       </div>
 
-      {/* Product Details Modal (tracks VIEW event) */}
+      {/* Product Details Modal (tracks VIEW event & shows Similar Crafts) */}
       <BuyerProductModal
         product={selectedProduct}
         isOpen={isDetailOpen}
@@ -456,6 +466,8 @@ export default function BuyView({ user, onOpenAuth }) {
         onToggleSave={handleToggleSave}
         user={user}
         onOpenAuth={onOpenAuth}
+        allProducts={products}
+        onSelectProduct={(p) => setSelectedProduct(p)}
         onOpenOrder={(prod) => {
           if (!user) {
             onOpenAuth?.();
@@ -487,18 +499,18 @@ export default function BuyView({ user, onOpenAuth }) {
         }}
       />
 
-      {/* Floating AI Buyer Copilot Trigger Button */}
+      {/* Floating AI Buyer Copilot Trigger Button (Positioned above floating mobile navbar) */}
       {!isAssistantOpen && (
         <button
           onClick={() => setIsAssistantOpen(true)}
-          className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 hover:from-indigo-950 hover:to-purple-950 text-white font-bold px-4 py-3 rounded-full shadow-2xl border-2 border-amber-400/80 flex items-center space-x-2.5 transition-all hover:scale-105 active:scale-95 cursor-pointer group"
+          className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-40 bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 hover:from-indigo-950 hover:to-purple-950 text-white font-bold px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full shadow-2xl border-2 border-amber-400/80 flex items-center space-x-2 transition-all hover:scale-105 active:scale-95 cursor-pointer group backdrop-blur-md"
           title="Open Native AI Shopping Assistant"
         >
-          <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-slate-900 font-extrabold shadow-md group-hover:rotate-12 transition-transform">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-500 flex items-center justify-center text-slate-900 font-extrabold shadow-md group-hover:rotate-12 transition-transform shrink-0">
             🤖
           </div>
           <div className="text-left">
-            <span className="block text-xs font-black text-amber-300 leading-tight">{t('buyerCopilotBtn', '🤖 AI Buyer Copilot')}</span>
+            <span className="block text-[11px] sm:text-xs font-black text-amber-300 leading-tight">{t('buyerCopilotBtn', '🤖 AI Buyer Copilot')}</span>
           </div>
         </button>
       )}

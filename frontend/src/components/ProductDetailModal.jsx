@@ -147,8 +147,8 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-white rounded-3xl max-w-3xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[100] bg-[#FAF7F2] overflow-y-auto min-h-screen w-full flex flex-col p-4 sm:p-6 animate-in slide-in-from-bottom duration-300">
+      <div className="bg-white rounded-3xl max-w-4xl w-full mx-auto p-4 sm:p-6 shadow-2xl border border-stone-200 flex flex-col overflow-hidden my-auto">
         {/* Modal Header */}
         <div className="flex justify-between items-start pb-3 border-b border-slate-100 shrink-0">
           <div>

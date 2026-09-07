@@ -10,6 +10,7 @@ import {
   requestNotificationPermission, 
   getNotificationPermissionStatus 
 } from '../services/mobileNotifications';
+import { getNotifications } from '../api/index.js';
 
 export default function Navbar({ activeMode, onToggleMode, user, readyStatus, onOpenAuth, onOpenDownloadApp }) {
   const { language, setIsSelectingLanguage, t } = useLanguage();
@@ -305,62 +306,62 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
         </div>
       </header>
 
-      {/* Floating Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-3 left-3 right-3 z-50 bg-slate-900/90 backdrop-blur-md text-white rounded-2xl p-1.5 shadow-2xl border border-slate-700/60 flex items-center justify-around">
+      {/* Floating Mobile Bottom Navigation Bar (iOS Liquid Glass Aesthetic) */}
+      <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 bg-white/75 backdrop-blur-2xl text-stone-800 rounded-full p-2 shadow-[0_12px_40px_rgba(0,0,0,0.18)] border border-white/70 flex items-center justify-around ring-1 ring-black/5">
         {!user && (
           <button
             onClick={() => onToggleMode('HOME')}
-            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-full transition-all active:scale-95 cursor-pointer ${
               activeMode === 'HOME'
-                ? 'bg-amber-500 text-slate-950 font-bold shadow-md'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#4A2E1B] text-white font-extrabold shadow-md shadow-[#4A2E1B]/25 scale-105'
+                : 'text-stone-600 hover:text-stone-950 font-semibold'
             }`}
           >
             <Home className="w-4 h-4" />
-            <span className="text-[10px] font-semibold mt-0.5">Home</span>
+            <span className="text-[10px] mt-0.5">Home</span>
           </button>
         )}
 
         {user?.role !== 'BUYER' && (
           <button
             onClick={() => onToggleMode('SELL')}
-            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-full transition-all active:scale-95 cursor-pointer ${
               activeMode === 'SELL'
-                ? 'bg-amber-500 text-slate-950 font-bold shadow-md'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#4A2E1B] text-white font-extrabold shadow-md shadow-[#4A2E1B]/25 scale-105'
+                : 'text-stone-600 hover:text-stone-950 font-semibold'
             }`}
           >
             <Store className="w-4 h-4" />
-            <span className="text-[10px] font-semibold mt-0.5">Studio</span>
+            <span className="text-[10px] mt-0.5">Studio</span>
           </button>
         )}
 
         <button
           onClick={() => onToggleMode('BUY')}
-          className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all ${
+          className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-full transition-all active:scale-95 cursor-pointer ${
             activeMode === 'BUY'
-              ? 'bg-indigo-600 text-white font-bold shadow-md'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-[#4A2E1B] text-white font-extrabold shadow-md shadow-[#4A2E1B]/25 scale-105'
+              : 'text-stone-600 hover:text-stone-950 font-semibold'
           }`}
         >
           <ShoppingBag className="w-4 h-4" />
-          <span className="text-[10px] font-semibold mt-0.5">Market</span>
+          <span className="text-[10px] mt-0.5">Market</span>
         </button>
 
         <button
           onClick={onOpenDownloadApp}
-          className="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-amber-400 hover:text-amber-300 transition-all cursor-pointer"
+          className="flex flex-col items-center justify-center py-1.5 px-3 rounded-full text-amber-900 hover:text-amber-950 transition-all active:scale-95 cursor-pointer font-bold"
         >
-          <Smartphone className="w-4 h-4" />
-          <span className="text-[10px] font-bold mt-0.5">App</span>
+          <Smartphone className="w-4 h-4 text-amber-700" />
+          <span className="text-[10px] mt-0.5">App</span>
         </button>
 
         <button
           onClick={() => setIsSelectingLanguage(true)}
-          className="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-slate-400 hover:text-white transition-all"
+          className="flex flex-col items-center justify-center py-1.5 px-3 rounded-full text-stone-600 hover:text-stone-950 transition-all active:scale-95 cursor-pointer font-semibold"
         >
-          <Globe className="w-4 h-4 text-indigo-400" />
-          <span className="text-[10px] font-semibold mt-0.5 uppercase">{language}</span>
+          <Globe className="w-4 h-4 text-amber-700" />
+          <span className="text-[10px] mt-0.5 uppercase">{language}</span>
         </button>
       </nav>
     </>

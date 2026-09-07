@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Heart, ShoppingBag, Send, ShieldCheck, MapPin, Sparkles, Check, CheckCircle2, Award, UserCheck, Clock, Hammer, Globe, RefreshCw } from 'lucide-react';
-import { recordEvent, translateProduct } from '../api/index.js';
+import { X, Heart, ShoppingBag, Send, ShieldCheck, MapPin, Sparkles, Check, CheckCircle2, Award, UserCheck, Clock, Hammer, Globe, RefreshCw, Maximize2, Tag, ArrowRight } from 'lucide-react';
+import { recordEvent, translateProduct, getProducts } from '../api/index.js';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { getLocalizedProductField } from '../utils/multilingual.js';
 import ArtisanProfileModal from './ArtisanProfileModal.jsx';
 import ReviewsSection from './ReviewsSection.jsx';
+import ImageOverviewModal from './ImageOverviewModal.jsx';
 
 export default function BuyerProductModal({ 
   product, 
@@ -15,17 +16,44 @@ export default function BuyerProductModal({
   onOpenOrder, 
   onOpenEnquiry,
   user,
-  onOpenAuth
+  onOpenAuth,
+  allProducts = [],
+  onSelectProduct
 }) {
   const { language, t } = useLanguage();
   const [showCertificate, setShowCertificate] = useState(false);
   const [showArtisanModal, setShowArtisanModal] = useState(false);
+  const [showOverviewModal, setShowOverviewModal] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [translatedData, setTranslatedData] = useState(null);
+  const [fetchedSimilar, setFetchedSimilar] = useState([]);
 
   useEffect(() => {
     setTranslatedData(null);
   }, [product?.id, language]);
+
+  // Fetch similar category products if allProducts is empty
+  useEffect(() => {
+    if (isOpen && product?.category && (!allProducts || allProducts.length === 0)) {
+      getProducts({ category: product.category })
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setFetchedSimilar(data.filter((p) => p.id !== product.id));
+          }
+        })
+        .catch((err) => console.error('Failed to fetch similar products:', err));
+    }
+  }, [isOpen, product?.id, product?.category, allProducts]);
+
+  const pool = allProducts && allProducts.length > 0 ? allProducts : fetchedSimilar;
+  const similarCrafts = pool
+    .filter((p) => p.id !== product?.id && p.category === product?.category)
+    .slice(0, 4);
+
+  // Fallback to general products if category match is empty
+  const displaySimilar = similarCrafts.length > 0 
+    ? similarCrafts 
+    : pool.filter((p) => p.id !== product?.id).slice(0, 4);
 
   const handleTranslateClick = async () => {
     if (!product) return;
@@ -69,233 +97,291 @@ export default function BuyerProductModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 pb-20 sm:p-4 sm:pb-4">
-        <div className="bg-white rounded-3xl max-w-3xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col overflow-hidden">
-          {/* Modal Header */}
-          <div className="flex justify-between items-start pb-3 border-b border-slate-100 shrink-0">
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
-                  {product.category}
-                </span>
-                <span className="text-xs text-slate-500 flex items-center">
-                  <MapPin className="w-3 h-3 text-amber-600 mr-1" />
-                  <span>{product.region_of_origin || 'GI Heritage Artisan Cluster'}</span>
-                </span>
-              </div>
-              <div className="flex items-center space-x-2 mt-1">
-                <h3 className="text-lg sm:text-xl font-bold text-slate-900">{displayTitle}</h3>
-                <button
-                  type="button"
-                  onClick={handleTranslateClick}
-                  disabled={isTranslating}
-                  className="inline-flex items-center space-x-1 px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-full text-[10px] font-bold cursor-pointer transition-colors"
-                  title="Translate listing using Gemini AI"
-                >
-                  {isTranslating ? (
-                    <RefreshCw className="w-3 h-3 animate-spin text-indigo-600" />
-                  ) : (
-                    <Globe className="w-3 h-3 text-indigo-600" />
-                  )}
-                  <span>{isTranslating ? 'Translating...' : `🌐 Translate (${language.toUpperCase()})`}</span>
-                </button>
-              </div>
-            </div>
-            <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer shrink-0">
-              <X className="w-5 h-5" />
+      <div className="fixed inset-0 z-[100] bg-[#FAF7F2] overflow-y-auto min-h-screen w-full flex flex-col animate-in slide-in-from-bottom duration-300">
+        {/* Full Image Header with Top Overlays - Click Image for Full Overview */}
+        <div 
+          onClick={() => setShowOverviewModal(true)}
+          className="relative w-full h-72 sm:h-96 bg-stone-900 shrink-0 cursor-pointer group overflow-hidden"
+          title="Click to view 4K Image Overview"
+        >
+          <img
+            src={product.enhanced_image_url || product.image_url}
+            alt={displayTitle}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/40 pointer-events-none" />
+
+          {/* Top Overlays: iOS Liquid Glass Blur Controls */}
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="absolute top-4 left-4 right-4 flex items-center justify-between z-10"
+          >
+            <button
+              onClick={onClose}
+              className="px-3.5 py-2.5 rounded-full bg-white/70 hover:bg-white text-stone-900 shadow-[0_8px_24px_rgba(0,0,0,0.18)] backdrop-blur-2xl border border-white/60 transition-all cursor-pointer font-bold flex items-center space-x-1.5 text-xs active:scale-95 ring-1 ring-black/5"
+            >
+              <X className="w-4 h-4" />
+              <span>Close</span>
             </button>
+
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={handleTranslateClick}
+                disabled={isTranslating}
+                className="px-3.5 py-2.5 rounded-full bg-white/70 hover:bg-white text-stone-900 shadow-[0_8px_24px_rgba(0,0,0,0.18)] backdrop-blur-2xl border border-white/60 transition-all cursor-pointer font-bold flex items-center space-x-1.5 text-xs active:scale-95 ring-1 ring-black/5"
+              >
+                {isTranslating ? (
+                  <RefreshCw className="w-4 h-4 animate-spin text-amber-700" />
+                ) : (
+                  <Globe className="w-4 h-4 text-amber-700" />
+                )}
+                <span>{isTranslating ? 'Translating...' : `Translate (${language.toUpperCase()})`}</span>
+              </button>
+
+              <button
+                onClick={() => onToggleSave(product)}
+                className={`p-2.5 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.18)] backdrop-blur-2xl border transition-all cursor-pointer ring-1 ring-black/5 ${
+                  isSaved
+                    ? 'bg-rose-600 text-white border-rose-400 scale-105'
+                    : 'bg-white/70 text-stone-700 hover:bg-white border-white/60'
+                }`}
+              >
+                <Heart className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+              </button>
+            </div>
           </div>
 
-          {/* Scrollable Content Body */}
-          <div className="flex-1 overflow-y-auto pr-1 my-3 space-y-4 text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+          {/* Floating Category Tag & Click to Zoom Badge */}
+          <div className="absolute bottom-4 left-4 right-4 z-10 flex items-center justify-between pointer-events-none">
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-white bg-[#4A2E1B]/90 backdrop-blur-xl px-3 py-1 rounded-full border border-white/20 shadow-md">
+                {product.category}
+              </span>
+              {(product.region_of_origin || product.seller?.location) && (
+                <span className="text-xs font-medium text-stone-100 bg-black/50 backdrop-blur-xl px-3 py-1 rounded-full flex items-center border border-white/10">
+                  <MapPin className="w-3.5 h-3.5 text-amber-400 mr-1" />
+                  <span>{product.region_of_origin || product.seller?.location}</span>
+                </span>
+              )}
+            </div>
+
+            <span className="text-[11px] font-bold text-stone-900 bg-white/80 backdrop-blur-xl px-3 py-1 rounded-full flex items-center space-x-1 shadow-lg border border-white/60 group-hover:bg-white transition-colors">
+              <Maximize2 className="w-3.5 h-3.5 text-amber-700" />
+              <span className="hidden sm:inline">Tap for Overview</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Main Content Body */}
+        <div className="max-w-3xl w-full mx-auto px-4 sm:px-6 py-6 pb-28 space-y-6 flex-1">
+          {/* Title & Price Section */}
+          <div className="space-y-2 border-b border-stone-200/80 pb-4">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#2C1A0E]">
+              {displayTitle}
+            </h1>
+
+            <div className="flex justify-between items-center pt-1">
               <div>
-                <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-xs">
-                  <img
-                    src={product.enhanced_image_url || product.image_url}
-                    alt={displayTitle}
-                    className="w-full h-48 sm:h-52 object-cover"
-                  />
-                  <button
-                    onClick={() => onToggleSave(product)}
-                    className={`absolute top-2.5 right-2.5 p-2 rounded-full shadow-md backdrop-blur-md transition-all cursor-pointer ${
-                      isSaved
-                        ? 'bg-rose-600 text-white shadow-rose-600/30 scale-110'
-                        : 'bg-white/80 text-slate-600 hover:text-rose-600 hover:bg-white'
-                    }`}
-                    title={isSaved ? "Remove from Wishlist" : "Save to Wishlist"}
-                  >
-                    <Heart className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
-                  </button>
-                </div>
-
-                <div className="mt-2.5 p-2.5 bg-slate-50 rounded-2xl border border-slate-200 flex justify-between items-center text-xs">
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">Fair Market Price:</span>
-                    <span className="text-lg font-bold text-slate-900">₹{product.price.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-slate-500 block text-[10px]">Stock Status:</span>
-                    {product.stock > 0 ? (
-                      <span className="font-semibold text-emerald-700">{product.stock} units available</span>
-                    ) : (
-                      <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                        Out of Stock
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Meet the Master Artisan Card */}
-                <div className="mt-2.5 p-3 bg-gradient-to-br from-amber-50 to-orange-50/50 rounded-2xl border border-amber-200 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 flex items-center">
-                      <UserCheck className="w-3.5 h-3.5 text-amber-600 mr-1" />
-                      {t('meetArtisan', 'Meet the Artisan')}
-                    </span>
-                    <button
-                      onClick={() => setShowArtisanModal(true)}
-                      className="text-[11px] font-bold text-amber-800 hover:text-amber-900 underline cursor-pointer"
-                    >
-                      {t('viewProfile', 'View Profile')}
-                    </button>
-                  </div>
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-amber-200 border border-amber-300 flex items-center justify-center font-bold text-amber-900 shrink-0">
-                      🎨
-                    </div>
-                    <div className="text-xs">
-                      <p className="font-bold text-slate-900">Certified Heritage Master Artisan</p>
-                      <p className="text-[11px] text-slate-600">Handcrafted in {product.region_of_origin || 'India'}</p>
-                    </div>
-                  </div>
-                </div>
+                <span className="text-3xl font-black text-[#4A2E1B]">₹{Number(product.price || 0).toLocaleString('en-IN')}</span>
+                <span className="text-xs text-stone-400 block font-medium">Direct Artisan Price</span>
               </div>
 
-              <div className="space-y-3 text-xs">
-                {/* 🧾 Craft Passport */}
-                <div className="p-3 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-1.5">
-                  <div className="flex items-center justify-between border-b border-amber-200/60 pb-1">
-                    <span className="font-bold text-amber-900 flex items-center space-x-1 text-xs">
-                      <Award className="w-3.5 h-3.5 text-amber-600" />
-                      <span>{t('craftPassport', '🧾 Craft Passport')}</span>
-                    </span>
-                    <span className="text-[10px] font-bold bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full">
-                      {product.handmade_pct || 100}% {t('handmade', 'Handmade')}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div>
-                      <span className="text-slate-500 block">{t('rawMaterials', 'Raw Materials')}:</span>
-                      <span className="font-semibold text-slate-800">{product.materials || 'Natural organic materials'}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block">{t('productionTime', 'Production Time')}:</span>
-                      <span className="font-semibold text-slate-800 flex items-center">
-                        <Clock className="w-3 h-3 text-amber-600 mr-1" />
-                        {product.production_time_days || 3} Days
-                      </span>
-                    </div>
-                  </div>
-                  {product.craft_process && (
-                    <div className="pt-0.5 text-[11px]">
-                      <span className="text-slate-500 block">Making Process:</span>
-                      <p className="text-slate-700 leading-snug italic">{product.craft_process}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <span className="font-bold text-slate-800 block mb-0.5">{t('craftDescription', 'Craft Description')}</span>
-                  <p className="text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                    {displayDesc || 'Authentic handmade creation crafted using traditional artisan methods.'}
-                  </p>
-                </div>
-
-                <div>
-                  <span className="font-bold text-slate-800 flex items-center space-x-1 mb-0.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span>{t('craftStory', 'Heritage Craft Story')}</span>
+              <div>
+                {product.stock > 0 ? (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    <Check className="w-3.5 h-3.5 mr-1" />
+                    In Stock ({product.stock} available)
                   </span>
-                  <p className="text-slate-700 leading-relaxed bg-amber-50/50 p-2.5 rounded-xl border border-amber-200/60 italic">
-                    "{displayStory || 'Generational traditional technique crafted with organic materials.'}"
-                  </p>
-                </div>
-
-                {/* GI Certificate & Provenance Action */}
-                <div className="pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowCertificate(true)}
-                    className="w-full inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-amber-700 to-orange-800 hover:from-amber-800 hover:to-orange-900 text-white font-bold py-2 rounded-xl shadow-xs transition-all cursor-pointer text-xs"
-                  >
-                    <Award className="w-4 h-4 text-amber-300" />
-                    <span>View Digital GI Heritage & Provenance Certificate</span>
-                  </button>
-                </div>
-
-                {/* Action Buttons */}
-                {user && product.seller_id === user.id ? (
-                  <div className="pt-1 p-3 bg-amber-50 border border-amber-200 rounded-2xl text-center space-y-1">
-                    <div className="flex items-center justify-center space-x-1.5 text-amber-900 font-bold text-xs">
-                      <CheckCircle2 className="w-4 h-4 text-amber-600" />
-                      <span>{t('yourCraft', 'Your Listed Craft')}</span>
-                    </div>
-                    <p className="text-[11px] text-amber-700 leading-relaxed">
-                      You are the master artisan who created this listing.
-                    </p>
-                  </div>
                 ) : (
-                  <div className="pt-1 space-y-1.5">
-                    {product.stock <= 0 ? (
-                      <button
-                        disabled
-                        className="w-full inline-flex items-center justify-center space-x-2 bg-slate-100 text-slate-400 border border-slate-200 font-bold py-2 rounded-xl cursor-not-allowed"
-                      >
-                        <ShoppingBag className="w-4 h-4 text-slate-400" />
-                        <span>{t('outOfStock', 'Out of Stock')}</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          if (!user) {
-                            onClose();
-                            onOpenAuth?.();
-                            return;
-                          }
-                          onClose();
-                          onOpenOrder(product);
-                        }}
-                        className="w-full inline-flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
-                      >
-                        <ShoppingBag className="w-4 h-4" />
-                        <span>{t('buyNow', 'Buy Now')}</span>
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => {
-                        if (!user) {
-                          onClose();
-                          onOpenAuth?.();
-                          return;
-                        }
-                        onClose();
-                        onOpenEnquiry(product);
-                      }}
-                      className="w-full inline-flex items-center justify-center space-x-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold py-2 rounded-xl transition-all cursor-pointer"
-                    >
-                      <Send className="w-4 h-4 text-amber-700" />
-                      <span>{product.stock <= 0 ? t('preOrder', 'Pre-Order') : 'Request B2B Bulk Enquiry'}</span>
-                    </button>
-                  </div>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                    Out of Stock
+                  </span>
                 )}
               </div>
             </div>
-
-            {/* Verified Buyer Reviews & Ratings Section */}
-            <ReviewsSection productId={product.id} user={user} product={product} />
           </div>
+
+          {/* Feature Badges */}
+          <div className="grid grid-cols-3 gap-2.5 text-center">
+            <div className="bg-white p-3 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1">
+              <span className="text-base block">✨</span>
+              <span className="text-[11px] font-bold text-stone-800 block">Handcrafted</span>
+            </div>
+            <div className="bg-white p-3 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1">
+              <span className="text-base block">🌿</span>
+              <span className="text-[11px] font-bold text-stone-800 block">Authentic</span>
+            </div>
+            <div className="bg-white p-3 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1">
+              <span className="text-base block">🤝</span>
+              <span className="text-[11px] font-bold text-stone-800 block">Direct Seller</span>
+            </div>
+          </div>
+
+          {/* Craft Description */}
+          {displayDesc && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest">
+                Craft Description
+              </h3>
+              <p className="text-sm text-stone-700 leading-relaxed bg-white p-4 rounded-2xl border border-stone-200/80">
+                {displayDesc}
+              </p>
+            </div>
+          )}
+
+          {/* Heritage Craft Story (Only rendered if story exists in database) */}
+          {displayStory && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-bold text-amber-900 uppercase tracking-widest flex items-center space-x-1">
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                <span>Heritage Craft Story</span>
+              </h3>
+              <p className="text-sm text-stone-800 italic leading-relaxed bg-amber-50/70 p-4 rounded-2xl border border-amber-200/80">
+                "{displayStory}"
+              </p>
+            </div>
+          )}
+
+          {/* Craft Passport & Provenance */}
+          <div className="p-4 bg-white rounded-2xl border border-stone-200/80 space-y-3">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+              <span className="font-extrabold text-[#2C1A0E] text-xs flex items-center space-x-1.5">
+                <Award className="w-4 h-4 text-amber-700" />
+                <span>🧾 Digital Craft Passport</span>
+              </span>
+              <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full">
+                {product.handmade_pct || 100}% Handmade
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <span className="text-stone-400 block text-[11px]">Raw Materials:</span>
+                <span className="font-semibold text-stone-800">{product.materials || 'Specified by Artisan'}</span>
+              </div>
+              <div>
+                <span className="text-stone-400 block text-[11px]">Production Time:</span>
+                <span className="font-semibold text-stone-800">{product.production_time_days ? `${product.production_time_days} Days` : 'Artisan Handcrafted'}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowCertificate(true)}
+              className="w-full mt-1 py-2.5 bg-[#4A2E1B] hover:bg-[#3D2314] text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+            >
+              View Verified GI Heritage Certificate →
+            </button>
+          </div>
+
+          {/* Meet Master Artisan Card */}
+          <div className="p-4 bg-white rounded-2xl border border-stone-200/80 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-xl flex items-center justify-center font-bold text-amber-900 shrink-0">
+                🎨
+              </div>
+              <div>
+                <h4 className="font-extrabold text-sm text-[#2C1A0E]">{product.seller?.name || 'Heritage Craft Artisan'}</h4>
+                <p className="text-xs text-stone-500">
+                  {product.seller?.craft || product.category} • {product.region_of_origin || product.seller?.location || 'India'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowArtisanModal(true)}
+              className="text-xs font-extrabold text-[#4A2E1B] hover:underline"
+            >
+              View Profile
+            </button>
+          </div>
+
+          {/* Verified Buyer Reviews & Ratings Section */}
+          <ReviewsSection productId={product.id} user={user} product={product} />
+
+          {/* Similar Heritage Crafts Section (Market Benchmark Comparison) */}
+          {displaySimilar.length > 0 && (
+            <div className="space-y-3 pt-4 border-t border-stone-200/80">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-extrabold text-[#2C1A0E] flex items-center space-x-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-700" />
+                  <span>Similar Heritage Crafts ({product.category})</span>
+                </h3>
+                <span className="text-[10px] font-bold text-amber-900 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300">
+                  Market Comparison
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {displaySimilar.map((simProd) => (
+                  <div
+                    key={simProd.id}
+                    onClick={() => {
+                      if (onSelectProduct) {
+                        onSelectProduct(simProd);
+                      }
+                    }}
+                    className="bg-white rounded-2xl p-2.5 border border-stone-200/80 shadow-2xs hover:shadow-md transition-all cursor-pointer group space-y-2 flex flex-col justify-between"
+                  >
+                    <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-stone-100">
+                      <img
+                        src={simProd.enhanced_image_url || simProd.image_url || 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=400'}
+                        alt={simProd.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <span className="absolute top-1.5 left-1.5 text-[9px] font-extrabold bg-[#4A2E1B]/90 text-white px-2 py-0.5 rounded-full backdrop-blur-xs shadow-xs">
+                        ₹{Number(simProd.price || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="font-extrabold text-xs text-[#2C1A0E] line-clamp-1 group-hover:text-amber-800 transition-colors">
+                        {simProd.title}
+                      </h4>
+                      <p className="text-[10px] text-stone-500 truncate mt-0.5">
+                        {simProd.region_of_origin || 'Handmade Craft'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sticky Bottom Action Bar (Screen 7 Design) */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-stone-200 p-3.5 px-4 shadow-2xl">
+          <div className="max-w-3xl mx-auto flex items-center space-x-3">
+            {user && product.seller_id === user.id ? (
+              <div className="w-full text-center text-xs font-bold text-amber-900 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                Your Listed Craft (Artisan Owner)
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenEnquiry(product);
+                  }}
+                  className="px-4 py-3.5 border-2 border-stone-300 hover:border-[#4A2E1B] text-[#4A2E1B] font-bold text-xs rounded-2xl transition-all cursor-pointer shrink-0"
+                >
+                  Custom Order
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (product.stock <= 0) return;
+                    onClose();
+                    onOpenOrder(product, 'ORDER');
+                  }}
+                  disabled={product.stock <= 0}
+                  className="flex-1 py-3.5 bg-[#4A2E1B] hover:bg-[#3D2314] text-white font-extrabold text-sm rounded-2xl shadow-lg transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>{product.stock <= 0 ? 'Out of Stock' : 'Buy Now →'}</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
 
           {/* Digital Heritage & GI Provenance Certificate Overlay Modal */}
           {showCertificate && (
@@ -327,19 +413,19 @@ export default function BuyerProductModal({
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-amber-100">
                     <span className="text-slate-500 font-medium">Category / Cluster:</span>
-                    <span className="font-bold text-indigo-700">{product.category} GI Cluster</span>
+                    <span className="font-bold text-indigo-700">{product.category}</span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-amber-100">
-                    <span className="text-slate-500 font-medium">Cryptographic Hash:</span>
+                    <span className="text-slate-500 font-medium">Verification Code:</span>
                     <span className="font-mono text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300">
-                      ART-GI-2026-{product.id}-{(product.id * 9999).toString(16).toUpperCase()}
+                      ART-GI-{product.id}-{(product.id * 98765).toString(16).toUpperCase()}
                     </span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-amber-100">
-                    <span className="text-slate-500 font-medium">Fair Price Compliance:</span>
+                    <span className="text-slate-500 font-medium">Fair Price Status:</span>
                     <span className="font-bold text-emerald-700 flex items-center space-x-1">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>SIH 2026 Fair Margin Verified</span>
+                      <span>Verified Fair Trade Price</span>
                     </span>
                   </div>
 
@@ -347,12 +433,12 @@ export default function BuyerProductModal({
                     <div className="text-left space-y-1">
                       <span className="text-[10px] text-slate-500 font-semibold block">Craft Origin:</span>
                       <p className="text-[11px] text-slate-700 leading-tight">
-                        Handmade by certified rural artisan using 100% natural heritage processes.
+                        Handcrafted by {product.seller?.name || 'certified artisan'} in {product.region_of_origin || product.seller?.location || 'India'}.
                       </p>
                     </div>
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(
-                        `https://artisan-ai.gov.in/verify/ART-GI-2026-${product.id}`
+                        `${window.location.origin}/verify/product/${product.id}`
                       )}`}
                       alt="Provenance Verification QR"
                       className="w-16 h-16 rounded border border-amber-300 shadow-2xs shrink-0"
@@ -372,7 +458,6 @@ export default function BuyerProductModal({
             </div>
           )}
         </div>
-      </div>
 
       {/* Artisan Profile Modal */}
       {showArtisanModal && (
@@ -381,6 +466,23 @@ export default function BuyerProductModal({
           isOpen={showArtisanModal}
           onClose={() => setShowArtisanModal(false)}
           currentUser={user}
+        />
+      )}
+
+      {/* iOS Liquid Glass Image Overview Lightbox Modal */}
+      {showOverviewModal && (
+        <ImageOverviewModal
+          isOpen={showOverviewModal}
+          onClose={() => setShowOverviewModal(false)}
+          product={product}
+          onBuyNow={(p) => {
+            onClose();
+            onOpenOrder(p, 'ORDER');
+          }}
+          onCustomOrder={(p) => {
+            onClose();
+            onOpenEnquiry(p);
+          }}
         />
       )}
     </>

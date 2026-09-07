@@ -1,13 +1,12 @@
 import React from 'react';
-import { Globe, Check, Sparkles, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext.jsx';
 
 const LANGUAGES = [
-  { code: 'te', name: 'తెలుగు', label: 'Telugu', region: 'ఆంధ్రప్రదేశ్ & తెలంగాణ' },
-  { code: 'hi', name: 'हिन्दी', label: 'Hindi', region: 'भारत / North & Central India' },
-  { code: 'en', name: 'English', label: 'English', region: 'Global / All Regions' },
-  { code: 'ta', name: 'தமிழ்', label: 'Tamil', region: 'தமிழ்நாடு / Tamil Nadu' },
-  { code: 'bn', name: 'বাংলা', label: 'Bengali', region: 'পশ্চিমবঙ্গ / West Bengal' },
+  { code: 'te', name: 'తెలుగు', label: 'Telugu', flag: '🇮🇳', region: 'ఆంధ్రప్రదేశ్ & తెలంగాణ' },
+  { code: 'hi', name: 'हिन्दी', label: 'Hindi', flag: '🇮🇳', region: 'उत्तर एवं मध्य भारत' },
+  { code: 'en', name: 'English', label: 'English', flag: '🇬🇧', region: 'Global / All Regions' },
+  { code: 'ta', name: 'தமிழ்', label: 'Tamil', flag: '🇮🇳', region: 'தமிழ்நாடு' },
+  { code: 'bn', name: 'বাংলা', label: 'Bengali', flag: '🇮🇳', region: 'पश्चिमबंग / West Bengal' },
 ];
 
 export default function LanguageSelectorModal({ isOpen, onClose }) {
@@ -18,98 +17,75 @@ export default function LanguageSelectorModal({ isOpen, onClose }) {
 
   const handleSelect = (code) => {
     setLanguage(code);
-    if (onClose) onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 pb-20 sm:p-6 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-indigo-100 flex flex-col overflow-hidden max-h-[85vh] my-auto animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
+      <div className="bg-[#FAF7F2] rounded-3xl max-w-md w-full shadow-2xl border border-stone-200 flex flex-col overflow-hidden max-h-[90vh] my-auto animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white p-5 flex justify-between items-start shrink-0 relative overflow-hidden">
-          <div className="relative z-10 space-y-1">
-            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[11px] font-bold">
-              <Sparkles className="w-3 h-3 text-amber-400" />
-              <span>{t('nativeOnboardingBadge', 'Native Language Onboarding')}</span>
-            </div>
-            <h3 className="text-lg font-extrabold tracking-tight text-white mt-1">
-              {t('selectLanguageModalTitle', 'మీ భాషను ఎంచుకోండి / Select Language')}
-            </h3>
-            <p className="text-xs text-indigo-200 leading-relaxed">
-              {t('selectLanguageModalSub', 'Artisan AI provides step-by-step guidance in your preferred native language.')}
-            </p>
+        <div className="p-6 pb-3 text-center relative shrink-0">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-[11px] font-bold text-stone-400 uppercase tracking-widest">Step 1 of 3</span>
+            {onClose && (
+              <button onClick={() => { setIsSelectingLanguage(false); if (onClose) onClose(); }} className="text-xs font-bold text-stone-400 hover:text-stone-700">
+                Skip
+              </button>
+            )}
           </div>
-
-          {!isSelectingLanguage && onClose && (
-            <button
-              onClick={onClose}
-              className="p-1.5 text-indigo-200 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer relative z-10"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
+          <h3 className="text-2xl font-extrabold text-[#2C1A0E]">
+            Choose Your Language
+          </h3>
+          <p className="text-xs text-stone-500 mt-1">
+            Let's get started in your preferred language
+          </p>
         </div>
 
-        {/* Language Options Grid */}
-        <div className="p-4 overflow-y-auto space-y-2.5 max-h-[60vh] bg-slate-50">
+        {/* Language Options List */}
+        <div className="p-5 pt-2 overflow-y-auto space-y-3 max-h-[60vh]">
           {LANGUAGES.map((lang) => {
             const isSelected = language === lang.code;
             return (
               <div
                 key={lang.code}
                 onClick={() => handleSelect(lang.code)}
-                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group active:scale-[0.99] ${
+                className={`p-3.5 px-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between group active:scale-[0.99] ${
                   isSelected
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-300'
-                    : 'bg-white text-slate-800 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'
+                    ? 'bg-white border-[#4A2E1B] shadow-md'
+                    : 'bg-white border-stone-200/80 hover:border-amber-700/40'
                 }`}
               >
                 <div className="flex items-center space-x-3.5">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-xs ${
-                      isSelected
-                        ? 'bg-white/20 text-white'
-                        : 'bg-indigo-50 text-indigo-700 group-hover:bg-indigo-100'
-                    }`}
-                  >
-                    <Globe className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-lg shadow-inner">
+                    {lang.flag}
                   </div>
                   <div>
-                    <h4 className="font-extrabold text-sm flex items-center space-x-2">
+                    <h4 className="font-extrabold text-sm text-[#2C1A0E] flex items-center space-x-2">
                       <span>{lang.name}</span>
-                      <span
-                        className={`text-[11px] font-medium px-1.5 py-0.2 rounded ${
-                          isSelected ? 'bg-indigo-500/50 text-indigo-100' : 'text-slate-500 bg-slate-100'
-                        }`}
-                      >
+                      <span className="text-xs font-medium text-stone-400">
                         {lang.label}
                       </span>
                     </h4>
-                    <p className={`text-[11px] mt-0.5 ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
-                      {lang.region}
-                    </p>
                   </div>
                 </div>
 
-                {isSelected && (
-                  <div className="w-7 h-7 rounded-full bg-white text-indigo-700 flex items-center justify-center shadow-xs">
-                    <Check className="w-4 h-4 stroke-[3]" />
-                  </div>
-                )}
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-[#4A2E1B] bg-[#4A2E1B]' : 'border-stone-300'}`}>
+                  {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                </div>
               </div>
             );
           })}
         </div>
 
-        {/* Footer */}
-        <div className="p-4 bg-white border-t border-slate-200 shrink-0 text-center">
+        {/* Footer Button */}
+        <div className="p-5 pt-2 bg-[#FAF7F2] border-t border-stone-200/50 shrink-0 text-center">
           <button
             onClick={() => {
               setIsSelectingLanguage(false);
               if (onClose) onClose();
             }}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-sm rounded-2xl shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2"
+            className="w-full py-3.5 bg-[#4A2E1B] hover:bg-[#3D2314] active:scale-[0.98] text-white font-bold text-sm rounded-2xl shadow-lg transition-all cursor-pointer flex items-center justify-center space-x-2"
           >
-            <span>Continue in {LANGUAGES.find((l) => l.code === language)?.name}</span>
+            <span>Continue →</span>
           </button>
         </div>
       </div>

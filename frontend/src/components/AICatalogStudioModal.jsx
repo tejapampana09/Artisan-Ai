@@ -1458,26 +1458,35 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
               {/* Pricing Breakdown & Approval */}
               {aiDraft.pricing_available && aiDraft.suggested_price != null ? (
-                <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                  <div>
-                    <div className="flex items-center space-x-1.5 text-xs text-emerald-900 font-bold">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                      <span>Deterministic Minimum Fair Price: ₹{aiDraft.min_fair_price}</span>
-                    </div>
-                    <p className="text-[11px] text-emerald-700">
-                      Cost Basis: ₹{((Number(aiDraft.material_cost) || 0) + (Number(aiDraft.labour_cost) || 0) + (Number(aiDraft.packaging_cost) || 0))} + 20% protected artisan margin
-                    </p>
+                <div className="bg-emerald-50/90 border-2 border-emerald-300 rounded-2xl p-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center space-x-1">
+                      <Sparkles className="w-3 h-3 text-emerald-700" />
+                      <span>AI Market Price Recommendation (Based on Similar Crafts)</span>
+                    </span>
+                    {aiDraft.min_fair_price && (
+                      <span className="text-[11px] font-bold text-emerald-800">
+                        Min Fair Margin: ₹{aiDraft.min_fair_price}
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-semibold text-slate-700">Selling Price:</span>
-                    <div className="flex items-center">
-                      <span className="text-xs font-bold text-slate-800 mr-1">₹</span>
-                      <input
-                        type="number"
-                        value={aiDraft.suggested_price ?? ''}
-                        onChange={(e) => handleDraftChange('suggested_price', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-24 text-xs font-bold border border-emerald-300 rounded-lg px-2 py-1 text-slate-900 bg-white text-right"
-                      />
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-1">
+                    <div>
+                      <p className="text-[11px] text-emerald-800 font-medium leading-tight">
+                        AI analyzed similar market products in <strong>{aiDraft.category || 'this category'}</strong> to recommend optimal market value.
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <span className="text-xs font-bold text-slate-800">Recommended Selling Price:</span>
+                      <div className="flex items-center">
+                        <span className="text-sm font-extrabold text-[#4A2E1B] mr-1">₹</span>
+                        <input
+                          type="number"
+                          value={aiDraft.suggested_price ?? ''}
+                          onChange={(e) => handleDraftChange('suggested_price', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                          className="w-28 text-sm font-black border-2 border-emerald-400 rounded-xl px-2.5 py-1 text-slate-900 bg-white text-right shadow-xs"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
