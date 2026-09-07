@@ -1,28 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   X, Sparkles, Tag, ShieldCheck, Edit3, Save, Trash2, 
   TrendingUp, ArrowRight, CheckCircle2, AlertCircle, Info, Lock
 } from 'lucide-react';
 import { getPriceRecommendation, submitPriceDecision } from '../api';
 import { useOffline } from '../context/OfflineContext';
+import { useNotification } from '../context/NotificationContext';
 
 export default function ProductDetailModal({ product, isOpen, onClose, onUpdated, onDelete, currentUser }) {
-  if (!isOpen || !product) return null;
-
-  const isOwner = !product.seller_id || !currentUser || product.seller_id === currentUser?.id;
-
+  const notify = useNotification();
   const { isOffline, queuePriceDecision } = useOffline();
+  
+  const isOwner = !product || !currentUser || !product.seller_id || product.seller_id === currentUser?.id;
+
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    title: product.title,
-    price: product.price,
-    stock: product.stock,
-    description: product.description || '',
-    craft_story: product.craft_story || '',
-    materials: product.materials || '',
-    material_cost: product.material_cost,
-    labour_cost: product.labour_cost,
-    packaging_cost: product.packaging_cost,
+    title: product?.title || '',
+    price: product?.price || 0,
+    stock: product?.stock || 0,
+    description: product?.description || '',
+    craft_story: product?.craft_story || '',
+    materials: product?.materials || '',
+    material_cost: product?.material_cost || 0,
+    labour_cost: product?.labour_cost || 0,
+    packaging_cost: product?.packaging_cost || 0,
   });
   const [saving, setSaving] = useState(false);
   
@@ -32,7 +33,8 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
   const [decisionFeedback, setDecisionFeedback] = useState('');
   const [decisionSubmitting, setDecisionSubmitting] = useState(false);
 
-  const fetchPricing = async () => {
+  const fetchPricing = useCallback(async () => {
+    if (!product) return;
     setPricingLoading(true);
     if (isOffline || (typeof product.id === 'string' && product.id.startsWith('draft_local_'))) {
       setPricingRec({
@@ -55,10 +57,12 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
     } finally {
       setPricingLoading(false);
     }
-  };
+  }, [isOffline, product]);
 
   useEffect(() => {
-    if (product?.id) {
+    if (isOpen && product) {
+      setIsEditing(false);
+      setDecisionFeedback('');
       setFormData({
         title: product.title,
         price: product.price,
@@ -70,10 +74,11 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
         labour_cost: product.labour_cost,
         packaging_cost: product.packaging_cost,
       });
-      setDecisionFeedback('');
       fetchPricing();
     }
-  }, [product?.id, isOffline]);
+  }, [isOpen, product, fetchPricing]);
+
+  if (!isOpen || !product) return null;
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -83,14 +88,16 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
     }));
   };
 
-  const handleSave = async () => {
+  const handleSave = async (e) => {
+    e.preventDefault();
     setSaving(true);
     try {
       await onUpdated(product.id, formData);
       setIsEditing(false);
       await fetchPricing();
+      notify.success('Product updated successfully');
     } catch (err) {
-      alert('Error updating product: ' + err.message);
+      notify.error('Error updating product: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -129,7 +136,7 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
       }
       await fetchPricing();
     } catch (err) {
-      alert('Decision submission failed: ' + err.message);
+      notify.error('Decision submission failed: ' + err.message);
     } finally {
       setDecisionSubmitting(false);
     }

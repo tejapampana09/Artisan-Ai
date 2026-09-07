@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { processAICatalog, approveAndPublishAICatalog } from '../api';
 import { useOffline } from '../context/OfflineContext';
+import { useNotification } from '../context/NotificationContext';
 
 const SAMPLE_PHOTOS = [
   {
@@ -51,9 +52,9 @@ const LANGUAGES = [
 ];
 
 export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
-  if (!isOpen) return null;
-
   const { isOffline, queueProductDraft } = useOffline();
+  const notify = useNotification();
+  
   const [step, setStep] = useState('INPUT'); // 'INPUT' | 'PROCESSING' | 'REVIEW'
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [customImageUrl, setCustomImageUrl] = useState('');
@@ -68,6 +69,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const [imgErrorEnhanced, setImgErrorEnhanced] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+
+  if (!isOpen) return null;
 
   const compressImage = (file, maxWidth = 1000, quality = 0.8) => {
     return new Promise((resolve) => {
@@ -171,7 +174,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
   const handleGenerateAI = async () => {
     if (!voiceText.trim() && !selectedPhoto && !customImageUrl.trim()) {
-      alert('Please speak or type a craft description, or select an inspiration craft.');
+      notify.warning('Please speak or type a craft description, or select an inspiration craft.');
       return;
     }
     setStep('PROCESSING');
@@ -232,7 +235,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       setAiDraft(res);
       setStep('REVIEW');
     } catch (err) {
-      alert('AI processing failed: ' + err.message);
+      notify.error('AI processing failed: ' + err.message);
       setStep('INPUT');
     } finally {
       setLoading(false);
@@ -246,7 +249,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const handleApproveAndPublish = async () => {
     const finalPrice = Number(aiDraft.suggested_price);
     if (!finalPrice || finalPrice <= 0) {
-      alert('Please enter a valid selling price before publishing.');
+      notify.warning('Please enter a valid selling price before publishing.');
       return;
     }
 
@@ -294,7 +297,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       onPublished(`Successfully published "${aiDraft.title}" to catalog!`);
       onClose();
     } catch (err) {
-      alert('Approval failed: ' + err.message);
+      notify.error('Approval failed: ' + err.message);
     } finally {
       setPublishing(false);
     }

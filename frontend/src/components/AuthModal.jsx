@@ -4,20 +4,6 @@ import { loginUser, registerUser, resetPassword, logoutUser, getAuthToken } from
 import AccountPortal from './AccountPortal';
 
 export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavigateMode }) {
-  if (!isOpen) return null;
-
-  // When user is already authenticated, show the rich Account Portal with Orders, Wishlist, Enquiries & Profile
-  if (user) {
-    return (
-      <AccountPortal 
-        user={user} 
-        onClose={onClose} 
-        onAuthChange={onAuthChange} 
-        onNavigateMode={onNavigateMode} 
-      />
-    );
-  }
-
   const [tab, setTab] = useState('login'); // 'login' | 'register' | 'forgot'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,6 +25,20 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
   const [regCraft, setRegCraft] = useState('');
   const [regLocation, setRegLocation] = useState('');
   const [regPassword, setRegPassword] = useState('');
+
+  if (!isOpen) return null;
+
+  // When user is already authenticated, show the rich Account Portal with Orders, Wishlist, Enquiries & Profile
+  if (user) {
+    return (
+      <AccountPortal 
+        user={user} 
+        onClose={onClose} 
+        onAuthChange={onAuthChange} 
+        onNavigateMode={onNavigateMode} 
+      />
+    );
+  }
 
   const handleLogin = async (e) => {
     e?.preventDefault();

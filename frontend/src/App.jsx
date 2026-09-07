@@ -5,40 +5,37 @@ import SellView from './components/SellView';
 import BuyView from './components/BuyView';
 import OfflineSyncBanner from './components/OfflineSyncBanner';
 import AuthModal from './components/AuthModal';
+import NotificationCenter from './components/NotificationCenter';
 import { OfflineProvider, useOffline } from './context/OfflineContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { checkHealth, checkReady, getCurrentUser, updateUserMode, getAuthToken } from './api';
-import { Sparkles } from 'lucide-react';
 
 function AppContent() {
   const [activeMode, setActiveMode] = useState('HOME');
   const [user, setUser] = useState(null);
-  const [healthStatus, setHealthStatus] = useState(null);
   const [readyStatus, setReadyStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const { isOffline, queueCount } = useOffline();
+  const { isOffline } = useOffline();
 
   const loadInitialData = async () => {
     try {
       const token = getAuthToken();
       if (!token) {
-        // No authenticated session in localStorage
-        const [health, ready] = await Promise.all([checkHealth(), checkReady()]);
-        setHealthStatus(health);
+        const [, ready] = await Promise.all([checkHealth(), checkReady()]);
         setReadyStatus(ready);
         setUser(null);
         setActiveMode('HOME');
         return;
       }
 
-      const [health, ready, userData] = await Promise.all([
+      const [, ready, userData] = await Promise.all([
         checkHealth(),
         checkReady(),
         getCurrentUser()
       ]);
-      setHealthStatus(health);
       setReadyStatus(ready);
       if (userData && !userData.detail && !userData.error) {
         setUser(userData);
@@ -80,12 +77,14 @@ function AppContent() {
     }
   };
 
-  const handleRefreshAll = async () => {
+  const handleRefreshAll = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative">
+      <NotificationCenter />
+      
       {/* Top Navigation */}
       <Navbar
         activeMode={activeMode}
@@ -97,7 +96,6 @@ function AppContent() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Step 7: Offline Sync & Cluster Status Banner */}
         <OfflineSyncBanner />
 
         {loading ? (
@@ -168,8 +166,9 @@ function AppContent() {
 export default function App() {
   return (
     <OfflineProvider>
-      <AppContent />
+      <NotificationProvider>
+        <AppContent />
+      </NotificationProvider>
     </OfflineProvider>
   );
 }
-

@@ -168,8 +168,8 @@ async def generate_catalog_draft(
             - estimated_cost: object with keys "material", "labour", "packaging" as numbers
             """
             models_to_try = [
-                os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-                "gemini-2.5-flash",
+                os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
+                "gemini-3.6-flash",
                 "gemini-2.0-flash",
                 "gemini-1.5-flash"
             ]

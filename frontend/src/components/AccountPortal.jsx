@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   X, User, ShoppingBag, Heart, MessageSquare, LogOut, Package, 
-  MapPin, Phone, Mail, Store, ShieldCheck, ChevronRight, RefreshCw, 
-  Trash2, ExternalLink, Sparkles, CheckCircle2, Clock,
+  MapPin, Store, ShieldCheck, ChevronRight, RefreshCw, 
+  Trash2, ExternalLink, CheckCircle2, Clock,
   Send, Truck, Check
 } from 'lucide-react';
 import { getOrders, getEnquiries, getProducts, logoutUser, replyToEnquiry, updateOrderStatus } from '../api';
 import { getSavedProductIds, removeSavedProductId } from '../services/offlineSync';
+import { useNotification } from '../context/NotificationContext';
 
 const TRACKING_STEPS = [
   { key: 'CONFIRMED', label: 'Confirmed', labelTe: 'ఖరారైంది' },
@@ -26,6 +27,7 @@ const getStepIndex = (status) => {
 };
 
 export default function AccountPortal({ user, onClose, onAuthChange, onNavigateMode }) {
+  const notify = useNotification();
   const [activeTab, setActiveTab] = useState('ORDERS'); // 'ORDERS' | 'WISHLIST' | 'ENQUIRIES' | 'PROFILE'
   const [orderSubTab, setOrderSubTab] = useState('PURCHASES'); // 'PURCHASES' | 'SALES'
   const [enquirySubTab, setEnquirySubTab] = useState('SENT'); // 'SENT' | 'RECEIVED'
@@ -43,7 +45,7 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
 
   const isArtisan = user?.role === 'ARTISAN';
 
-  const loadAccountData = async () => {
+  const loadAccountData = useCallback(async () => {
     setLoading(true);
     try {
       if (isArtisan) {
@@ -82,11 +84,11 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
     } finally {
       setLoading(false);
     }
-  };
+  }, [isArtisan, user?.id]);
 
   useEffect(() => {
     loadAccountData();
-  }, [user]);
+  }, [loadAccountData]);
 
   const handleRemoveWishlist = (productId) => {
     removeSavedProductId(user?.id, productId);
@@ -108,8 +110,9 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
       setSellerEnquiries(prev => prev.map(e => e.id === enquiryId ? updatedEnq : e));
       setBuyerEnquiries(prev => prev.map(e => e.id === enquiryId ? updatedEnq : e));
       setEditingReply(prev => ({ ...prev, [enquiryId]: false }));
+      notify.success('Reply sent successfully');
     } catch (err) {
-      alert('Failed to send reply: ' + (err.message || 'Error occurred'));
+      notify.error('Failed to send reply: ' + (err.message || 'Error occurred'));
     } finally {
       setReplyingEnquiryId(null);
     }
@@ -121,8 +124,9 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
       const updatedOrd = await updateOrderStatus(orderId, newStatus);
       setSellerOrders(prev => prev.map(o => o.id === orderId ? updatedOrd : o));
       setBuyerOrders(prev => prev.map(o => o.id === orderId ? updatedOrd : o));
+      notify.success(`Order status updated to ${newStatus}`);
     } catch (err) {
-      alert('Failed to update status: ' + (err.message || 'Error occurred'));
+      notify.error('Failed to update status: ' + (err.message || 'Error occurred'));
     } finally {
       setUpdatingOrderId(null);
     }

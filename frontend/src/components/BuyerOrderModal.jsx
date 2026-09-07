@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ShoppingBag, Send, CheckCircle2, ShieldCheck, Package } from 'lucide-react';
 import { placeOrder, submitEnquiry } from '../api';
+import { useNotification } from '../context/NotificationContext';
 
 export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClose, onSuccess, user, onOpenAuth }) {
-  if (!isOpen || !product) return null;
-
+  const notify = useNotification();
   const [currentMode, setCurrentMode] = useState(mode);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setCurrentMode(mode);
   }, [mode, isOpen]);
 
@@ -21,6 +21,8 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
   });
   const [submitting, setSubmitting] = useState(false);
 
+  if (!isOpen || !product) return null;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
@@ -29,11 +31,11 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
       return;
     }
     if (user && product.seller_id === user.id) {
-      alert("Self-purchase not allowed: Artisans cannot purchase their own listed crafts.");
+      notify.warning("Self-purchase not allowed: Artisans cannot purchase their own listed crafts.");
       return;
     }
     if (isOrder && product.stock <= 0) {
-      alert("This craft is currently out of stock for direct checkout. Please submit a pre-order enquiry instead.");
+      notify.warning("This craft is currently out of stock for direct checkout. Please submit a pre-order enquiry instead.");
       return;
     }
     setSubmitting(true);
@@ -59,11 +61,11 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
       onClose();
     } catch (err) {
       if (err.message && (err.message.includes('401') || err.message.includes('Unauthorized'))) {
-        alert('Please sign in to place your order or submit an enquiry.');
+        notify.warning('Please sign in to place your order or submit an enquiry.');
         onClose();
         onOpenAuth?.();
       } else {
-        alert('Action failed: ' + err.message);
+        notify.error('Action failed: ' + err.message);
       }
     } finally {
       setSubmitting(false);

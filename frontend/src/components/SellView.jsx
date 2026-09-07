@@ -16,6 +16,7 @@ import {
   replyToEnquiry, updateOrderStatus, getSellerDashboard, downloadAnalyticsCSV
 } from '../api';
 import { useOffline } from '../context/OfflineContext';
+import { useNotification } from '../context/NotificationContext';
 import { 
   getCachedProducts, setCachedProducts, 
   getCachedDemands, setCachedDemands, 
@@ -41,6 +42,7 @@ const getStepIndex = (status) => {
 };
 
 export default function SellView({ user, onOpenAuth, onSwitchMode }) {
+  const notify = useNotification();
   const [products, setProducts] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -153,7 +155,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
       showNotification('Response sent to buyer! / మీ స్పందన పంపబడింది!');
       setEditingReply(prev => ({ ...prev, [enquiryId]: false }));
     } catch (err) {
-      alert('Failed to send reply: ' + (err.message || 'Error occurred'));
+      notify.error('Failed to send reply: ' + (err.message || 'Error occurred'));
     } finally {
       setReplyingEnquiryId(null);
     }
@@ -166,7 +168,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
       setOrders(prev => prev.map(o => o.id === orderId ? updatedOrd : o));
       showNotification(`Order status updated to ${newStatus}! / ఆర్డర్ స్టేటస్ అప్‌డేట్ అయింది!`);
     } catch (err) {
-      alert('Failed to update status: ' + (err.message || 'Error occurred'));
+      notify.error('Failed to update status: ' + (err.message || 'Error occurred'));
     } finally {
       setUpdatingOrderId(null);
     }

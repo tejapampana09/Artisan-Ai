@@ -13,11 +13,9 @@ export default function BuyerProductModal({
   user,
   onOpenAuth
 }) {
-  if (!isOpen || !product) return null;
-
   // Track VIEW event when modal opens
   useEffect(() => {
-    if (product?.id) {
+    if (isOpen && product?.id) {
       recordEvent({
         event_type: 'VIEW',
         product_id: product.id,
@@ -25,7 +23,9 @@ export default function BuyerProductModal({
         metadata_info: `Buyer viewed ${product.title}`
       });
     }
-  }, [product?.id]);
+  }, [isOpen, product?.id, product?.title, product?.category]);
+
+  if (!isOpen || !product) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
