@@ -23,4 +23,6 @@ frontend/.vite/
 .pytest_cache/
 .DS_Store
 Thumbs.db
+git.cmd
+
 
