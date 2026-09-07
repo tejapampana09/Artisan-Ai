@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, CheckConstraint, Numeric, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, CheckConstraint, Numeric, UniqueConstraint, Boolean
 from sqlalchemy.orm import relationship
 from backend.app.database import Base
 
@@ -42,12 +42,20 @@ class Product(Base):
         CheckConstraint("material_cost >= 0", name="chk_product_mat_cost_non_negative"),
         CheckConstraint("labour_cost >= 0", name="chk_product_lab_cost_non_negative"),
         CheckConstraint("packaging_cost >= 0", name="chk_product_pkg_cost_non_negative"),
+        CheckConstraint("other_cost >= 0", name="chk_product_oth_cost_non_negative"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True, nullable=False)
     description = Column(Text, nullable=True)
     craft_story = Column(Text, nullable=True)
+    
+    # Multilingual & Internationalization fields
+    title_en = Column(String, nullable=True)
+    description_en = Column(Text, nullable=True)
+    craft_story_en = Column(Text, nullable=True)
+    translations = Column(Text, nullable=True) # JSON string of multi-language translations {"en": {}, "te": {}, "hi": {}, "ta": {}, "bn": {}}
+
     category = Column(String, index=True, nullable=False)
     materials = Column(String, nullable=True)
     price = Column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
@@ -70,7 +78,10 @@ class Product(Base):
     material_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
     labour_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
     packaging_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
+    other_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
     min_margin_pct = Column(Numeric(5, 4), default=Decimal("0.2000"), nullable=False) # 20% minimum protected margin
+    auto_smart_pricing_enabled = Column(Boolean, default=False, nullable=False)
+
 
     seller_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
     seller = relationship("User", back_populates="products")

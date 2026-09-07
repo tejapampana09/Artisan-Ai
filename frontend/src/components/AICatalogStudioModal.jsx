@@ -7,6 +7,7 @@ import {
 import { processAICatalog, approveAndPublishAICatalog } from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
 import { useNotification } from '../context/NotificationContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const SAMPLE_PHOTOS = [
   {
@@ -63,9 +64,88 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const notify = useNotification();
   
   const [step, setStep] = useState('INPUT'); // 'INPUT' | 'PROCESSING' | 'REVIEW'
+  const [qnaAnswers, setQnaAnswers] = useState({
+    q1_title: '',
+    q2_materials: '',
+    q3_story: ''
+  });
+  const [activeQnaIndex, setActiveQnaIndex] = useState(0);
+  const [inputSubStep, setInputSubStep] = useState('PHOTO'); // 'PHOTO' | 'QNA' | 'COSTS'
+
+  const QNA_QUESTIONS = [
+    {
+      id: 'q1_title',
+      num: 1,
+      te: '1. మీ ప్రొడక్ట్ పేరు ఏమిటి?',
+      hi: '1. आपके उत्पाद का नाम क्या है?',
+      en: '1. What is your product name?',
+      ta: '1. உங்கள் பொருளின் பெயர் என்ன?',
+      bn: '1. আপনার পণ্যের নাম কি?',
+      placeholder: {
+        te: 'ఉదాహరణ: చేతితో నేసిన కలంకారి దుపట్టా...',
+        hi: 'उदाहरण: हाथ से बुना हुआ कलमकारी दुपट्टा...',
+        en: 'e.g. Handpainted Kalamkari Silk Dupatta...',
+        ta: 'எடுத்துக்காட்டு: கைத்தறி துப்பட்டா...',
+        bn: 'উদাহরণ: হাতে বোনা শাড়ি...'
+      }
+    },
+    {
+      id: 'q2_materials',
+      num: 2,
+      te: '2. ఇది చేతితో చేసినదా? ఏం మెటీరియల్స్ వాడారు?',
+      hi: '2. क्या यह हस्तनिर्मित है? कौन सी सामग्री का उपयोग किया गया है?',
+      en: '2. Is it handmade? What materials did you use?',
+      ta: '2. இது கையால் செய்யப்பட்டதா? என்ன பொருட்கள் பயன்படுத்தப்பட்டன?',
+      bn: '2. এটি কি হাতে তৈরি? কি উপাদান ব্যবহার করা হয়েছে?',
+      placeholder: {
+        te: 'ఉదాహరణ: 100% పట్టు నూలు, సహజ రంగులు...',
+        hi: 'उदाहरण: 100% रेशम, प्राकृतिक वनस्पति रंग...',
+        en: 'e.g. 100% Pure Mulberry Silk, Natural Organic Dyes...',
+        ta: 'எடுத்துக்காட்டு: 100% பட்டு, இயற்கை சாயங்கள்...',
+        bn: 'উদাহরণ: খাঁটি রেশম, প্রাকৃতিক রঙ...'
+      }
+    },
+    {
+      id: 'q3_story',
+      num: 3,
+      te: '3. ఈ ప్రాడక్ట్ ఎలా తయారుచేశారు? ప్రత్యేకత ఏంటి?',
+      hi: '3. यह कैसे बनाया गया? इसकी खासियत या कहानी बताएं।',
+      en: '3. How was it crafted? Tell us its story:',
+      ta: '3. இது எவ்வாறு செய்யப்பட்டது? இதன் கதையை கூறுங்கள்:',
+      bn: '3. এটি কিভাবে তৈরি করা হয়েছে? এর গল্প বলুন:'
+    }
+  ];
+
+  // Sync combined text into voiceText
+  useEffect(() => {
+    const parts = [
+      qnaAnswers.q1_title ? `Product Name: ${qnaAnswers.q1_title}` : '',
+      qnaAnswers.q2_materials ? `Handmade & Materials: ${qnaAnswers.q2_materials}` : '',
+      qnaAnswers.q3_story ? `Craft Process & Story: ${qnaAnswers.q3_story}` : '',
+    ].filter(Boolean);
+    
+    if (parts.length > 0) {
+      setVoiceText(parts.join('\n'));
+    }
+  }, [qnaAnswers]);
+
+  // Handle per-question voice record transcription
+  const handleQnaVoiceResult = (qId, transcript) => {
+    setQnaAnswers((prev) => ({
+      ...prev,
+      [qId]: prev[qId] ? `${prev[qId]} ${transcript}` : transcript
+    }));
+  };
+  const { language: activeLanguage, t } = useLanguage();
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [customImageUrl, setCustomImageUrl] = useState('');
-  const [selectedLang, setSelectedLang] = useState('te');
+  const [selectedLang, setSelectedLang] = useState(activeLanguage || 'te');
+
+  useEffect(() => {
+    if (activeLanguage) {
+      setSelectedLang(activeLanguage);
+    }
+  }, [activeLanguage, isOpen]);
   const [voiceText, setVoiceText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -161,7 +241,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   };
 
   // Native WebRTC Audio Recording with Timer & Fallback
-  const startRecording = async () => {
+  const startRecording = async (targetQnaKey = null) => {
     try {
       setRecordingSeconds(0);
       audioChunksRef.current = [];
@@ -200,7 +280,13 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
             const transcript = Array.from(event.results)
               .map((res) => res[0].transcript)
               .join('');
-            if (transcript) setVoiceText(transcript);
+            if (transcript) {
+              if (targetQnaKey) {
+                setQnaAnswers((prev) => ({ ...prev, [targetQnaKey]: transcript }));
+              } else {
+                setVoiceText(transcript);
+              }
+            }
           };
           recognition.start();
         } catch (e) {
@@ -213,8 +299,21 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       timerIntervalRef.current = setInterval(() => {
         setRecordingSeconds((prev) => prev + 1);
       }, 1000);
+      
       const defaultSample = selectedPhoto ? (selectedPhoto[selectedLang] || selectedPhoto.en) : 'Handmade craft created using traditional artisan techniques and organic natural dyes.';
-      if (!voiceText.trim()) setVoiceText(defaultSample);
+      if (targetQnaKey) {
+        const qnaSamples = {
+          q1_title: selectedPhoto ? selectedPhoto.name : (selectedLang === 'te' ? 'చేతితో వేసిన కలంకారి దుపట్టా' : 'Handpainted Kalamkari Silk Dupatta'),
+          q2_materials: selectedLang === 'te' ? '100% పట్టు నూలు, సహజ ఆర్గానిక్ రంగులు' : '100% Pure Mulberry Silk, Natural Dyes',
+          q3_story: selectedLang === 'te' ? 'సాంప్రదాయ మచిలీపట్నం పద్ధతిలో 10 రోజులు శ్రమించి వేసిన చెక్క అచ్చు ప్రింటింగ్' : 'Handcrafted over 10 days using heritage Machilipatnam Kalamkari block printing.'
+        };
+        setQnaAnswers((prev) => ({
+          ...prev,
+          [targetQnaKey]: prev[targetQnaKey] || qnaSamples[targetQnaKey] || defaultSample
+        }));
+      } else {
+        if (!voiceText.trim()) setVoiceText(defaultSample);
+      }
     }
   };
 
@@ -250,13 +349,14 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     const mat = Number(costs.material) || 0;
     const lab = Number(costs.labour) || 0;
     const pkg = Number(costs.packaging) || 0;
+    const oth = Number(costs.other) || 0;
     const effectiveImg = customImageUrl.trim() || selectedPhoto?.url || '';
     const effectiveCat = selectedPhoto?.category || null;
 
     if (isOffline) {
       // Zero network dependency local processing in rural offline mode
       setTimeout(() => {
-        const costBasis = mat + lab + pkg;
+        const costBasis = mat + lab + pkg + oth;
         const minFair = costBasis > 0 ? Math.round(costBasis * 1.20) : null;
         const rawTitle = voiceText.trim().split('\n')[0].slice(0, 50) || (selectedPhoto ? selectedPhoto.name : 'Craft Draft (Pending Title)');
         const offlineDraft = {
@@ -273,6 +373,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
           material_cost: mat || null,
           labour_cost: lab || null,
           packaging_cost: pkg || null,
+          other_cost: oth || null,
           min_margin_pct: 0.20,
           image_url: effectiveImg,
           enhanced_image_url: effectiveImg,
@@ -295,7 +396,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         category_hint: effectiveCat,
         material_cost: mat || null,
         labour_cost: lab || null,
-        packaging_cost: pkg || null
+        packaging_cost: pkg || null,
+        other_cost: oth || null
       });
       setAiDraft(res);
       setStep('REVIEW');
@@ -309,6 +411,28 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
   const handleDraftChange = (field, val) => {
     setAiDraft((prev) => ({ ...prev, [field]: val }));
+  };
+
+  const resetForm = () => {
+    setStep('INPUT');
+    setInputSubStep('PHOTO');
+    setActiveQnaIndex(0);
+    setQnaAnswers({ q1_title: '', q2_materials: '', q3_story: '' });
+    setSelectedPhoto(null);
+    setCustomImageUrl('');
+    setVoiceText('');
+    setAudioUrl(null);
+    setCosts({ material: '', labour: '', packaging: '', other: '' });
+    setAiDraft(null);
+    setPublishing(false);
+    setLoading(false);
+    setImgErrorOriginal(false);
+    setImgErrorEnhanced(false);
+  };
+
+  const handleCloseModal = () => {
+    resetForm();
+    onClose();
   };
 
   const handleApproveAndPublish = async () => {
@@ -326,18 +450,25 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         materials: aiDraft.materials,
         description: aiDraft.description,
         craft_story: aiDraft.craft_story,
+        title_en: aiDraft.title_en || aiDraft.title,
+        description_en: aiDraft.description_en || aiDraft.description,
+        craft_story_en: aiDraft.craft_story_en || aiDraft.craft_story,
+        translations: aiDraft.translations,
         price: finalPrice,
         stock: 5,
         material_cost: aiDraft.material_cost,
         labour_cost: aiDraft.labour_cost,
         packaging_cost: aiDraft.packaging_cost,
+        other_cost: aiDraft.other_cost || 0.0,
         min_margin_pct: 0.20,
+        auto_smart_pricing_enabled: Boolean(aiDraft.auto_smart_pricing_enabled),
         image_url: aiDraft.image_url,
         enhanced_image_url: aiDraft.enhanced_image_url,
         status: 'DRAFT'
       });
       onPublished(`Saved "${aiDraft.title}" to local device queue (Pending Cloud Sync)!`);
       setPublishing(false);
+      resetForm();
       onClose();
       return;
     }
@@ -349,17 +480,24 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         materials: aiDraft.materials,
         description: aiDraft.description,
         craft_story: aiDraft.craft_story,
+        title_en: aiDraft.title_en || aiDraft.title,
+        description_en: aiDraft.description_en || aiDraft.description,
+        craft_story_en: aiDraft.craft_story_en || aiDraft.craft_story,
+        translations: aiDraft.translations,
         price: finalPrice,
         stock: 5,
         material_cost: aiDraft.material_cost,
         labour_cost: aiDraft.labour_cost,
         packaging_cost: aiDraft.packaging_cost,
+        other_cost: aiDraft.other_cost || 0.0,
         min_margin_pct: 0.20,
+        auto_smart_pricing_enabled: Boolean(aiDraft.auto_smart_pricing_enabled),
         image_url: aiDraft.image_url,
         enhanced_image_url: aiDraft.enhanced_image_url,
         status: 'PUBLISHED'
       });
       onPublished(`Successfully published "${aiDraft.title}" to catalog!`);
+      resetForm();
       onClose();
     } catch (err) {
       notify.error('Approval failed: ' + err.message);
@@ -416,293 +554,414 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         <div className="flex-1 overflow-y-auto pr-1 my-3 space-y-4">
         {/* STEP 1: Input Flow */}
         {step === 'INPUT' && (
-          <div className="mt-4 space-y-5">
-            {/* 1. Craft Photo Upload / Camera & Optional Inspiration */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
-                  <ImageIcon className="w-4 h-4 text-amber-600" />
-                  <span>1. Craft Photo (Camera Capture or File Upload)</span>
-                </label>
-                {customImageUrl && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCustomImageUrl('');
-                      setSelectedPhoto(null);
-                    }}
-                    className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold flex items-center space-x-1 cursor-pointer"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    <span>Remove Photo</span>
-                  </button>
-                )}
-              </div>
+          <div className="mt-4 space-y-4">
+            {/* Sub-step Progress Navigation Tabs */}
+            <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600">
+              <button
+                type="button"
+                onClick={() => setInputSubStep('PHOTO')}
+                className={`py-2 px-3 rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+                  inputSubStep === 'PHOTO'
+                    ? 'bg-white text-amber-800 shadow-xs border border-amber-200 font-extrabold'
+                    : 'hover:text-slate-900'
+                }`}
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-amber-600" />
+                <span>1. Craft Photo</span>
+              </button>
 
-              {/* Hidden File & Camera Inputs */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageFile}
-              />
-              <input
-                type="file"
-                ref={cameraInputRef}
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={handleImageFile}
-              />
+              <button
+                type="button"
+                onClick={() => setInputSubStep('QNA')}
+                className={`py-2 px-3 rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+                  inputSubStep === 'QNA'
+                    ? 'bg-white text-indigo-800 shadow-xs border border-indigo-200 font-extrabold'
+                    : 'hover:text-slate-900'
+                }`}
+              >
+                <Volume2 className="w-3.5 h-3.5 text-indigo-600" />
+                <span>2. AI Guided Q&A</span>
+              </button>
 
-              {/* Action Buttons & Preview Box */}
-              {customImageUrl ? (
-                <div className="mb-3 p-3 rounded-xl border border-amber-300 bg-amber-50/60 flex items-center justify-between gap-3">
-                  <div className="flex items-center space-x-3 overflow-hidden">
-                    <img
-                      src={customImageUrl}
-                      alt="Selected Craft"
-                      className="w-16 h-16 rounded-lg object-cover border border-amber-200 shrink-0 shadow-xs"
-                      onError={() => setImgErrorOriginal(true)}
-                    />
-                    <div className="truncate">
-                      <div className="flex items-center space-x-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span className="text-xs font-bold text-slate-800">
-                          {selectedPhoto ? selectedPhoto.name : 'Craft Photo Attached'}
-                        </span>
+              <button
+                type="button"
+                onClick={() => setInputSubStep('COSTS')}
+                className={`py-2 px-3 rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+                  inputSubStep === 'COSTS'
+                    ? 'bg-white text-emerald-800 shadow-xs border border-emerald-200 font-extrabold'
+                    : 'hover:text-slate-900'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>3. Cost & Margin</span>
+              </button>
+            </div>
+
+            {/* SUB-STEP 1: Photo Upload & Camera */}
+            {inputSubStep === 'PHOTO' && (
+              <div className="space-y-4 pt-1">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+                    <ImageIcon className="w-4 h-4 text-amber-600" />
+                    <span>Upload or Take a Photo of Your Craft Creation</span>
+                  </label>
+                  {customImageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomImageUrl('');
+                        setSelectedPhoto(null);
+                      }}
+                      className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold flex items-center space-x-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Remove Photo</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Hidden File & Camera Inputs */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageFile}
+                />
+                <input
+                  type="file"
+                  ref={cameraInputRef}
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleImageFile}
+                />
+
+                {/* Photo Preview / Capture Options */}
+                {customImageUrl ? (
+                  <div className="p-4 rounded-2xl border-2 border-amber-300 bg-amber-50/60 flex items-center justify-between gap-3">
+                    <div className="flex items-center space-x-3.5 overflow-hidden">
+                      <img
+                        src={customImageUrl}
+                        alt="Selected Craft"
+                        className="w-20 h-20 rounded-xl object-cover border border-amber-200 shrink-0 shadow-sm"
+                        onError={() => setImgErrorOriginal(true)}
+                      />
+                      <div className="truncate">
+                        <div className="flex items-center space-x-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="text-xs font-extrabold text-slate-900">
+                            {selectedPhoto ? selectedPhoto.name : 'Photo Attached Successfully'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-1">
+                          Ready for AI Multimodal Vision Analysis & Studio Background Lighting.
+                        </p>
                       </div>
-                      <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                        Ready for AI multimodal cataloging and studio enhancement
-                      </p>
+                    </div>
+                    <div className="flex flex-col space-y-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Camera</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Upload</span>
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2 shrink-0">
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
                       onClick={() => cameraInputRef.current?.click()}
-                      className="inline-flex items-center space-x-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
-                      title="Retake photo using phone camera"
+                      className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-indigo-300 hover:border-indigo-600 bg-indigo-50/40 hover:bg-indigo-50/80 transition-all cursor-pointer group"
                     >
-                      <Camera className="w-3.5 h-3.5 text-indigo-600" />
-                      <span className="hidden sm:inline">Camera</span>
+                      <div className="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 group-hover:scale-110 flex items-center justify-center mb-2 transition-transform shadow-xs">
+                        <Camera className="w-6 h-6" />
+                      </div>
+                      <span className="text-xs font-extrabold text-slate-900">Take Photo (Camera)</span>
+                      <span className="text-[10px] text-slate-500 mt-0.5">Capture live with phone camera</span>
                     </button>
+
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center space-x-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
-                      title="Upload different image file"
+                      className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-amber-300 hover:border-amber-600 bg-amber-50/40 hover:bg-amber-50/80 transition-all cursor-pointer group"
                     >
-                      <Upload className="w-3.5 h-3.5 text-amber-600" />
-                      <span className="hidden sm:inline">Upload</span>
+                      <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 group-hover:scale-110 flex items-center justify-center mb-2 transition-transform shadow-xs">
+                        <Upload className="w-6 h-6" />
+                      </div>
+                      <span className="text-xs font-extrabold text-slate-900">Upload Image File</span>
+                      <span className="text-[10px] text-slate-500">Choose from device photo gallery</span>
                     </button>
                   </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <button
-                    type="button"
-                    onClick={() => cameraInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center p-3.5 rounded-xl border-2 border-dashed border-indigo-200 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50/70 transition-all cursor-pointer group"
-                  >
-                    <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 group-hover:scale-110 flex items-center justify-center mb-1.5 transition-transform shadow-2xs">
-                      <Camera className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-bold text-slate-800">Take Photo (Camera)</span>
-                    <span className="text-[10px] text-slate-500">Capture with phone camera</span>
-                  </button>
+                )}
 
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center p-3.5 rounded-xl border-2 border-dashed border-amber-200 hover:border-amber-500 bg-amber-50/40 hover:bg-amber-50/70 transition-all cursor-pointer group"
-                  >
-                    <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-600 group-hover:scale-110 flex items-center justify-center mb-1.5 transition-transform shadow-2xs">
-                      <Upload className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-bold text-slate-800">Upload Image File</span>
-                    <span className="text-[10px] text-slate-500">Choose from gallery or files</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Optional URL input & Inspiration Cards */}
-              <div className="mt-2">
-                <input
-                  type="text"
-                  value={customImageUrl.startsWith('data:') ? '' : customImageUrl}
-                  onChange={(e) => {
-                    setCustomImageUrl(e.target.value);
-                    if (selectedPhoto && selectedPhoto.url !== e.target.value) {
-                      setSelectedPhoto(null);
-                    }
-                  }}
-                  placeholder={customImageUrl.startsWith('data:') ? "Photo attached from camera / file upload" : "Or paste image web link (URL)..."}
-                  disabled={customImageUrl.startsWith('data:')}
-                  className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 mb-2 bg-white disabled:bg-slate-50 disabled:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                />
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-semibold text-slate-500">Or click an inspiration craft below:</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {SAMPLE_PHOTOS.map((p) => (
-                    <div
-                      key={p.name}
-                      onClick={() => handlePhotoSelect(p)}
-                      className={`relative rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${
-                        selectedPhoto?.name === p.name ? 'border-amber-600 ring-2 ring-amber-500/20 shadow-xs' : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <img src={p.url} alt={p.name} className="w-full h-18 object-cover" />
-                      <div className="p-1 bg-white text-center">
-                        <span className="text-[11px] font-semibold text-slate-800 truncate block">{p.name}</span>
-                        <span className="text-[9px] text-amber-600 font-medium">Sample</span>
+                {/* Sample Inspiration Crafts */}
+                <div className="mt-3">
+                  <span className="text-[11px] font-bold text-slate-500 block mb-2">Or select a sample inspiration craft:</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {SAMPLE_PHOTOS.map((p) => (
+                      <div
+                        key={p.name}
+                        onClick={() => handlePhotoSelect(p)}
+                        className={`relative rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${
+                          selectedPhoto?.name === p.name ? 'border-amber-600 ring-2 ring-amber-500/20 shadow-xs' : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <img src={p.url} alt={p.name} className="w-full h-18 object-cover" />
+                        <div className="p-1 bg-white text-center">
+                          <span className="text-[11px] font-semibold text-slate-800 truncate block">{p.name}</span>
+                          <span className="text-[9px] text-amber-600 font-bold">Sample</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Voice Input & Language */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                <label className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
-                  <Volume2 className="w-4 h-4 text-indigo-600" />
-                  <span>2. Speak Product Details in Your Native Language</span>
-                </label>
-                <div className="flex items-center space-x-1.5">
-                  <Globe className="w-3.5 h-3.5 text-slate-400" />
-                  <select
-                    value={selectedLang}
-                    onChange={(e) => handleLangSelect(e.target.value)}
-                    className="text-xs font-semibold bg-white border border-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-amber-500"
-                  >
-                    {LANGUAGES.map((l) => (
-                      <option key={l.code} value={l.code}>{l.label}</option>
                     ))}
-                  </select>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setInputSubStep('QNA')}
+                    className="inline-flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
+                  >
+                    <span>Next: AI Guided Questions</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
+            )}
 
-              {/* Voice recording status indicator & timer */}
-              {isRecording && (
-                <div className="flex items-center justify-between p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 animate-pulse">
-                  <div className="flex items-center space-x-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
-                    <span className="font-bold">WebRTC Audio Recording Active...</span>
+            {/* SUB-STEP 2: Guided AI Q&A */}
+            {inputSubStep === 'QNA' && (
+              <div className="space-y-4 pt-1">
+                {/* Language Picker Header */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-indigo-50 border border-indigo-200 rounded-2xl gap-2">
+                  <div>
+                    <span className="text-xs font-extrabold text-indigo-900 block">AI Guided Voice & Text Questions</span>
+                    <span className="text-[11px] text-indigo-700 block">Answer 3 simple questions in your native language:</span>
                   </div>
-                  <span className="font-mono font-bold bg-white px-2 py-0.5 rounded border border-rose-200">
-                    00:{recordingSeconds < 10 ? `0${recordingSeconds}` : recordingSeconds}
+                  <div className="flex items-center space-x-1.5 bg-white px-2.5 py-1 rounded-xl border border-indigo-200 shrink-0">
+                    <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                    <select
+                      value={selectedLang}
+                      onChange={(e) => handleLangSelect(e.target.value)}
+                      className="text-xs font-bold text-indigo-900 bg-transparent focus:outline-none cursor-pointer"
+                    >
+                      {LANGUAGES.map((l) => (
+                        <option key={l.code} value={l.code}>{l.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* 3 Interactive Question Cards */}
+                <div className="space-y-3">
+                  {QNA_QUESTIONS.map((q, idx) => {
+                    const questionText = q[selectedLang] || q.en;
+                    const phText = q.placeholder?.[selectedLang] || q.placeholder?.en || 'Type or click microphone to speak answer...';
+                    const answerVal = qnaAnswers[q.id] || '';
+
+                    return (
+                      <div
+                        key={q.id}
+                        className={`p-3.5 rounded-2xl border transition-all ${
+                          activeQnaIndex === idx
+                            ? 'border-indigo-400 bg-indigo-50/30 ring-2 ring-indigo-500/10 shadow-xs'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                        onClick={() => setActiveQnaIndex(idx)}
+                      >
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="text-xs font-extrabold text-slate-800 flex items-center space-x-1.5">
+                            <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] flex items-center justify-center shrink-0">
+                              {q.num}
+                            </span>
+                            <span>{questionText}</span>
+                          </label>
+                        </div>
+
+                        <div className="relative mt-2">
+                          <textarea
+                            rows="2"
+                            value={answerVal}
+                            onChange={(e) => setQnaAnswers({ ...qnaAnswers, [q.id]: e.target.value })}
+                            placeholder={phText}
+                            className="w-full text-xs border border-slate-200 rounded-xl p-2.5 pr-22 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveQnaIndex(idx);
+                              if (isRecording) {
+                                stopRecording();
+                              } else {
+                                startRecording(q.id);
+                              }
+                            }}
+                            className={`absolute right-2 top-2 px-2.5 py-1.5 rounded-lg transition-all text-xs font-bold flex items-center space-x-1 cursor-pointer ${
+                              isRecording && activeQnaIndex === idx
+                                ? 'bg-rose-600 text-white animate-pulse'
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            }`}
+                          >
+                            {isRecording && activeQnaIndex === idx ? (
+                              <>
+                                <MicOff className="w-3.5 h-3.5" />
+                                <span>Stop</span>
+                              </>
+                            ) : (
+                              <>
+                                <Mic className="w-3.5 h-3.5" />
+                                <span>Speak</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Combined Voice Text Preview / Additional Details */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-[11px] font-bold text-slate-600 block mb-1">
+                    Combined Craft Description for Gemini AI:
                   </span>
+                  <p className="text-xs text-slate-800 italic bg-white p-2 rounded-lg border border-slate-200 leading-snug">
+                    {voiceText || 'Answer the questions above or speak via microphone to build your catalog description.'}
+                  </p>
                 </div>
-              )}
 
-              {/* Voice recording button & text container */}
-              <div className="relative">
-                <textarea
-                  rows="3"
-                  value={voiceText}
-                  onChange={(e) => setVoiceText(e.target.value)}
-                  placeholder="Click mic and describe your craft: materials, days taken, heritage technique..."
-                  className="w-full text-xs border border-slate-200 rounded-xl p-3 pr-24 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white leading-relaxed"
-                />
-                <button
-                  type="button"
-                  onClick={toggleSpeechRecognition}
-                  className={`absolute right-3 top-3 px-3 py-2 rounded-xl transition-all shadow-xs flex items-center space-x-1.5 font-bold text-xs ${
-                    isRecording
-                      ? 'bg-rose-600 text-white animate-pulse'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md'
-                  }`}
-                  title="Speak via WebRTC Microphone"
-                >
-                  {isRecording ? (
-                    <>
-                      <MicOff className="w-4 h-4" />
-                      <span>Stop</span>
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="w-4 h-4" />
-                      <span>Record Voice</span>
-                    </>
-                  )}
-                </button>
+                <div className="flex justify-between pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setInputSubStep('PHOTO')}
+                    className="px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800"
+                  >
+                    ← Back to Photo
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setInputSubStep('COSTS')}
+                    className="inline-flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
+                  >
+                    <span>Next: Cost & Margin</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
+            )}
 
-              {/* Audio playback preview if recorded */}
-              {audioUrl && (
-                <div className="p-2 bg-indigo-50/70 border border-indigo-200 rounded-xl flex items-center justify-between gap-2">
-                  <div className="flex items-center space-x-2">
-                    <Volume2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span className="text-[11px] font-bold text-indigo-900">Recorded Audio Snippet:</span>
+            {/* SUB-STEP 3: Cost Breakdown & Profit Protection */}
+            {inputSubStep === 'COSTS' && (
+              <div className="space-y-4 pt-1">
+                <div className="p-4 bg-emerald-50/80 border border-emerald-200 rounded-2xl">
+                  <div className="flex items-center space-x-2 text-emerald-900 font-extrabold text-xs mb-1">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Cost Breakdown & 20% Protected Minimum Profit Floor</span>
                   </div>
-                  <audio src={audioUrl} controls className="h-7 max-w-[220px]" />
+                  <p className="text-[11px] text-emerald-700 leading-relaxed">
+                    Enter your itemized costs below. The platform enforces a strict 20% minimum profit floor:
+                    <br />
+                    <code className="font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-300 mt-1 inline-block text-[11px]">
+                      minimum_fair_price = (material + labour + packaging + other) × 1.20
+                    </code>
+                  </p>
                 </div>
-              )}
 
-              <p className="text-[11px] text-slate-500 italic">
-                Tip: Artisans can speak in Telugu, Hindi, Tamil, Bengali, or English. Native WebRTC audio stream captured for AI multimodal analysis.
-              </p>
-            </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-3.5 border border-slate-200 rounded-2xl">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Material Cost (₹)</label>
+                    <input
+                      type="number"
+                      value={costs.material}
+                      placeholder="e.g. 450"
+                      onChange={(e) => setCosts({ ...costs, material: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                      className="w-full text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Labour Cost (₹)</label>
+                    <input
+                      type="number"
+                      value={costs.labour}
+                      placeholder="e.g. 400"
+                      onChange={(e) => setCosts({ ...costs, labour: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                      className="w-full text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Packaging Cost (₹)</label>
+                    <input
+                      type="number"
+                      value={costs.packaging}
+                      placeholder="e.g. 60"
+                      onChange={(e) => setCosts({ ...costs, packaging: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                      className="w-full text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Other Costs (₹)</label>
+                    <input
+                      type="number"
+                      value={costs.other || ''}
+                      placeholder="e.g. 40"
+                      onChange={(e) => setCosts({ ...costs, other: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                      className="w-full text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
 
-            {/* 3. Cost Inputs */}
-            <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-3.5">
-              <span className="text-xs font-bold text-amber-900 block mb-2">
-                3. Cost Inputs (To Protect Your Fair Minimum Price)
-              </span>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[11px] text-slate-600">Material Cost (₹)</label>
-                  <input
-                    type="number"
-                    value={costs.material}
-                    placeholder="e.g. 450"
-                    onChange={(e) => setCosts({ ...costs, material: e.target.value === '' ? '' : parseFloat(e.target.value) })}
-                    className="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-600">Labour Cost (₹)</label>
-                  <input
-                    type="number"
-                    value={costs.labour}
-                    placeholder="e.g. 400"
-                    onChange={(e) => setCosts({ ...costs, labour: e.target.value === '' ? '' : parseFloat(e.target.value) })}
-                    className="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-600">Packaging (₹)</label>
-                  <input
-                    type="number"
-                    value={costs.packaging}
-                    placeholder="e.g. 60"
-                    onChange={(e) => setCosts({ ...costs, packaging: e.target.value === '' ? '' : parseFloat(e.target.value) })}
-                    className="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white"
-                  />
+                {/* Live Cost Basis & Minimum Fair Price Calculation Display */}
+                {((Number(costs.material) || 0) + (Number(costs.labour) || 0) + (Number(costs.packaging) || 0) + (Number(costs.other) || 0)) > 0 && (
+                  <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[11px] font-bold text-amber-900 block">Calculated Total Cost Basis:</span>
+                      <span className="text-xs font-bold text-amber-800">
+                        ₹{(Number(costs.material) || 0)} + ₹{(Number(costs.labour) || 0)} + ₹{(Number(costs.packaging) || 0)} + ₹{(Number(costs.other) || 0)} = ₹{((Number(costs.material) || 0) + (Number(costs.labour) || 0) + (Number(costs.packaging) || 0) + (Number(costs.other) || 0))}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[11px] font-bold text-emerald-900 block">Protected Minimum Price (20% Floor):</span>
+                      <span className="text-sm font-extrabold text-emerald-700">
+                        ₹{Math.round(((Number(costs.material) || 0) + (Number(costs.labour) || 0) + (Number(costs.packaging) || 0) + (Number(costs.other) || 0)) * 1.20)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Final Run AI Action Footer */}
+                <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setInputSubStep('QNA')}
+                    className="px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800"
+                  >
+                    ← Back to Questions
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleGenerateAI}
+                    className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-700 text-white px-6 py-3 rounded-2xl font-extrabold text-xs shadow-lg active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4 animate-pulse" />
+                    <span>Run AI Catalog Studio Pipeline</span>
+                  </button>
                 </div>
               </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-3 pt-2">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleGenerateAI}
-                className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-5 py-2.5 rounded-xl font-semibold text-xs shadow-md active:scale-95 transition-all cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Run AI Catalog Pipeline</span>
-              </button>
-            </div>
+            )}
           </div>
         )}
 
@@ -1004,6 +1263,23 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   </div>
                 </div>
               )}
+
+              {/* Auto Smart Pricing Toggle */}
+              <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-xs font-bold text-indigo-900 block">Enable Auto Smart Pricing</span>
+                  <span className="text-[11px] text-indigo-700 block">
+                    Allow AI demand engine to rebalance price dynamically (Always ≥ 20% minimum profit floor).
+                    Default is OFF for manual approval.
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={Boolean(aiDraft.auto_smart_pricing_enabled)}
+                  onChange={(e) => handleDraftChange('auto_smart_pricing_enabled', e.target.checked)}
+                  className="w-5 h-5 accent-indigo-600 cursor-pointer shrink-0"
+                />
+              </div>
             </div>
 
             {/* Approval Footer */}

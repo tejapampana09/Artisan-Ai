@@ -63,3 +63,10 @@ export async function sendBuyerCopilotMessage(payload) {
   });
 }
 
+export async function translateProduct(payload) {
+  return await apiRequest('/ai/translate-product', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+

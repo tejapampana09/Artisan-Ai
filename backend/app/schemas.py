@@ -59,6 +59,10 @@ class ProductBase(BaseModel):
     title: str = Field(..., min_length=2, max_length=200)
     description: Optional[str] = Field(None, max_length=3000)
     craft_story: Optional[str] = Field(None, max_length=3000)
+    title_en: Optional[str] = Field(None, max_length=200)
+    description_en: Optional[str] = Field(None, max_length=3000)
+    craft_story_en: Optional[str] = Field(None, max_length=3000)
+    translations: Optional[str] = None
     category: str = Field(..., min_length=2, max_length=100)
     materials: Optional[str] = Field(None, max_length=500)
     price: float = Field(ge=0.0)
@@ -69,7 +73,9 @@ class ProductBase(BaseModel):
     material_cost: float = Field(default=0.0, ge=0.0)
     labour_cost: float = Field(default=0.0, ge=0.0)
     packaging_cost: float = Field(default=0.0, ge=0.0)
+    other_cost: float = Field(default=0.0, ge=0.0)
     min_margin_pct: float = Field(default=0.20, ge=0.0, le=1.0)
+    auto_smart_pricing_enabled: bool = False
     seller_id: Optional[int] = None
 
 class ProductCreate(ProductBase):
@@ -79,6 +85,10 @@ class ProductUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=2, max_length=200)
     description: Optional[str] = Field(None, max_length=3000)
     craft_story: Optional[str] = Field(None, max_length=3000)
+    title_en: Optional[str] = Field(None, max_length=200)
+    description_en: Optional[str] = Field(None, max_length=3000)
+    craft_story_en: Optional[str] = Field(None, max_length=3000)
+    translations: Optional[str] = None
     category: Optional[str] = Field(None, min_length=2, max_length=100)
     materials: Optional[str] = Field(None, max_length=500)
     price: Optional[float] = Field(default=None, ge=0.0)
@@ -89,7 +99,10 @@ class ProductUpdate(BaseModel):
     material_cost: Optional[float] = Field(default=None, ge=0.0)
     labour_cost: Optional[float] = Field(default=None, ge=0.0)
     packaging_cost: Optional[float] = Field(default=None, ge=0.0)
+    other_cost: Optional[float] = Field(default=None, ge=0.0)
     min_margin_pct: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    auto_smart_pricing_enabled: Optional[bool] = None
+
 
 class ProductResponse(ProductBase):
     model_config = ConfigDict(from_attributes=True)

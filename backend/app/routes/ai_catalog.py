@@ -1,14 +1,16 @@
+import json
 from decimal import Decimal
-from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional, List, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
 from backend.app.models import Product, User
 from backend.app.schemas import ProductResponse
-from backend.app.services.ai_adapter import generate_catalog_draft
+from backend.app.services.ai_adapter import generate_catalog_draft, translate_craft_text
 from backend.app.services.auth import get_current_user
+from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
 
 router = APIRouter(prefix="/api/ai", tags=["AI Cataloging"])
 
@@ -20,6 +22,7 @@ class AICatalogRequest(BaseModel):
     material_cost: Optional[float] = Field(None, ge=0, description="Artisan actual material expense in INR")
     labour_cost: Optional[float] = Field(None, ge=0, description="Artisan actual labour value in INR")
     packaging_cost: Optional[float] = Field(None, ge=0, description="Artisan actual packaging cost in INR")
+    other_cost: Optional[float] = Field(None, ge=0, description="Artisan actual other expenses in INR")
 
 class AICatalogDraftResponse(BaseModel):
     source: str = Field(..., description="Draft origin: LIVE_AI or MANUAL_DRAFT")
@@ -31,12 +34,17 @@ class AICatalogDraftResponse(BaseModel):
     materials: str
     description: str
     craft_story: str
+    title_en: Optional[str] = None
+    description_en: Optional[str] = None
+    craft_story_en: Optional[str] = None
+    translations: Optional[str] = None
     tags: List[str] = Field(default_factory=list)
     suggested_price: Optional[Decimal] = None
     min_fair_price: Optional[Decimal] = None
     material_cost: Optional[Decimal] = None
     labour_cost: Optional[Decimal] = None
     packaging_cost: Optional[Decimal] = None
+    other_cost: Optional[Decimal] = None
     min_margin_pct: Decimal = Decimal("0.20")
     pricing_available: bool = True
     pricing_source: str = "COST_BASED_CALCULATION"
@@ -53,18 +61,34 @@ class CatalogApproveRequest(BaseModel):
     materials: Optional[str] = Field(None, max_length=500)
     description: Optional[str] = None
     craft_story: Optional[str] = None
+    title_en: Optional[str] = None
+    description_en: Optional[str] = None
+    craft_story_en: Optional[str] = None
+    translations: Optional[str] = None
     price: Decimal = Field(..., ge=0)
     stock: int = Field(5, ge=0)
     material_cost: Optional[Decimal] = Field(None, ge=0)
     labour_cost: Optional[Decimal] = Field(None, ge=0)
     packaging_cost: Optional[Decimal] = Field(None, ge=0)
+    other_cost: Optional[Decimal] = Field(None, ge=0)
     min_margin_pct: Decimal = Field(Decimal("0.20"), ge=0)
+    auto_smart_pricing_enabled: bool = False
     image_url: Optional[str] = None
     enhanced_image_url: Optional[str] = None
     status: str = "PUBLISHED"
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
+class TranslateProductRequest(BaseModel):
+    product_id: Optional[int] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    craft_story: Optional[str] = None
+    target_language: str = Field(..., max_length=10)
+
+class TranslateProductResponse(BaseModel):
+    title: str
+    description: str
+    craft_story: str
+    target_language: str
 
 @router.post("/process-catalog", response_model=AICatalogDraftResponse)
 async def process_voice_and_image(req: AICatalogRequest, request: Request):
@@ -96,12 +120,18 @@ def approve_and_publish_product(
         materials=req.materials,
         description=req.description,
         craft_story=req.craft_story,
+        title_en=req.title_en or req.title,
+        description_en=req.description_en or req.description,
+        craft_story_en=req.craft_story_en or req.craft_story,
+        translations=req.translations,
         price=req.price.quantize(Decimal("0.01")),
         stock=req.stock,
         material_cost=req.material_cost.quantize(Decimal("0.01")) if req.material_cost is not None else Decimal("0.00"),
         labour_cost=req.labour_cost.quantize(Decimal("0.01")) if req.labour_cost is not None else Decimal("0.00"),
         packaging_cost=req.packaging_cost.quantize(Decimal("0.01")) if req.packaging_cost is not None else Decimal("0.00"),
+        other_cost=req.other_cost.quantize(Decimal("0.01")) if req.other_cost is not None else Decimal("0.00"),
         min_margin_pct=req.min_margin_pct.quantize(Decimal("0.0001")),
+        auto_smart_pricing_enabled=req.auto_smart_pricing_enabled,
         image_url=req.image_url,
         enhanced_image_url=req.enhanced_image_url,
         status=req.status,
@@ -109,4 +139,74 @@ def approve_and_publish_product(
     )
     db.add(product)
     db.commit()
+    db.refresh(product)
     return product
+
+@router.post("/translate-product", response_model=TranslateProductResponse)
+async def translate_product(req: TranslateProductRequest, db: Session = Depends(get_db)):
+    """
+    Dynamically translates product title, description, and craft story into any target language.
+    If product_id is provided, caches translation in the DB for ultra-fast subsequent queries.
+    """
+    target_lang = req.target_language.lower()
+    title = req.title or ""
+    description = req.description or ""
+    craft_story = req.craft_story or ""
+
+    product = None
+    if req.product_id:
+        product = db.query(Product).filter(Product.id == req.product_id).first()
+        if product:
+            title = product.title
+            description = product.description or ""
+            craft_story = product.craft_story or ""
+
+            # Check if product has cached translation
+            if product.translations:
+                try:
+                    trans_map = json.loads(product.translations)
+                    if target_lang in trans_map:
+                        cached = trans_map[target_lang]
+                        return TranslateProductResponse(
+                            title=cached.get("title", title),
+                            description=cached.get("description", description),
+                            craft_story=cached.get("craft_story", craft_story),
+                            target_language=target_lang
+                        )
+                except Exception:
+                    pass
+
+            if target_lang == "en" and product.title_en:
+                return TranslateProductResponse(
+                    title=product.title_en,
+                    description=product.description_en or description,
+                    craft_story=product.craft_story_en or craft_story,
+                    target_language="en"
+                )
+
+    result = await translate_craft_text(
+        title=title,
+        description=description,
+        craft_story=craft_story,
+        target_language=target_lang
+    )
+
+    # Save translation to product in DB if product exists
+    if product:
+        try:
+            trans_map = json.loads(product.translations) if product.translations else {}
+            trans_map[target_lang] = {
+                "title": result["title"],
+                "description": result["description"],
+                "craft_story": result["craft_story"]
+            }
+            product.translations = json.dumps(trans_map)
+            if target_lang == "en":
+                product.title_en = result["title"]
+                product.description_en = result["description"]
+                product.craft_story_en = result["craft_story"]
+            db.commit()
+        except Exception:
+            pass
+
+    return TranslateProductResponse(**result)

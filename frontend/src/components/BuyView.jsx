@@ -5,6 +5,8 @@ import BuyerOrderModal from './BuyerOrderModal';
 import BuyerAssistantModal from './BuyerAssistantModal';
 import { getProducts, getTrendingProducts, recordEvent } from '../api/index.js';
 import { getSavedProductIds, saveProductId, removeSavedProductId } from '../services/offlineSync';
+import { useLanguage } from '../context/LanguageContext.jsx';
+import { getLocalizedProductField } from '../utils/multilingual.js';
 
 const CATEGORIES = [
   'All Crafts',
@@ -16,6 +18,7 @@ const CATEGORIES = [
 ];
 
 export default function BuyView({ user, onOpenAuth }) {
+  const { language, t, getCategoryTranslation } = useLanguage();
   const [products, setProducts] = useState([]);
   const [trending, setTrending] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All Crafts');
@@ -143,11 +146,11 @@ export default function BuyView({ user, onOpenAuth }) {
         <div className="max-w-3xl">
           <div className="inline-flex items-center space-x-2 bg-indigo-800/80 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-indigo-200 mb-2 border border-indigo-500/30">
             <ShoppingBag className="w-3.5 h-3.5" />
-            <span>Buyer Marketplace (Closed-Loop Market Linkage)</span>
+            <span>{t('buyerMarketplaceBanner', 'Buyer Marketplace (Closed-Loop Market Linkage)')}</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Direct Heritage Crafts from Traditional Artisans</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('directHeritageTitle', 'Direct Heritage Crafts from Traditional Artisans')}</h1>
           <p className="text-indigo-200 text-xs sm:text-sm mt-1 leading-relaxed">
-            Eliminate middlemen. Every view, save, and order directly feeds our Market Intelligence Engine to empower rural makers with fair prices.
+            {t('directHeritageSub', 'Eliminate middlemen. Every view, save, and order directly feeds our Market Intelligence Engine to empower rural makers with fair prices.')}
           </p>
         </div>
 
@@ -160,7 +163,7 @@ export default function BuyView({ user, onOpenAuth }) {
               type="text"
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search Kalamkari, woodcraft, story, materials..."
+              placeholder={t('searchPlaceholderMarketplace', 'Search Kalamkari, woodcraft, story, materials...')}
               className="w-full bg-transparent text-white placeholder-indigo-300 text-sm focus:outline-none"
             />
             {searchQuery && (
@@ -182,7 +185,7 @@ export default function BuyView({ user, onOpenAuth }) {
             }`}
           >
             <SlidersHorizontal className="w-4 h-4" />
-            <span>Filters</span>
+            <span>{t('filters', 'Filters')}</span>
             {(minPrice || maxPrice) && <span className="w-2 h-2 rounded-full bg-amber-950"></span>}
           </button>
         </div>
@@ -222,7 +225,7 @@ export default function BuyView({ user, onOpenAuth }) {
                 className="w-full py-2 bg-indigo-900/60 hover:bg-indigo-900 text-indigo-200 hover:text-white rounded-xl border border-indigo-700 font-bold flex items-center justify-center space-x-1 transition-colors cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Reset Filters</span>
+                <span>{t('resetFilters', 'Reset Filters')}</span>
               </button>
             </div>
           </div>
@@ -241,7 +244,7 @@ export default function BuyView({ user, onOpenAuth }) {
                 : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
             }`}
           >
-            {cat}
+            {getCategoryTranslation(cat)}
           </button>
         ))}
       </div>
@@ -252,9 +255,9 @@ export default function BuyView({ user, onOpenAuth }) {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5">
               <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
-              <span>Trending Heritage Crafts</span>
+              <span>{t('trendingHeritageCrafts', 'Trending Heritage Crafts')}</span>
             </h3>
-            <span className="text-[11px] text-slate-500">Ranked by buyer interest velocity</span>
+            <span className="text-[11px] text-slate-500">{t('rankedByInterest', 'Ranked by buyer interest velocity')}</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -271,13 +274,13 @@ export default function BuyView({ user, onOpenAuth }) {
                 <div className="relative rounded-xl overflow-hidden h-28 bg-slate-100">
                   <img src={p.image_url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                   <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                    High Demand
+                    {t('highDemand', 'High Demand')}
                   </span>
                 </div>
-                <h4 className="text-xs font-bold text-slate-900 mt-2 truncate">{p.title}</h4>
+                <h4 className="text-xs font-bold text-slate-900 mt-2 truncate">{getLocalizedProductField(p, 'title', language)}</h4>
                 <div className="flex justify-between items-center mt-1">
                   <span className="text-xs font-extrabold text-indigo-700">₹{p.price.toLocaleString('en-IN')}</span>
-                  <span className="text-[10px] text-slate-500">{p.category}</span>
+                  <span className="text-[10px] text-slate-500">{getCategoryTranslation(p.category)}</span>
                 </div>
               </div>
             ))}
@@ -289,9 +292,9 @@ export default function BuyView({ user, onOpenAuth }) {
       <div className="space-y-3">
         <div className="flex justify-between items-center">
           <h3 className="text-sm font-bold text-slate-900">
-            {selectedCategory === 'All Crafts' ? 'All Artisan Collections' : `${selectedCategory} Collection`}
+            {selectedCategory === 'All Crafts' ? t('allArtisanCollections', 'All Artisan Collections') : `${getCategoryTranslation(selectedCategory)} Collection`}
           </h3>
-          <span className="text-xs text-slate-500">{products.length} crafts available</span>
+          <span className="text-xs text-slate-500">{products.length} {t('craftsAvailable', 'crafts available')}</span>
         </div>
 
         {loading ? (
@@ -309,6 +312,8 @@ export default function BuyView({ user, onOpenAuth }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {products.map((p) => {
               const isSaved = savedProductIds.has(p.id);
+              const cardTitle = getLocalizedProductField(p, 'title', language);
+              const cardDesc = getLocalizedProductField(p, 'description', language) || getLocalizedProductField(p, 'craft_story', language);
               return (
                 <div
                   key={p.id}
@@ -319,7 +324,7 @@ export default function BuyView({ user, onOpenAuth }) {
                     <div className="relative h-48 bg-slate-100 overflow-hidden">
                       <img
                         src={p.image_url}
-                        alt={p.title}
+                        alt={cardTitle}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
                         onClick={() => {
                           setSelectedProduct(p);
@@ -342,7 +347,7 @@ export default function BuyView({ user, onOpenAuth }) {
                         <Heart className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
                       </button>
                       <span className="absolute bottom-2 left-2 bg-slate-900/80 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full backdrop-blur-xs">
-                        {p.category}
+                        {getCategoryTranslation(p.category)}
                       </span>
                     </div>
 
@@ -356,10 +361,10 @@ export default function BuyView({ user, onOpenAuth }) {
                           triggerEventRefresh();
                         }}
                       >
-                        {p.title}
+                        {cardTitle}
                       </h4>
                       <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                        {p.description || p.craft_story}
+                        {cardDesc}
                       </p>
                     </div>
                   </div>
@@ -368,16 +373,16 @@ export default function BuyView({ user, onOpenAuth }) {
                   <div className="p-4 pt-0 border-t border-slate-100 mt-2 space-y-2.5">
                     <div className="flex justify-between items-baseline pt-2">
                       <div>
-                        <span className="text-[10px] text-slate-400 block">Direct Fair Price</span>
+                        <span className="text-[10px] text-slate-400 block">{t('directFairPrice', 'Direct Fair Price')}</span>
                         <span className="text-base font-extrabold text-slate-900">₹{p.price.toLocaleString('en-IN')}</span>
                       </div>
                       {p.stock > 0 ? (
                         <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                          {p.stock} in stock
+                          {p.stock} {t('inStock', 'in stock')}
                         </span>
                       ) : (
                         <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                          Out of Stock
+                          {t('outOfStock', 'Out of Stock')}
                         </span>
                       )}
                     </div>
@@ -392,7 +397,7 @@ export default function BuyView({ user, onOpenAuth }) {
                         className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" />
-                        <span>View</span>
+                        <span>{t('viewDetails', 'View')}</span>
                       </button>
 
                       {user && p.seller_id === user.id ? (
@@ -401,7 +406,7 @@ export default function BuyView({ user, onOpenAuth }) {
                           title="This is your own listed craft. Self-purchase is disabled."
                         >
                           <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Your Craft</span>
+                          <span>{t('yourCraft', 'Your Craft')}</span>
                         </span>
                       ) : p.stock <= 0 ? (
                         <button
@@ -416,7 +421,7 @@ export default function BuyView({ user, onOpenAuth }) {
                           title="Out of stock for direct checkout. Click to request a custom batch or pre-order."
                         >
                           <Send className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Pre-Order</span>
+                          <span>{t('preOrder', 'Pre-Order')}</span>
                         </button>
                       ) : (
                         <button
@@ -430,7 +435,7 @@ export default function BuyView({ user, onOpenAuth }) {
                           className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors cursor-pointer"
                         >
                           <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>Buy Now</span>
+                          <span>{t('buyNow', 'Buy Now')}</span>
                         </button>
                       )}
                     </div>
@@ -493,8 +498,7 @@ export default function BuyView({ user, onOpenAuth }) {
             🤖
           </div>
           <div className="text-left">
-            <span className="block text-xs font-black text-amber-300 leading-tight">AI Craft Guide</span>
-            <span className="block text-[10px] text-indigo-200 font-medium">చేతివృత్తుల AI గైడ్</span>
+            <span className="block text-xs font-black text-amber-300 leading-tight">{t('buyerCopilotBtn', '🤖 AI Buyer Copilot')}</span>
           </div>
         </button>
       )}

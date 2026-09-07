@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Heart, ShoppingBag, Send, ShieldCheck, MapPin, Sparkles, Check, CheckCircle2, Award, UserCheck, Clock, Hammer } from 'lucide-react';
-import { recordEvent } from '../api/index.js';
+import { X, Heart, ShoppingBag, Send, ShieldCheck, MapPin, Sparkles, Check, CheckCircle2, Award, UserCheck, Clock, Hammer, Globe, RefreshCw } from 'lucide-react';
+import { recordEvent, translateProduct } from '../api/index.js';
+import { useLanguage } from '../context/LanguageContext.jsx';
+import { getLocalizedProductField } from '../utils/multilingual.js';
 import ArtisanProfileModal from './ArtisanProfileModal.jsx';
 import ReviewsSection from './ReviewsSection.jsx';
 
@@ -15,8 +17,34 @@ export default function BuyerProductModal({
   user,
   onOpenAuth
 }) {
+  const { language, t } = useLanguage();
   const [showCertificate, setShowCertificate] = useState(false);
   const [showArtisanModal, setShowArtisanModal] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translatedData, setTranslatedData] = useState(null);
+
+  useEffect(() => {
+    setTranslatedData(null);
+  }, [product?.id, language]);
+
+  const handleTranslateClick = async () => {
+    if (!product) return;
+    setIsTranslating(true);
+    try {
+      const res = await translateProduct({
+        product_id: product.id,
+        title: product.title,
+        description: product.description,
+        craft_story: product.craft_story,
+        target_language: language
+      });
+      setTranslatedData(res);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   // Track VIEW event when modal opens (ignoring seller self-views)
   useEffect(() => {
@@ -35,6 +63,10 @@ export default function BuyerProductModal({
 
   if (!isOpen || !product) return null;
 
+  const displayTitle = translatedData?.title || getLocalizedProductField(product, 'title', language);
+  const displayDesc = translatedData?.description || getLocalizedProductField(product, 'description', language);
+  const displayStory = translatedData?.craft_story || getLocalizedProductField(product, 'craft_story', language);
+
   return (
     <>
       <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
@@ -51,7 +83,23 @@ export default function BuyerProductModal({
                   <span>{product.region_of_origin || 'GI Heritage Artisan Cluster'}</span>
                 </span>
               </div>
-              <h3 className="text-lg sm:text-xl font-bold text-slate-900 mt-1">{product.title}</h3>
+              <div className="flex items-center space-x-2 mt-1">
+                <h3 className="text-lg sm:text-xl font-bold text-slate-900">{displayTitle}</h3>
+                <button
+                  type="button"
+                  onClick={handleTranslateClick}
+                  disabled={isTranslating}
+                  className="inline-flex items-center space-x-1 px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-full text-[10px] font-bold cursor-pointer transition-colors"
+                  title="Translate listing using Gemini AI"
+                >
+                  {isTranslating ? (
+                    <RefreshCw className="w-3 h-3 animate-spin text-indigo-600" />
+                  ) : (
+                    <Globe className="w-3 h-3 text-indigo-600" />
+                  )}
+                  <span>{isTranslating ? 'Translating...' : `🌐 Translate (${language.toUpperCase()})`}</span>
+                </button>
+              </div>
             </div>
             <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer shrink-0">
               <X className="w-5 h-5" />
@@ -65,7 +113,7 @@ export default function BuyerProductModal({
                 <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-xs">
                   <img
                     src={product.enhanced_image_url || product.image_url}
-                    alt={product.title}
+                    alt={displayTitle}
                     className="w-full h-48 sm:h-52 object-cover"
                   />
                   <button
@@ -103,13 +151,13 @@ export default function BuyerProductModal({
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 flex items-center">
                       <UserCheck className="w-3.5 h-3.5 text-amber-600 mr-1" />
-                      Meet the Artisan
+                      {t('meetArtisan', 'Meet the Artisan')}
                     </span>
                     <button
                       onClick={() => setShowArtisanModal(true)}
                       className="text-[11px] font-bold text-amber-800 hover:text-amber-900 underline cursor-pointer"
                     >
-                      View Profile
+                      {t('viewProfile', 'View Profile')}
                     </button>
                   </div>
                   <div className="flex items-center space-x-2.5">
@@ -130,19 +178,19 @@ export default function BuyerProductModal({
                   <div className="flex items-center justify-between border-b border-amber-200/60 pb-1">
                     <span className="font-bold text-amber-900 flex items-center space-x-1 text-xs">
                       <Award className="w-3.5 h-3.5 text-amber-600" />
-                      <span>🧾 Craft Passport</span>
+                      <span>{t('craftPassport', '🧾 Craft Passport')}</span>
                     </span>
                     <span className="text-[10px] font-bold bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full">
-                      {product.handmade_pct || 100}% Handmade
+                      {product.handmade_pct || 100}% {t('handmade', 'Handmade')}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
                     <div>
-                      <span className="text-slate-500 block">Raw Materials:</span>
+                      <span className="text-slate-500 block">{t('rawMaterials', 'Raw Materials')}:</span>
                       <span className="font-semibold text-slate-800">{product.materials || 'Natural organic materials'}</span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block">Production Time:</span>
+                      <span className="text-slate-500 block">{t('productionTime', 'Production Time')}:</span>
                       <span className="font-semibold text-slate-800 flex items-center">
                         <Clock className="w-3 h-3 text-amber-600 mr-1" />
                         {product.production_time_days || 3} Days
@@ -158,19 +206,19 @@ export default function BuyerProductModal({
                 </div>
 
                 <div>
-                  <span className="font-bold text-slate-800 block mb-0.5">Craft Description</span>
+                  <span className="font-bold text-slate-800 block mb-0.5">{t('craftDescription', 'Craft Description')}</span>
                   <p className="text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                    {product.description || 'Authentic handmade creation crafted using traditional artisan methods.'}
+                    {displayDesc || 'Authentic handmade creation crafted using traditional artisan methods.'}
                   </p>
                 </div>
 
                 <div>
                   <span className="font-bold text-slate-800 flex items-center space-x-1 mb-0.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Heritage Craft Story</span>
+                    <span>{t('craftStory', 'Heritage Craft Story')}</span>
                   </span>
                   <p className="text-slate-700 leading-relaxed bg-amber-50/50 p-2.5 rounded-xl border border-amber-200/60 italic">
-                    "{product.craft_story || 'Generational traditional technique crafted with organic materials.'}"
+                    "{displayStory || 'Generational traditional technique crafted with organic materials.'}"
                   </p>
                 </div>
 
@@ -191,7 +239,7 @@ export default function BuyerProductModal({
                   <div className="pt-1 p-3 bg-amber-50 border border-amber-200 rounded-2xl text-center space-y-1">
                     <div className="flex items-center justify-center space-x-1.5 text-amber-900 font-bold text-xs">
                       <CheckCircle2 className="w-4 h-4 text-amber-600" />
-                      <span>Your Listed Craft (మీ ఉత్పత్తి)</span>
+                      <span>{t('yourCraft', 'Your Listed Craft')}</span>
                     </div>
                     <p className="text-[11px] text-amber-700 leading-relaxed">
                       You are the master artisan who created this listing.
@@ -205,7 +253,7 @@ export default function BuyerProductModal({
                         className="w-full inline-flex items-center justify-center space-x-2 bg-slate-100 text-slate-400 border border-slate-200 font-bold py-2 rounded-xl cursor-not-allowed"
                       >
                         <ShoppingBag className="w-4 h-4 text-slate-400" />
-                        <span>Out of Stock (అందుబాటులో లేదు)</span>
+                        <span>{t('outOfStock', 'Out of Stock')}</span>
                       </button>
                     ) : (
                       <button
@@ -221,7 +269,7 @@ export default function BuyerProductModal({
                         className="w-full inline-flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
                       >
                         <ShoppingBag className="w-4 h-4" />
-                        <span>Buy Now (B2C Order)</span>
+                        <span>{t('buyNow', 'Buy Now')}</span>
                       </button>
                     )}
 
@@ -238,7 +286,7 @@ export default function BuyerProductModal({
                       className="w-full inline-flex items-center justify-center space-x-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold py-2 rounded-xl transition-all cursor-pointer"
                     >
                       <Send className="w-4 h-4 text-amber-700" />
-                      <span>{product.stock <= 0 ? 'Request Custom Pre-Order' : 'Request B2B Bulk Enquiry'}</span>
+                      <span>{product.stock <= 0 ? t('preOrder', 'Pre-Order') : 'Request B2B Bulk Enquiry'}</span>
                     </button>
                   </div>
                 )}

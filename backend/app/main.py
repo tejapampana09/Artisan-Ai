@@ -29,6 +29,7 @@ from backend.app.services.auth import get_current_user as auth_get_current_user
 
 # Initialize database tables directly via SQLAlchemy Base metadata
 Base.metadata.create_all(bind=engine)
+ensure_sqlite_schema(engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

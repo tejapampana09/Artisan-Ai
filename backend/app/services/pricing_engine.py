@@ -82,13 +82,15 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
     5. Capped bounds: Max +25% upward, Max -10% downward
     """
     # 1. Cost Basis & Minimum Fair Price using Decimal arithmetic
-    mat_cost = to_decimal(product.material_cost)
-    lab_cost = to_decimal(product.labour_cost)
-    pkg_cost = to_decimal(product.packaging_cost)
-    cost_basis = (mat_cost + lab_cost + pkg_cost).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    mat_cost = to_decimal(getattr(product, "material_cost", 0.0))
+    lab_cost = to_decimal(getattr(product, "labour_cost", 0.0))
+    pkg_cost = to_decimal(getattr(product, "packaging_cost", 0.0))
+    oth_cost = to_decimal(getattr(product, "other_cost", 0.0))
+    cost_basis = (mat_cost + lab_cost + pkg_cost + oth_cost).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     
-    margin_pct = to_decimal(product.min_margin_pct, "0.20")
+    margin_pct = to_decimal(getattr(product, "min_margin_pct", 0.20), "0.20")
     minimum_fair_price = (cost_basis * (Decimal("1.0") + margin_pct)).quantize(Decimal("1.00"), rounding=ROUND_HALF_UP)
+
 
     # 2. Category Demand & Benchmark Range from pure database records
     all_demands = {d["category"]: d for d in calculate_category_demand(db)}

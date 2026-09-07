@@ -8,9 +8,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Artisan AI — Rural Commerce & Business Intelligence SaaS</title>
     <meta name="description" content="AI-Powered B2B craft marketplace, voice-first cataloging, and explainable dynamic pricing engine for rural artisans." />
+    <style>
+      /* Hide Google Translate top banner & widget frames for seamless clean UI */
+      .goog-te-banner-frame { display: none !important; }
+      body { top: 0px !important; }
+      #goog-gt-tt, .goog-te-balloon-frame { display: none !important; }
+      .goog-text-highlight { background-color: transparent !important; box-shadow: none !important; }
+    </style>
   </head>
   <body>
+    <div id="google_translate_element" style="display:none;"></div>
     <div id="root"></div>
+    <script type="text/javascript">
+      function googleTranslateElementInit() {
+        new google.translate.TranslateElement({
+          pageLanguage: 'en',
+          includedLanguages: 'te,hi,en,ta,bn',
+          layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+          autoDisplay: false
+        }, 'google_translate_element');
+      }
+    </script>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

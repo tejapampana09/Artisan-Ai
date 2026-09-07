@@ -1,0 +1,83 @@
+import uuid
+import pytest
+from fastapi.testclient import TestClient
+from backend.app.main import app
+from backend.app.database import SessionLocal
+from backend.app.models import Product, User
+from backend.app.services.pricing_engine import calculate_price_recommendation
+
+client = TestClient(app)
+
+def test_other_cost_and_protected_floor_calculation():
+    """
+    Verifies that cost_basis includes (material_cost + labour_cost + packaging_cost + other_cost)
+    and that minimum_fair_price is strictly cost_basis * 1.20 with Decimal arithmetic.
+    """
+    db = SessionLocal()
+    try:
+        prod = Product(
+            title="Test Protected Craft",
+            category="Kalamkari",
+            price=1500.0,
+            material_cost=400.0,
+            labour_cost=300.0,
+            packaging_cost=100.0,
+            other_cost=200.0,  # Total cost_basis = 1000.0
+            min_margin_pct=0.20,
+            status="PUBLISHED"
+        )
+        db.add(prod)
+        db.commit()
+        db.refresh(prod)
+
+        rec = calculate_price_recommendation(prod, db)
+
+        # Minimum fair price = 1000 * 1.20 = 1200.0
+        assert float(rec["minimum_fair_price"]) == 1200.0
+        # Recommended price must be >= 1200.0
+        assert float(rec["recommended_price"]) >= 1200.0
+        assert rec["safety_constraints"]["minimum_fair_price_protected"] is True
+
+    finally:
+        db.close()
+
+
+def test_toggle_smart_pricing_endpoint():
+    """
+    Verifies that POST/PATCH /api/products/{id}/toggle-smart-pricing toggles auto_smart_pricing_enabled safely.
+    """
+    uid = uuid.uuid4().hex[:6]
+    artisan_res = client.post("/api/auth/register", json={
+        "name": f"Artisan {uid}",
+        "email": f"artisan.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    token = artisan_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Create product
+    create_res = client.post("/api/products", json={
+        "title": "Smart Pricing Product",
+        "category": "Wooden Toys",
+        "price": 800.0,
+        "material_cost": 200.0,
+        "labour_cost": 200.0,
+        "packaging_cost": 50.0,
+        "other_cost": 50.0,
+        "auto_smart_pricing_enabled": False
+    }, headers=headers)
+    assert create_res.status_code == 201
+    prod_data = create_res.json()
+    pid = prod_data["id"]
+    assert prod_data["auto_smart_pricing_enabled"] is False
+
+    # Toggle to True
+    toggle_res1 = client.patch(f"/api/products/{pid}/toggle-smart-pricing", headers=headers)
+    assert toggle_res1.status_code == 200
+    assert toggle_res1.json()["auto_smart_pricing_enabled"] is True
+
+    # Toggle back to False
+    toggle_res2 = client.patch(f"/api/products/{pid}/toggle-smart-pricing", headers=headers)
+    assert toggle_res2.status_code == 200
+    assert toggle_res2.json()["auto_smart_pricing_enabled"] is False

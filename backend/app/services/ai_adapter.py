@@ -117,6 +117,10 @@ def build_production_manual_draft(
         "materials": "",
         "description": clean_desc,
         "craft_story": "",
+        "title_en": title,
+        "description_en": clean_desc,
+        "craft_story_en": "",
+        "translations": json.dumps({"en": {"title": title, "description": clean_desc, "craft_story": ""}}),
         "tags": [clean_cat] if clean_cat else [],
         "suggested_price": suggested,
         "min_fair_price": min_fair,
@@ -172,13 +176,17 @@ async def generate_catalog_draft(
             Assist by structuring this into a product draft.
             IMPORTANT GUIDELINE:
             Do not invent unverified GI certifications or false claims not implied by the artisan's words.
+            Provide both the native language fields (in '{language}') AND clear English translation fields so buyers across India and globally can understand the listing.
             
             Return a valid JSON object with:
-            - title: Catchy, market-ready title (max 10 words)
+            - title: Catchy, market-ready title in language '{language}' (max 10 words)
+            - description: Professional 2-3 sentence product overview in language '{language}'
+            - craft_story: Cultural or artisanal narrative in language '{language}' based on description
+            - title_en: Clear English translation of title
+            - description_en: Clear English translation of description
+            - craft_story_en: Clear English translation of craft_story
             - category: One of Kalamkari, Wooden Toys, Blue Pottery, Bidriware, Pochampally Ikat, Terracotta, Handloom, Other
             - materials: Comma-separated list of materials derived from description
-            - description: Professional 2-3 sentence product overview
-            - craft_story: Cultural or artisanal narrative based on the description
             - tags: Array of 4-6 relevant discovery strings
             - suggested_price: Fair selling price in INR as a number
             - estimated_cost: object with keys "material", "labour", "packaging" as numbers
@@ -236,16 +244,31 @@ async def generate_catalog_draft(
                             pricing_source = "AI_ESTIMATE"
                             pricing_available = True
 
+                        title_main = parsed.get("title", clean_desc[:80])
+                        desc_main = parsed.get("description", clean_desc)
+                        story_main = parsed.get("craft_story", clean_desc)
+                        title_en = parsed.get("title_en") or title_main
+                        desc_en = parsed.get("description_en") or desc_main
+                        story_en = parsed.get("craft_story_en") or story_main
+                        trans_map = {
+                            language: {"title": title_main, "description": desc_main, "craft_story": story_main},
+                            "en": {"title": title_en, "description": desc_en, "craft_story": story_en}
+                        }
+
                         return {
                             "source": "LIVE_AI",
                             "is_live_ai": True,
                             "is_demo_data": False,
                             "requires_artisan_verification": True,
-                            "title": parsed.get("title", clean_desc[:80]),
+                            "title": title_main,
                             "category": parsed.get("category", clean_category_hint or "Handloom"),
                             "materials": parsed.get("materials", "Craft materials as stated by artisan"),
-                            "description": parsed.get("description", clean_desc),
-                            "craft_story": parsed.get("craft_story", clean_desc),
+                            "description": desc_main,
+                            "craft_story": story_main,
+                            "title_en": title_en,
+                            "description_en": desc_en,
+                            "craft_story_en": story_en,
+                            "translations": json.dumps(trans_map),
                             "tags": parsed.get("tags", [clean_category_hint or "Handmade"]),
                             "suggested_price": suggested,
                             "min_fair_price": min_fair,
@@ -476,4 +499,83 @@ async def generate_buyer_explanation(
         elif lang == "bn":
             return f"নমস্কার! আপনার অনুসন্ধান অনুযায়ী ({match_count}) কারিগর সামগ্রী পাওয়া গেছে:"
         else:
-            return f"Hello! I searched our live database for '{user_message}'. Here are {match_count} authentic master artisan crafts matching your query:"
+            return f"Hello! I searched our live database for '{user_message}'. Here are {match_count} authentic master artisan crafts matching your query:"
+
+async def translate_craft_text(
+    title: str,
+    description: str,
+    craft_story: str = "",
+    target_language: str = "en"
+) -> Dict[str, str]:
+    """
+    Translates product title, description, and craft story into target language using Gemini AI.
+    Falls back gracefully if AI is unavailable.
+    """
+    if not title and not description and not craft_story:
+        return {"title": "", "description": "", "craft_story": "", "target_language": target_language}
+
+    lang_names = {
+        "en": "English",
+        "te": "Telugu",
+        "hi": "Hindi",
+        "ta": "Tamil",
+        "bn": "Bengali"
+    }
+    target_name = lang_names.get(target_language, "English")
+
+    if GEMINI_API_KEY:
+        try:
+            prompt = f"""
+            You are a expert translator for traditional Indian artisan crafts.
+            Translate the following product information into {target_name} ({target_language}).
+            Preserve craft technical terms and traditional artisan style.
+
+            Title: "{title or ''}"
+            Description: "{description or ''}"
+            Craft Story: "{craft_story or ''}"
+
+            Return a valid JSON object with:
+            - title: Translated title in {target_name}
+            - description: Translated description in {target_name}
+            - craft_story: Translated craft story in {target_name}
+            """
+            models_to_try = get_models_to_try()
+            async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
+                for model in models_to_try:
+                    try:
+                        resp = await client.post(
+                            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}",
+                            json={
+                                "contents": [{"parts": [{"text": prompt}]}],
+                                "generationConfig": {"response_mime_type": "application/json"}
+                            },
+                            headers={"Content-Type": "application/json"}
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                            if content.startswith("```"):
+                                lines = content.split("\n")
+                                if lines[0].startswith("```"):
+                                    lines = lines[1:]
+                                if lines and lines[-1].strip() == "```":
+                                    lines = lines[:-1]
+                                content = "\n".join(lines).strip()
+                            parsed = json.loads(content)
+                            return {
+                                "title": parsed.get("title") or title,
+                                "description": parsed.get("description") or description,
+                                "craft_story": parsed.get("craft_story") or craft_story,
+                                "target_language": target_language
+                            }
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+
+    return {
+        "title": title,
+        "description": description,
+        "craft_story": craft_story,
+        "target_language": target_language
+    }

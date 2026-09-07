@@ -82,6 +82,19 @@ def ensure_sqlite_schema(eng):
                 conn.execute(text("ALTER TABLE products ADD COLUMN secondary_images TEXT"))
             if "verification_status" not in prod_cols:
                 conn.execute(text("ALTER TABLE products ADD COLUMN verification_status VARCHAR DEFAULT 'UNVERIFIED'"))
+            if "other_cost" not in prod_cols:
+                conn.execute(text("ALTER TABLE products ADD COLUMN other_cost NUMERIC(12, 2) DEFAULT 0.00"))
+            if "auto_smart_pricing_enabled" not in prod_cols:
+                conn.execute(text("ALTER TABLE products ADD COLUMN auto_smart_pricing_enabled BOOLEAN DEFAULT 0"))
+            if "title_en" not in prod_cols:
+                conn.execute(text("ALTER TABLE products ADD COLUMN title_en VARCHAR"))
+            if "description_en" not in prod_cols:
+                conn.execute(text("ALTER TABLE products ADD COLUMN description_en TEXT"))
+            if "craft_story_en" not in prod_cols:
+                conn.execute(text("ALTER TABLE products ADD COLUMN craft_story_en TEXT"))
+            if "translations" not in prod_cols:
+                conn.execute(text("ALTER TABLE products ADD COLUMN translations TEXT"))
+
 
         # Check orders table columns
         res_ord = conn.execute(text("PRAGMA table_info(orders)")).fetchall()

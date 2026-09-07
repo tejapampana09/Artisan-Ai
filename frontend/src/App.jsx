@@ -10,6 +10,9 @@ import { OfflineProvider, useOffline } from './context/OfflineContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { checkHealth, checkReady, getCurrentUser, updateUserMode, getAuthToken } from './api/index.js';
 
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import LanguageSelectorModal from './components/LanguageSelectorModal';
+
 function AppContent() {
   const [activeMode, setActiveMode] = useState('HOME');
   const [user, setUser] = useState(null);
@@ -82,8 +85,9 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative overflow-x-hidden">
       <NotificationCenter />
+      <LanguageSelectorModal />
       
       {/* Top Navigation */}
       <Navbar
@@ -95,7 +99,7 @@ function AppContent() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 md:pb-6 overflow-x-hidden">
         <OfflineSyncBanner />
 
         {loading ? (
@@ -165,10 +169,13 @@ function AppContent() {
 
 export default function App() {
   return (
-    <OfflineProvider>
-      <NotificationProvider>
-        <AppContent />
-      </NotificationProvider>
-    </OfflineProvider>
+    <LanguageProvider>
+      <OfflineProvider>
+        <NotificationProvider>
+          <AppContent />
+        </NotificationProvider>
+      </OfflineProvider>
+    </LanguageProvider>
   );
 }
+

@@ -1,7 +1,10 @@
 import React from 'react';
 import { Package, Edit2, Trash2, Eye, IndianRupee, Layers, CheckCircle2 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext.jsx';
+import { getLocalizedProductField } from '../utils/multilingual.js';
 
 export default function ProductList({ products, onSelectProduct, onEditProduct, onDeleteProduct, onAddProduct, currentUser }) {
+  const { language, getCategoryTranslation } = useLanguage();
   if (!products || products.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
@@ -42,16 +45,16 @@ export default function ProductList({ products, onSelectProduct, onEditProduct, 
             <div className="flex items-start sm:items-center space-x-4">
               <img
                 src={p.image_url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400&auto=format&fit=crop&q=80'}
-                alt={p.title}
+                alt={getLocalizedProductField(p, 'title', language)}
                 className="w-16 h-16 rounded-xl object-cover border border-slate-200 shadow-xs flex-shrink-0"
               />
               <div>
                 <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                   <h4 className="font-semibold text-slate-900 text-sm hover:text-amber-700 cursor-pointer" onClick={() => onSelectProduct(p)}>
-                    {p.title}
+                    {getLocalizedProductField(p, 'title', language)}
                   </h4>
                   <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                    {p.category}
+                    {getCategoryTranslation(p.category)}
                   </span>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                     p.status === 'PUBLISHED'
@@ -67,7 +70,7 @@ export default function ProductList({ products, onSelectProduct, onEditProduct, 
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-1 line-clamp-1 max-w-md">
-                  {p.description || p.craft_story}
+                  {getLocalizedProductField(p, 'description', language) || getLocalizedProductField(p, 'craft_story', language)}
                 </p>
                 <div className="flex items-center space-x-3 text-xs text-slate-500 mt-1.5">
                   <span className="flex items-center text-slate-700 font-bold">
