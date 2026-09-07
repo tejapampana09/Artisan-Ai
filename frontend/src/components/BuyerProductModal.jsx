@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { X, Heart, ShoppingBag, Send, ShieldCheck, MapPin, Sparkles, Check, CheckCircle2 } from 'lucide-react';
-import { recordEvent } from '../api';
+import { recordEvent } from '../api/index.js';
 
 export default function BuyerProductModal({ 
   product, 

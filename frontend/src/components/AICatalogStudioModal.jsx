@@ -4,7 +4,7 @@ import {
   Layers, Volume2, Globe, ShieldCheck, ArrowRight, RefreshCw, Wand2,
   Camera, Upload, Trash2
 } from 'lucide-react';
-import { processAICatalog, approveAndPublishAICatalog } from '../api';
+import { processAICatalog, approveAndPublishAICatalog } from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
 import { useNotification } from '../context/NotificationContext';
 

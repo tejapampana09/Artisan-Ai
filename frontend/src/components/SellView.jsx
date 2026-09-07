@@ -14,7 +14,7 @@ import {
   getProducts, createProduct, updateProduct, deleteProduct, 
   getMarketDemand, getSellerOpportunities, getEnquiries, getOrders,
   replyToEnquiry, updateOrderStatus, getSellerDashboard, downloadAnalyticsCSV
-} from '../api';
+} from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
 import { useNotification } from '../context/NotificationContext';
 import { 

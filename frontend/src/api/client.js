@@ -138,6 +138,10 @@ export async function apiRequest(endpoint, options = {}) {
           continue;
         }
         
+        if (response.status === 401) {
+          clearAuthToken();
+        }
+
         throw new ApiError(message, response.status, 'HTTP_ERROR', errData, isRetryable);
       }
 

@@ -1,4 +1,4 @@
-import { syncBatch } from '../api.js';
+import { syncBatch } from '../api/index.js';
 
 const OFFLINE_QUEUE_KEY = 'artisan_ai_offline_queue';
 const CACHED_PRODUCTS_KEY = 'artisan_ai_cached_products';

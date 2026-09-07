@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, ShoppingBag, Send, CheckCircle2, ShieldCheck, Package } from 'lucide-react';
-import { placeOrder, submitEnquiry } from '../api';
+import { placeOrder, submitEnquiry } from '../api/index.js';
 import { useNotification } from '../context/NotificationContext';
 
 export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClose, onSuccess, user, onOpenAuth }) {

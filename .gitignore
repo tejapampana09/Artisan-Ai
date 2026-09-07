@@ -20,5 +20,7 @@ frontend/.vite/
 *.log
 .env
 .env.local
+.pytest_cache/
 .DS_Store
 Thumbs.db
+

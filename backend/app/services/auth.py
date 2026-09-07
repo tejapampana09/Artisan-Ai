@@ -154,25 +154,16 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"}
         )
 
-    # Explicit fallback for testing / local evaluation when DEMO_MODE is True
-    user = db.query(User).filter(User.email == "lakshmi@artisanai.in").first()
-    if not user:
-        user = db.query(User).filter(User.role == "ARTISAN").first()
-    if not user:
-        user = User(
-            name="Lakshmi Devi",
-            phone="+91 98765 43210",
-            email="lakshmi@artisanai.in",
-            hashed_password=hash_password("artisan123"),
-            role="ARTISAN",
-            active_mode="SELL",
-            location="Machilipatnam, Andhra Pradesh",
-            craft="Hand-block Kalamkari"
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    return user
+    # In explicit automated test suite mode only (when DEMO_MODE is explicitly True and non-production):
+    user = db.query(User).filter(User.role == "ARTISAN").first()
+    if user:
+        return user
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication credentials were not provided. Expected Bearer token.",
+        headers={"WWW-Authenticate": "Bearer"}
+    )
+
 def get_optional_current_user(
     db: Session = Depends(get_db),
     auth_header: Optional[str] = Header(None, alias="Authorization")

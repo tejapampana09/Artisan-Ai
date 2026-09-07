@@ -37,7 +37,7 @@ class ONDCSearchIntent(BaseModel):
     query: Optional[str] = None
 
 class ONDCSearchRequest(BaseModel):
-    transaction_id: Optional[str] = Field(default="tx_ondc_demo")
+    transaction_id: Optional[str] = Field(default=None)
     intent: Optional[ONDCSearchIntent] = None
 
 class ONDCSelectRequest(BaseModel):

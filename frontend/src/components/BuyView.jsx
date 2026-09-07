@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, ShoppingBag, Heart, Sparkles, Filter, MapPin, Send, Eye, Flame, CheckCircle2 } from 'lucide-react';
 import BuyerProductModal from './BuyerProductModal';
 import BuyerOrderModal from './BuyerOrderModal';
-import { getProducts, getTrendingProducts, recordEvent } from '../api';
+import { getProducts, getTrendingProducts, recordEvent } from '../api/index.js';
 import { getSavedProductIds, saveProductId, removeSavedProductId } from '../services/offlineSync';
 
 const CATEGORIES = [

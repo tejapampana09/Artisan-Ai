@@ -8,7 +8,7 @@ import AuthModal from './components/AuthModal';
 import NotificationCenter from './components/NotificationCenter';
 import { OfflineProvider, useOffline } from './context/OfflineContext';
 import { NotificationProvider } from './context/NotificationContext';
-import { checkHealth, checkReady, getCurrentUser, updateUserMode, getAuthToken } from './api';
+import { checkHealth, checkReady, getCurrentUser, updateUserMode, getAuthToken } from './api/index.js';
 
 function AppContent() {
   const [activeMode, setActiveMode] = useState('HOME');

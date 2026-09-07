@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from backend.app.models import Product, User
+from backend.app.models import Product
 
 SAMPLE_PRODUCTS = [
     {
@@ -70,8 +70,7 @@ SAMPLE_PRODUCTS = [
 
 def seed_sample_products(db: Session, seller_id: int):
     """
-    Idempotent product seeding: ensures every baseline sample product
-    exists in the database, avoiding state drift between test runs or sessions.
+    Idempotent product seeding for testing fixtures.
     """
     for p in SAMPLE_PRODUCTS:
         existing = db.query(Product).filter(Product.title == p["title"]).first()
@@ -79,3 +78,4 @@ def seed_sample_products(db: Session, seller_id: int):
             prod = Product(**p, seller_id=seller_id)
             db.add(prod)
     db.commit()
+

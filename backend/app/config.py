@@ -22,12 +22,8 @@ get_database_url = normalize_database_url
 
 # Environment & Demo Mode
 ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development").lower()
-
-_raw_demo_mode = os.getenv("DEMO_MODE")
-if ENVIRONMENT == "production":
-    DEMO_MODE: bool = False if _raw_demo_mode is None else (_raw_demo_mode.lower() in ("true", "1", "yes"))
-else:
-    DEMO_MODE: bool = _raw_demo_mode.lower() in ("true", "1", "yes") if _raw_demo_mode is not None else False
+_raw_demo_mode = os.getenv("DEMO_MODE", "false")
+DEMO_MODE: bool = _raw_demo_mode.lower() in ("true", "1", "yes")
 
 # ONDC Prototype feature flag (default False in production, True in non-production)
 ONDC_PROTOTYPE_ENABLED: bool = os.getenv("ONDC_PROTOTYPE_ENABLED", "false" if ENVIRONMENT == "production" else "true").lower() in ("true", "1", "yes")
@@ -66,6 +62,10 @@ raw_cors = os.getenv(
 
 def get_cors_origins() -> List[str]:
     origins = [origin.strip() for origin in raw_cors.split(",") if origin.strip()]
+    if ENVIRONMENT == "production":
+        # Strict in production: only allow explicitly configured domains
+        return origins
+
     default_dev_origins = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",

@@ -40,24 +40,7 @@ def init_engine(url: str):
 
     return try_engine
 
-def auto_migrate_sqlite_schema(target_engine):
-    if not target_engine.url.drivername.startswith("sqlite"):
-        return
-    try:
-        from sqlalchemy import inspect
-        insp = inspect(target_engine)
-        if "users" in insp.get_table_names():
-            cols = [c["name"] for c in insp.get_columns("users")]
-            if "token_version" not in cols:
-                with target_engine.connect() as conn:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 1"))
-                    conn.commit()
-                logger.info("[Database Auto-Migrate] Added token_version column to users table.")
-    except Exception as e:
-        logger.warning(f"[Database Auto-Migrate] SQLite migration check skipped: {e}")
-
 engine = init_engine(DATABASE_URL)
-auto_migrate_sqlite_schema(engine)
 is_sqlite = engine.url.drivername.startswith("sqlite")
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

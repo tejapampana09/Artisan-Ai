@@ -19,10 +19,8 @@ from backend.app.routes.auth import router as auth_router
 from backend.app.routes.ondc import router as ondc_router
 from backend.app.services.auth import get_current_user as auth_get_current_user
 
-# Create tables automatically only in development/test/demo environments.
-# In production, schema management must be performed explicitly via Alembic migrations.
-if ENVIRONMENT != "production":
-    Base.metadata.create_all(bind=engine)
+# Initialize database tables directly via SQLAlchemy Base metadata
+Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,13 +35,18 @@ app = FastAPI(
 )
 
 cors_origins = get_cors_origins()
+cors_kwargs = {
+    "allow_origins": cors_origins,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+if ENVIRONMENT != "production":
+    cors_kwargs["allow_origin_regex"] = r"https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.\d+\.\d+\.\d+)(:\d+)?"
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.\d+\.\d+\.\d+)(:\d+)?",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    **cors_kwargs
 )
 
 import uuid

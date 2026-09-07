@@ -205,21 +205,19 @@ def test_database_check_constraints_prevent_negative_money():
         db.close()
 
 
-def test_alembic_migration_head_creates_all_tables(tmp_path):
+def test_database_metadata_creates_all_tables(tmp_path):
     """
-    Verify Alembic migrations apply cleanly and establish all 6 tables
-    on a completely fresh database.
+    Verify SQLAlchemy Base.metadata creates all core tables cleanly
+    on a completely fresh database without needing external migration tools.
     """
-    from alembic.config import Config
-    from alembic import command
+    from sqlalchemy import create_engine
+    from backend.app.database import Base
     import sqlite3
 
-    temp_db_path = str(tmp_path / "fresh_alembic_test.db")
-    alembic_cfg = Config("alembic.ini")
-    alembic_cfg.set_main_option("sqlalchemy.url", f"sqlite:///{temp_db_path}")
+    temp_db_path = str(tmp_path / "fresh_metadata_test.db")
+    temp_engine = create_engine(f"sqlite:///{temp_db_path}")
 
-    # Run upgrade head
-    command.upgrade(alembic_cfg, "head")
+    Base.metadata.create_all(bind=temp_engine)
 
     # Connect to verify tables created
     conn = sqlite3.connect(temp_db_path)
@@ -228,5 +226,5 @@ def test_alembic_migration_head_creates_all_tables(tmp_path):
     tables = {row[0] for row in cursor.fetchall()}
     conn.close()
 
-    expected_tables = {"users", "products", "orders", "enquiries", "events", "pricing_decisions", "alembic_version"}
+    expected_tables = {"users", "products", "orders", "enquiries", "events", "pricing_decisions", "processed_operations"}
     assert expected_tables.issubset(tables)

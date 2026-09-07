@@ -5,7 +5,7 @@ import {
   Trash2, ExternalLink, CheckCircle2, Clock,
   Send, Truck, Check
 } from 'lucide-react';
-import { getOrders, getEnquiries, getProducts, logoutUser, replyToEnquiry, updateOrderStatus } from '../api';
+import { getOrders, getEnquiries, getProducts, logoutUser, replyToEnquiry, updateOrderStatus } from '../api/index.js';
 import { getSavedProductIds, removeSavedProductId } from '../services/offlineSync';
 import { useNotification } from '../context/NotificationContext';
 

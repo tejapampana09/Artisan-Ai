@@ -3,7 +3,7 @@ import {
   X, Sparkles, Tag, ShieldCheck, Edit3, Save, Trash2, 
   TrendingUp, ArrowRight, CheckCircle2, AlertCircle, Info, Lock
 } from 'lucide-react';
-import { getPriceRecommendation, submitPriceDecision } from '../api';
+import { getPriceRecommendation, submitPriceDecision } from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
 import { useNotification } from '../context/NotificationContext';
 

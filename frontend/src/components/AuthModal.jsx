@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, User, Lock, Mail, Phone, MapPin, Sparkles, CheckCircle2, LogIn, UserPlus, LogOut, KeyRound } from 'lucide-react';
-import { loginUser, registerUser, resetPassword, logoutUser, getAuthToken } from '../api';
+import { loginUser, registerUser, resetPassword, logoutUser, getAuthToken } from '../api/index.js';
 import AccountPortal from './AccountPortal';
 
 export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavigateMode }) {
