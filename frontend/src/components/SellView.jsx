@@ -545,104 +545,12 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
           <RefreshCw className="w-3.5 h-3.5" />
           <span>Offline Sync ({offlineQueue.length})</span>
         </button>
-
-        <button
-          onClick={() => setActiveTab('CHANNELS')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'CHANNELS'
-              ? 'bg-slate-900 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
-          <span>Sales Channels</span>
-        </button>
       </div>
 
-      {/* SECTION 1: DASHBOARD (Business Readiness & Next Best Action) */}
+      {/* SECTION 1: DASHBOARD */}
       {activeTab === 'DASHBOARD' && (
         <div className="space-y-6">
-          {/* Artisan Business Readiness Score & Next Best Action Card */}
-          {readiness && (
-            <div className="bg-gradient-to-br from-slate-900 to-amber-950 rounded-2xl p-6 text-white shadow-xl space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-amber-500/20 pb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-14 h-14 rounded-2xl bg-amber-500 text-slate-950 font-black text-xl flex items-center justify-center shadow-lg shrink-0">
-                    {readiness.score}%
-                  </div>
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <h3 className="font-bold text-base text-amber-200">Artisan Business Readiness Score</h3>
-                      <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-400/30">
-                        Explainable 0–100 Rating
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-300 mt-0.5">
-                      Evaluates completeness of craft details, pricing cost floor, photos, and passport provenance
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setIsAIOpen(true)}
-                    className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center space-x-1.5"
-                  >
-                    <Wand2 className="w-4 h-4" />
-                    <span>Improve via Voice AI</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Next Best Action Callout */}
-              {readiness.next_best_action && (
-                <div className="bg-amber-500/10 border border-amber-400/30 rounded-xl p-3.5 flex items-start space-x-3 text-xs text-amber-100">
-                  <Sparkles className="w-4 h-4 text-amber-400 mt-0.5 shrink-0 animate-pulse" />
-                  <div>
-                    <span className="font-bold text-amber-300 uppercase tracking-wider block text-[10px]">Recommended Next Best Action:</span>
-                    <p className="font-semibold text-slate-100 mt-0.5 leading-relaxed">{readiness.next_best_action}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Verified Strengths vs Next Improvements */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
-                <div className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 space-y-2">
-                  <span className="font-bold text-emerald-400 flex items-center space-x-1 text-[11px]">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Verified Readiness Strengths:</span>
-                  </span>
-                  <ul className="space-y-1 text-slate-300 text-[11px]">
-                    {readiness.strengths?.map((s, idx) => (
-                      <li key={idx} className="flex items-center space-x-1.5">
-                        <span className="text-emerald-400 font-bold">✓</span>
-                        <span>{s}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 space-y-2">
-                  <span className="font-bold text-amber-400 flex items-center space-x-1 text-[11px]">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Recommended Improvements:</span>
-                  </span>
-                  <ul className="space-y-1 text-slate-300 text-[11px]">
-                    {readiness.improvements?.length > 0 ? (
-                      readiness.improvements.map((imp, idx) => (
-                        <li key={idx} className="flex items-center space-x-1.5">
-                          <span className="text-amber-400 font-bold">⚠</span>
-                          <span>{imp}</span>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-emerald-400 font-medium">No pending improvements! 100% Market Ready!</li>
-                    )}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Quick Catalog Overview Grid */}
           <ProductList
