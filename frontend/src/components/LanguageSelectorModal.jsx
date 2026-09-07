@@ -11,7 +11,7 @@ const LANGUAGES = [
 ];
 
 export default function LanguageSelectorModal({ isOpen, onClose }) {
-  const { language, setLanguage, isSelectingLanguage, setIsSelectingLanguage } = useLanguage();
+  const { language, setLanguage, isSelectingLanguage, setIsSelectingLanguage, t } = useLanguage();
 
   const showModal = isOpen || isSelectingLanguage;
   if (!showModal) return null;
@@ -29,13 +29,13 @@ export default function LanguageSelectorModal({ isOpen, onClose }) {
           <div className="relative z-10 space-y-1">
             <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[11px] font-bold">
               <Sparkles className="w-3 h-3 text-amber-400" />
-              <span>Native Language Onboarding</span>
+              <span>{t('nativeOnboardingBadge', 'Native Language Onboarding')}</span>
             </div>
             <h3 className="text-lg font-extrabold tracking-tight text-white mt-1">
-              మీ భాషను ఎంచుకోండి / Select Language
+              {t('selectLanguageModalTitle', 'మీ భాషను ఎంచుకోండి / Select Language')}
             </h3>
             <p className="text-xs text-indigo-200 leading-relaxed">
-              Artisan AI provides step-by-step guidance in your preferred native language.
+              {t('selectLanguageModalSub', 'Artisan AI provides step-by-step guidance in your preferred native language.')}
             </p>
           </div>
 

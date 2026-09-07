@@ -26,7 +26,7 @@ def create_product(
     product_data = product_in.model_dump()
     product_data["seller_id"] = seller_id
 
-    money_fields = ["price", "material_cost", "labour_cost", "packaging_cost"]
+    money_fields = ["price", "material_cost", "labour_cost", "packaging_cost", "other_cost"]
     for f in money_fields:
         if f in product_data and product_data[f] is not None:
             product_data[f] = Decimal(str(product_data[f])).quantize(Decimal("0.01"))
@@ -104,7 +104,7 @@ def update_product(
 
     update_data = product_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        if field in ["price", "material_cost", "labour_cost", "packaging_cost"] and value is not None:
+        if field in ["price", "material_cost", "labour_cost", "packaging_cost", "other_cost"] and value is not None:
             value = Decimal(str(value)).quantize(Decimal("0.01"))
         elif field == "min_margin_pct" and value is not None:
             value = Decimal(str(value)).quantize(Decimal("0.0001"))

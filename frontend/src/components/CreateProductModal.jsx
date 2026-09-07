@@ -24,7 +24,9 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
     material_cost: '',
     labour_cost: '',
     packaging_cost: '',
+    other_cost: '',
     min_margin_pct: 0.20,
+    auto_smart_pricing_enabled: false,
     image_url: '',
     status: 'PUBLISHED'
   });
@@ -35,17 +37,18 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
   if (!isOpen) return null;
 
   const handleChange = (e) => {
-    const { name, value, type } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'number' ? (value === '' ? '' : parseFloat(value)) : value,
+      [name]: type === 'checkbox' ? checked : (type === 'number' ? (value === '' ? '' : parseFloat(value)) : value),
     }));
   };
 
   const mat = Number(formData.material_cost) || 0;
   const lab = Number(formData.labour_cost) || 0;
   const pkg = Number(formData.packaging_cost) || 0;
-  const costBasis = mat + lab + pkg;
+  const oth = Number(formData.other_cost) || 0;
+  const costBasis = mat + lab + pkg + oth;
   const minFairPrice = costBasis > 0 ? Math.round(costBasis * (1 + (Number(formData.min_margin_pct) || 0.20))) : 0;
 
   const handleSubmit = async (e) => {
@@ -68,6 +71,8 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
         material_cost: mat,
         labour_cost: lab,
         packaging_cost: pkg,
+        other_cost: oth,
+        auto_smart_pricing_enabled: Boolean(formData.auto_smart_pricing_enabled),
         image_url: formData.image_url.trim() || null
       };
       await onCreated(payload);
@@ -185,7 +190,7 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
               <span className="text-xs font-bold text-amber-900">Protected Cost Basis</span>
               <span className="text-xs font-semibold text-amber-800">Min. Fair Price: ₹{minFairPrice}</span>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div>
                 <label className="block text-[11px] text-slate-600">Material (₹)</label>
                 <input
@@ -222,7 +227,42 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
                   className="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white"
                 />
               </div>
+              <div>
+                <label className="block text-[11px] text-slate-600">Other (₹)</label>
+                <input
+                  type="number"
+                  name="other_cost"
+                  min="0"
+                  placeholder="0"
+                  value={formData.other_cost}
+                  onChange={handleChange}
+                  className="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white"
+                />
+              </div>
             </div>
+          </div>
+
+          {/* Auto Smart Pricing Toggle */}
+          <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3.5 flex items-center justify-between">
+            <div className="space-y-0.5 pr-2">
+              <div className="flex items-center space-x-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-xs font-bold text-emerald-950">Autonomous Smart Pricing</span>
+              </div>
+              <p className="text-[11px] text-emerald-700">
+                Allow AI to adjust price dynamically based on demand signals (never drops below Protected Cost Basis + 20%).
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                name="auto_smart_pricing_enabled"
+                checked={formData.auto_smart_pricing_enabled}
+                onChange={handleChange}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+            </label>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

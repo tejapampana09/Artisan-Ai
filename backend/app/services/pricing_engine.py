@@ -291,3 +291,21 @@ def process_auto_smart_pricing(product: Product, db: Session, cooldown_minutes: 
     db.refresh(decision_record)
     db.refresh(product)
     return decision_record
+
+def trigger_auto_pricing(product_or_id: Any, db: Session, bypass_cooldown: bool = False) -> Optional[PricingDecision]:
+    """
+    Centralized helper to trigger autonomous smart pricing evaluation for a product
+    after any meaningful buyer demand signal (VIEW, SAVE, ENQUIRY, ORDER).
+    If auto_smart_pricing_enabled is True, evaluates demand and updates product price in DB.
+    """
+    if product_or_id is None:
+        return None
+    if isinstance(product_or_id, (int, str)) and str(product_or_id).isdigit():
+        product = db.query(Product).filter(Product.id == int(product_or_id)).first()
+    else:
+        product = product_or_id
+
+    if not product or not getattr(product, "auto_smart_pricing_enabled", False):
+        return None
+
+    return process_auto_smart_pricing(product, db, bypass_cooldown=bypass_cooldown)

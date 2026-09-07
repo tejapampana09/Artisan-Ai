@@ -37,6 +37,7 @@ function AppContent() {
   }, []);
 
   const { isOffline } = useOffline();
+  const { t } = useLanguage();
 
   const loadInitialData = async () => {
     try {
@@ -127,7 +128,7 @@ function AppContent() {
           <div className="flex items-center justify-center h-64">
             <div className="flex items-center space-x-3 text-slate-500">
               <div className="w-5 h-5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-sm font-medium">Connecting to Artisan AI backend...</span>
+              <span className="text-sm font-medium">{t('connectingBackend', 'Connecting to Artisan AI backend...')}</span>
             </div>
           </div>
         ) : (
@@ -178,9 +179,9 @@ function AppContent() {
             <span>© 2026 <strong>Artisan AI Technologies</strong>. Enterprise SaaS Platform for Rural Craft Communities.</span>
           </div>
           <div className="flex items-center space-x-4">
-            <span>Workspace: <strong className="text-slate-800">{activeMode === 'HOME' ? 'Home Showcase' : activeMode === 'SELL' ? 'Artisan Studio' : 'Buyer Marketplace'}</strong></span>
-            <span>Sync: <strong className={isOffline ? 'text-orange-600' : 'text-emerald-600'}>{isOffline ? 'Offline (Local Cache)' : 'Live (Cloud DB)'}</strong></span>
-            <span>Database: <strong className={readyStatus?.status === 'ready' ? 'text-emerald-600' : 'text-amber-600'}>{readyStatus?.database || 'Connected'}</strong></span>
+            <span>{t('workspaceLabel', 'Workspace')}: <strong className="text-slate-800">{activeMode === 'HOME' ? t('homeShowcase', 'Home Showcase') : activeMode === 'SELL' ? t('artisanStudio', 'Artisan Studio') : t('buyerMarketplace', 'Buyer Marketplace')}</strong></span>
+            <span>{t('syncLabel', 'Sync')}: <strong className={isOffline ? 'text-orange-600' : 'text-emerald-600'}>{isOffline ? t('offlineLocalCache', 'Offline (Local Cache)') : t('liveCloudDb', 'Live (Cloud DB)')}</strong></span>
+            <span>{t('databaseLabel', 'Database')}: <strong className={readyStatus?.status === 'ready' ? 'text-emerald-600' : 'text-amber-600'}>{readyStatus?.database || t('connectedStatus', 'Connected')}</strong></span>
           </div>
         </div>
       </footer>

@@ -51,8 +51,8 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
               className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group shrink-0"
               title={!user ? "Return to Home" : user.role === 'BUYER' ? "Go to Marketplace" : "Go to Artisan Studio"}
             >
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-500 to-amber-400 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
-                <Sparkles className="w-5 h-5" />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                <img src="/artisan-logo.png" alt="Artisan AI Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <div className="flex items-center space-x-1.5">

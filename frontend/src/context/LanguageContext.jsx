@@ -167,7 +167,18 @@ export const TRANSLATIONS = {
     readyToExperience: 'భారతీయ హస్తకళల డిజిటల్ విపణిని అనుభవించడానికి సిద్ధంగా ఉన్నారా?',
     joinThousands: 'వేలాది గ్రామీణ కళాకారుల చేతివృత్తులను నేరుగా మీ ఇంటికి చేర్చండి.',
     startAsArtisan: 'కళాకారుడిగా ప్రారంభించండి',
-    shopHandmadeCrafts: 'చేతివృత్తులను కొనండి'
+    shopHandmadeCrafts: 'చేతివృత్తులను కొనండి',
+    connectingBackend: 'Artisan AI సర్వర్‌కి కనెక్ట్ అవుతోంది...',
+    homeShowcase: 'హోమ్ ప్రదర్శన',
+    offlineLocalCache: 'ఆఫ్‌లైన్ (లోకల్ కేష్)',
+    liveCloudDb: 'లైవ్ (క్లౌడ్ DB)',
+    nativeOnboardingBadge: 'మాతృభాషా ఎంపిక',
+    selectLanguageModalTitle: 'మీ భాషను ఎంచుకోండి',
+    selectLanguageModalSub: 'Artisan AI మీ మాతృభాషలో స్పష్టమైన గైడెన్స్ మరియు సేవలను అందిస్తుంది.',
+    workspaceLabel: 'వర్క్‌స్పేస్',
+    syncLabel: 'సింక్',
+    databaseLabel: 'డేటాబేస్',
+    connectedStatus: 'కనెక్ట్ అయింది'
   },
   hi: {
     selectLanguageTitle: 'अपनी पसंदीदा भाषा चुनें',
@@ -274,7 +285,18 @@ export const TRANSLATIONS = {
     readyToExperience: 'भारतीय हस्तशिल्प व्यापार का अनुभव करने के लिए तैयार हैं?',
     joinThousands: 'हजारों ग्रामीण कारीगरों के हस्तशिल्प को सीधे अपने घर लाएं।',
     startAsArtisan: 'कारीगर के रूप में शुरू करें',
-    shopHandmadeCrafts: 'हस्तशिल्प खरीदें'
+    shopHandmadeCrafts: 'हस्तशिल्प खरीदें',
+    connectingBackend: 'Artisan AI सर्वर से जुड़ रहा है...',
+    homeShowcase: 'होम शोकेस',
+    offlineLocalCache: 'ऑफ़लाइन (लोकल कैश)',
+    liveCloudDb: 'लाइव (क्लाउड DB)',
+    nativeOnboardingBadge: 'मातृभाषा चयन',
+    selectLanguageModalTitle: 'अपनी भाषा चुनें',
+    selectLanguageModalSub: 'Artisan AI आपकी मातृभाषा में मार्गदर्शन और सेवाएं प्रदान करता है।',
+    workspaceLabel: 'वर्कस्पेस',
+    syncLabel: 'सिंक',
+    databaseLabel: 'डेटाबेस',
+    connectedStatus: 'कनेक्टेड'
   },
   en: {
     selectLanguageTitle: 'Select Your Preferred Language',
@@ -371,7 +393,18 @@ export const TRANSLATIONS = {
     readyToExperience: 'Ready to experience authentic Indian artisan commerce?',
     joinThousands: 'Join thousands of rural artisans bringing timeless cultural crafts directly into homes worldwide.',
     startAsArtisan: 'Start as Artisan',
-    shopHandmadeCrafts: 'Shop Handmade Crafts'
+    shopHandmadeCrafts: 'Shop Handmade Crafts',
+    connectingBackend: 'Connecting to Artisan AI backend...',
+    homeShowcase: 'Home Showcase',
+    offlineLocalCache: 'Offline (Local Cache)',
+    liveCloudDb: 'Live (Cloud DB)',
+    nativeOnboardingBadge: 'Native Language Onboarding',
+    selectLanguageModalTitle: 'Select Your Language',
+    selectLanguageModalSub: 'Artisan AI provides step-by-step guidance in your preferred native language.',
+    workspaceLabel: 'Workspace',
+    syncLabel: 'Sync',
+    databaseLabel: 'Database',
+    connectedStatus: 'Connected'
   },
   ta: {
     selectLanguageTitle: 'உங்கள் விருப்பமான மொழியைத் தேர்ந்தெடுக்கவும்',
@@ -468,7 +501,18 @@ export const TRANSLATIONS = {
     readyToExperience: 'கைவினைப்பொருட்கள் வணிகத்தில் இணைய தயாரா?',
     joinThousands: 'ஆயிரக்கணக்கான கைவினைஞர்களின் படைப்புகளை உங்கள் வீட்டிற்கு கொண்டு வாருங்கள்.',
     startAsArtisan: 'கைவினைஞராக தொடங்குங்கள்',
-    shopHandmadeCrafts: 'கைவினைப்பொருட்களை வாங்குங்கள்'
+    shopHandmadeCrafts: 'கைவினைப்பொருட்களை வாங்குங்கள்',
+    connectingBackend: 'Artisan AI சேவையகத்துடன் இணைக்கிறது...',
+    homeShowcase: 'முகப்பு காட்சி',
+    offlineLocalCache: 'ஆஃப்லைன் (உள்ளூர் சேமிப்பு)',
+    liveCloudDb: 'லைவ் (கிளவுட் தரவுத்தளம்)',
+    nativeOnboardingBadge: 'தாய்மொழி தேர்வு',
+    selectLanguageModalTitle: 'உங்கள் மொழியைத் தேர்ந்தெடுக்கவும்',
+    selectLanguageModalSub: 'Artisan AI உங்கள் தாய்மொழியில் வழிகாட்டுதலை வழங்குகிறது.',
+    workspaceLabel: 'வேலைப்பகுதி',
+    syncLabel: 'ஒத்திசைவு',
+    databaseLabel: 'தரவுத்தளம்',
+    connectedStatus: 'இணைக்கப்பட்டது'
   },
   bn: {
     selectLanguageTitle: 'আপনার পছন্দের ভাষা নির্বাচন করুন',
@@ -565,7 +609,18 @@ export const TRANSLATIONS = {
     readyToExperience: 'হস্তশিল্পের আন্তর্জাতিক বাজারে যোগ দিতে প্রস্তুত?',
     joinThousands: 'হাজার হাজার গ্রামীণ কারিগরের শিল্প আপনার বাড়িতে আনুন।',
     startAsArtisan: 'কারিগর হিসাবে শুরু করুন',
-    shopHandmadeCrafts: 'হস্তশিল্প কিনুন'
+    shopHandmadeCrafts: 'হস্তশিল্প কিনুন',
+    connectingBackend: 'Artisan AI সার্ভারের সাথে সংযুক্ত হচ্ছে...',
+    homeShowcase: 'হোম শোকেস',
+    offlineLocalCache: 'অফলাইন (লোকাল ক্যাশ)',
+    liveCloudDb: 'লাইভ (ক্লাউড ডিবি)',
+    nativeOnboardingBadge: 'মাতৃভাষা নির্বাচন',
+    selectLanguageModalTitle: 'আপনার ভাষা নির্বাচন করুন',
+    selectLanguageModalSub: 'Artisan AI আপনার মাতৃভাষায় নির্দেশিকা এবং পরিষেবা প্রদান করে।',
+    workspaceLabel: 'ওয়ার্কস্পেস',
+    syncLabel: 'সিঙ্ক',
+    databaseLabel: 'ডাটাবেস',
+    connectedStatus: 'সংযুক্ত'
   }
 };
 

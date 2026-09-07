@@ -24,6 +24,8 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
     material_cost: product?.material_cost || 0,
     labour_cost: product?.labour_cost || 0,
     packaging_cost: product?.packaging_cost || 0,
+    other_cost: product?.other_cost || 0,
+    auto_smart_pricing_enabled: product?.auto_smart_pricing_enabled || false,
   });
   const [saving, setSaving] = useState(false);
   
@@ -70,9 +72,11 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
         description: product.description || '',
         craft_story: product.craft_story || '',
         materials: product.materials || '',
-        material_cost: product.material_cost,
-        labour_cost: product.labour_cost,
-        packaging_cost: product.packaging_cost,
+        material_cost: product.material_cost || 0,
+        labour_cost: product.labour_cost || 0,
+        packaging_cost: product.packaging_cost || 0,
+        other_cost: product.other_cost || 0,
+        auto_smart_pricing_enabled: Boolean(product.auto_smart_pricing_enabled),
       });
       fetchPricing();
     }
@@ -81,10 +85,10 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
   if (!isOpen || !product) return null;
 
   const handleChange = (e) => {
-    const { name, value, type } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'number' ? parseFloat(value) || 0 : value,
+      [name]: type === 'checkbox' ? checked : (type === 'number' ? parseFloat(value) || 0 : value),
     }));
   };
 
@@ -297,9 +301,11 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                 {/* Cost Basis vs Minimum Fair Price Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                   <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    <span className="text-[10px] text-slate-500 block">Total Cost Basis</span>
+                    <span className="text-[10px] text-slate-500 block font-semibold">Total Cost Basis</span>
                     <strong className="text-xs text-slate-900">₹{pricingRec.cost_basis}</strong>
-                    <span className="text-[9px] text-slate-400 block">Mat: ₹{product.material_cost} | Lab: ₹{product.labour_cost}</span>
+                    <span className="text-[9px] text-slate-500 block truncate" title={`Mat: ₹${product.material_cost || 0} | Lab: ₹${product.labour_cost || 0} | Pkg: ₹${product.packaging_cost || 0} | Oth: ₹${product.other_cost || 0}`}>
+                      Mat: ₹{product.material_cost || 0} | Lab: ₹{product.labour_cost || 0} | Pkg: ₹{product.packaging_cost || 0} | Oth: ₹{product.other_cost || 0}
+                    </span>
                   </div>
                   <div className="bg-emerald-50/80 p-2.5 rounded-lg border border-emerald-200">
                     <span className="text-[10px] text-emerald-800 font-bold block flex items-center space-x-1">
@@ -333,13 +339,51 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                     ))}
                   </ul>
                 </div>
+
+                {/* EXPLICIT SMART PRICING TOGGLE CONTROL */}
+                {isOwner && (
+                  <div className="bg-white rounded-xl p-3 border border-amber-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center space-x-2">
+                        <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span className="text-xs font-extrabold text-slate-900">
+                          Smart Pricing Mode: <strong className={formData.auto_smart_pricing_enabled ? "text-emerald-700 font-black" : "text-amber-800 font-bold"}>{formData.auto_smart_pricing_enabled ? "AUTONOMOUS (ON)" : "SELLER APPROVAL (OFF)"}</strong>
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-snug">
+                        Allow Artisan AI to automatically adjust your price within safety limits (+15% demand surge / ≥20% profit margin floor).
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const nextState = !formData.auto_smart_pricing_enabled;
+                        setFormData(prev => ({ ...prev, auto_smart_pricing_enabled: nextState }));
+                        try {
+                          await onUpdated(product.id, { auto_smart_pricing_enabled: nextState });
+                          notify.success(`Smart Pricing set to ${nextState ? 'ON (Autonomous)' : 'OFF (Manual)'}`);
+                          fetchPricing();
+                        } catch (e) {
+                          notify.error('Failed to update Smart Pricing setting');
+                        }
+                      }}
+                      className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-xs flex items-center space-x-1.5 shrink-0 ${
+                        formData.auto_smart_pricing_enabled
+                          ? 'bg-amber-600 text-white hover:bg-amber-700'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'
+                      }`}
+                    >
+                      <span>{formData.auto_smart_pricing_enabled ? 'Smart Pricing: ON' : 'Smart Pricing: OFF'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* SELLER CONTROL BUTTONS & MANDATORY NOTICE */}
               <div className="pt-1 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <p className="text-[11px] text-slate-500 italic flex items-center space-x-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>Your price will not change automatically. The artisan always makes the final decision.</span>
+                  <span>{formData.auto_smart_pricing_enabled ? 'Autonomous smart pricing is ACTIVE on demand events.' : 'Your price will not change automatically. The artisan always makes the final decision.'}</span>
                 </p>
 
                 {isOwner ? (
@@ -452,6 +496,62 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                 </p>
               )}
             </div>
+
+            {isEditing && (
+              <div className="bg-amber-50/70 p-3 rounded-xl border border-amber-200 space-y-2 mt-3">
+                <span className="font-bold text-amber-900 block text-xs">Itemized Production Costs & Protected Basis</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-slate-600 font-medium">Material (₹)</label>
+                    <input
+                      type="number"
+                      name="material_cost"
+                      min="0"
+                      value={formData.material_cost}
+                      onChange={handleChange}
+                      className="w-full border border-amber-200 rounded px-2 py-1 text-xs bg-white font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-600 font-medium">Labour (₹)</label>
+                    <input
+                      type="number"
+                      name="labour_cost"
+                      min="0"
+                      value={formData.labour_cost}
+                      onChange={handleChange}
+                      className="w-full border border-amber-200 rounded px-2 py-1 text-xs bg-white font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-600 font-medium">Packaging (₹)</label>
+                    <input
+                      type="number"
+                      name="packaging_cost"
+                      min="0"
+                      value={formData.packaging_cost}
+                      onChange={handleChange}
+                      className="w-full border border-amber-200 rounded px-2 py-1 text-xs bg-white font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-600 font-medium">Other Costs (₹)</label>
+                    <input
+                      type="number"
+                      name="other_cost"
+                      min="0"
+                      value={formData.other_cost}
+                      onChange={handleChange}
+                      className="w-full border border-amber-200 rounded px-2 py-1 text-xs bg-white font-semibold"
+                    />
+                  </div>
+                </div>
+                <div className="text-[11px] font-bold text-amber-900 pt-1 flex justify-between">
+                  <span>Total Cost Basis: ₹{((Number(formData.material_cost) || 0) + (Number(formData.labour_cost) || 0) + (Number(formData.packaging_cost) || 0) + (Number(formData.other_cost) || 0)).toLocaleString('en-IN')}</span>
+                  <span className="text-emerald-700">Min Safe Price: ₹{Math.round(((Number(formData.material_cost) || 0) + (Number(formData.labour_cost) || 0) + (Number(formData.packaging_cost) || 0) + (Number(formData.other_cost) || 0)) * 1.20).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         </div>

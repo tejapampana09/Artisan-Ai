@@ -12,6 +12,7 @@ from backend.app.schemas import (
     OrderCreate, OrderStatusUpdate, OrderResponse, ProductResponse
 )
 from backend.app.services.auth import get_current_user, get_optional_current_user
+from backend.app.services.pricing_engine import trigger_auto_pricing
 
 router = APIRouter(prefix="/api", tags=["Events & Marketplace"])
 
@@ -71,10 +72,7 @@ def record_event(
 
     # Autonomous Dynamic Pricing Trigger
     if event_in.product_id:
-        target_prod = db.query(Product).filter(Product.id == event_in.product_id).first()
-        if target_prod and getattr(target_prod, "auto_smart_pricing_enabled", False):
-            from backend.app.services.pricing_engine import process_auto_smart_pricing
-            process_auto_smart_pricing(target_prod, db)
+        trigger_auto_pricing(event_in.product_id, db)
 
     return evt
 
@@ -142,6 +140,7 @@ def submit_enquiry(
     db.add(evt)
     db.commit()
     db.refresh(evt)
+    trigger_auto_pricing(product, db)
     return evt
 
 @router.get("/marketplace/enquiries", response_model=List[EnquiryResponse])
@@ -300,6 +299,7 @@ def place_order(
         db.add(evt)
         db.commit()
         db.refresh(evt)
+        trigger_auto_pricing(product, db)
         return evt
     except Exception as e:
         db.rollback()

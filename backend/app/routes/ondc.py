@@ -19,6 +19,7 @@ from backend.app.database import get_db
 from backend.app.models import Product, Order, Event, User
 from backend.app.config import ONDC_PROTOTYPE_ENABLED
 from backend.app.services.auth import get_current_user, get_current_user_strict
+from backend.app.services.pricing_engine import trigger_auto_pricing
 
 def check_ondc_prototype_enabled():
     if not ONDC_PROTOTYPE_ENABLED:
@@ -227,6 +228,7 @@ def ondc_confirm(
 
     db.commit()
     db.refresh(new_order)
+    trigger_auto_pricing(product, db)
 
     return {
         "context": {"action": "on_confirm", "timestamp": datetime.now(timezone.utc).isoformat()},

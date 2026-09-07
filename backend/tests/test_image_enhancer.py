@@ -2,9 +2,17 @@ import asyncio
 import base64
 import io
 from PIL import Image
-from backend.app.services.image_enhancer import enhance_studio_image, enhance_image_bytes
+from unittest.mock import patch
+from backend.app.services.image_enhancer import enhance_studio_image, enhance_image_bytes, remove_cluttered_background_fallback
 
-def test_image_enhancer_pipeline_success():
+def mock_rembg_remove(input_bytes, **kwargs):
+    img = Image.open(io.BytesIO(input_bytes)).convert("RGBA")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+@patch("rembg.remove", side_effect=mock_rembg_remove)
+def test_image_enhancer_pipeline_success(mock_remove):
     """Verifies image enhancer pipeline converts raw image to studio lighting enhanced data URI."""
     # Create a small 100x100 test PIL image
     img = Image.new("RGB", (100, 100), color=(200, 100, 50))
@@ -24,6 +32,13 @@ def test_image_enhancer_pipeline_success():
     assert is_enh is True
     assert res_uri.startswith("data:image/jpeg;base64,")
     assert "lighting normalization" in msg
+
+def test_fallback_corner_sampling():
+    """Verifies corner sampling background removal fallback works on PIL images."""
+    img = Image.new("RGBA", (100, 100), color=(200, 100, 50, 255))
+    res = remove_cluttered_background_fallback(img)
+    assert res.mode == "RGBA"
+    assert res.size == (100, 100)
 
 def test_image_enhancer_honest_fallback_when_empty():
     """Verifies honest fallback when image is missing or invalid."""
