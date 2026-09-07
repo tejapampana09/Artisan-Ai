@@ -9,7 +9,12 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  window.deferredPwaPrompt = e;
+});
+
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });

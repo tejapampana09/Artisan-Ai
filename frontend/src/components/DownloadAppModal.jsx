@@ -8,14 +8,20 @@ export default function DownloadAppModal({ isOpen, onClose }) {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
+    if (window.deferredPwaPrompt) {
+      setDeferredPrompt(window.deferredPwaPrompt);
+    }
+
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
+      window.deferredPwaPrompt = e;
       setDeferredPrompt(e);
     };
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
+      window.deferredPwaPrompt = null;
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -31,18 +37,39 @@ export default function DownloadAppModal({ isOpen, onClose }) {
     };
   }, []);
 
+  // Automatically trigger native browser install prompt when modal opens
+  useEffect(() => {
+    if (isOpen && (deferredPrompt || window.deferredPwaPrompt) && !isInstalled) {
+      const activePrompt = deferredPrompt || window.deferredPwaPrompt;
+      try {
+        activePrompt.prompt();
+        activePrompt.userChoice.then(({ outcome }) => {
+          if (outcome === 'accepted') {
+            setIsInstalled(true);
+          }
+          setDeferredPrompt(null);
+          window.deferredPwaPrompt = null;
+        }).catch(() => {});
+      } catch (e) {
+        // Browser requires user gesture or already prompted
+      }
+    }
+  }, [isOpen, deferredPrompt, isInstalled]);
+
   if (!isOpen) return null;
 
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+    const activePrompt = deferredPrompt || window.deferredPwaPrompt;
+    if (activePrompt) {
+      activePrompt.prompt();
+      const { outcome } = await activePrompt.userChoice;
       if (outcome === 'accepted') {
         setIsInstalled(true);
       }
       setDeferredPrompt(null);
+      window.deferredPwaPrompt = null;
     } else {
-      alert(t('pwaBrowserNote', 'Open in Chrome, Edge, or mobile browser to install directly, or tap "Add to Home Screen" in your browser menu.'));
+      alert(t('pwaBrowserNote', 'Automatic install prompt initialized! If your browser blocked it, tap the 3 dots menu in Chrome/Edge and select "Install app" or "Add to Home Screen".'));
     }
   };
 
