@@ -236,8 +236,15 @@ export async function executeBatchSync() {
 
   const response = await syncBatch(payload);
 
-  // Clear queue upon successful response
-  clearOfflineQueue();
+  // Safely remove only the synced items from the queue (preserves items added during in-flight sync)
+  const syncedTempIds = new Set(queue.map(q => q.client_temp_id).filter(Boolean));
+  const currentQueue = getOfflineQueue();
+  const remainingQueue = currentQueue.filter(q => !q.client_temp_id || !syncedTempIds.has(q.client_temp_id));
+  try {
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(remainingQueue));
+  } catch (e) {
+    console.error('Failed to update offline queue after sync:', e);
+  }
 
   return response;
 }
