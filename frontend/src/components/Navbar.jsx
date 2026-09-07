@@ -1,17 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Store, ShoppingBag, Sparkles, UserCheck, Wifi, WifiOff, Home, 
   Bell, Globe, User, Smartphone
 } from 'lucide-react';
 import { useOffline } from '../context/OfflineContext';
 import { useLanguage } from '../context/LanguageContext';
-import { getNotifications, markNotificationRead } from '../api/trust';
+import { 
+  triggerMobilePush, 
+  requestNotificationPermission, 
+  getNotificationPermissionStatus 
+} from '../services/mobileNotifications';
 
 export default function Navbar({ activeMode, onToggleMode, user, readyStatus, onOpenAuth, onOpenDownloadApp }) {
   const { language, setIsSelectingLanguage, t } = useLanguage();
   const { isOffline, toggleOfflineMode, queueCount } = useOffline();
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [pushStatus, setPushStatus] = useState(getNotificationPermissionStatus());
+  const prevNotifIdsRef = useRef(new Set());
 
   useEffect(() => {
     if (user) {
@@ -25,8 +31,26 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
     try {
       const data = await getNotifications();
       setNotifications(data);
+
+      // Detect newly arrived unread notifications and fire Native Mobile Device Push
+      data.forEach(n => {
+        if (!n.is_read && !prevNotifIdsRef.current.has(n.id)) {
+          triggerMobilePush(n.title, n.message);
+          prevNotifIdsRef.current.add(n.id);
+        } else if (n.is_read) {
+          prevNotifIdsRef.current.add(n.id);
+        }
+      });
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
+    }
+  };
+
+  const handleEnableMobilePush = async () => {
+    const granted = await requestNotificationPermission();
+    setPushStatus(getNotificationPermissionStatus());
+    if (granted) {
+      triggerMobilePush('🔔 Mobile Notifications Enabled!', 'You will now receive instant push alerts for orders, enquiries, and price updates.');
     }
   };
 
@@ -184,6 +208,26 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
                         <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
                           {unreadCount} unread
                         </span>
+                      </div>
+
+                      {/* Mobile Device Push Permission Banner */}
+                      <div className="px-3 py-2 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 text-[11px]">
+                        <div className="flex items-center space-x-1.5">
+                          <Smartphone className="w-3.5 h-3.5 text-amber-400" />
+                          <span className="font-medium">Mobile Push Alerts</span>
+                        </div>
+                        {pushStatus === 'granted' ? (
+                          <span className="text-[10px] bg-emerald-900/90 text-emerald-300 px-2 py-0.5 rounded-full font-bold border border-emerald-500/30">
+                            Active ✓
+                          </span>
+                        ) : (
+                          <button
+                            onClick={handleEnableMobilePush}
+                            className="text-[10px] bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-md font-bold transition-all cursor-pointer shadow-2xs"
+                          >
+                            Enable Alerts
+                          </button>
+                        )}
                       </div>
 
                       <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
