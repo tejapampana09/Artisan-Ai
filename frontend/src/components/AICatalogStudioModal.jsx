@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Mic, MicOff, Sparkles, Image as ImageIcon, CheckCircle2, 
   Layers, Volume2, Globe, ShieldCheck, ArrowRight, RefreshCw, Wand2,
-  Camera, Upload, Trash2
+  Camera, Upload, Trash2, AlertTriangle
 } from 'lucide-react';
 import { processAICatalog, approveAndPublishAICatalog } from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
@@ -59,6 +59,137 @@ const STUDIO_BACKDROPS = [
   { id: 'courtyard', name: 'Heritage Courtyard', style: 'linear-gradient(to right, #9a3412, #c2410c)', label: '🌺 Courtyard' }
 ];
 
+const getAdaptiveQnaQuestions = (qnaAnswers, selectedPhoto, selectedLang) => {
+  const titleText = (qnaAnswers.q1_title || selectedPhoto?.name || '').toLowerCase();
+  const catText = (selectedPhoto?.category || '').toLowerCase();
+  const combo = `${titleText} ${catText}`;
+
+  let q2Obj = {
+    id: 'q2_materials',
+    num: 2,
+    te: '2. ఇది చేతితో చేసినదా? ఏ మెటీరియల్స్ మరియు రంగులు వాడారు?',
+    hi: '2. क्या यह हस्तनिर्मित है? कौन सी सामग्री और रंगों का उपयोग किया गया है?',
+    en: '2. Is it handmade? What materials & natural dyes did you use?',
+    ta: '2. இது கையால் செய்யப்பட்டதா? என்ன பொருட்கள் பயன்படுத்தப்பட்டன?',
+    bn: '2. এটি কি হাতে তৈরি? কি উপাদান ব্যবহার করা হয়েছে?',
+    placeholder: {
+      te: 'ఉదాహరణ: 100% పట్టు నూలు, ఆర్గానిక్ కూరగాయల రంగులు...',
+      hi: 'उदाहरण: 100% प्राकृतिक रेशम, जैविक रंग...',
+      en: 'e.g. 100% Pure Mulberry Silk, Organic Natural Dyes...',
+      ta: 'எடுத்துக்காட்டு: 100% பட்டு, இயற்கை சாயங்கள்...',
+      bn: 'উদাহরণ: খাঁটি রেশম, প্রাকৃতিক রঙ...'
+    }
+  };
+
+  if (combo.includes('kalamkari') || combo.includes('dupatta') || combo.includes('saree') || combo.includes('ikat') || combo.includes('handloom') || combo.includes('silk') || combo.includes('cotton')) {
+    q2Obj = {
+      id: 'q2_materials',
+      num: 2,
+      te: '2. (చేనేత/టెక్స్‌టైల్) ఏ రకమైన దారం, మగ్గం, మరియు రంగులు (సహజ లేదా ఆర్గానిక్) వాడారు?',
+      hi: '2. (वस्त्र एवं बुनाई) किस प्रकार का धागा, हथकरघा और रंग (प्राकृतिक या जैविक) उपयोग किया?',
+      en: '2. (Textile & Weave) What yarn count, loom type, and natural/organic dyes were used?',
+      ta: '2. (கைத்தறி) என்ன நூல், தறி மற்றும் இயற்கை சாயங்கள் பயன்படுத்தப்பட்டன?',
+      bn: '2. (তাঁত শিল্প) কি ধরনের সুতা এবং প্রাকৃতিক রঙ ব্যবহার করা হয়েছে?',
+      placeholder: {
+        te: 'ఉదాహరణ: 100% మల్బరీ పట్టు, కరక్కాయ మరియు సహజ రంగులు, మచిలీపట్నం అచ్చు ప్రింటింగ్...',
+        hi: 'उदाहरण: 100% शहतूत रेशम, मयरोबलन एवं प्राकृतिक वनस्पति रंग...',
+        en: 'e.g. 100% Mulberry Silk, Myrobalan & Alum Natural Dyes, Traditional Hand Block Print...',
+        ta: 'எடுத்துக்காட்டு: 100% பட்டு, இயற்கை சாயங்கள்...',
+        bn: 'উদাহরণ: খাঁটি রেশম, প্রাকৃতিক রঙ...'
+      }
+    };
+  } else if (combo.includes('toy') || combo.includes('wood') || combo.includes('carving') || combo.includes('channapatna')) {
+    q2Obj = {
+      id: 'q2_materials',
+      num: 2,
+      te: '2. (చెక్క తయారీ) ఏ రకం చెక్క వాడారు? లాకర్/రంగులు పిల్లలకు సురక్షితమేనా?',
+      hi: '2. (काष्ठ कला) किस प्रकार की लकड़ी और सुरक्षित लाख रंगों का उपयोग किया गया?',
+      en: '2. (Woodcraft) What wood species (Teak/Ivorywood) and non-toxic lacquers were used?',
+      ta: '2. (மர வேலை) என்ன மரவகை மற்றும் விஷமற்ற வண்ணங்கள் பயன்படுத்தப்பட்டன?',
+      bn: '2. (কাঠের কাজ) কি ধরণের কাঠ এবং বিষাক্ত নয় এমন রঙ ব্যবহার করা হয়েছে?',
+      placeholder: {
+        te: 'ఉదాహరణ: అంకుడు చెక్క, పిల్లలకు సురక్షితమైన కూరగాయల జిగురు రంగులు...',
+        hi: 'उदाहरण: अले की लकड़ी, प्राकृतिक लाख रंग...',
+        en: 'e.g. Soft Ivory Wood, Non-toxic Vegetable Lacquer finish...',
+        ta: 'எடுத்துக்காட்டு: இயற்கை மரம், பாதுகாப்பான சாயங்கள்...',
+        bn: 'উদাহরণ: প্রাকৃতিক কাঠ, নিরাপদ রঙ...'
+      }
+    };
+  } else if (combo.includes('pottery') || combo.includes('ceramic') || combo.includes('clay') || combo.includes('terracotta') || combo.includes('blue pottery')) {
+    q2Obj = {
+      id: 'q2_materials',
+      num: 2,
+      te: '2. (మట్టి కళ) ఏ రకం మట్టి, క్వార్ట్జ్ రాయితో తయారుచేసి ఏ నీలి రంగు గ్లేజింగ్ అద్దారు?',
+      hi: '2. (मृदा कला) किस मिट्टी/क्वार्ट्ज पाउडर और कोबाल्ट चमक का उपयोग किया गया?',
+      en: '2. (Ceramic & Pottery) What clay composition and cobalt metal glazes were used?',
+      ta: '2. (மண்பாண்டம்) என்ன களிமண் மற்றும் இயற்கை பூச்சுகள் பயன்படுத்தப்பட்டன?',
+      bn: '2. (মৃৎশিল্প) কি ধরণের মাটি এবং প্রাকৃতিক রঙের লেপ ব্যবহার করা হয়েছে?',
+      placeholder: {
+        te: 'ఉదాహరణ: క్వార్ట్జ్ మట్టి, కోబాల్ట్ నీలి రంగు గ్లేజింగ్, సాంప్రదాయ కొలిమిలో కాల్చినది...',
+        hi: 'उदाहरण: क्वार्ट्ज मिट्टी, कोबाल्ट नीला रंग, पारंपरिक भट्टी...',
+        en: 'e.g. Natural Quartz Clay Dough, Oxide Cobalt Blue Glaze, Kiln-fired...',
+        ta: 'எடுத்துக்காட்டு: களிமண், இயற்கை பூச்சு...',
+        bn: 'উদাহরণ: প্রাকৃতিক কাদা মাটি, প্রাকৃতিক লেপ...'
+      }
+    };
+  } else if (combo.includes('bidriware') || combo.includes('metal') || combo.includes('silver') || combo.includes('brass')) {
+    q2Obj = {
+      id: 'q2_materials',
+      num: 2,
+      te: '2. (బిద్రి/లోహ చెక్కడం) ఏ లోహం మరియు స్వచ్ఛమైన వెండి అచ్చులు వాడారు?',
+      hi: '2. (धातु कला) किस धातु मिश्र धातु और शुद्ध चांदी के तारों का उपयोग किया गया?',
+      en: '2. (Metalwork & Inlay) What base alloy and pure silver wire/sheet inlays were used?',
+      ta: '2. (உலோக வேலை) என்ன உலோகக் கலவை மற்றும் வெள்ளி கம்பிகள் பயன்படுத்தப்பட்டன?',
+      bn: '2. (ধাতু শিল্প) কি ধাতু এবং খাঁটি রূপার তার ব্যবহার করা হয়েছে?',
+      placeholder: {
+        te: 'ఉదాహరణ: జింక్-రాగి అల్లాయ్, 99.9% స్వచ్ఛమైన వెండి వైర్ అచ్చు, బిదర్ మట్టి నలుపు గ్లేజ్...',
+        hi: 'उदाहरण: जस्ता-तांबा मिश्र धातु, 99.9% शुद्ध चांदी का तार...',
+        en: 'e.g. Zinc-Copper Alloy Base, 99.9% Pure Silver Wire Inlay, Bidar Soil Oxidation...',
+        ta: 'எடுத்துக்காட்டு: வெள்ளி கம்பி, பித்தளை...',
+        bn: 'উদাহরণ: খাঁটি রূপার তার, তামা...'
+      }
+    };
+  }
+
+  let q3Obj = {
+    id: 'q3_story',
+    num: 3,
+    te: '3. ఈ ప్రాడక్ట్ ఎంత సమయం శ్రమించి చేశారు? పరంపరాగత ప్రత్యేకత లేదా కథ ఏమిటి?',
+    hi: '3. इसे बनाने में कितना समय लगा? इसकी पारंपरिक कहानी या खासियत क्या है?',
+    en: '3. How many days of artisan effort did it take? What is its unique craft heritage story?',
+    ta: '3. இதை செய்ய எத்தனை நாட்கள் ஆனது? இதன் பாரம்பரிய கதை என்ன?',
+    bn: '3. এটি তৈরি করতে কত দিন সময় লেগেছে? এর ঐতিহ্যবাহী গল্প কি?',
+    placeholder: {
+      te: 'ఉదాహరణ: 10 రోజులు శ్రమించి తరతరాల అనుభవంతో వేసిన చేతి పని...',
+      hi: 'उदाहरण: 10 दिनों का कठिन परिश्रम, पीढ़ियों पुरानी कला...',
+      en: 'e.g. Takes 10 days of painstaking handcraft by master artisan using 3rd gen family heritage technique...',
+      ta: 'எடுத்துக்காட்டு: 10 நாட்கள் கைவினை உழைப்பு...',
+      bn: 'উদাহরণ: ১০ দিনের কঠোর পরিশ্রমের ফসল...'
+    }
+  };
+
+  return [
+    {
+      id: 'q1_title',
+      num: 1,
+      te: '1. మీ ప్రొడక్ట్ పేరు మరియు వర్గం ఏమిటి?',
+      hi: '1. आपके उत्पाद का नाम और श्रेणी क्या है?',
+      en: '1. What is your product name and craft type?',
+      ta: '1. உங்கள் பொருளின் பெயர் மற்றும் வகை என்ன?',
+      bn: '1. আপনার পণ্যের নাম এবং শ্রেণী কি?',
+      placeholder: {
+        te: 'ఉదాహరణ: మచిలీపట్నం హ్యాండ్‌ప్రింటెడ్ కలంకారి దుపట్టా...',
+        hi: 'उदाहरण: मछलीपट्टनम हस्त निर्मित कलमकारी दुपट्टा...',
+        en: 'e.g. Handpainted Kalamkari Silk Dupatta...',
+        ta: 'எடுத்துக்காட்டு: கைத்தறி துப்பட்டா...',
+        bn: 'উদাহরণ: হাতে বোনা শাড়ি...'
+      }
+    },
+    q2Obj,
+    q3Obj
+  ];
+};
+
 export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const { isOffline, queueProductDraft } = useOffline();
   const notify = useNotification();
@@ -71,6 +202,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   });
   const [activeQnaIndex, setActiveQnaIndex] = useState(0);
   const [inputSubStep, setInputSubStep] = useState('PHOTO'); // 'PHOTO' | 'QNA' | 'COSTS'
+  const [micError, setMicError] = useState(null);
 
   const QNA_QUESTIONS = [
     {
@@ -240,9 +372,10 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     }
   };
 
-  // Native WebRTC Audio Recording with Timer & Fallback
+  // Native WebRTC Audio Recording with Timer & Honest Fallback
   const startRecording = async (targetQnaKey = null) => {
     try {
+      setMicError(null);
       setRecordingSeconds(0);
       audioChunksRef.current = [];
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -294,26 +427,14 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         }
       }
     } catch (err) {
-      notify.info('Microphone recording active in simulated mode.');
-      setIsRecording(true);
-      timerIntervalRef.current = setInterval(() => {
-        setRecordingSeconds((prev) => prev + 1);
-      }, 1000);
-      
-      const defaultSample = selectedPhoto ? (selectedPhoto[selectedLang] || selectedPhoto.en) : 'Handmade craft created using traditional artisan techniques and organic natural dyes.';
-      if (targetQnaKey) {
-        const qnaSamples = {
-          q1_title: selectedPhoto ? selectedPhoto.name : (selectedLang === 'te' ? 'చేతితో వేసిన కలంకారి దుపట్టా' : 'Handpainted Kalamkari Silk Dupatta'),
-          q2_materials: selectedLang === 'te' ? '100% పట్టు నూలు, సహజ ఆర్గానిక్ రంగులు' : '100% Pure Mulberry Silk, Natural Dyes',
-          q3_story: selectedLang === 'te' ? 'సాంప్రదాయ మచిలీపట్నం పద్ధతిలో 10 రోజులు శ్రమించి వేసిన చెక్క అచ్చు ప్రింటింగ్' : 'Handcrafted over 10 days using heritage Machilipatnam Kalamkari block printing.'
-        };
-        setQnaAnswers((prev) => ({
-          ...prev,
-          [targetQnaKey]: prev[targetQnaKey] || qnaSamples[targetQnaKey] || defaultSample
-        }));
-      } else {
-        if (!voiceText.trim()) setVoiceText(defaultSample);
+      console.warn('Microphone permission or hardware error:', err);
+      setIsRecording(false);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
       }
+      setMicError('Microphone input unavailable. You can type your description directly below.');
+      notify.warning('Microphone access unavailable. Please type your craft description.');
     }
   };
 
@@ -426,6 +547,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     setAiDraft(null);
     setPublishing(false);
     setLoading(false);
+    setMicError(null);
     setImgErrorOriginal(false);
     setImgErrorEnhanced(false);
   };
@@ -706,10 +828,21 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   </div>
                 )}
 
-                {/* Sample Inspiration Crafts */}
-                <div className="mt-3">
-                  <span className="text-[11px] font-bold text-slate-500 block mb-2">Or select a sample inspiration craft:</span>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {/* Sample Inspiration Crafts (Explicitly Separated Demo Examples) */}
+                <div className="mt-4 pt-3 border-t border-slate-200">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-extrabold text-slate-700 flex items-center space-x-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Or Try a Demo Inspiration Craft Example</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                      🧪 Demo Examples Only
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mb-2.5">
+                    Clicking a sample below loads a pre-configured craft image and story for quick testing without uploading your own photo.
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                     {SAMPLE_PHOTOS.map((p) => (
                       <div
                         key={p.name}
@@ -718,10 +851,15 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                           selectedPhoto?.name === p.name ? 'border-amber-600 ring-2 ring-amber-500/20 shadow-xs' : 'border-slate-200 hover:border-slate-300'
                         }`}
                       >
+                        <div className="absolute top-1 right-1 z-10">
+                          <span className="text-[9px] font-extrabold bg-amber-600 text-white px-1.5 py-0.5 rounded shadow-xs">
+                            DEMO
+                          </span>
+                        </div>
                         <img src={p.url} alt={p.name} className="w-full h-18 object-cover" />
-                        <div className="p-1 bg-white text-center">
-                          <span className="text-[11px] font-semibold text-slate-800 truncate block">{p.name}</span>
-                          <span className="text-[9px] text-amber-600 font-bold">Sample</span>
+                        <div className="p-1.5 bg-white text-center">
+                          <span className="text-[11px] font-bold text-slate-800 truncate block">{p.name}</span>
+                          <span className="text-[9px] text-amber-700 font-semibold">{p.category}</span>
                         </div>
                       </div>
                     ))}
@@ -741,14 +879,14 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
               </div>
             )}
 
-            {/* SUB-STEP 2: Guided AI Q&A */}
+            {/* SUB-STEP 2: Adaptive Guided AI Q&A */}
             {inputSubStep === 'QNA' && (
               <div className="space-y-4 pt-1">
                 {/* Language Picker Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-indigo-50 border border-indigo-200 rounded-2xl gap-2">
                   <div>
-                    <span className="text-xs font-extrabold text-indigo-900 block">AI Guided Voice & Text Questions</span>
-                    <span className="text-[11px] text-indigo-700 block">Answer 3 simple questions in your native language:</span>
+                    <span className="text-xs font-extrabold text-indigo-900 block">AI Adaptive Voice & Text Questions</span>
+                    <span className="text-[11px] text-indigo-700 block">Questions automatically adapt based on your craft category & inputs:</span>
                   </div>
                   <div className="flex items-center space-x-1.5 bg-white px-2.5 py-1 rounded-xl border border-indigo-200 shrink-0">
                     <Globe className="w-3.5 h-3.5 text-indigo-600" />
@@ -764,9 +902,29 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   </div>
                 </div>
 
-                {/* 3 Interactive Question Cards */}
+                {/* Honest Microphone Access Error State Alert */}
+                {micError && (
+                  <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900">
+                    <div className="flex items-center space-x-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <div>
+                        <span className="font-bold">Microphone Access Notice: </span>
+                        <span>{micError}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setMicError(null); startRecording(); }}
+                      className="px-2.5 py-1 text-[11px] font-bold bg-white border border-amber-300 rounded-lg text-amber-800 hover:bg-amber-100 cursor-pointer shrink-0 ml-2"
+                    >
+                      Retry Mic
+                    </button>
+                  </div>
+                )}
+
+                {/* 3 Dynamic Adaptive Question Cards */}
                 <div className="space-y-3">
-                  {QNA_QUESTIONS.map((q, idx) => {
+                  {getAdaptiveQnaQuestions(qnaAnswers, selectedPhoto, selectedLang).map((q, idx) => {
                     const questionText = q[selectedLang] || q.en;
                     const phText = q.placeholder?.[selectedLang] || q.placeholder?.en || 'Type or click microphone to speak answer...';
                     const answerVal = qnaAnswers[q.id] || '';
