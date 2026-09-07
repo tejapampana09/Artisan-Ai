@@ -4,6 +4,7 @@ import {
   setAuthToken, 
   clearAuthToken 
 } from './client.js';
+import { setStoredUser, clearUserOfflineCache } from '../services/offlineSync.js';
 
 export { getAuthToken, setAuthToken, clearAuthToken };
 
@@ -19,6 +20,9 @@ export async function registerUser(userData) {
   if (data && data.access_token) {
     setAuthToken(data.access_token);
   }
+  if (data && data.user) {
+    setStoredUser(data.user);
+  }
   return data;
 }
 
@@ -29,6 +33,9 @@ export async function loginUser(credentials) {
   });
   if (data && data.access_token) {
     setAuthToken(data.access_token);
+  }
+  if (data && data.user) {
+    setStoredUser(data.user);
   }
   return data;
 }
@@ -56,5 +63,6 @@ export async function resetPassword(payload) {
 }
 
 export function logoutUser() {
+  clearUserOfflineCache();
   clearAuthToken();
 }

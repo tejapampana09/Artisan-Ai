@@ -29,6 +29,7 @@ class OfflineProductItem(BaseModel):
     material_cost: float = Field(default=0.0, ge=0.0)
     labour_cost: float = Field(default=0.0, ge=0.0)
     packaging_cost: float = Field(default=0.0, ge=0.0)
+    other_cost: float = Field(default=0.0, ge=0.0)
     min_margin_pct: float = Field(default=0.20, ge=0.0, le=1.0)
     created_at_client: Optional[str] = None
 
@@ -49,16 +50,17 @@ class BatchSyncRequest(BaseModel):
     price_decisions: List[OfflinePriceDecisionItem] = Field(default_factory=list)
 
 class SyncedProductResult(BaseModel):
-    client_temp_id: Optional[str]
-    server_id: int
+    client_temp_id: Optional[str] = None
+    server_id: int = 0
     title: str
-    status: str
+    status: str = "SYNCED"
 
 class SyncedDecisionResult(BaseModel):
     product_id: int
+    client_operation_id: Optional[str] = None
     decision: str
     applied_price: float
-    status: str  # APPLIED | SKIPPED_NOT_FOUND | REJECTED_UNAUTHORIZED
+    status: str = "APPLIED"  # APPLIED | SKIPPED_NOT_FOUND | REJECTED_UNAUTHORIZED | FAILED_CONCURRENT_RETRY
 
 class BatchSyncResponse(BaseModel):
     status: str
@@ -124,6 +126,7 @@ def batch_sync(
                     material_cost=Decimal(str(prod_item.material_cost)),
                     labour_cost=Decimal(str(prod_item.labour_cost)),
                     packaging_cost=Decimal(str(prod_item.packaging_cost)),
+                    other_cost=Decimal(str(prod_item.other_cost)),
                     min_margin_pct=Decimal(str(prod_item.min_margin_pct)),
                     seller_id=seller_id
                 )

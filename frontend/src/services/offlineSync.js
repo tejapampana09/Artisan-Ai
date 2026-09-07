@@ -1,30 +1,85 @@
 import { syncBatch } from '../api/index.js';
 
-const OFFLINE_QUEUE_KEY = 'artisan_ai_offline_queue';
-const CACHED_PRODUCTS_KEY = 'artisan_ai_cached_products';
-const OFFLINE_MODE_KEY = 'artisan_ai_offline_mode';
+export function getCurrentUserId(userIdOverride = null) {
+  if (userIdOverride) return userIdOverride;
+  try {
+    const raw = localStorage.getItem('artisan_ai_user');
+    if (raw) {
+      const user = JSON.parse(raw);
+      if (user && user.id) return user.id;
+    }
+  } catch {}
+  return 'guest';
+}
+
+export function setStoredUser(user) {
+  try {
+    if (user && user.id) {
+      localStorage.setItem('artisan_ai_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('artisan_ai_user');
+    }
+  } catch (e) {
+    console.error('Failed to set stored user:', e);
+  }
+}
+
+function getQueueKey(userId) {
+  return `artisan_ai_offline_queue_${getCurrentUserId(userId)}`;
+}
+function getProductsKey(userId) {
+  return `artisan_ai_cached_products_${getCurrentUserId(userId)}`;
+}
+function getDemandsKey(userId) {
+  return `artisan_ai_cached_demands_${getCurrentUserId(userId)}`;
+}
+function getCopilotKey(userId) {
+  return `artisan_ai_cached_copilot_${getCurrentUserId(userId)}`;
+}
+function getOpportunitiesKey(userId) {
+  return `artisan_ai_cached_opportunities_${getCurrentUserId(userId)}`;
+}
+function getModeKey(userId) {
+  return `artisan_ai_offline_mode_${getCurrentUserId(userId)}`;
+}
+
+// Migrate legacy global keys if present
+function migrateLegacyKeys(userId) {
+  const uid = getCurrentUserId(userId);
+  const legacyQueue = localStorage.getItem('artisan_ai_offline_queue');
+  if (legacyQueue) {
+    try {
+      const targetKey = `artisan_ai_offline_queue_${uid}`;
+      if (!localStorage.getItem(targetKey)) {
+        localStorage.setItem(targetKey, legacyQueue);
+      }
+    } catch (e) {}
+    localStorage.removeItem('artisan_ai_offline_queue');
+  }
+}
 
 // Mode helpers
-export function getStoredOfflineMode() {
+export function getStoredOfflineMode(userId) {
   try {
-    return localStorage.getItem(OFFLINE_MODE_KEY) === 'true';
+    return localStorage.getItem(getModeKey(userId)) === 'true';
   } catch {
     return false;
   }
 }
 
-export function setStoredOfflineMode(isOffline) {
+export function setStoredOfflineMode(isOffline, userId) {
   try {
-    localStorage.setItem(OFFLINE_MODE_KEY, String(isOffline));
+    localStorage.setItem(getModeKey(userId), String(isOffline));
   } catch (e) {
     console.error('Failed to write offline mode to localStorage', e);
   }
 }
 
 // Queue helpers
-export function getOfflineQueue() {
+export function getOfflineQueue(userId) {
   try {
-    const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
+    migrateLegacyKeys(userId);
+    const raw = localStorage.getItem(getQueueKey(userId));
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
     console.error('Failed to parse offline queue', e);
@@ -32,16 +87,16 @@ export function getOfflineQueue() {
   }
 }
 
-export function saveOfflineQueue(queue) {
+export function saveOfflineQueue(queue, userId) {
   try {
-    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+    localStorage.setItem(getQueueKey(userId), JSON.stringify(queue));
   } catch (e) {
     console.error('Failed to save offline queue', e);
   }
 }
 
-export function addToOfflineQueue(item) {
-  const queue = getOfflineQueue();
+export function addToOfflineQueue(item, userId) {
+  const queue = getOfflineQueue(userId);
   const newItem = {
     ...item,
     client_temp_id: item.client_temp_id || `draft_local_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -49,104 +104,114 @@ export function addToOfflineQueue(item) {
     queued_at: new Date().toISOString()
   };
   queue.push(newItem);
-  saveOfflineQueue(queue);
+  saveOfflineQueue(queue, userId);
   return newItem;
 }
 
-export function removeFromOfflineQueue(clientTempId) {
-  const queue = getOfflineQueue();
+export function removeFromOfflineQueue(clientTempId, userId) {
+  const queue = getOfflineQueue(userId);
   const filtered = queue.filter(item => item.client_temp_id !== clientTempId);
-  saveOfflineQueue(filtered);
+  saveOfflineQueue(filtered, userId);
   return filtered;
 }
 
-export function clearOfflineQueue() {
+export function clearOfflineQueue(userId) {
   try {
-    localStorage.removeItem(OFFLINE_QUEUE_KEY);
+    localStorage.removeItem(getQueueKey(userId));
   } catch (e) {
     console.error('Failed to clear offline queue', e);
   }
 }
 
 // Cached products helpers
-export function getCachedProducts() {
+export function getCachedProducts(userId) {
   try {
-    const raw = localStorage.getItem(CACHED_PRODUCTS_KEY);
+    const raw = localStorage.getItem(getProductsKey(userId));
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
     return [];
   }
 }
 
-export function setCachedProducts(products) {
+export function setCachedProducts(products, userId) {
   try {
-    localStorage.setItem(CACHED_PRODUCTS_KEY, JSON.stringify(products));
+    localStorage.setItem(getProductsKey(userId), JSON.stringify(products));
   } catch (e) {
     console.error('Failed to cache products', e);
   }
 }
 
-const CACHED_DEMANDS_KEY = 'artisan_ai_cached_demands';
-const CACHED_COPILOT_KEY = 'artisan_ai_cached_copilot';
-
-export function getCachedDemands() {
+export function getCachedDemands(userId) {
   try {
-    const raw = localStorage.getItem(CACHED_DEMANDS_KEY);
+    const raw = localStorage.getItem(getDemandsKey(userId));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-export function setCachedDemands(demands) {
+export function setCachedDemands(demands, userId) {
   try {
-    localStorage.setItem(CACHED_DEMANDS_KEY, JSON.stringify(demands));
+    localStorage.setItem(getDemandsKey(userId), JSON.stringify(demands));
   } catch (e) {
     console.error('Failed to cache demands', e);
   }
 }
 
-export function getCachedCopilotInsight() {
+export function getCachedCopilotInsight(userId) {
   try {
-    const raw = localStorage.getItem(CACHED_COPILOT_KEY);
+    const raw = localStorage.getItem(getCopilotKey(userId));
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
-export function setCachedCopilotInsight(insight) {
+export function setCachedCopilotInsight(insight, userId) {
   try {
     if (insight) {
-      localStorage.setItem(CACHED_COPILOT_KEY, JSON.stringify(insight));
+      localStorage.setItem(getCopilotKey(userId), JSON.stringify(insight));
     } else {
-      localStorage.removeItem(CACHED_COPILOT_KEY);
+      localStorage.removeItem(getCopilotKey(userId));
     }
   } catch (e) {
     console.error('Failed to cache copilot insight', e);
   }
 }
 
-const CACHED_OPPORTUNITIES_KEY = 'artisan_ai_cached_opportunities';
-
-export function getCachedOpportunities() {
+export function getCachedOpportunities(userId) {
   try {
-    const raw = localStorage.getItem(CACHED_OPPORTUNITIES_KEY);
+    const raw = localStorage.getItem(getOpportunitiesKey(userId));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-export function setCachedOpportunities(opps) {
+export function setCachedOpportunities(opps, userId) {
   try {
     if (opps && opps.length > 0) {
-      localStorage.setItem(CACHED_OPPORTUNITIES_KEY, JSON.stringify(opps));
+      localStorage.setItem(getOpportunitiesKey(userId), JSON.stringify(opps));
     } else {
-      localStorage.removeItem(CACHED_OPPORTUNITIES_KEY);
+      localStorage.removeItem(getOpportunitiesKey(userId));
     }
   } catch (e) {
     console.error('Failed to cache opportunities', e);
+  }
+}
+
+// Account Logout Cleanup Helper
+export function clearUserOfflineCache(userId) {
+  try {
+    const uid = userId || getCurrentUserId();
+    localStorage.removeItem(`artisan_ai_cached_products_${uid}`);
+    localStorage.removeItem(`artisan_ai_cached_demands_${uid}`);
+    localStorage.removeItem(`artisan_ai_cached_copilot_${uid}`);
+    localStorage.removeItem(`artisan_ai_cached_opportunities_${uid}`);
+    localStorage.removeItem(`artisan_ai_offline_mode_${uid}`);
+    localStorage.removeItem('artisan_ai_user');
+  } catch (e) {
+    console.error('Failed to clear user offline cache on logout', e);
   }
 }
 
@@ -188,8 +253,8 @@ export function removeSavedProductId(userId, productId) {
 }
 
 // Sync execution helper
-export async function executeBatchSync() {
-  const queue = getOfflineQueue();
+export async function executeBatchSync(userId) {
+  const queue = getOfflineQueue(userId);
   if (queue.length === 0) {
     return { status: 'empty', total_items_synced: 0 };
   }
@@ -211,6 +276,7 @@ export async function executeBatchSync() {
       material_cost: Number(item.payload.material_cost) || 0,
       labour_cost: Number(item.payload.labour_cost) || 0,
       packaging_cost: Number(item.payload.packaging_cost) || 0,
+      other_cost: Number(item.payload.other_cost) || 0,
       min_margin_pct: Number(item.payload.min_margin_pct) || 0.20,
       created_at_client: item.queued_at
     }));
@@ -236,15 +302,32 @@ export async function executeBatchSync() {
 
   const response = await syncBatch(payload);
 
-  // Safely remove only the synced items from the queue (preserves items added during in-flight sync)
-  const syncedTempIds = new Set(queue.map(q => q.client_temp_id).filter(Boolean));
-  const currentQueue = getOfflineQueue();
-  const remainingQueue = currentQueue.filter(q => !q.client_temp_id || !syncedTempIds.has(q.client_temp_id));
-  try {
-    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(remainingQueue));
-  } catch (e) {
-    console.error('Failed to update offline queue after sync:', e);
-  }
+  // Inspect per-item backend response to remove ONLY successfully synced items
+  const syncedProductTempIds = new Set(
+    (response?.products_synced || [])
+      .filter(p => p.server_id > 0 && p.status !== 'FAILED' && !p.status?.startsWith('FAILED'))
+      .map(p => p.client_temp_id)
+      .filter(Boolean)
+  );
+
+  const syncedDecisionProductIds = new Set(
+    (response?.price_decisions_synced || [])
+      .filter(d => d.status === 'APPLIED' || d.status === 'SYNCED' || d.status === 'SKIPPED_NOT_FOUND' || d.status === 'REJECTED_UNAUTHORIZED')
+      .map(d => d.product_id)
+  );
+
+  const currentQueue = getOfflineQueue(userId);
+  const remainingQueue = currentQueue.filter(q => {
+    if (q.type === 'CREATE_PRODUCT') {
+      return !syncedProductTempIds.has(q.client_temp_id);
+    }
+    if (q.type === 'PRICE_DECISION') {
+      return !syncedDecisionProductIds.has(q.payload?.product_id);
+    }
+    return true; // Retain unrecognized queued items for safety
+  });
+
+  saveOfflineQueue(remainingQueue, userId);
 
   return response;
 }

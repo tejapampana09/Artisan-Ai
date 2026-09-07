@@ -12,7 +12,7 @@ import { checkHealth, checkReady, getCurrentUser, updateUserMode, getAuthToken }
 
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import LanguageSelectorModal from './components/LanguageSelectorModal';
-import DownloadAppModal from './components/DownloadAppModal';
+import { setStoredUser } from './services/offlineSync';
 
 function AppContent() {
   const [activeMode, setActiveMode] = useState('HOME');
@@ -56,6 +56,7 @@ function AppContent() {
       setReadyStatus(ready);
       if (userData && !userData.detail && !userData.error) {
         setUser(userData);
+        setStoredUser(userData);
         if (userData.role === 'BUYER') {
           setActiveMode('BUY');
         } else if (userData.active_mode && userData.active_mode !== 'HOME') {
