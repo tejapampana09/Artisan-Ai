@@ -17,12 +17,22 @@ class User(Base):
     location = Column(String, nullable=True)
     craft = Column(String, nullable=True)
     token_version = Column(Integer, default=1, nullable=False)
+    
+    # Profile & Verification extensions
+    avatar_url = Column(String, nullable=True)
+    bio = Column(Text, nullable=True)
+    craft_specialization = Column(String, nullable=True)
+    experience_years = Column(Integer, default=0, nullable=False)
+    verification_status = Column(String, default="UNVERIFIED", nullable=False) # "UNVERIFIED", "PROFILE_COMPLETE", "VERIFIED_ARTISAN"
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     products = relationship("Product", back_populates="seller")
     events = relationship("Event", back_populates="user")
     orders = relationship("Order", back_populates="user")
     enquiries = relationship("Enquiry", back_populates="user")
+    reviews = relationship("Review", back_populates="buyer")
+    notifications = relationship("Notification", back_populates="user")
 
 class Product(Base):
     __tablename__ = "products"
@@ -44,7 +54,16 @@ class Product(Base):
     stock = Column(Integer, nullable=False, default=1)
     image_url = Column(String, nullable=True)
     enhanced_image_url = Column(String, nullable=True)
-    # Full 5-stage lifecycle state machine: DRAFT -> AI_PROCESSING -> AI_GENERATED -> APPROVED -> PUBLISHED
+    secondary_images = Column(Text, nullable=True) # JSON array string of additional product images
+    
+    # Craft Passport & Provenance fields
+    craft_process = Column(Text, nullable=True)
+    region_of_origin = Column(String, nullable=True)
+    handmade_pct = Column(Integer, default=100, nullable=False)
+    production_time_days = Column(Integer, nullable=True)
+    verification_status = Column(String, default="ARTISAN_PROVIDED", nullable=False) # "ARTISAN_PROVIDED", "AI_DRAFT", "PENDING_VERIFICATION", "VERIFIED"
+
+    # Lifecycle status: DRAFT -> AI_PROCESSING -> AI_GENERATED -> APPROVED -> PUBLISHED
     status = Column(String, default="PUBLISHED")
     
     # Cost structure for explainable pricing
@@ -60,16 +79,12 @@ class Product(Base):
     pricing_decisions = relationship("PricingDecision", back_populates="product")
     orders = relationship("Order", back_populates="product")
     enquiries = relationship("Enquiry", back_populates="product")
+    reviews = relationship("Review", back_populates="product")
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 class Order(Base):
-    """
-    Dedicated secure storage for customer orders.
-    Customer delivery address and contact details are stored here in a structured,
-    secure relation — NEVER leaked into public analytics event metadata.
-    """
     __tablename__ = "orders"
     __table_args__ = (
         CheckConstraint("quantity > 0", name="chk_order_quantity_positive"),
@@ -86,17 +101,20 @@ class Order(Base):
     unit_price = Column(Numeric(12, 2), nullable=False)
     total_price = Column(Numeric(12, 2), nullable=False)
     delivery_address = Column(Text, nullable=False)
-    status = Column(String, default="CONFIRMED") # CONFIRMED, SHIPPED, DELIVERED, CANCELLED
+    status = Column(String, default="CONFIRMED") # CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+    
+    # Cancellation & Refund workflow
+    cancellation_status = Column(String, default="NONE", nullable=False) # "NONE", "REQUESTED", "CANCELLED", "REJECTED"
+    cancellation_reason = Column(Text, nullable=True)
+    tracking_history = Column(Text, nullable=True) # JSON timeline array string
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     product = relationship("Product", back_populates="orders")
     user = relationship("User", back_populates="orders")
+    review = relationship("Review", back_populates="order", uselist=False)
 
 class Enquiry(Base):
-    """
-    Dedicated secure storage for buyer product enquiries.
-    Buyer phone number is kept protected here rather than stored in generic event logs.
-    """
     __tablename__ = "enquiries"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -113,11 +131,48 @@ class Enquiry(Base):
     product = relationship("Product", back_populates="enquiries")
     user = relationship("User", back_populates="enquiries")
 
+class Review(Base):
+    """
+    Verified Buyer Reviews & Ratings.
+    Directly linked to a completed order to enforce verified purchase trust badge.
+    """
+    __tablename__ = "reviews"
+    __table_args__ = (
+        CheckConstraint("rating >= 1 AND rating <= 5", name="chk_review_rating_range"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), index=True, nullable=False)
+    order_id = Column(Integer, ForeignKey("orders.id"), index=True, nullable=True)
+    buyer_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
+    buyer_name = Column(String, nullable=False)
+    rating = Column(Integer, nullable=False) # 1 to 5 stars
+    comment = Column(Text, nullable=True)
+    verified_purchase = Column(Integer, default=1, nullable=False) # 1 for True
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    product = relationship("Product", back_populates="reviews")
+    order = relationship("Order", back_populates="review")
+    buyer = relationship("User", back_populates="reviews")
+
+class Notification(Base):
+    """
+    Persistent System Notifications for Artisans & Buyers.
+    Stores alerts for Orders, Status Updates, Stock Warnings, Reviews, and Sync Events.
+    """
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    title = Column(String, nullable=False)
+    message = Column(Text, nullable=False)
+    type = Column(String, default="GENERAL", nullable=False) # ORDER, REVIEW, STOCK, SYNC
+    is_read = Column(Integer, default=0, nullable=False) # 0 for False, 1 for True
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="notifications")
+
 class Event(Base):
-    """
-    High-frequency market analytics events for demand calculation and trending signals.
-    Only contains minimal, sanitized operational metadata. NO PII.
-    """
     __tablename__ = "events"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -126,7 +181,7 @@ class Event(Base):
     category = Column(String, index=True, nullable=True)
     query = Column(String, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
-    metadata_info = Column(Text, nullable=True) # Sanitized metrics only (e.g. {"quantity": 2})
+    metadata_info = Column(Text, nullable=True) # Sanitized metrics only
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     product = relationship("Product", back_populates="events")
@@ -154,11 +209,6 @@ class PricingDecision(Base):
     product = relationship("Product", back_populates="pricing_decisions")
 
 class ProcessedOperation(Base):
-    """
-    Persistent storage for client_operation_id to guarantee true database-level idempotency
-    across offline batch sync retries. Prevents duplicate product creations or pricing decision mutations.
-    Enforces strict tenant isolation via composite unique constraint (user_id, client_operation_id).
-    """
     __tablename__ = "processed_operations"
     __table_args__ = (
         UniqueConstraint("user_id", "entity_type", "client_operation_id", name="uq_processed_op_user_entity_client_op_id"),

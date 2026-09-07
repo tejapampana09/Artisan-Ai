@@ -237,3 +237,63 @@ class SellerDashboardResponse(BaseModel):
     delivery_status: DeliveryStatusBreakdown
     product_performance: List[ProductPerformance]
 
+# Review & Rating Schemas
+class ReviewCreate(BaseModel):
+    rating: int = Field(..., ge=1, le=5)
+    comment: Optional[str] = Field(None, max_length=1000)
+    order_id: Optional[int] = None
+
+class ReviewResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    product_id: int
+    order_id: Optional[int] = None
+    buyer_id: Optional[int] = None
+    buyer_name: str
+    rating: int
+    comment: Optional[str] = None
+    verified_purchase: bool = True
+    created_at: datetime
+
+# Notification Schema
+class NotificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    title: str
+    message: str
+    type: str
+    is_read: bool = False
+    created_at: datetime
+
+# Order Cancellation Request
+class OrderCancelRequest(BaseModel):
+    reason: str = Field(..., min_length=3, max_length=500)
+
+# Artisan Profile Update
+class ArtisanProfileUpdate(BaseModel):
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = Field(None, max_length=2000)
+    craft_specialization: Optional[str] = Field(None, max_length=200)
+    experience_years: Optional[int] = Field(default=0, ge=0)
+    location: Optional[str] = Field(None, max_length=200)
+
+class ArtisanProfileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    craft: Optional[str] = None
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    craft_specialization: Optional[str] = None
+    experience_years: int = 0
+    verification_status: str = "UNVERIFIED"
+    total_products_count: int = 0
+    average_rating: float = 0.0
+

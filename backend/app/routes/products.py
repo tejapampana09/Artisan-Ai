@@ -44,6 +44,9 @@ def list_products(
     category: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     seller_id: Optional[int] = Query(None),
+    search: Optional[str] = Query(None, description="Multi-field search across title, description, materials, category, story"),
+    min_price: Optional[float] = Query(None, ge=0.0),
+    max_price: Optional[float] = Query(None, ge=0.0),
     db: Session = Depends(get_db)
 ):
     query = db.query(Product)
@@ -53,6 +56,19 @@ def list_products(
         query = query.filter(Product.status == status)
     if seller_id:
         query = query.filter(Product.seller_id == seller_id)
+    if min_price is not None:
+        query = query.filter(Product.price >= min_price)
+    if max_price is not None:
+        query = query.filter(Product.price <= max_price)
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        query = query.filter(
+            (Product.title.ilike(term)) |
+            (Product.description.ilike(term)) |
+            (Product.category.ilike(term)) |
+            (Product.materials.ilike(term)) |
+            (Product.craft_story.ilike(term))
+        )
     return query.order_by(Product.id.desc()).all()
 
 @router.get("/{product_id}", response_model=ProductResponse)

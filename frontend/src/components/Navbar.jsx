@@ -1,15 +1,44 @@
-import React from 'react';
-import { Store, ShoppingBag, CheckCircle2, AlertCircle, Sparkles, UserCheck, Wifi, WifiOff, Award, Home } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Store, ShoppingBag, CheckCircle2, AlertCircle, Sparkles, UserCheck, Wifi, WifiOff, Award, Home, Bell, Check, Package, Star, AlertTriangle } from 'lucide-react';
 import { useOffline } from '../context/OfflineContext';
+import { getNotifications, markNotificationRead } from '../api/trust';
 
 export default function Navbar({ activeMode, onToggleMode, user, readyStatus, onOpenAuth }) {
   const { isOffline, toggleOfflineMode, queueCount } = useOffline();
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user]);
+
+  const fetchNotifications = async () => {
+    try {
+      const data = await getNotifications();
+      setNotifications(data);
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    }
+  };
+
+  const handleMarkRead = async (id) => {
+    try {
+      await markNotificationRead(id);
+      setNotifications(notifications.map(n => n.id === id ? { ...n, is_read: true } : n));
+    } catch (err) {
+      console.error('Failed to mark notification read:', err);
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo & Title (Clickable to Home or Studio/Marketplace depending on auth) */}
+          {/* Logo & Title */}
           <div 
             onClick={() => onToggleMode(!user ? 'HOME' : user.role === 'BUYER' ? 'BUY' : 'SELL')}
             className="flex items-center space-x-3 cursor-pointer group"
@@ -75,7 +104,7 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
             </div>
           </div>
 
-          {/* Controls: Cloud Sync & Account */}
+          {/* Controls: Cloud Sync, Notifications & Account */}
           <div className="flex items-center space-x-2.5">
             {/* Real Rural Offline Resilience Indicator & Sync Control */}
             <button
@@ -109,6 +138,68 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
                 </>
               )}
             </button>
+
+            {/* Notification Bell Dropdown */}
+            {user && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="p-2 rounded-xl bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 text-slate-700 transition-all cursor-pointer relative"
+                  title="System Notifications"
+                >
+                  <Bell className="w-4 h-4 text-amber-700" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 z-60 overflow-hidden text-xs">
+                    <div className="p-3 bg-amber-50 border-b border-amber-200/60 flex items-center justify-between">
+                      <span className="font-bold text-amber-900 flex items-center">
+                        <Bell className="w-3.5 h-3.5 mr-1 text-amber-700" />
+                        Persistent Notifications
+                      </span>
+                      <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
+                        {unreadCount} unread
+                      </span>
+                    </div>
+
+                    <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-slate-400 text-xs">
+                          No notifications yet.
+                        </div>
+                      ) : (
+                        notifications.map((n) => (
+                          <div
+                            key={n.id}
+                            className={`p-3 space-y-1 transition-colors ${
+                              n.is_read ? 'bg-white opacity-70' : 'bg-amber-50/30'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-900 text-xs">{n.title}</span>
+                              {!n.is_read && (
+                                <button
+                                  onClick={() => handleMarkRead(n.id)}
+                                  className="text-[10px] text-amber-700 hover:underline font-semibold"
+                                >
+                                  Mark read
+                                </button>
+                              )}
+                            </div>
+                            <p className="text-slate-600 text-[11px] leading-snug">{n.message}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Account Badge & Auth Trigger */}
             <button
