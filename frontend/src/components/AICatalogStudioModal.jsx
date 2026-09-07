@@ -203,6 +203,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const [activeQnaIndex, setActiveQnaIndex] = useState(0);
   const [inputSubStep, setInputSubStep] = useState('PHOTO'); // 'PHOTO' | 'QNA' | 'COSTS'
   const [micError, setMicError] = useState(null);
+  const [reviewLang, setReviewLang] = useState('en'); // 'en' | 'native'
 
   const QNA_QUESTIONS = [
     {
@@ -531,7 +532,43 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   };
 
   const handleDraftChange = (field, val) => {
-    setAiDraft((prev) => ({ ...prev, [field]: val }));
+    setAiDraft((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      if (reviewLang === 'en') {
+        if (field === 'title') {
+          updated.title = val;
+          updated.title_en = val;
+        } else if (field === 'description') {
+          updated.description = val;
+          updated.description_en = val;
+        } else if (field === 'craft_story') {
+          updated.craft_story = val;
+          updated.craft_story_en = val;
+        } else {
+          updated[field] = val;
+        }
+      } else {
+        if (field === 'title') {
+          updated.title_native = val;
+        } else if (field === 'description') {
+          updated.description_native = val;
+        } else if (field === 'craft_story') {
+          updated.craft_story_native = val;
+        } else {
+          updated[field] = val;
+        }
+        try {
+          const transObj = JSON.parse(updated.translations || '{}');
+          transObj[selectedLang] = {
+            ...(transObj[selectedLang] || {}),
+            [field]: val
+          };
+          updated.translations = JSON.stringify(transObj);
+        } catch (e) {}
+      }
+      return updated;
+    });
   };
 
   const resetForm = () => {
@@ -548,6 +585,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     setPublishing(false);
     setLoading(false);
     setMicError(null);
+    setReviewLang('en');
     setImgErrorOriginal(false);
     setImgErrorEnhanced(false);
   };
@@ -564,17 +602,22 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       return;
     }
 
+    // Always publish in English as primary title, description, and craft story
+    const pubTitle = (aiDraft.title_en || aiDraft.title || '').trim();
+    const pubDesc = (aiDraft.description_en || aiDraft.description || '').trim();
+    const pubStory = (aiDraft.craft_story_en || aiDraft.craft_story || '').trim();
+
     setPublishing(true);
     if (isOffline) {
       queueProductDraft({
-        title: aiDraft.title,
+        title: pubTitle,
         category: aiDraft.category,
         materials: aiDraft.materials,
-        description: aiDraft.description,
-        craft_story: aiDraft.craft_story,
-        title_en: aiDraft.title_en || aiDraft.title,
-        description_en: aiDraft.description_en || aiDraft.description,
-        craft_story_en: aiDraft.craft_story_en || aiDraft.craft_story,
+        description: pubDesc,
+        craft_story: pubStory,
+        title_en: pubTitle,
+        description_en: pubDesc,
+        craft_story_en: pubStory,
         translations: aiDraft.translations,
         price: finalPrice,
         stock: 5,
@@ -588,7 +631,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         enhanced_image_url: aiDraft.enhanced_image_url,
         status: 'DRAFT'
       });
-      onPublished(`Saved "${aiDraft.title}" to local device queue (Pending Cloud Sync)!`);
+      onPublished(`Saved "${pubTitle}" to local device queue (Pending Cloud Sync)!`);
       setPublishing(false);
       resetForm();
       onClose();
@@ -597,14 +640,14 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
     try {
       await approveAndPublishAICatalog({
-        title: aiDraft.title,
+        title: pubTitle,
         category: aiDraft.category,
         materials: aiDraft.materials,
-        description: aiDraft.description,
-        craft_story: aiDraft.craft_story,
-        title_en: aiDraft.title_en || aiDraft.title,
-        description_en: aiDraft.description_en || aiDraft.description,
-        craft_story_en: aiDraft.craft_story_en || aiDraft.craft_story,
+        description: pubDesc,
+        craft_story: pubStory,
+        title_en: pubTitle,
+        description_en: pubDesc,
+        craft_story_en: pubStory,
         translations: aiDraft.translations,
         price: finalPrice,
         stock: 5,
@@ -618,7 +661,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         enhanced_image_url: aiDraft.enhanced_image_url,
         status: 'PUBLISHED'
       });
-      onPublished(`Successfully published "${aiDraft.title}" to catalog!`);
+      onPublished(`Successfully published "${pubTitle}" to catalog!`);
       resetForm();
       onClose();
     } catch (err) {
@@ -1303,15 +1346,54 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
               </div>
             )}
 
+            {/* Language Review & Global Publishing Indicator Header */}
+            <div className="p-3 rounded-2xl bg-indigo-50/80 border border-indigo-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+              <div>
+                <span className="text-xs font-extrabold text-indigo-900 flex items-center space-x-1.5">
+                  <Globe className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <span>Marketplace Listing Language: 🇬🇧 English (Global Standard)</span>
+                </span>
+                <span className="text-[11px] text-indigo-700 block mt-0.5">
+                  Voice input ({selectedLang.toUpperCase()}) was auto-translated into English for global buyers while preserving native translations.
+                </span>
+              </div>
+              <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-indigo-200 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setReviewLang('en')}
+                  className={`px-3 py-1 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                    reviewLang === 'en'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  🇬🇧 English (Publish Default)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReviewLang('native')}
+                  className={`px-3 py-1 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                    reviewLang === 'native'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  🇮🇳 Native ({selectedLang.toUpperCase()})
+                </button>
+              </div>
+            </div>
+
             {/* Editable Draft Fields */}
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Generated Title (Editable)</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Generated Title (Editable - {reviewLang === 'en' ? 'English Standard' : `Native ${selectedLang.toUpperCase()}`})
+                </label>
                 <input
                   type="text"
-                  value={aiDraft.title}
+                  value={reviewLang === 'en' ? (aiDraft.title_en || aiDraft.title || '') : (aiDraft.title_native || aiDraft.title || '')}
                   onChange={(e) => handleDraftChange('title', e.target.value)}
-                  className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-amber-500"
+                  className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-amber-500 bg-white"
                 />
               </div>
 
@@ -1320,7 +1402,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
                   <input
                     type="text"
-                    value={aiDraft.category}
+                    value={aiDraft.category || ''}
                     onChange={(e) => handleDraftChange('category', e.target.value)}
                     className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-slate-50"
                   />
@@ -1332,26 +1414,30 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     value={aiDraft.materials || ''}
                     placeholder="e.g. Mulberry Silk, Natural Indigo"
                     onChange={(e) => handleDraftChange('materials', e.target.value)}
-                    className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2"
+                    className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Marketplace Description</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Marketplace Description ({reviewLang === 'en' ? 'English' : `Native ${selectedLang.toUpperCase()}`})
+                </label>
                 <textarea
                   rows="2"
-                  value={aiDraft.description}
+                  value={reviewLang === 'en' ? (aiDraft.description_en || aiDraft.description || '') : (aiDraft.description_native || aiDraft.description || '')}
                   onChange={(e) => handleDraftChange('description', e.target.value)}
-                  className="w-full text-xs border border-slate-200 rounded-lg p-2.5 focus:ring-1 focus:ring-amber-500"
+                  className="w-full text-xs border border-slate-200 rounded-lg p-2.5 focus:ring-1 focus:ring-amber-500 bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Heritage & Cultural Craft Story</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Heritage & Cultural Craft Story ({reviewLang === 'en' ? 'English' : `Native ${selectedLang.toUpperCase()}`})
+                </label>
                 <textarea
                   rows="2"
-                  value={aiDraft.craft_story || ''}
+                  value={reviewLang === 'en' ? (aiDraft.craft_story_en || aiDraft.craft_story || '') : (aiDraft.craft_story_native || aiDraft.craft_story || '')}
                   placeholder="Craft story will appear here if generated or can be added manually..."
                   onChange={(e) => handleDraftChange('craft_story', e.target.value)}
                   className="w-full text-xs border border-amber-200 rounded-lg p-2.5 bg-amber-50/40 text-slate-800 italic focus:ring-1 focus:ring-amber-500"

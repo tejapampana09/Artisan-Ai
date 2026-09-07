@@ -258,24 +258,41 @@ async def generate_catalog_draft(
                         title_en = parsed.get("title_en") or title_main
                         desc_en = parsed.get("description_en") or desc_main
                         story_en = parsed.get("craft_story_en") or story_main
+
+                        # Default primary title/description/craft_story to English for global marketplace publishing
+                        primary_title = title_en if title_en else title_main
+                        primary_desc = desc_en if desc_en else desc_main
+                        primary_story = story_en if story_en else story_main
+
                         trans_map = {
                             language: {"title": title_main, "description": desc_main, "craft_story": story_main},
-                            "en": {"title": title_en, "description": desc_en, "craft_story": story_en}
+                            "en": {"title": primary_title, "description": primary_desc, "craft_story": primary_story}
                         }
+
+                        # Run ImageEnhancementService pipeline for studio lighting & backdrop composition
+                        enhanced_image_url = clean_image
+                        if clean_image:
+                            try:
+                                from backend.app.services.image_enhancer import enhance_studio_image
+                                enhanced_data, is_enh, enh_msg = await enhance_studio_image(clean_image)
+                                if is_enh and enhanced_data:
+                                    enhanced_image_url = enhanced_data
+                            except Exception as e:
+                                logging.getLogger("artisan_ai").warning("[ImageEnhancement] Studio enhancement pipeline skipped: %s", str(e))
 
                         return {
                             "source": "LIVE_AI",
                             "is_live_ai": True,
                             "is_demo_data": False,
                             "requires_artisan_verification": True,
-                            "title": title_main,
+                            "title": primary_title,
                             "category": parsed.get("category", clean_category_hint or "Handloom"),
                             "materials": parsed.get("materials", "Craft materials as stated by artisan"),
-                            "description": desc_main,
-                            "craft_story": story_main,
-                            "title_en": title_en,
-                            "description_en": desc_en,
-                            "craft_story_en": story_en,
+                            "description": primary_desc,
+                            "craft_story": primary_story,
+                            "title_en": primary_title,
+                            "description_en": primary_desc,
+                            "craft_story_en": primary_story,
                             "translations": json.dumps(trans_map),
                             "tags": parsed.get("tags", [clean_category_hint or "Handmade"]),
                             "suggested_price": suggested,
@@ -288,7 +305,7 @@ async def generate_catalog_draft(
                             "pricing_available": pricing_available,
                             "pricing_source": pricing_source,
                             "image_url": clean_image,
-                            "enhanced_image_url": clean_image,
+                            "enhanced_image_url": enhanced_image_url,
                             "transcription": clean_desc,
                             "language_detected": language,
                             "lifecycle_state": "AI_GENERATED",
