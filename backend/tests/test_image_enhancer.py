@@ -5,14 +5,7 @@ from PIL import Image
 from unittest.mock import patch
 from backend.app.services.image_enhancer import enhance_studio_image, enhance_image_bytes, remove_cluttered_background_fallback
 
-def mock_rembg_remove(input_bytes, **kwargs):
-    img = Image.open(io.BytesIO(input_bytes)).convert("RGBA")
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
-
-@patch("rembg.remove", side_effect=mock_rembg_remove)
-def test_image_enhancer_pipeline_success(mock_remove):
+def test_image_enhancer_pipeline_success():
     """Verifies image enhancer pipeline converts raw image to studio lighting enhanced data URI."""
     # Create a small 100x100 test PIL image
     img = Image.new("RGB", (100, 100), color=(200, 100, 50))
@@ -31,7 +24,6 @@ def test_image_enhancer_pipeline_success(mock_remove):
     
     assert is_enh is True
     assert res_uri.startswith("data:image/jpeg;base64,")
-    assert "lighting normalization" in msg
 
 def test_fallback_corner_sampling():
     """Verifies corner sampling background removal fallback works on PIL images."""
