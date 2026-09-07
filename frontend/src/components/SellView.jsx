@@ -482,30 +482,6 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         </button>
 
         <button
-          onClick={() => setActiveTab('PRICING')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'PRICING'
-              ? 'bg-emerald-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <Tag className="w-3.5 h-3.5" />
-          <span>Pricing & Costs</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('PASSPORT')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'PASSPORT'
-              ? 'bg-indigo-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Craft Passport</span>
-        </button>
-
-        <button
           onClick={() => setActiveTab('ORDERS')}
           className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
             activeTab === 'ORDERS'
@@ -521,31 +497,8 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
             </span>
           )}
         </button>
-
-        <button
-          onClick={() => setActiveTab('INSIGHTS')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'INSIGHTS'
-              ? 'bg-purple-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <BarChart3 className="w-3.5 h-3.5" />
-          <span>Market Insights</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('SYNC_STATUS')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'SYNC_STATUS'
-              ? 'bg-sky-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Offline Sync ({offlineQueue.length})</span>
-        </button>
       </div>
+
 
       {/* SECTION 1: DASHBOARD */}
       {activeTab === 'DASHBOARD' && (
@@ -820,142 +773,143 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         </div>
       )}
 
-      {/* Tab 2: Buyer Enquiries List */}
-      {activeTab === 'ENQUIRIES' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Direct Buyer Wholesale Enquiries</h3>
-              <p className="text-xs text-slate-500">Inquiries and custom bulk requests received directly from buyers</p>
+      {/* Tab: Orders & Buyer Enquiries */}
+      {activeTab === 'ORDERS' && (
+        <div className="space-y-6">
+          {/* Section A: Direct Buyer Wholesale Enquiries */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50/40">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Direct Buyer Wholesale Enquiries</h3>
+                <p className="text-xs text-slate-500">Inquiries and custom bulk requests received directly from buyers</p>
+              </div>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                {enquiries.length} {enquiries.length === 1 ? 'Enquiry' : 'Enquiries'}
+              </span>
             </div>
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-              {enquiries.length} {enquiries.length === 1 ? 'Enquiry' : 'Enquiries'}
-            </span>
-          </div>
 
-          {enquiries.length === 0 ? (
-            <div className="p-12 text-center">
-              <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <h4 className="text-sm font-semibold text-slate-700">No buyer enquiries yet</h4>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                When buyers or retail partners request bulk crafts or custom work, their contact leads will appear here.
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {enquiries.map((enq) => (
-                <div key={enq.id} className="p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-start space-x-3.5">
-                    {enq.product_image ? (
-                      <img src={enq.product_image} alt={enq.product_title || 'Craft'} className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs" />
-                    ) : (
-                      <div className="w-14 h-14 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 text-amber-700 font-bold text-xs">
-                        <Package className="w-6 h-6" />
-                      </div>
-                    )}
-                    <div>
-                      <div className="flex items-center space-x-2 flex-wrap">
-                        <h4 className="font-bold text-slate-900 text-sm">{enq.buyer_name}</h4>
-                        <span className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full text-[10px] border border-amber-300">
-                          Bulk Request: {enq.quantity} unit(s)
-                        </span>
-                      </div>
-                      <p className="text-xs font-medium text-slate-600 mt-0.5">
-                        Craft: <span className="font-semibold text-slate-800">{enq.product_title || `Product #${enq.product_id}`}</span>
-                      </p>
-                      {enq.message && (
-                        <p className="text-xs text-slate-700 mt-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 italic max-w-lg">
-                          "{enq.message}"
-                        </p>
+            {enquiries.length === 0 ? (
+              <div className="p-10 text-center">
+                <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <h4 className="text-sm font-semibold text-slate-700">No buyer enquiries yet</h4>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  When buyers or retail partners request bulk crafts or custom work, their contact leads will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {enquiries.map((enq) => (
+                  <div key={enq.id} className="p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-start space-x-3.5">
+                      {enq.product_image ? (
+                        <img src={enq.product_image} alt={enq.product_title || 'Craft'} className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs" />
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 text-amber-700 font-bold text-xs">
+                          <Package className="w-6 h-6" />
+                        </div>
                       )}
+                      <div>
+                        <div className="flex items-center space-x-2 flex-wrap">
+                          <h4 className="font-bold text-slate-900 text-sm">{enq.buyer_name}</h4>
+                          <span className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full text-[10px] border border-amber-300">
+                            Bulk Request: {enq.quantity} unit(s)
+                          </span>
+                        </div>
+                        <p className="text-xs font-medium text-slate-600 mt-0.5">
+                          Craft: <span className="font-semibold text-slate-800">{enq.product_title || `Product #${enq.product_id}`}</span>
+                        </p>
+                        {enq.message && (
+                          <p className="text-xs text-slate-700 mt-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 italic max-w-lg">
+                            "{enq.message}"
+                          </p>
+                        )}
 
-                      {/* Artisan Response Section */}
-                      {enq.artisan_reply && !editingReply[enq.id] ? (
-                        <div className="mt-2.5 p-2.5 bg-indigo-50/90 border border-indigo-200 rounded-xl max-w-lg">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-indigo-900 flex items-center">
-                              <MessageSquare className="w-3 h-3 text-indigo-600 inline mr-1" />
-                              Your Response / మీ స్పందన:
-                            </span>
-                            <button 
-                              onClick={() => setEditingReply(prev => ({ ...prev, [enq.id]: true }))}
-                              className="text-[10px] font-bold text-indigo-700 hover:underline cursor-pointer"
+                        {/* Artisan Response Section */}
+                        {enq.artisan_reply && !editingReply[enq.id] ? (
+                          <div className="mt-2.5 p-2.5 bg-indigo-50/90 border border-indigo-200 rounded-xl max-w-lg">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-indigo-900 flex items-center">
+                                <MessageSquare className="w-3 h-3 text-indigo-600 inline mr-1" />
+                                Your Response / మీ స్పందన:
+                              </span>
+                              <button 
+                                onClick={() => setEditingReply(prev => ({ ...prev, [enq.id]: true }))}
+                                className="text-[10px] font-bold text-indigo-700 hover:underline cursor-pointer"
+                              >
+                                Edit Response
+                              </button>
+                            </div>
+                            <p className="text-xs text-indigo-950 font-medium mt-0.5">"{enq.artisan_reply}"</p>
+                            {enq.replied_at && (
+                              <p className="text-[10px] text-indigo-500 mt-0.5">
+                                Sent: {new Date(enq.replied_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="mt-2.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-lg">
+                            <input
+                              type="text"
+                              placeholder="Type response to buyer (e.g. Yes, ready in 10 days / ధర వివరాలు)..."
+                              value={replyTexts[enq.id] !== undefined ? replyTexts[enq.id] : (enq.artisan_reply || '')}
+                              onChange={(e) => setReplyTexts(prev => ({ ...prev, [enq.id]: e.target.value }))}
+                              className="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white shadow-2xs"
+                            />
+                            <button
+                              onClick={() => handleSendReply(enq.id)}
+                              disabled={replyingEnquiryId === enq.id || !(replyTexts[enq.id] !== undefined ? replyTexts[enq.id] : (enq.artisan_reply || '')).trim()}
+                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center space-x-1 shrink-0"
                             >
-                              Edit Response
+                              <Send className="w-3 h-3" />
+                              <span>{replyingEnquiryId === enq.id ? 'Sending...' : 'Send Reply'}</span>
                             </button>
                           </div>
-                          <p className="text-xs text-indigo-950 font-medium mt-0.5">"{enq.artisan_reply}"</p>
-                          {enq.replied_at && (
-                            <p className="text-[10px] text-indigo-500 mt-0.5">
-                              Sent: {new Date(enq.replied_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="mt-2.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-lg">
-                          <input
-                            type="text"
-                            placeholder="Type response to buyer (e.g. Yes, ready in 10 days / ధర వివరాలు)..."
-                            value={replyTexts[enq.id] !== undefined ? replyTexts[enq.id] : (enq.artisan_reply || '')}
-                            onChange={(e) => setReplyTexts(prev => ({ ...prev, [enq.id]: e.target.value }))}
-                            className="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white shadow-2xs"
-                          />
-                          <button
-                            onClick={() => handleSendReply(enq.id)}
-                            disabled={replyingEnquiryId === enq.id || !(replyTexts[enq.id] !== undefined ? replyTexts[enq.id] : (enq.artisan_reply || '')).trim()}
-                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center space-x-1 shrink-0"
-                          >
-                            <Send className="w-3 h-3" />
-                            <span>{replyingEnquiryId === enq.id ? 'Sending...' : 'Send Reply'}</span>
-                          </button>
-                        </div>
-                      )}
+                        )}
 
-                      <p className="text-[11px] text-slate-400 mt-2">
-                        Received: {new Date(enq.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-                      </p>
+                        <p className="text-[11px] text-slate-400 mt-2">
+                          Received: {new Date(enq.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                        </p>
+                      </div>
                     </div>
+
+                    {enq.buyer_phone && (
+                      <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
+                        <a
+                          href={`tel:${enq.buyer_phone}`}
+                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold transition-colors"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>Call {enq.buyer_phone}</span>
+                        </a>
+                        <a
+                          href={`https://wa.me/${enq.buyer_phone.replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>WhatsApp</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
-
-                  {enq.buyer_phone && (
-                    <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
-                      <a
-                        href={`tel:${enq.buyer_phone}`}
-                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold transition-colors"
-                      >
-                        <Phone className="w-3.5 h-3.5" />
-                        <span>Call {enq.buyer_phone}</span>
-                      </a>
-                      <a
-                        href={`https://wa.me/${enq.buyer_phone.replace(/[^0-9]/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition-colors"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>WhatsApp</span>
-                      </a>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab 3: Customer Orders List */}
-      {activeTab === 'ORDERS' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Direct Customer Orders</h3>
-              <p className="text-xs text-slate-500">Confirmed orders placed by marketplace customers</p>
-            </div>
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-              {orders.length} {orders.length === 1 ? 'Order' : 'Orders'}
-            </span>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* Section B: Direct Customer Orders List */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Direct Customer Orders</h3>
+                <p className="text-xs text-slate-500">Confirmed orders placed by marketplace customers</p>
+              </div>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                {orders.length} {orders.length === 1 ? 'Order' : 'Orders'}
+              </span>
+            </div>
+
 
           {orders.length === 0 ? (
             <div className="p-12 text-center">
@@ -1085,7 +1039,9 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
             </div>
           )}
         </div>
+      </div>
       )}
+
 
       {/* Tab 4: Business & Sales Analytics */}
       {activeTab === 'ANALYTICS' && (
