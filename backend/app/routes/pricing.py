@@ -109,7 +109,7 @@ def toggle_smart_pricing(
     # Autonomous execution: if enabled, immediately run auto-pricing cycle
     decision_record = None
     if product.auto_smart_pricing_enabled:
-        decision_record = process_auto_smart_pricing(product, db)
+        decision_record = process_auto_smart_pricing(product, db, bypass_cooldown=True)
 
     return {
         "product_id": product.id,
@@ -141,7 +141,7 @@ def evaluate_auto_pricing(
             detail="You do not have permission to execute pricing evaluation for this product."
         )
 
-    decision_record = process_auto_smart_pricing(product, db)
+    decision_record = process_auto_smart_pricing(product, db, bypass_cooldown=True)
     return {
         "product_id": product.id,
         "auto_smart_pricing_enabled": product.auto_smart_pricing_enabled,
@@ -151,15 +151,25 @@ def evaluate_auto_pricing(
     }
 
 @router.post("/auto-pricing/run-all-cycles")
-def run_all_auto_pricing_cycles(db: Session = Depends(get_db)):
+def run_all_auto_pricing_cycles(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
-    Scheduled / System cycle endpoint: Runs auto-pricing evaluation on all products with auto_smart_pricing_enabled == True.
+    Admin-only System cycle endpoint: Runs auto-pricing evaluation on all products with auto_smart_pricing_enabled == True.
+    Requires ADMIN authentication.
     """
+    if current_user.role != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: Admin privileges required to execute global auto-pricing cycles."
+        )
+
     products = db.query(Product).filter(Product.auto_smart_pricing_enabled == True).all()
     applied_count = 0
     records = []
     for p in products:
-        rec = process_auto_smart_pricing(p, db)
+        rec = process_auto_smart_pricing(p, db, bypass_cooldown=False)
         if rec:
             applied_count += 1
             records.append({

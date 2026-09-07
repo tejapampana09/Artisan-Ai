@@ -133,20 +133,23 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
     price_change_amount = (rounded_price - curr_price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     price_change_pct = round((float(price_change_amount) / float(curr_price) * 100.0), 1) if curr_price > 0 else 0.0
 
-    # Equilibrium Guard: If the artisan recently accepted this recommendation and no new buyer events
+    # Equilibrium Guard: If the artisan recently accepted or auto-applied this recommendation and no new buyer events
     # have occurred since, the price has already reached market equilibrium. Do not compound again.
-    last_accepted = (
+    last_applied = (
         db.query(PricingDecision)
-        .filter(PricingDecision.product_id == product.id, PricingDecision.decision == "ACCEPT")
+        .filter(
+            PricingDecision.product_id == product.id,
+            PricingDecision.decision.in_(["ACCEPT", "AUTO_APPLIED"])
+        )
         .order_by(PricingDecision.timestamp.desc())
         .first()
     )
-    if last_accepted and to_decimal(last_accepted.applied_price) == curr_price:
+    if last_applied and to_decimal(last_applied.applied_price) == curr_price:
         new_events_count = (
             db.query(Event)
             .filter(
                 (Event.product_id == product.id) | (Event.category == product.category),
-                Event.timestamp > last_accepted.timestamp
+                Event.timestamp > last_applied.timestamp
             )
             .count()
         )
@@ -160,9 +163,13 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
     enquiry_count = db.query(Event).filter(Event.product_id == product.id, Event.event_type == "ENQUIRY").count()
 
     # 7. Transparent Explainable Reasoning List
+    cost_breakdown = f"Material: ₹{float(mat_cost):,.0f}, Labour: ₹{float(lab_cost):,.0f}, Packaging: ₹{float(pkg_cost):,.0f}"
+    if oth_cost > 0:
+        cost_breakdown += f", Other: ₹{float(oth_cost):,.0f}"
+
     reasoning: List[str] = [
         f"{product.category} market demand indicates {demand_pct}% share ({demand_label}, factor {float(demand_factor):.3f}x).",
-        f"Cost basis is ₹{float(cost_basis):,.0f} (Material: ₹{float(mat_cost)}, Labour: ₹{float(lab_cost)}, Packaging: ₹{float(pkg_cost)}).",
+        f"Cost basis is ₹{float(cost_basis):,.0f} ({cost_breakdown}).",
         f"Protected minimum fair price is ₹{float(minimum_fair_price):,.0f}, ensuring your configured {int(float(margin_pct) * 100)}% minimum margin.",
     ]
 
@@ -181,13 +188,16 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
     else:
         reasoning.append("Current listing price matches optimal fair market valuation.")
 
+    is_auto = bool(getattr(product, "auto_smart_pricing_enabled", False))
     safety_constraints = {
         "minimum_fair_price_protected": True,
         "min_margin_percentage": int(float(margin_pct) * 100),
         "max_upward_cap_applied": rounded_price >= max_upward_allowed,
         "max_upward_cap_pct": f"+{int(float(MAX_UPWARD_ADJUSTMENT_PCT) * 100)}%",
         "demand_factor_capped_at_max": demand_factor >= MAX_DEMAND_FACTOR,
-        "seller_approval_mandatory": True
+        "seller_approval_mandatory": not is_auto,
+        "autonomous_mode_enabled": is_auto,
+        "pricing_mode": "AUTONOMOUS_AUTO_APPLY" if is_auto else "SELLER_APPROVAL_RECOMMENDATION"
     }
 
     return {
@@ -211,10 +221,11 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
         "safety_constraints": safety_constraints
     }
 
-def process_auto_smart_pricing(product: Product, db: Session) -> Optional[PricingDecision]:
+def process_auto_smart_pricing(product: Product, db: Session, cooldown_minutes: int = 15, bypass_cooldown: bool = False) -> Optional[PricingDecision]:
     """
     Autonomous Dynamic Pricing Execution.
     If product.auto_smart_pricing_enabled is True:
+    - Checks 15-minute cooldown to prevent excessive DB writes from event spams.
     - Calculates current price recommendation.
     - If recommended price differs from current price:
       1. Automatically updates product.price = recommended_price.
@@ -226,6 +237,23 @@ def process_auto_smart_pricing(product: Product, db: Session) -> Optional[Pricin
 
     if not getattr(product, "auto_smart_pricing_enabled", False):
         return None
+
+    # Cooldown Guard: Skip automatic repricing if evaluated within last cooldown_minutes
+    if not bypass_cooldown:
+        last_decision = (
+            db.query(PricingDecision)
+            .filter(PricingDecision.product_id == product.id)
+            .order_by(PricingDecision.timestamp.desc())
+            .first()
+        )
+        if last_decision and last_decision.timestamp:
+            now_utc = datetime.now(timezone.utc)
+            ts = last_decision.timestamp
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            elapsed_minutes = (now_utc - ts).total_seconds() / 60.0
+            if elapsed_minutes < cooldown_minutes:
+                return None
 
     rec = calculate_price_recommendation(product, db)
     prev_price = Decimal(str(product.price)).quantize(Decimal("0.01"))

@@ -136,3 +136,61 @@ def test_auto_smart_pricing_execution():
     assert eval_data["current_price"] >= 1200.0
     assert eval_data["decision"] == "AUTO_APPLIED"
 
+def test_run_all_cycles_requires_admin_auth():
+    """
+    Verifies Issue 1: POST /api/products/auto-pricing/run-all-cycles is protected and requires ADMIN auth.
+    """
+    # 1. Unauthenticated -> 401/403 Forbidden
+    unauth_res = client.post("/api/products/auto-pricing/run-all-cycles")
+    assert unauth_res.status_code in (401, 403)
+
+    # 2. Artisan (Non-admin) -> 403
+    uid = uuid.uuid4().hex[:6]
+    artisan_res = client.post("/api/auth/register", json={
+        "name": f"Regular Artisan {uid}",
+        "email": f"artisan.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    token = artisan_res.json()["access_token"]
+    artisan_headers = {"Authorization": f"Bearer {token}"}
+    forbidden_res = client.post("/api/products/auto-pricing/run-all-cycles", headers=artisan_headers)
+    assert forbidden_res.status_code == 403
+
+def test_other_cost_reasoning_and_dynamic_safety_metadata():
+    """
+    Verifies Issue 3 & Issue 5: reasoning string lists Other costs and safety_constraints dynamically reflect auto mode.
+    """
+    db = SessionLocal()
+    try:
+        prod = Product(
+            title="Reasoning Craft",
+            category="Wooden Toys",
+            price=1000.0,
+            material_cost=400.0,
+            labour_cost=300.0,
+            packaging_cost=100.0,
+            other_cost=200.0,
+            min_margin_pct=0.20,
+            auto_smart_pricing_enabled=True,
+            status="PUBLISHED"
+        )
+        db.add(prod)
+        db.commit()
+        db.refresh(prod)
+
+        rec = calculate_price_recommendation(prod, db)
+        
+        # Verify Issue 5: Reasoning includes Other costs
+        reasoning_text = " ".join(rec["reasoning"])
+        assert "Other: ₹200" in reasoning_text
+
+        # Verify Issue 3: seller_approval_mandatory is False when auto mode is enabled
+        assert rec["safety_constraints"]["seller_approval_mandatory"] is False
+        assert rec["safety_constraints"]["autonomous_mode_enabled"] is True
+        assert rec["safety_constraints"]["pricing_mode"] == "AUTONOMOUS_AUTO_APPLY"
+
+    finally:
+        db.close()
+
+
