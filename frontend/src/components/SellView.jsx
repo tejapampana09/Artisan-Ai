@@ -1043,8 +1043,9 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
       )}
 
 
-      {/* Tab 4: Business & Sales Analytics */}
-      {activeTab === 'ANALYTICS' && (
+      {/* Business & Sales Analytics on Dashboard */}
+      {activeTab === 'DASHBOARD' && (
+
         <div className="space-y-6">
           {/* Key Performance Indicators Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
