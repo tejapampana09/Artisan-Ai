@@ -144,6 +144,60 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
     }
   };
 
+  // ─── Smart Pricing Live Refresh ─────────────────────────────────────
+  // Track previous prices of auto_smart_pricing_enabled products so we
+  // can show a toast when the backend changes one via dynamic pricing.
+  const prevSmartPrices = useState({})[0]; // ref-like, mutated in place
+
+  const refreshSmartPrices = async () => {
+    if (isOffline) return;
+    try {
+      const fresh = await getProducts();
+      setProducts(prev => {
+        // Detect price changes on auto-pricing products
+        const priceChanges = [];
+        fresh.forEach(fp => {
+          if (!fp.auto_smart_pricing_enabled) return;
+          const old = prev.find(p => p.id === fp.id);
+          if (old && Number(old.price) !== Number(fp.price)) {
+            priceChanges.push({ title: fp.title, from: Number(old.price), to: Number(fp.price) });
+            prevSmartPrices[fp.id] = Number(fp.price);
+          }
+        });
+        // Show toasts for changed prices
+        priceChanges.forEach(({ title, from, to }) => {
+          notify.info(`🤖 AI updated "${title}" price: ₹${from} → ₹${to} (demand signal)`);
+        });
+        // Merge: preserve offline drafts, replace live products
+        const drafts = prev.filter(p => p.isOfflineDraft);
+        return [...drafts, ...fresh];
+      });
+      // Sync selected product in modal if open
+      setSelectedProduct(prev => {
+        if (!prev) return prev;
+        const updated = fresh.find(p => p.id === prev.id);
+        return updated || prev;
+      });
+    } catch {
+      // Silently ignore polling errors — don't disrupt the UI
+    }
+  };
+
+  // 45-second polling — only while seller studio is active and online
+  useEffect(() => {
+    if (isOffline) return;
+    const interval = setInterval(refreshSmartPrices, 45000);
+    return () => clearInterval(interval);
+  }, [isOffline]);
+
+  // Refetch immediately when browser tab regains focus
+  useEffect(() => {
+    const onFocus = () => { if (!isOffline) refreshSmartPrices(); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [isOffline]);
+  // ─────────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     loadDashboard();
   }, [isOffline, offlineQueue.length]);
@@ -335,10 +389,20 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
             </p>
           </div>
           <div className="flex items-center space-x-2.5 flex-wrap gap-y-2">
+            {/* Smart Pricing Live Badge */}
+            {myProducts.filter(p => p.auto_smart_pricing_enabled).length > 0 && (
+              <div className="inline-flex items-center space-x-1.5 bg-emerald-900/60 border border-emerald-400/30 px-2.5 py-1.5 rounded-xl">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[11px] font-semibold text-emerald-300">
+                  {myProducts.filter(p => p.auto_smart_pricing_enabled).length} AI Priced
+                </span>
+              </div>
+            )}
+
             <button
-              onClick={loadDashboard}
+              onClick={() => { loadDashboard(); refreshSmartPrices(); }}
               className="p-2.5 bg-amber-800/50 hover:bg-amber-800 text-amber-200 rounded-xl transition-colors"
-              title="Refresh Live Metrics"
+              title="Refresh Live Prices &amp; Metrics"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
