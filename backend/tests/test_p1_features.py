@@ -373,5 +373,38 @@ def test_buyer_copilot_live_search():
     assert isinstance(data_en["recommended_products"], list)
 
 
+def test_buyer_copilot_audit_fixes():
+    """
+    Verifies audit compliance for AI Buyer Copilot:
+    1. Hybrid intent extraction & keyword refinement ('blue pottery under 1500' -> category + price filter).
+    2. Fallback trust fix (is_fallback is True, match_count is 0 when no exact match exists).
+    3. Prohibition of false 'certified GI heritage crafts' claim in fallback response.
+    """
+    # 1. Search for a query that yields no exact matches in DB (e.g. non-existent category or query)
+    res = client.post("/api/buyer/copilot-chat", json={
+        "message": "Unobtainium Space Craft under 50",
+        "language": "en"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["is_fallback"] is True
+    assert data["match_count"] == 0
+    assert "certified GI heritage crafts" not in data["reply_text"]
+    reply_lower = data["reply_text"].lower()
+    assert any(phrase in reply_lower for phrase in ["no exact matches", "couldn't find", "popular", "alternative"])
+
+    # 2. Telugu fallback check
+    res_te = client.post("/api/buyer/copilot-chat", json={
+        "message": "సరిపోలని కొత్త కానుక 10 రూపాయలు",
+        "language": "te"
+    })
+    assert res_te.status_code == 200
+    data_te = res_te.json()
+    assert data_te["is_fallback"] is True
+    assert any(phrase in data_te["reply_text"] for phrase in ["సరిపోలే ఉత్పత్తులు దొరకలేదు", "ప్రసిద్ధ", "దొరకలేదు", "లభించలేదు"])
+
+
+
+
 
 

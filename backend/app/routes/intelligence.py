@@ -188,51 +188,33 @@ def export_seller_analytics_csv(
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
+from backend.app.services.ai_adapter import extract_buyer_intent, generate_buyer_explanation
+
 @router.post("/buyer/copilot-chat", response_model=BuyerCopilotResponse)
-def buyer_copilot_chat(
+async def buyer_copilot_chat(
     req: BuyerCopilotRequest,
     db: Session = Depends(get_db)
 ):
     """
     Multilingual AI Buyer Guide & Live Marketplace Search Engine:
-    Parses buyer's query for category, keywords, and budget constraints.
-    Searches published crafts in SQLite live database and returns structured recommendations
-    with tailored responses in Telugu, Hindi, English, Tamil, or Bengali.
+    - Intent Extraction: Uses Gemini LLM when available, falls back to refined regex & craft keyword parsing.
+    - Database Search: Queries published products using category, budget cap, and refined non-stopword keywords.
+    - Honest Fallback: Distinguishes direct search matches from fallback popular items with explicit notices (no false GI claims).
+    - Conversational Explanation: Uses Gemini LLM or localized templates to summarize recommendations.
     """
-    import re
-    raw_msg = (req.message or "").strip().lower()
-    lang = (req.language or "te").lower()
+    # 1. Hybrid Intent Extraction
+    intent = await extract_buyer_intent(
+        message=req.message,
+        language=req.language or "te",
+        category_hint=req.category,
+        max_budget_hint=req.max_budget
+    )
 
-    # 1. Parse budget threshold
-    budget = req.max_budget
-    if not budget:
-        # Regex for price patterns like '1000', '2000', '500'
-        budget_match = re.search(r'(?:under|below|lopu|less than|₹|rs|రూ|రూపాయల|\bs\b)?\s*(\d{3,6})', raw_msg)
-        if budget_match:
-            try:
-                budget = float(budget_match.group(1))
-            except ValueError:
-                budget = None
+    matched_cat = intent.get("category")
+    budget = intent.get("max_budget")
+    keywords = intent.get("keywords", [])
 
-    # 2. Detect category / craft keywords
-    cat_keywords = {
-        "Kalamkari": ["kalamkari", "దుపట్టా", "కలంకారి", "कलमकारी", "saree", "dupatta", "fabric"],
-        "Wooden Toys": ["toy", "wooden", "channapatna", "బొమ్మలు", "చెక్క", "खिलौने", "लकड़ी", "sculpture"],
-        "Blue Pottery": ["pottery", "blue pottery", "bowl", "పాట్టరీ", "జైపూర్", "पॉटरी"],
-        "Bidriware": ["bidri", "bidriware", "silver", "బిద్రి", "बीदरी"],
-        "Pochampally Ikat": ["ikat", "pochampally", "పోచంపల్లి", "इकत"],
-        "Terracotta": ["terracotta", "clay", "మట్టి", "मिट्टी"],
-        "Handloom": ["handloom", "shawl", "హ్యాండ్‌లూమ్", "हैंडलूम"]
-    }
-
-    matched_cat = req.category
-    if not matched_cat:
-        for cat, keywords in cat_keywords.items():
-            if any(kw in raw_msg for kw in keywords):
-                matched_cat = cat
-                break
-
-    # 3. Perform Live Database Query
+    # 2. Perform Live Database Query
     query = db.query(Product).filter(Product.status == "PUBLISHED")
 
     if matched_cat:
@@ -241,12 +223,10 @@ def buyer_copilot_chat(
     if budget and budget > 0:
         query = query.filter(Product.price <= budget)
 
-    # General keyword search if specific words present
-    words = [w for w in re.findall(r'\w+', raw_msg) if len(w) > 2 and w not in ["want", "show", "need", "give", "kavali", "kaho", "chupinchu", "kya", "have"]]
-    if words:
+    if keywords:
         from sqlalchemy import or_
         filters = []
-        for word in words:
+        for word in keywords:
             filters.append(Product.title.ilike(f"%{word}%"))
             filters.append(Product.description.ilike(f"%{word}%"))
             filters.append(Product.category.ilike(f"%{word}%"))
@@ -254,41 +234,34 @@ def buyer_copilot_chat(
         query = query.filter(or_(*filters))
 
     matching_products = query.order_by(Product.id.desc()).limit(6).all()
+    is_fallback = False
 
-    # Fallback to top published products if specific search yielded no results
+    # 3. Fallback to top published products if specific search yielded no results
     if not matching_products:
+        is_fallback = True
         matching_products = db.query(Product).filter(Product.status == "PUBLISHED").order_by(Product.id.desc()).limit(6).all()
 
     match_count = len(matching_products)
+    product_titles = [p.title for p in matching_products]
 
-    # 4. Generate Natural Language Response by Language
-    if lang == "te":
-        if match_count > 0:
-            reply = f"అభివందనాలు! మీ కోరిక ('{req.message}') ప్రకారం లైవ్ మార్కెట్‌ప్లేస్‌లో శోధించాను. ఇక్కడ మీకోసం {match_count} అథెంటిక్ చేతివృత్తుల కళారూపాలు లభించాయి:"
-        else:
-            reply = "మీరు కోరిన వివరాలకు ఉత్పత్తులు లైవ్‌లో లభించాయి. మా ప్రాచుర్యం పొందిన కొన్ని విశిష్ట ఉత్పత్తులు ఇవిగోండి:"
-    elif lang == "hi":
-        if match_count > 0:
-            reply = f"नमस्ते! आपकी खोज ('{req.message}') के अनुसार लाइव मार्केटप्लेस में {match_count} प्रामाणिक हस्तशिल्प उत्पाद मिले हैं:"
-        else:
-            reply = "आपकी पसंद के अनुसार हमारे लोकप्रिय कारीगर उत्पाद यहाँ दिए गए हैं:"
-    elif lang == "ta":
-        reply = f"வணக்கம்! உங்கள் தேடலின் படி ({match_count}) நேரலை கைவினைப்பொருட்கள் கண்டறியப்பட்டுள்ளன:"
-    elif lang == "bn":
-        reply = f"নমস্কার! আপনার অনুসন্ধান অনুযায়ী ({match_count}) কারিগর সামগ্রী পাওয়া গেছে:"
-    else: # English
-        if match_count > 0:
-            reply = f"Hello! I searched our live database for '{req.message}'. Here are {match_count} authentic master artisan crafts matching your query:"
-        else:
-            reply = "Here are top certified GI heritage crafts curated for you:"
+    # 4. Generate Natural Language Conversational Explanation
+    reply = await generate_buyer_explanation(
+        user_message=req.message,
+        language=req.language or "te",
+        product_titles=product_titles,
+        match_count=0 if is_fallback else match_count,
+        is_fallback=is_fallback
+    )
 
     return BuyerCopilotResponse(
         reply_text=reply,
-        language=lang,
+        language=(req.language or "te").lower(),
         recommended_products=[
             ProductResponse.model_validate(p) for p in matching_products
         ],
         search_query_used=req.message,
-        match_count=match_count
+        match_count=0 if is_fallback else match_count,
+        is_fallback=is_fallback
     )
+
 

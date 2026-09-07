@@ -310,5 +310,7 @@ class BuyerCopilotResponse(BaseModel):
     recommended_products: List[ProductResponse] = []
     search_query_used: Optional[str] = None
     match_count: int = 0
+    is_fallback: bool = False
+
 
 
