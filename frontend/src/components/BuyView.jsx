@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, ShoppingBag, Heart, Sparkles, Filter, MapPin, Send, Eye, Flame, CheckCircle2, SlidersHorizontal, RefreshCw } from 'lucide-react';
+import { Search, ShoppingBag, Heart, Sparkles, Filter, MapPin, Send, Eye, Flame, CheckCircle2, SlidersHorizontal, RefreshCw, Bot } from 'lucide-react';
 import BuyerProductModal from './BuyerProductModal';
 import BuyerOrderModal from './BuyerOrderModal';
+import BuyerAssistantModal from './BuyerAssistantModal';
 import { getProducts, getTrendingProducts, recordEvent } from '../api/index.js';
 import { getSavedProductIds, saveProductId, removeSavedProductId } from '../services/offlineSync';
 
@@ -25,6 +26,7 @@ export default function BuyView({ user, onOpenAuth }) {
   const [savedProductIds, setSavedProductIds] = useState(() => new Set(getSavedProductIds(user?.id)));
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [orderModal, setOrderModal] = useState({ isOpen: false, product: null, mode: 'ORDER' });
   const [tickerTrigger, setTickerTrigger] = useState(0);
   const [notification, setNotification] = useState('');
@@ -477,6 +479,33 @@ export default function BuyView({ user, onOpenAuth }) {
           showNotification(msg);
           loadMarketplace();
           triggerEventRefresh();
+        }}
+      />
+
+      {/* Floating AI Buyer Copilot Trigger Button */}
+      {!isAssistantOpen && (
+        <button
+          onClick={() => setIsAssistantOpen(true)}
+          className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 hover:from-indigo-950 hover:to-purple-950 text-white font-bold px-4 py-3 rounded-full shadow-2xl border-2 border-amber-400/80 flex items-center space-x-2.5 transition-all hover:scale-105 active:scale-95 cursor-pointer group"
+          title="Open Native AI Shopping Assistant"
+        >
+          <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-slate-900 font-extrabold shadow-md group-hover:rotate-12 transition-transform">
+            🤖
+          </div>
+          <div className="text-left">
+            <span className="block text-xs font-black text-amber-300 leading-tight">AI Craft Guide</span>
+            <span className="block text-[10px] text-indigo-200 font-medium">చేతివృత్తుల AI గైడ్</span>
+          </div>
+        </button>
+      )}
+
+      {/* Multilingual AI Buyer Copilot Assistant Modal */}
+      <BuyerAssistantModal
+        isOpen={isAssistantOpen}
+        onClose={() => setIsAssistantOpen(false)}
+        onSelectProduct={(prod) => {
+          setSelectedProduct(prod);
+          setIsDetailOpen(true);
         }}
       />
     </div>

@@ -55,3 +55,11 @@ export async function submitPriceDecision(productId, decision) {
     body: JSON.stringify({ decision }),
   });
 }
+
+export async function sendBuyerCopilotMessage(payload) {
+  return await apiRequest('/buyer/copilot-chat', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+

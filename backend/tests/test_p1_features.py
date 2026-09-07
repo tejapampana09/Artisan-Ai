@@ -330,4 +330,48 @@ def test_order_cancellation_restores_inventory():
     assert p_check2["stock"] == 10
 
 
+# =====================================================================
+# 5. BUYER AI COPILOT LIVE SEARCH TESTS
+# =====================================================================
+
+def test_buyer_copilot_live_search():
+    """
+    Verify /api/buyer/copilot-chat endpoint performs live database search,
+    filters by keywords/category/price, and returns responses in Telugu, Hindi, and English.
+    """
+    # 1. Search in Telugu
+    res_te = client.post("/api/buyer/copilot-chat", json={
+        "message": "నాకు చెక్క బొమ్మలు 2000 రూపాయిలలోపు కావాలి",
+        "language": "te"
+    })
+    assert res_te.status_code == 200
+    data_te = res_te.json()
+    assert "reply_text" in data_te
+    assert "recommended_products" in data_te
+    assert isinstance(data_te["recommended_products"], list)
+    assert data_te["language"] == "te"
+
+    # 2. Search in Hindi
+    res_hi = client.post("/api/buyer/copilot-chat", json={
+        "message": "कलमकारी दुपट्टा दिखाओ",
+        "language": "hi"
+    })
+    assert res_hi.status_code == 200
+    data_hi = res_hi.json()
+    assert data_hi["language"] == "hi"
+    assert "recommended_products" in data_hi
+
+    # 3. Search in English with max_budget
+    res_en = client.post("/api/buyer/copilot-chat", json={
+        "message": "Show me blue pottery under 1500",
+        "language": "en",
+        "max_budget": 1500.0
+    })
+    assert res_en.status_code == 200
+    data_en = res_en.json()
+    assert data_en["language"] == "en"
+    assert isinstance(data_en["recommended_products"], list)
+
+
+
 

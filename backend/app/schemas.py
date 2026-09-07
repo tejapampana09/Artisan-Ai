@@ -297,3 +297,18 @@ class ArtisanProfileResponse(BaseModel):
     total_products_count: int = 0
     average_rating: float = 0.0
 
+# Buyer AI Copilot Schemas
+class BuyerCopilotRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=1000)
+    language: Optional[str] = "te"
+    max_budget: Optional[float] = None
+    category: Optional[str] = None
+
+class BuyerCopilotResponse(BaseModel):
+    reply_text: str
+    language: str
+    recommended_products: List[ProductResponse] = []
+    search_query_used: Optional[str] = None
+    match_count: int = 0
+
+
