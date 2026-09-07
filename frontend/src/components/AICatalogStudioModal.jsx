@@ -724,7 +724,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
         {/* STEP 3: Human-in-the-Loop Review & Approval */}
         {step === 'REVIEW' && aiDraft && (
-          <div className="mt-4 space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+          <div className="mt-4 space-y-4 pr-1">
             {/* AI Source Indicator Badge */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 gap-2">
               <div className="flex items-center space-x-2">
