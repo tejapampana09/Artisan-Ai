@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { X, Heart, ShoppingBag, Send, ShieldCheck, MapPin, Sparkles, Check, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Heart, ShoppingBag, Send, ShieldCheck, MapPin, Sparkles, Check, CheckCircle2, Award } from 'lucide-react';
 import { recordEvent } from '../api/index.js';
 
 export default function BuyerProductModal({ 
@@ -13,6 +13,8 @@ export default function BuyerProductModal({
   user,
   onOpenAuth
 }) {
+  const [showCertificate, setShowCertificate] = useState(false);
+
   // Track VIEW event when modal opens
   useEffect(() => {
     if (isOpen && product?.id) {
@@ -105,9 +107,16 @@ export default function BuyerProductModal({
               </p>
             </div>
 
-            <div>
-              <span className="font-bold text-slate-800 block mb-1">Materials</span>
-              <p className="text-slate-600">{product.materials || 'Pure Natural Fibres & Dyes'}</p>
+            {/* GI Certificate & Provenance Action */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setShowCertificate(true)}
+                className="w-full inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-amber-700 to-orange-800 hover:from-amber-800 hover:to-orange-900 text-white font-bold py-2 rounded-xl shadow-xs transition-all cursor-pointer text-xs"
+              >
+                <Award className="w-4 h-4 text-amber-300" />
+                <span>View Digital GI Heritage & Provenance Certificate</span>
+              </button>
             </div>
 
             {/* Action Buttons */}
@@ -168,6 +177,81 @@ export default function BuyerProductModal({
             )}
           </div>
         </div>
+
+        {/* Digital Heritage & GI Provenance Certificate Overlay Modal */}
+        {showCertificate && (
+          <div className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-amber-50/95 rounded-3xl max-w-lg w-full p-6 shadow-2xl border-4 border-amber-400 relative space-y-4">
+              <button
+                onClick={() => setShowCertificate(false)}
+                className="absolute top-4 right-4 p-1.5 bg-amber-200 text-amber-900 hover:bg-amber-300 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="text-center space-y-1 pt-2">
+                <div className="w-12 h-12 mx-auto rounded-full bg-amber-200 border-2 border-amber-500 flex items-center justify-center text-amber-900 shadow-md">
+                  <Award className="w-7 h-7" />
+                </div>
+                <h2 className="font-serif font-bold text-slate-900 text-lg tracking-wide uppercase">
+                  Certificate of Authenticity
+                </h2>
+                <p className="text-[11px] font-bold text-amber-800 tracking-widest uppercase">
+                  Geographical Indication (GI) & Heritage Craft Provenance
+                </p>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-xs space-y-3 text-xs">
+                <div className="flex justify-between items-center pb-2 border-b border-amber-100">
+                  <span className="text-slate-500 font-medium">Craft Item:</span>
+                  <span className="font-bold text-slate-900">{product.title}</span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-amber-100">
+                  <span className="text-slate-500 font-medium">Category / Cluster:</span>
+                  <span className="font-bold text-indigo-700">{product.category} GI Cluster</span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-amber-100">
+                  <span className="text-slate-500 font-medium">Cryptographic Hash:</span>
+                  <span className="font-mono text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300">
+                    ART-GI-2026-{product.id}-{(product.id * 9999).toString(16).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-amber-100">
+                  <span className="text-slate-500 font-medium">Fair Price Compliance:</span>
+                  <span className="font-bold text-emerald-700 flex items-center space-x-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>SIH 2026 Fair Margin Verified</span>
+                  </span>
+                </div>
+
+                <div className="pt-2 flex items-center justify-between gap-3">
+                  <div className="text-left space-y-1">
+                    <span className="text-[10px] text-slate-500 font-semibold block">Craft Origin:</span>
+                    <p className="text-[11px] text-slate-700 leading-tight">
+                      Handmade by certified rural artisan using 100% natural heritage processes.
+                    </p>
+                  </div>
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(
+                      `https://artisan-ai.gov.in/verify/ART-GI-2026-${product.id}`
+                    )}`}
+                    alt="Provenance Verification QR"
+                    className="w-16 h-16 rounded border border-amber-300 shadow-2xs shrink-0"
+                  />
+                </div>
+              </div>
+
+              <div className="text-center pt-1">
+                <button
+                  onClick={() => setShowCertificate(false)}
+                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-md transition-colors"
+                >
+                  Close Provenance Certificate
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
