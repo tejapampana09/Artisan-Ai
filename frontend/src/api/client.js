@@ -9,7 +9,15 @@ export function getApiBase() {
     return import.meta.env.VITE_API_BASE;
   }
 
-  // 2. Default relative route (proxied by Vite to http://127.0.0.1:8000)
+  // 2. Direct local backend URL when running locally in browser
+  if (typeof window !== 'undefined') {
+    const { hostname } = window.location;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://127.0.0.1:8000/api';
+    }
+  }
+
+  // 3. Default relative route
   return '/api';
 }
 
