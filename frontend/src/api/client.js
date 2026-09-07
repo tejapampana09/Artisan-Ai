@@ -8,16 +8,8 @@ export function getApiBase() {
   if (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_BASE) {
     return import.meta.env.VITE_API_BASE;
   }
-  
-  // 2. Relative API route when running behind reverse proxy or vite dev server proxy
-  if (typeof window !== 'undefined') {
-    const { hostname, port } = window.location;
-    if ((hostname === 'localhost' || hostname === '127.0.0.1') && port === '5173') {
-      return '/api';
-    }
-  }
 
-  // 3. Default relative route
+  // 2. Default relative route (proxied by Vite to http://127.0.0.1:8000)
   return '/api';
 }
 

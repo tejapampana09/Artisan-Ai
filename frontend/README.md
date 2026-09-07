@@ -38,6 +38,5 @@ npm run preview
 ## 🌐 Environment Configuration
 
 By default, Vite proxies `/api` requests to `http://127.0.0.1:8000`.
-For decoupled cloud deployments (e.g. Vercel frontend + Render/Fly backend):
-Set `VITE_API_BASE=https://api.yourdomain.com/api` in your deployment environment or `.env` file.
+To connect the frontend to a remote backend API, set `VITE_API_BASE` in your environment or `.env` file (e.g., `VITE_API_BASE=https://api.yourdomain.com/api`).
 

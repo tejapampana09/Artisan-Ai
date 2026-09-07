@@ -61,7 +61,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 
 # CORS origins
 raw_cors = os.getenv(
     "CORS_ORIGINS", 
-    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000,http://artisan-ai-frontend-339954341605.s3-website-us-east-1.amazonaws.com,https://dd8bq7j24onss.cloudfront.net"
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000"
 )
 
 def get_cors_origins() -> List[str]:

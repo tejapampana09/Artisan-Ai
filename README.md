@@ -250,17 +250,17 @@ Follow these 8 steps to demonstrate the complete, verified platform workflow:
 
 ---
 
-## 📋 Production Deployment Readiness Checklist
+## 📋 Production Deployment
 
-Before deploying to production (e.g. Render, AWS, Railway, GCP, Vercel), verify the following checklist:
-
-- [ ] **Database Migrations**: Run `alembic upgrade head` on the target PostgreSQL instance.
-- [ ] **Environment Mode**: Set `ENVIRONMENT=production` and `DEMO_MODE=false`.
-- [ ] **Database Connection**: Set a valid PostgreSQL URI (`DATABASE_URL=postgresql://...`).
-- [ ] **Cryptographic Secret**: Set `JWT_SECRET_KEY` to a random, 256-bit string (`openssl rand -hex 32`).
-- [ ] **CORS Configuration**: Restrict `CORS_ORIGINS` to production domains only (exclude `localhost`).
-- [ ] **Reverse Proxy / Frontend Routing**: Configure reverse proxy rules for `VITE_API_BASE=/api` (Nginx `location /api`, Cloudflare, or Vercel `rewrites`).
-- [ ] **Health & Readiness Checks**: Verify both `/api/health` and `/api/ready` return HTTP 200 after deployment.
+> **Note**: Specific cloud infrastructure deployment configurations (e.g., Docker, AWS, Vercel, Render, Cloudflare) are outside the repository scope to keep the project focused on core application logic and local development.
+> 
+> Before running in a production environment, verify the following configuration requirements:
+> - **Database Migrations**: Run `alembic upgrade head` on the target PostgreSQL instance.
+> - **Environment Mode**: Set `ENVIRONMENT=production` and `DEMO_MODE=false`.
+> - **Database Connection**: Set a valid PostgreSQL URI (`DATABASE_URL=postgresql://...`).
+> - **Cryptographic Secret**: Set `JWT_SECRET_KEY` to a random, secure 256-bit string.
+> - **CORS Configuration**: Restrict `CORS_ORIGINS` to production domains only.
+> - **Health & Readiness Checks**: Verify both `/api/health` and `/api/ready` return HTTP 200 after deployment.
 
 ---
 
