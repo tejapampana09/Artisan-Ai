@@ -35,8 +35,8 @@ def get_artisan_public_profile(artisan_id: int, db: Session = Depends(get_db)):
     return ArtisanProfileResponse(
         id=artisan.id,
         name=artisan.name,
-        email=artisan.email,
-        phone=artisan.phone,
+        email=None,  # Protect private email from public profiling
+        phone=None,  # Protect private phone from public profiling
         location=artisan.location or "India",
         craft=artisan.craft or "Handicrafts",
         avatar_url=artisan.avatar_url or f"https://api.dicebear.com/7.x/bottts/svg?seed={artisan.name}",

@@ -438,6 +438,17 @@ def test_telemetry_order_forgery_rejection():
     assert "Direct submission" in res.json()["detail"]
 
 def test_ai_catalog_large_base64_image_support():
+    import uuid
+    uid = uuid.uuid4().hex[:6]
+    artisan_res = client.post("/api/auth/register", json={
+        "name": f"Artisan {uid}",
+        "email": f"artisan.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    token = artisan_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     # Simulating a camera capture or image file upload converted to Base64 (e.g. 10,000+ chars)
     dummy_base64 = "data:image/jpeg;base64," + ("A" * 15000)
     res = client.post("/api/ai/process-catalog", json={
@@ -447,7 +458,7 @@ def test_ai_catalog_large_base64_image_support():
         "material_cost": 150.0,
         "labour_cost": 200.0,
         "packaging_cost": 50.0
-    })
+    }, headers=headers)
     # Must NOT fail with HTTP 422 Unprocessable Entity
     assert res.status_code == 200
     data = res.json()

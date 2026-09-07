@@ -95,8 +95,8 @@ def update_product(
             detail=f"Product with id {product_id} not found"
         )
 
-    # Seller Ownership Validation
-    if product.seller_id and current_user.id and product.seller_id != current_user.id:
+    # Seller Ownership / Admin Authorization Validation
+    if product.seller_id and current_user.id and product.seller_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to modify another artisan's product."
@@ -127,8 +127,8 @@ def delete_product(
             detail=f"Product with id {product_id} not found"
         )
 
-    # Seller Ownership Validation
-    if product.seller_id and current_user.id and product.seller_id != current_user.id:
+    # Seller Ownership / Admin Authorization Validation
+    if product.seller_id and current_user.id and product.seller_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to delete another artisan's product."
@@ -154,8 +154,8 @@ def transition_product_status(
             detail=f"Product with id {product_id} not found"
         )
 
-    # Seller Ownership Validation
-    if product.seller_id and current_user.id and product.seller_id != current_user.id:
+    # Seller Ownership / Admin Authorization Validation
+    if product.seller_id and current_user.id and product.seller_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to transition status of another artisan's product."

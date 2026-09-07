@@ -16,8 +16,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import update
 
 from backend.app.database import get_db
-from backend.app.models import Product, Order, Event
+from backend.app.models import Product, Order, Event, User
 from backend.app.config import ONDC_PROTOTYPE_ENABLED
+from backend.app.services.auth import get_current_user, get_current_user_strict
 
 def check_ondc_prototype_enabled():
     if not ONDC_PROTOTYPE_ENABLED:
@@ -170,9 +171,14 @@ def ondc_init(req: ONDCInitRequest, db: Session = Depends(get_db)):
     }
 
 @router.post("/confirm")
-def ondc_confirm(req: ONDCConfirmRequest, db: Session = Depends(get_db)):
+def ondc_confirm(
+    req: ONDCConfirmRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_strict)
+):
     """
     ONDC /confirm atomic order creation endpoint.
+    Requires authentication.
     Uses database-level conditional update (WHERE stock >= quantity) to prevent race conditions.
     """
     product = db.query(Product).filter(Product.id == req.product_id).first()
@@ -200,7 +206,7 @@ def ondc_confirm(req: ONDCConfirmRequest, db: Session = Depends(get_db)):
 
     new_order = Order(
         product_id=product.id,
-        user_id=None,
+        user_id=current_user.id,
         buyer_name=req.buyer_name,
         buyer_phone=req.buyer_phone,
         quantity=req.quantity,

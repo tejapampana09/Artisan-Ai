@@ -86,6 +86,16 @@ def test_ai_catalog_other_cost_pipeline():
     """
     Verifies Fix 1: /api/ai/process-catalog includes other_cost in AI catalog draft generation.
     """
+    uid = uuid.uuid4().hex[:6]
+    artisan_res = client.post("/api/auth/register", json={
+        "name": f"Artisan {uid}",
+        "email": f"artisan.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    token = artisan_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     res = client.post("/api/ai/process-catalog", json={
         "voice_description": "Handcrafted Kalamkari Saree with natural dyes",
         "language": "en",
@@ -94,7 +104,7 @@ def test_ai_catalog_other_cost_pipeline():
         "labour_cost": 300.0,
         "packaging_cost": 100.0,
         "other_cost": 100.0  # Total cost_basis = 1000.0 => min_fair_price = 1200.0
-    })
+    }, headers=headers)
     assert res.status_code == 200
     data = res.json()
     assert float(data["other_cost"]) == 100.0

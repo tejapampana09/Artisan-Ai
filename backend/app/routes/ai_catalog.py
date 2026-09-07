@@ -91,12 +91,16 @@ class TranslateProductResponse(BaseModel):
     target_language: str
 
 @router.post("/process-catalog", response_model=AICatalogDraftResponse)
-async def process_voice_and_image(req: AICatalogRequest, request: Request):
+async def process_voice_and_image(
+    req: AICatalogRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
     """
     Multimodal AI cataloging endpoint.
-    Enforces rate limits (max 10 generations per minute per client).
+    Requires authentication and enforces rate limits (max 10 generations per minute per client).
     """
-    rate_limiter.check_rate_limit(f"aicat:{get_client_identifier(request)}", max_requests=10, window_seconds=60)
+    rate_limiter.check_rate_limit(f"aicat:{get_client_identifier(request, current_user.id)}", max_requests=10, window_seconds=60)
     draft = await generate_catalog_draft(
         voice_description=req.voice_description,
         language=req.language,
@@ -144,10 +148,14 @@ def approve_and_publish_product(
     return product
 
 @router.post("/translate-product", response_model=TranslateProductResponse)
-async def translate_product(req: TranslateProductRequest, db: Session = Depends(get_db)):
+async def translate_product(
+    req: TranslateProductRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Dynamically translates product title, description, and craft story into any target language.
-    If product_id is provided, caches translation in the DB for ultra-fast subsequent queries.
+    Requires authentication. If product_id is provided, enforces seller ownership validation before caching translation in DB.
     """
     target_lang = req.target_language.lower()
     title = req.title or ""
@@ -157,6 +165,13 @@ async def translate_product(req: TranslateProductRequest, db: Session = Depends(
     product = None
     if req.product_id:
         product = db.query(Product).filter(Product.id == req.product_id).first()
+        if product:
+            # Seller Ownership / Admin Authorization check
+            if product.seller_id and current_user.id and product.seller_id != current_user.id and current_user.role != "ADMIN":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You do not have permission to translate or modify another artisan's product."
+                )
         if product:
             title = product.title
             description = product.description or ""

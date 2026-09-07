@@ -54,23 +54,27 @@ def create_product_review(
             detail="Sellers cannot review their own products (ఉత్పత్తిదారులు వారి సొంత ఉత్పత్తులకు సమీక్షలు ఇవ్వలేరు)"
         )
 
-    # Check for completed order
+    # Enforce Verified Buyer requirement: Must have a completed DELIVERED order for this product
     verified_order = db.query(Order).filter(
         Order.product_id == product_id,
         Order.user_id == current_user.id,
         Order.status == "DELIVERED"
     ).first()
 
-    verified_purchase = 1 if verified_order else 0
+    if not verified_order:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only verified buyers who have received delivery of this product can submit reviews."
+        )
 
     review = Review(
         product_id=product_id,
-        order_id=req.order_id or (verified_order.id if verified_order else None),
+        order_id=req.order_id or verified_order.id,
         buyer_id=current_user.id,
         buyer_name=current_user.name,
         rating=req.rating,
         comment=req.comment,
-        verified_purchase=verified_purchase
+        verified_purchase=1
     )
     db.add(review)
     db.commit()
