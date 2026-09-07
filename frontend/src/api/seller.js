@@ -42,6 +42,25 @@ export async function getSellerDashboard() {
   return await apiRequest('/seller/dashboard');
 }
 
+export async function getSellerReadiness() {
+  if (!getAuthToken()) {
+    return { score: 0, strengths: [], improvements: [], next_best_action: "" };
+  }
+  return await apiRequest('/seller/readiness');
+}
+
+export async function getSalesChannels() {
+  if (!getAuthToken()) return [];
+  return await apiRequest('/channels/list');
+}
+
+export async function publishToChannel(productId, channelName) {
+  return await apiRequest('/channels/publish', {
+    method: 'POST',
+    body: JSON.stringify({ product_id: productId, channel_name: channelName })
+  });
+}
+
 export async function downloadAnalyticsCSV() {
   const token = getAuthToken();
   if (!token) throw new Error('Authentication required');

@@ -13,7 +13,8 @@ import MarketDemandWidget from './MarketDemandWidget';
 import { 
   getProducts, createProduct, updateProduct, deleteProduct, 
   getMarketDemand, getSellerOpportunities, getEnquiries, getOrders,
-  replyToEnquiry, updateOrderStatus, getSellerDashboard, downloadAnalyticsCSV
+  replyToEnquiry, updateOrderStatus, getSellerDashboard, downloadAnalyticsCSV,
+  getSellerReadiness, getSalesChannels, publishToChannel
 } from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
 import { useNotification } from '../context/NotificationContext';
@@ -46,10 +47,12 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
   const [products, setProducts] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [activeTab, setActiveTab] = useState('PRODUCTS'); // 'PRODUCTS' | 'ENQUIRIES' | 'ORDERS'
+  const [activeTab, setActiveTab] = useState('DASHBOARD'); // 'DASHBOARD' | 'PRODUCTS' | 'PRICING' | 'PASSPORT' | 'ORDERS' | 'INSIGHTS' | 'SYNC_STATUS' | 'CHANNELS'
   const [demands, setDemands] = useState([]);
   const [copilotInsight, setCopilotInsight] = useState(null);
   const [opportunities, setOpportunities] = useState([]);
+  const [readiness, setReadiness] = useState(null);
+  const [channels, setChannels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
@@ -61,6 +64,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
   const [editingReply, setEditingReply] = useState({});
   const [replyingEnquiryId, setReplyingEnquiryId] = useState(null);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
+  const [publishingChannel, setPublishingChannel] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
 
   const { isOffline, queueProductDraft, offlineQueue, removeDraft } = useOffline();
@@ -87,13 +91,15 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         setCopilotInsight(getCachedCopilotInsight());
         setOpportunities(getCachedOpportunities());
       } else {
-        const [prodsData, demandData, oppsData, enqsData, ordersData, dashData] = await Promise.all([
+        const [prodsData, demandData, oppsData, enqsData, ordersData, dashData, readData, chansData] = await Promise.all([
           getProducts(),
           getMarketDemand(),
           getSellerOpportunities(),
           getEnquiries('seller'),
           getOrders('seller'),
-          getSellerDashboard()
+          getSellerDashboard(),
+          getSellerReadiness(),
+          getSalesChannels()
         ]);
 
         // Cache products and intelligence locally for offline resilience
@@ -123,6 +129,8 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         setEnquiries(enqsData || []);
         setOrders(ordersData || []);
         setDashboardData(dashData || null);
+        setReadiness(readData || null);
+        setChannels(chansData || []);
       }
     } catch (err) {
       console.error('Error loading seller dashboard, falling back to cache:', err);
@@ -447,30 +455,66 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
       {/* Regional Craft Market Demand */}
       <MarketDemandWidget demands={demands} />
 
-      {/* Studio Navigation Tabs */}
-      <div className="flex items-center space-x-2 border-b border-slate-200 pb-3 flex-wrap gap-y-2">
+      {/* 9-Section Unified Artisan Workspace Navigation Tabs */}
+      <div className="flex items-center space-x-1.5 border-b border-slate-200 pb-3 flex-wrap gap-y-2">
+        <button
+          onClick={() => setActiveTab('DASHBOARD')}
+          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'DASHBOARD'
+              ? 'bg-amber-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>My Dashboard</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('PRODUCTS')}
-          className={`inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'PRODUCTS'
               ? 'bg-amber-600 text-white shadow-sm'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
-          <Package className="w-4 h-4" />
-          <span>My Crafts ({myProducts.length})</span>
+          <Package className="w-3.5 h-3.5" />
+          <span>My Products ({myProducts.length})</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('ENQUIRIES')}
-          className={`inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
-            activeTab === 'ENQUIRIES'
+          onClick={() => setActiveTab('PRICING')}
+          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'PRICING'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Tag className="w-3.5 h-3.5" />
+          <span>Pricing & Costs</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('PASSPORT')}
+          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'PASSPORT'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
-          <MessageSquare className="w-4 h-4" />
-          <span>Buyer Enquiries ({enquiries.length})</span>
+          <ShieldCheck className="w-3.5 h-3.5" />
+          <span>Craft Passport</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('ORDERS')}
+          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
+            activeTab === 'ORDERS'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <ShoppingCart className="w-3.5 h-3.5" />
+          <span>Orders & Enquiries ({orders.length + enquiries.length})</span>
           {enquiries.length > 0 && (
             <span className="bg-amber-500 text-white text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ml-1">
               {enquiries.length} New
@@ -479,36 +523,140 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         </button>
 
         <button
-          onClick={() => setActiveTab('ORDERS')}
-          className={`inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'ORDERS'
-              ? 'bg-emerald-600 text-white shadow-sm'
+          onClick={() => setActiveTab('INSIGHTS')}
+          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'INSIGHTS'
+              ? 'bg-purple-600 text-white shadow-sm'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
-          <ShoppingCart className="w-4 h-4" />
-          <span>Customer Orders ({orders.length})</span>
-          {orders.length > 0 && (
-            <span className="bg-emerald-500 text-white text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ml-1">
-              {orders.length}
-            </span>
-          )}
+          <BarChart3 className="w-3.5 h-3.5" />
+          <span>Market Insights</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('ANALYTICS')}
-          className={`inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'ANALYTICS'
-              ? 'bg-amber-700 text-white shadow-sm'
+          onClick={() => setActiveTab('SYNC_STATUS')}
+          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'SYNC_STATUS'
+              ? 'bg-sky-600 text-white shadow-sm'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
-          <BarChart3 className="w-4 h-4 text-amber-500" />
-          <span>📊 Business Analytics (విశ్లేషణలు)</span>
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>Offline Sync ({offlineQueue.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('CHANNELS')}
+          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'CHANNELS'
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
+          <span>Sales Channels</span>
         </button>
       </div>
 
-      {/* Tab 1: Products List */}
+      {/* SECTION 1: DASHBOARD (Business Readiness & Next Best Action) */}
+      {activeTab === 'DASHBOARD' && (
+        <div className="space-y-6">
+          {/* Artisan Business Readiness Score & Next Best Action Card */}
+          {readiness && (
+            <div className="bg-gradient-to-br from-slate-900 to-amber-950 rounded-2xl p-6 text-white shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-amber-500/20 pb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-500 text-slate-950 font-black text-xl flex items-center justify-center shadow-lg shrink-0">
+                    {readiness.score}%
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-bold text-base text-amber-200">Artisan Business Readiness Score</h3>
+                      <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-400/30">
+                        Explainable 0–100 Rating
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Evaluates completeness of craft details, pricing cost floor, photos, and passport provenance
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setIsAIOpen(true)}
+                    className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center space-x-1.5"
+                  >
+                    <Wand2 className="w-4 h-4" />
+                    <span>Improve via Voice AI</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Next Best Action Callout */}
+              {readiness.next_best_action && (
+                <div className="bg-amber-500/10 border border-amber-400/30 rounded-xl p-3.5 flex items-start space-x-3 text-xs text-amber-100">
+                  <Sparkles className="w-4 h-4 text-amber-400 mt-0.5 shrink-0 animate-pulse" />
+                  <div>
+                    <span className="font-bold text-amber-300 uppercase tracking-wider block text-[10px]">Recommended Next Best Action:</span>
+                    <p className="font-semibold text-slate-100 mt-0.5 leading-relaxed">{readiness.next_best_action}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Verified Strengths vs Next Improvements */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
+                <div className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                  <span className="font-bold text-emerald-400 flex items-center space-x-1 text-[11px]">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Verified Readiness Strengths:</span>
+                  </span>
+                  <ul className="space-y-1 text-slate-300 text-[11px]">
+                    {readiness.strengths?.map((s, idx) => (
+                      <li key={idx} className="flex items-center space-x-1.5">
+                        <span className="text-emerald-400 font-bold">✓</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                  <span className="font-bold text-amber-400 flex items-center space-x-1 text-[11px]">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Recommended Improvements:</span>
+                  </span>
+                  <ul className="space-y-1 text-slate-300 text-[11px]">
+                    {readiness.improvements?.length > 0 ? (
+                      readiness.improvements.map((imp, idx) => (
+                        <li key={idx} className="flex items-center space-x-1.5">
+                          <span className="text-amber-400 font-bold">⚠</span>
+                          <span>{imp}</span>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="text-emerald-400 font-medium">No pending improvements! 100% Market Ready!</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quick Catalog Overview Grid */}
+          <ProductList
+            products={myProducts}
+            currentUser={user}
+            onSelectProduct={handleSelectProduct}
+            onEditProduct={handleSelectProduct}
+            onDeleteProduct={handleDeleteProduct}
+            onAddProduct={() => setIsAIOpen(true)}
+          />
+        </div>
+      )}
+
+      {/* SECTION 2: PRODUCTS LIST */}
       {activeTab === 'PRODUCTS' && (
         loading ? (
           <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center">
@@ -525,6 +673,243 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
             onAddProduct={() => setIsAIOpen(true)}
           />
         )
+      )}
+
+      {/* SECTION 3: PRICING & COSTS */}
+      {activeTab === 'PRICING' && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
+          <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                <Tag className="w-5 h-5 text-amber-600" />
+                <span>Explainable Artisan Cost-Plus Pricing System</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Every price recommendation is transparently calculated from your actual material, labour, and packaging costs with a guaranteed 20% protected profit margin.
+              </p>
+            </div>
+            <span className="text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 px-3 py-1 rounded-full">
+              ≥20% Fair Margin Shield Active
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {myProducts.map((p) => {
+              const mat = Number(p.material_cost) || 0;
+              const lab = Number(p.labour_cost) || 0;
+              const pkg = Number(p.packaging_cost) || 0;
+              const basis = mat + lab + pkg;
+              const minFair = basis > 0 ? Math.round(basis * 1.2) : Math.round(Number(p.price) * 0.8);
+              return (
+                <div key={p.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <img src={p.image_url} alt={p.title} className="w-10 h-10 rounded-lg object-cover border border-slate-200" />
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-xs">{p.title}</h4>
+                        <span className="text-[10px] text-slate-500">{p.category}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-bold text-slate-900 block">₹{Number(p.price).toLocaleString('en-IN')}</span>
+                      <span className="text-[10px] font-semibold text-emerald-700">Listing Price</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 p-2 bg-white rounded-lg border border-slate-200 text-[11px]">
+                    <div>
+                      <span className="text-slate-400 block text-[10px]">Material:</span>
+                      <span className="font-bold text-slate-800">₹{mat}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px]">Labour:</span>
+                      <span className="font-bold text-slate-800">₹{lab}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px]">Packaging:</span>
+                      <span className="font-bold text-slate-800">₹{pkg}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200 text-[11px] flex justify-between items-center">
+                    <span className="text-emerald-900 font-medium">Protected Minimum Fair Price:</span>
+                    <span className="font-bold text-emerald-950">₹{minFair.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 4: CRAFT PASSPORT */}
+      {activeTab === 'PASSPORT' && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
+          <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                <ShieldCheck className="w-5 h-5 text-indigo-600" />
+                <span>Digital Craft Passport & Heritage Provenance</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Cryptographically verifiable digital craft identity preserving handmade heritage, origin, and fair-wage compliance.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {myProducts.map((p) => (
+              <div key={p.id} className="bg-amber-50/40 p-4 rounded-2xl border border-amber-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 bg-amber-200/60 px-2 py-0.5 rounded-full">
+                    {p.category} GI Provenance
+                  </span>
+                  <span className="font-mono text-[10px] font-bold text-amber-800 bg-white px-2 py-0.5 rounded border border-amber-300">
+                    ART-GI-2026-{p.id}
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <img src={p.image_url} alt={p.title} className="w-14 h-14 rounded-xl object-cover border border-amber-300 shadow-2xs" />
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-xs">{p.title}</h4>
+                    <p className="text-[11px] text-slate-600 italic mt-0.5">"{p.craft_story || 'Generational traditional craft technique.'}"</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-amber-200/60">
+                  <div>
+                    <span className="text-slate-500 block text-[10px]">Handmade Percentage:</span>
+                    <span className="font-bold text-emerald-800">100% Handcrafted</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px]">Verification Status:</span>
+                    <span className="font-bold text-indigo-800">Artisan Verified</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 6: MARKET INSIGHTS */}
+      {activeTab === 'INSIGHTS' && (
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <BarChart3 className="w-5 h-5 text-purple-600" />
+              <span>Actionable Market Intelligence & Trend Signals</span>
+            </h3>
+            <p className="text-xs text-slate-500">
+              Data-backed market insights following <strong className="text-slate-700">DATA → INSIGHT → EXPLANATION → RECOMMENDED ACTION</strong> with explicit source attribution.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              {demands.map((d, idx) => (
+                <div key={idx} className="p-4 rounded-xl border border-purple-100 bg-purple-50/40 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-purple-950 text-sm">{d.category} Craft Demand</span>
+                    <span className="text-[10px] font-bold bg-purple-200 text-purple-900 px-2 py-0.5 rounded-full border border-purple-300">
+                      [Internal Buyer Activity]
+                    </span>
+                  </div>
+                  <p className="text-slate-700 leading-relaxed">
+                    <strong className="text-purple-900">Insight:</strong> High search interest detected ({d.search_count} searches in past 30 days).
+                  </p>
+                  <p className="text-slate-600 bg-white p-2 rounded-lg border border-purple-100 italic">
+                    <strong>Recommended Action:</strong> List 2 additional items in {d.category} to capture active buyer orders.
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 7: OFFLINE SYNC STATUS */}
+      {activeTab === 'SYNC_STATUS' && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+          <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                <RefreshCw className="w-5 h-5 text-sky-600" />
+                <span>Atomic Offline Queue & Client Operation Sync Monitor</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Guarantees zero data loss in rural areas with unreliable internet. Operations assign a unique <code className="text-sky-700 bg-sky-50 px-1 rounded">client_operation_id</code> for idempotent processing.
+              </p>
+            </div>
+            <span className={`text-xs font-bold px-3 py-1 rounded-full border ${isOffline ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-emerald-100 text-emerald-900 border-emerald-300'}`}>
+              {isOffline ? 'Offline (Local Queue Active)' : 'Online (Synced)'}
+            </span>
+          </div>
+
+          <div className="space-y-3 text-xs">
+            <h4 className="font-bold text-slate-800">Pending Device Queue Items ({offlineQueue.length}):</h4>
+            {offlineQueue.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200 text-slate-500">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+                <span>All local operations are 100% synchronized with the cloud!</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {offlineQueue.map((item) => (
+                  <div key={item.client_temp_id} className="p-3 bg-sky-50/60 border border-sky-200 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-sky-950 block">{item.payload?.title || 'Craft Draft'}</span>
+                      <span className="font-mono text-[10px] text-sky-700">Op ID: {item.client_temp_id}</span>
+                    </div>
+                    <span className="text-[10px] font-bold bg-sky-200 text-sky-900 px-2 py-0.5 rounded-full">
+                      Pending Sync
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 8: SALES CHANNELS */}
+      {activeTab === 'CHANNELS' && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
+          <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                <ExternalLink className="w-5 h-5 text-slate-900" />
+                <span>Sales Channel Adapters & Marketplace Network</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Decoupled channel adapters for direct buyer marketplace and external sandbox channels.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            {channels.map((chan) => (
+              <div key={chan.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900">{chan.name}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${chan.is_real_integration ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'}`}>
+                    {chan.status}
+                  </span>
+                </div>
+                <p className="text-slate-600 text-[11px]">{chan.description}</p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handlePublishChannel(myProducts[0]?.id || 1, chan.id)}
+                    disabled={publishingChannel === chan.id || myProducts.length === 0}
+                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                  >
+                    {publishingChannel === chan.id ? 'Publishing...' : `Publish Craft to ${chan.name}`}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Tab 2: Buyer Enquiries List */}

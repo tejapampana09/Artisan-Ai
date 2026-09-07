@@ -9,12 +9,21 @@ from backend.app.schemas import (
 )
 from backend.app.services.auth import get_current_user
 from backend.app.services.demand_engine import calculate_category_demand, generate_seller_opportunities
+from backend.app.services.readiness_engine import calculate_artisan_overall_readiness
 
 router = APIRouter(prefix="/api", tags=["Market Intelligence & Seller Copilot"])
 
 @router.get("/market/demand")
 def get_market_demand(db: Session = Depends(get_db)):
     return calculate_category_demand(db)
+
+@router.get("/seller/readiness")
+def get_seller_readiness(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    seller_products = db.query(Product).filter(Product.seller_id == current_user.id).all()
+    return calculate_artisan_overall_readiness(seller_products)
 
 @router.get("/seller/opportunities")
 def get_seller_opportunities(
