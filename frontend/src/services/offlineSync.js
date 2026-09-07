@@ -200,16 +200,27 @@ export function setCachedOpportunities(opps, userId) {
   }
 }
 
-// Account Logout Cleanup Helper
+/**
+ * Account Logout Cleanup Helper.
+ * Explicit Security & Resilience Policy:
+ * 1. Clears transient cached view data (products, demand metrics, copilot recommendations, opportunities).
+ * 2. PRESERVES the user's namespaced offline queue (`artisan_ai_offline_queue_<userId>`) so that unsynced
+ *    craft drafts created in low-connectivity rural environments remain safe and will auto-sync when
+ *    this specific artisan logs back in.
+ * 3. Removes active session identity (`artisan_ai_user`) from localStorage.
+ */
 export function clearUserOfflineCache(userId) {
   try {
     const uid = userId || getCurrentUserId();
+    // Clear transient cached view data to prevent UI bleed on shared devices
     localStorage.removeItem(`artisan_ai_cached_products_${uid}`);
     localStorage.removeItem(`artisan_ai_cached_demands_${uid}`);
     localStorage.removeItem(`artisan_ai_cached_copilot_${uid}`);
     localStorage.removeItem(`artisan_ai_cached_opportunities_${uid}`);
     localStorage.removeItem(`artisan_ai_offline_mode_${uid}`);
+    // Clear active session identity
     localStorage.removeItem('artisan_ai_user');
+    // NOTE: artisan_ai_offline_queue_${uid} is intentionally preserved to prevent data loss.
   } catch (e) {
     console.error('Failed to clear user offline cache on logout', e);
   }
