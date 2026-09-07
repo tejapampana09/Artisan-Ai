@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, update
 
 from backend.app.database import get_db
-from backend.app.models import Event, Product, User, Order, Enquiry
+from backend.app.models import Event, Product, User, Order, Enquiry, Notification
 from backend.app.schemas import (
     EventCreate, EventResponse, EnquiryCreate, EnquiryReply, EnquiryResponse, 
     OrderCreate, OrderStatusUpdate, OrderResponse, ProductResponse
@@ -140,6 +140,17 @@ def submit_enquiry(
     db.add(evt)
     db.commit()
     db.refresh(evt)
+
+    # Notify seller of new enquiry
+    if product.seller_id:
+        db.add(Notification(
+            user_id=product.seller_id,
+            title="📩 New Buyer Enquiry!",
+            message=f"{buyer_name} enquired about '{product.title}' × {enquiry.quantity} unit(s). Check your enquiries tab.",
+            type="ENQUIRY"
+        ))
+        db.commit()
+
     trigger_auto_pricing(product, db)
     return evt
 
@@ -212,6 +223,16 @@ def reply_enquiry(
     enquiry.replied_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(enquiry)
+
+    # Notify buyer that artisan replied
+    if enquiry.user_id:
+        db.add(Notification(
+            user_id=enquiry.user_id,
+            title="💬 Artisan Replied to Your Enquiry!",
+            message=f"The artisan replied to your enquiry on '{prod.title}': \"{payload.artisan_reply.strip()[:120]}\"",
+            type="ENQUIRY"
+        ))
+        db.commit()
 
     return EnquiryResponse(
         id=enquiry.id,
@@ -299,6 +320,24 @@ def place_order(
         db.add(evt)
         db.commit()
         db.refresh(evt)
+
+        # Notify seller of new order
+        if product.seller_id:
+            db.add(Notification(
+                user_id=product.seller_id,
+                title="🛒 New Order Received!",
+                message=f"{buyer_name} ordered '{product.title}' × {order.quantity} unit(s) for ₹{float(total_price):,.0f}. Go to Orders tab to process.",
+                type="ORDER"
+            ))
+        # Confirm order to buyer
+        db.add(Notification(
+            user_id=current_user.id,
+            title="✅ Order Confirmed!",
+            message=f"Your order for '{product.title}' × {order.quantity} unit(s) (₹{float(total_price):,.0f}) is confirmed. The artisan will process it soon.",
+            type="ORDER"
+        ))
+        db.commit()
+
         trigger_auto_pricing(product, db)
         return evt
     except Exception as e:
@@ -406,6 +445,34 @@ def update_order_status(
 
     db.commit()
     db.refresh(order)
+
+    # Status-change notifications
+    STATUS_LABELS = {
+        "PROCESSING": ("📦 Order Being Packed!", "Your order for '{title}' is being packed by the artisan."),
+        "SHIPPED":    ("🚚 Order Shipped!", "Your order for '{title}' is on the way! The artisan has dispatched it."),
+        "DELIVERED":  ("🎉 Order Delivered!", "Your order for '{title}' has been delivered. Please leave a review!"),
+        "CANCELLED":  ("❌ Order Cancelled", "Your order for '{title}' has been cancelled and stock has been restored."),
+    }
+    if new_status in STATUS_LABELS and new_status != old_status:
+        title_tpl, msg_tpl = STATUS_LABELS[new_status]
+        label = {"title": prod.title}
+        # Notify buyer on all seller-driven status changes
+        if order.user_id and is_seller:
+            db.add(Notification(
+                user_id=order.user_id,
+                title=title_tpl,
+                message=msg_tpl.format(**label),
+                type="ORDER"
+            ))
+        # Notify seller when buyer cancels
+        if new_status == "CANCELLED" and is_buyer and prod.seller_id:
+            db.add(Notification(
+                user_id=prod.seller_id,
+                title="⚠️ Order Cancelled by Buyer",
+                message=f"{order.buyer_name} cancelled the order for '{prod.title}' × {order.quantity} unit(s). Stock has been restored.",
+                type="ORDER"
+            ))
+        db.commit()
 
     return OrderResponse(
         id=order.id,

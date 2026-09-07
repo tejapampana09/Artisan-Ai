@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   PlusCircle, TrendingUp, Tag, Sparkles, Package, Wand2, RefreshCw,
   MessageSquare, ShoppingCart, Phone, ExternalLink, Store, ShieldCheck,
@@ -145,39 +145,43 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
   };
 
   // ─── Smart Pricing Live Refresh ─────────────────────────────────────
-  // Track previous prices of auto_smart_pricing_enabled products so we
-  // can show a toast when the backend changes one via dynamic pricing.
-  const prevSmartPrices = useState({})[0]; // ref-like, mutated in place
+  // useRef to track previous prices without causing re-renders
+  const prevSmartPricesRef = useRef({});
 
   const refreshSmartPrices = async () => {
     if (isOffline) return;
     try {
       const fresh = await getProducts();
+
+      // 1. Compute price changes BEFORE touching state
+      const priceChanges = [];
+      fresh.forEach(fp => {
+        if (!fp.auto_smart_pricing_enabled) return;
+        const prevPrice = prevSmartPricesRef.current[fp.id];
+        const newPrice = Number(fp.price);
+        if (prevPrice !== undefined && prevPrice !== newPrice) {
+          priceChanges.push({ title: fp.title, from: prevPrice, to: newPrice });
+        }
+        prevSmartPricesRef.current[fp.id] = newPrice;
+      });
+
+      // 2. Update product state (pure, no side-effects inside updater)
       setProducts(prev => {
-        // Detect price changes on auto-pricing products
-        const priceChanges = [];
-        fresh.forEach(fp => {
-          if (!fp.auto_smart_pricing_enabled) return;
-          const old = prev.find(p => p.id === fp.id);
-          if (old && Number(old.price) !== Number(fp.price)) {
-            priceChanges.push({ title: fp.title, from: Number(old.price), to: Number(fp.price) });
-            prevSmartPrices[fp.id] = Number(fp.price);
-          }
-        });
-        // Show toasts for changed prices
-        priceChanges.forEach(({ title, from, to }) => {
-          notify.info(`🤖 AI updated "${title}" price: ₹${from} → ₹${to} (demand signal)`);
-        });
-        // Merge: preserve offline drafts, replace live products
         const drafts = prev.filter(p => p.isOfflineDraft);
         return [...drafts, ...fresh];
       });
-      // Sync selected product in modal if open
+
+      // 3. Sync open modal product
       setSelectedProduct(prev => {
         if (!prev) return prev;
-        const updated = fresh.find(p => p.id === prev.id);
-        return updated || prev;
+        return fresh.find(p => p.id === prev.id) || prev;
       });
+
+      // 4. Show toasts AFTER state updates — safe from render cycle
+      priceChanges.forEach(({ title, from, to }) => {
+        notify.info(`🤖 AI updated "${title}" price: ₹${from} → ₹${to} (demand signal)`);
+      });
+
     } catch {
       // Silently ignore polling errors — don't disrupt the UI
     }

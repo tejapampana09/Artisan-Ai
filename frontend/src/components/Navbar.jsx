@@ -16,6 +16,8 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
   useEffect(() => {
     if (user) {
       fetchNotifications();
+      const interval = setInterval(fetchNotifications, 25000);
+      return () => clearInterval(interval);
     }
   }, [user]);
 
