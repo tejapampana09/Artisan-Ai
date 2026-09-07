@@ -12,6 +12,7 @@ import { checkHealth, checkReady, getCurrentUser, updateUserMode, getAuthToken }
 
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import LanguageSelectorModal from './components/LanguageSelectorModal';
+import DownloadAppModal from './components/DownloadAppModal';
 import { setStoredUser } from './services/offlineSync';
 
 function AppContent() {
