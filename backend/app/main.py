@@ -1,6 +1,10 @@
+import logging
+import time
+import uuid
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException, status
+
+from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -49,10 +53,6 @@ app.add_middleware(
     **cors_kwargs
 )
 
-import uuid
-import time
-from fastapi import Request
-
 @app.middleware("http")
 async def add_observability_headers(request: Request, call_next):
     start_time = time.time()
@@ -93,7 +93,6 @@ def readiness_check(db: Session = Depends(get_db)):
             user_count=user_count
         )
     except Exception as e:
-        import logging
         logging.getLogger("artisan_ai").error("Database readiness check failed: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
