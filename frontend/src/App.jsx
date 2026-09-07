@@ -12,6 +12,7 @@ import { checkHealth, checkReady, getCurrentUser, updateUserMode, getAuthToken }
 
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import LanguageSelectorModal from './components/LanguageSelectorModal';
+import DownloadAppModal from './components/DownloadAppModal';
 
 function AppContent() {
   const [activeMode, setActiveMode] = useState('HOME');
@@ -19,7 +20,20 @@ function AppContent() {
   const [readyStatus, setReadyStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isDownloadAppOpen, setIsDownloadAppOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    // Show Download App popup once per session after 5 seconds if not dismissed recently
+    const hasSeen = sessionStorage.getItem('artisan_download_app_popup_seen');
+    if (!hasSeen) {
+      const timer = setTimeout(() => {
+        setIsDownloadAppOpen(true);
+        sessionStorage.setItem('artisan_download_app_popup_seen', 'true');
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const { isOffline } = useOffline();
 
@@ -88,6 +102,10 @@ function AppContent() {
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative overflow-x-hidden">
       <NotificationCenter />
       <LanguageSelectorModal />
+      <DownloadAppModal 
+        isOpen={isDownloadAppOpen} 
+        onClose={() => setIsDownloadAppOpen(false)} 
+      />
       
       {/* Top Navigation */}
       <Navbar
@@ -96,6 +114,7 @@ function AppContent() {
         user={user}
         readyStatus={readyStatus}
         onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenDownloadApp={() => setIsDownloadAppOpen(true)}
       />
 
       {/* Main Container */}

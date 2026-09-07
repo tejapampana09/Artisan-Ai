@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Store, ShoppingBag, Sparkles, UserCheck, Wifi, WifiOff, Home, 
-  Bell, Globe, User
+  Bell, Globe, User, Smartphone
 } from 'lucide-react';
 import { useOffline } from '../context/OfflineContext';
 import { useLanguage } from '../context/LanguageContext';
 import { getNotifications, markNotificationRead } from '../api/trust';
 
-export default function Navbar({ activeMode, onToggleMode, user, readyStatus, onOpenAuth }) {
+export default function Navbar({ activeMode, onToggleMode, user, readyStatus, onOpenAuth, onOpenDownloadApp }) {
   const { language, setIsSelectingLanguage, t } = useLanguage();
   const { isOffline, toggleOfflineMode, queueCount } = useOffline();
   const [notifications, setNotifications] = useState([]);
@@ -107,6 +107,16 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
                   <span>{t('buyerMarketplace', 'Buyer Marketplace')}</span>
                 </button>
               </div>
+
+              {/* Download App Button */}
+              <button
+                onClick={onOpenDownloadApp}
+                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-bold text-xs transition-all cursor-pointer shadow-2xs"
+                title="Download Artisan AI App / ఆప్‌ని ఇన్స్టాల్ చేయండి"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-amber-700" />
+                <span className="text-[11px] font-bold">{t('appLabel', 'App')}</span>
+              </button>
 
               {/* Language Selector Button */}
               <button
@@ -221,6 +231,15 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
             {/* Compact Mobile Top Right Controls */}
             <div className="flex md:hidden items-center space-x-1.5 shrink-0">
               <button
+                onClick={onOpenDownloadApp}
+                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-extrabold text-xs cursor-pointer active:scale-95 transition-transform"
+                title="Download App"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-amber-700" />
+                <span className="text-[10px] font-bold">App</span>
+              </button>
+
+              <button
                 onClick={() => setIsSelectingLanguage(true)}
                 className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 font-extrabold text-xs cursor-pointer active:scale-95 transition-transform"
               >
@@ -280,6 +299,14 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
         >
           <ShoppingBag className="w-4 h-4" />
           <span className="text-[10px] font-semibold mt-0.5">Market</span>
+        </button>
+
+        <button
+          onClick={onOpenDownloadApp}
+          className="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-amber-400 hover:text-amber-300 transition-all cursor-pointer"
+        >
+          <Smartphone className="w-4 h-4" />
+          <span className="text-[10px] font-bold mt-0.5">App</span>
         </button>
 
         <button
