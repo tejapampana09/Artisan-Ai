@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timezone
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
@@ -16,6 +16,7 @@ from backend.app.services.pricing_engine import (
     process_auto_smart_pricing
 )
 from backend.app.services.auth import get_current_user
+from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
 
 router = APIRouter(prefix="/api/products", tags=["Explainable Dynamic Pricing"])
 
@@ -87,9 +88,11 @@ def submit_price_decision(
 @router.patch("/{product_id}/toggle-smart-pricing")
 def toggle_smart_pricing(
     product_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    rate_limiter.check_rate_limit(f"toggle_sp:{get_client_identifier(request, current_user.id)}", max_requests=10, window_seconds=60)
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(
@@ -123,12 +126,14 @@ def toggle_smart_pricing(
 @router.post("/{product_id}/evaluate-auto-pricing")
 def evaluate_auto_pricing(
     product_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Evaluates and applies autonomous dynamic pricing for a product if auto_smart_pricing_enabled is True.
     """
+    rate_limiter.check_rate_limit(f"eval_auto:{get_client_identifier(request, current_user.id)}", max_requests=10, window_seconds=60)
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(

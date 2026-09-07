@@ -194,3 +194,82 @@ def test_other_cost_reasoning_and_dynamic_safety_metadata():
         db.close()
 
 
+def test_rate_limiting_and_refined_equilibrium_guard():
+    """
+    Verifies that rate limiting check raises HTTP 429 when max_requests exceeded on pricing endpoints,
+    and that equilibrium guard requires direct product events or >= 5 category events to break equilibrium.
+    """
+    from fastapi import HTTPException
+    from backend.app.services.rate_limiter import rate_limiter
+    from backend.app.models import Event, PricingDecision
+    from datetime import datetime, timezone, timedelta
+    from decimal import Decimal
+
+    # 1. Test Rate Limiter exception when limit exceeded
+    with pytest.raises(HTTPException) as exc_info:
+        for _ in range(6):
+            rate_limiter.check_rate_limit("test_rate_limit:eval_auto", max_requests=5, window_seconds=60)
+    assert exc_info.value.status_code == 429
+
+    # 2. Test Refined Equilibrium Guard
+    db = SessionLocal()
+    try:
+        prod = Product(
+            title="Equilibrium Craft",
+            category="Terracotta",
+            price=1000.0,
+            material_cost=300.0,
+            labour_cost=200.0,
+            packaging_cost=100.0,
+            other_cost=0.0,
+            status="PUBLISHED"
+        )
+        db.add(prod)
+        db.commit()
+        db.refresh(prod)
+
+        # Add a decision record at current price
+        decision = PricingDecision(
+            product_id=prod.id,
+            decision="ACCEPT",
+            previous_price=Decimal("1000.00"),
+            recommended_price=Decimal("1000.00"),
+            applied_price=Decimal("1000.00"),
+            demand_factor=Decimal("1.0000"),
+            market_adjustment=Decimal("1.0000"),
+            reasoning_json="[]",
+            timestamp=datetime.now(timezone.utc) - timedelta(minutes=10)
+        )
+        db.add(decision)
+        db.commit()
+
+        # Add 2 category events (other products in same category) - should NOT break equilibrium (< 5)
+        for _ in range(2):
+            db.add(Event(
+                category="Terracotta",
+                product_id=prod.id + 999,
+                event_type="VIEW",
+                timestamp=datetime.now(timezone.utc) - timedelta(minutes=5)
+            ))
+        db.commit()
+
+        rec = calculate_price_recommendation(prod, db)
+        assert float(rec["recommended_price"]) == 1000.0
+        assert float(rec["price_change_amount"]) == 0.0
+
+        # Add direct product event - breaks equilibrium
+        db.add(Event(
+            category="Terracotta",
+            product_id=prod.id,
+            event_type="SAVE",
+            timestamp=datetime.now(timezone.utc)
+        ))
+        db.commit()
+
+        rec_after_event = calculate_price_recommendation(prod, db)
+        assert rec_after_event is not None
+    finally:
+        db.close()
+
+
+

@@ -145,15 +145,24 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
         .first()
     )
     if last_applied and to_decimal(last_applied.applied_price) == curr_price:
-        new_events_count = (
+        new_prod_events = (
             db.query(Event)
             .filter(
-                (Event.product_id == product.id) | (Event.category == product.category),
+                Event.product_id == product.id,
                 Event.timestamp > last_applied.timestamp
             )
             .count()
         )
-        if new_events_count == 0:
+        new_cat_events = (
+            db.query(Event)
+            .filter(
+                Event.category == product.category,
+                Event.timestamp > last_applied.timestamp
+            )
+            .count()
+        )
+        # Require direct product activity or at least 5 category events to break equilibrium
+        if new_prod_events == 0 and new_cat_events < 5:
             rounded_price = curr_price
             price_change_amount = Decimal("0.00")
             price_change_pct = 0.0
