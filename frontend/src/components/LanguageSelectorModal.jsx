@@ -22,8 +22,8 @@ export default function LanguageSelectorModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full shadow-2xl border border-indigo-100 flex flex-col overflow-hidden max-h-[90vh] animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 pb-20 sm:p-6 animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-indigo-100 flex flex-col overflow-hidden max-h-[85vh] my-auto animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white p-5 flex justify-between items-start shrink-0 relative overflow-hidden">
           <div className="relative z-10 space-y-1">

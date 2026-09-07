@@ -124,7 +124,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
   const hasToken = !!getAuthToken();
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 pb-20 sm:pb-4">
       <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-150">
         {/* Header */}
         <div className="bg-gradient-to-r from-amber-700 via-orange-600 to-amber-600 p-5 text-white flex justify-between items-center">

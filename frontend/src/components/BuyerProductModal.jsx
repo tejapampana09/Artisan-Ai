@@ -69,7 +69,7 @@ export default function BuyerProductModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+      <div className="fixed inset-0 z-[100] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 pb-20 sm:p-4 sm:pb-4">
         <div className="bg-white rounded-3xl max-w-3xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col overflow-hidden">
           {/* Modal Header */}
           <div className="flex justify-between items-start pb-3 border-b border-slate-100 shrink-0">
