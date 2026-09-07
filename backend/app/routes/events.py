@@ -19,7 +19,8 @@ router = APIRouter(prefix="/api", tags=["Events & Marketplace"])
 def record_event(
     event_in: EventCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    auth_header: Optional[str] = Header(None, alias="Authorization")
 ):
     # Security: Disallow client-spoofed ORDER / ENQUIRY events via telemetry
     if event_in.event_type.upper() in ("ORDER", "ENQUIRY"):
@@ -31,10 +32,22 @@ def record_event(
     category = event_in.category
 
     # If product_id given and no category, extract from product
-    if event_in.product_id and not category:
+    if event_in.product_id:
         prod = db.query(Product).filter(Product.id == event_in.product_id).first()
         if prod:
-            category = prod.category
+            if not category:
+                category = prod.category
+            # Ignore self-views and self-saves by the product seller when explicitly authenticated
+            if auth_header and current_user and prod.seller_id and prod.seller_id == current_user.id and event_in.event_type.upper() in ("VIEW", "SAVE"):
+                return EventResponse(
+                    id=0,
+                    event_type=event_in.event_type,
+                    product_id=event_in.product_id,
+                    category=category,
+                    user_id=current_user.id,
+                    metadata_info="Self-interaction ignored",
+                    timestamp=datetime.now(timezone.utc)
+                )
 
     # Privacy Protection: Whitelist & sanitize metadata_info (reject freeform PII or long payloads)
     clean_meta = None

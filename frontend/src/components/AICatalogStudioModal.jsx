@@ -369,10 +369,10 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-white rounded-3xl max-w-3xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+        <div className="flex justify-between items-center pb-3 border-b border-slate-100 shrink-0">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-600 to-orange-500 flex items-center justify-center text-white">
               <Wand2 className="w-4 h-4" />
@@ -382,13 +382,13 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
               <p className="text-xs text-slate-500">Capture photo + Speak in native language → AI Catalog Draft</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* 5-Stage Product Lifecycle State Machine */}
-        <div className="pt-3 pb-1 border-b border-slate-100 flex items-center justify-between text-[10px] font-bold text-slate-400">
+        <div className="pt-2 pb-2 border-b border-slate-100 flex items-center justify-between text-[10px] font-bold text-slate-400 shrink-0 overflow-x-auto">
           <div className="flex items-center space-x-1 sm:space-x-2">
             <span className={`px-2 py-0.5 rounded-full ${step === 'INPUT' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-slate-100 text-slate-600'}`}>
               1. DRAFT
@@ -412,6 +412,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
           </div>
         </div>
 
+        {/* Scrollable Content Body */}
+        <div className="flex-1 overflow-y-auto pr-1 my-3 space-y-4">
         {/* STEP 1: Input Flow */}
         {step === 'INPUT' && (
           <div className="mt-4 space-y-5">
@@ -1023,6 +1025,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

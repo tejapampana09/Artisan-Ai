@@ -143,10 +143,10 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-white rounded-3xl max-w-3xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col overflow-hidden">
         {/* Modal Header */}
-        <div className="flex justify-between items-start pb-4 border-b border-slate-100">
+        <div className="flex justify-between items-start pb-3 border-b border-slate-100 shrink-0">
           <div>
             <div className="flex items-center space-x-2">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
@@ -200,8 +200,10 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
           </div>
         </div>
 
-        {/* Feedback Message */}
-        {decisionFeedback && (
+        {/* Scrollable Content Body */}
+        <div className="flex-1 overflow-y-auto pr-1 my-3 space-y-4">
+          {/* Feedback Message */}
+          {decisionFeedback && (
           <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-xs font-semibold flex items-center justify-between shadow-xs">
             <div className="flex items-center space-x-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -451,6 +453,7 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
               )}
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

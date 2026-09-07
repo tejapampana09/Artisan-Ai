@@ -18,9 +18,12 @@ export default function BuyerProductModal({
   const [showCertificate, setShowCertificate] = useState(false);
   const [showArtisanModal, setShowArtisanModal] = useState(false);
 
-  // Track VIEW event when modal opens
+  // Track VIEW event when modal opens (ignoring seller self-views)
   useEffect(() => {
     if (isOpen && product?.id) {
+      if (user && product.seller_id === user.id) {
+        return; // Ignore self-views by the product owner
+      }
       recordEvent({
         event_type: 'VIEW',
         product_id: product.id,
@@ -28,7 +31,7 @@ export default function BuyerProductModal({
         metadata_info: `Buyer viewed ${product.title}`
       });
     }
-  }, [isOpen, product?.id, product?.title, product?.category]);
+  }, [isOpen, product?.id, product?.title, product?.category, product?.seller_id, user]);
 
   if (!isOpen || !product) return null;
 
