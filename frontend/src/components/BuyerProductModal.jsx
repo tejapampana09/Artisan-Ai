@@ -243,7 +243,7 @@ export default function BuyerProductModal({
             </div>
 
             {/* Verified Buyer Reviews & Ratings Section */}
-            <ReviewsSection productId={product.id} user={user} />
+            <ReviewsSection productId={product.id} user={user} product={product} />
           </div>
 
           {/* Digital Heritage & GI Provenance Certificate Overlay Modal */}

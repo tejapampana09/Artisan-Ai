@@ -47,6 +47,13 @@ def create_product_review(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
+    # Prevent sellers from reviewing their own products
+    if product.seller_id and product.seller_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Sellers cannot review their own products (ఉత్పత్తిదారులు వారి సొంత ఉత్పత్తులకు సమీక్షలు ఇవ్వలేరు)"
+        )
+
     # Check for completed order
     verified_order = db.query(Order).filter(
         Order.product_id == product_id,

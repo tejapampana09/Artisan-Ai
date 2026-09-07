@@ -3,13 +3,15 @@ import { Star, ShieldCheck, MessageSquare, Send, CheckCircle2 } from 'lucide-rea
 import { getProductReviews, createProductReview } from '../api/trust.js';
 import { useNotification } from '../context/NotificationContext.jsx';
 
-export default function ReviewsSection({ productId, user }) {
+export default function ReviewsSection({ productId, user, product }) {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { addNotification } = useNotification();
+
+  const isSellerOwner = user && product && product.seller_id === user.id;
 
   useEffect(() => {
     if (productId) {
@@ -103,8 +105,18 @@ export default function ReviewsSection({ productId, user }) {
         </div>
       )}
 
-      {/* Add Review Form */}
-      {user && (
+      {/* Add Review Form or Seller Self-Review Prohibition Notice */}
+      {isSellerOwner ? (
+        <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200 text-amber-900 text-xs space-y-1">
+          <div className="flex items-center space-x-1.5 font-bold text-amber-900">
+            <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>Self-Review Prohibited (మీ సొంత ఉత్పత్తులకు సమీక్ష ఇవ్వడం సాధ్యం కాదు)</span>
+          </div>
+          <p className="text-[11px] text-amber-700 leading-snug">
+            As the master artisan of this craft item, you cannot post reviews on your own product. Reviews are reserved for verified buyers.
+          </p>
+        </div>
+      ) : user && (
         <form onSubmit={handleSubmitReview} className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2 text-xs">
           <span className="font-bold text-indigo-900 block text-[11px]">Write a Verified Buyer Review</span>
           <div className="flex items-center space-x-2">

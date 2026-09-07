@@ -57,3 +57,33 @@ def test_user_notifications(test_user_headers):
     assert res.status_code == 200
     notifs = res.json()
     assert isinstance(notifs, list)
+
+def test_seller_cannot_review_own_product(test_user_headers):
+    # Register/login user 1 or create a product for current_user
+    # Fetch product 1 details to see its seller_id
+    prod_res = client.get("/api/products/1")
+    if prod_res.status_code == 200:
+        prod_data = prod_res.json()
+        seller_id = prod_data.get("seller_id")
+        
+        # Create user token for the seller
+        # If current test_user is seller or if we attempt to review product owned by current_user:
+        # Create a product owned by test_user
+        create_res = client.post("/api/products", json={
+            "title": "Self Review Test Craft",
+            "description": "Craft for testing self review prohibition",
+            "price": 999.0,
+            "category": "Woodcraft",
+            "stock": 5,
+            "handmade_pct": 100
+        }, headers=test_user_headers)
+        if create_res.status_code == 201:
+            p_id = create_res.json()["id"]
+            # Attempt to review own product
+            rev_res = client.post(f"/api/products/{p_id}/reviews", json={
+                "rating": 5,
+                "comment": "Self rating should fail!"
+            }, headers=test_user_headers)
+            assert rev_res.status_code == 403
+            assert "Sellers cannot review their own products" in rev_res.json()["detail"]
+
