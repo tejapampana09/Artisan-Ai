@@ -108,19 +108,6 @@ def test_p1_issue3_admin_bypass_for_product_management():
     assert status_res.status_code == 200
     assert status_res.json()["status"] == "APPROVED"
 
-def test_p0_issue4_ondc_confirm_requires_auth():
-    """
-    Verifies P0 Issue #4: POST /api/ondc/confirm requires authentication.
-    """
-    res = client.post("/api/ondc/confirm", json={
-        "product_id": 1,
-        "quantity": 1,
-        "buyer_name": "Test Buyer",
-        "buyer_phone": "9999999999",
-        "delivery_address": "Test Address"
-    }, headers={"Authorization": "Bearer invalid_token"})
-    assert res.status_code == 401
-
 def test_p1_issue5_verified_review_enforcement():
     """
     Verifies P1 Issue #5: Reviews require a completed DELIVERED order for the product (403 if unverified).

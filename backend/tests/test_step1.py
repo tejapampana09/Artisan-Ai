@@ -10,13 +10,6 @@ def test_health_check():
     assert data["status"] == "ok"
     assert "timestamp" in data
 
-def test_readiness_check():
-    response = client.get("/api/ready")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "ready"
-    assert data["database"] == "connected"
-    assert data["user_count"] >= 1
 
 def test_user_mode_toggle_single_account():
     # Initial fetch

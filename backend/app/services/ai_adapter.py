@@ -1,20 +1,7 @@
-"""
-Multimodal AI Catalog Adapter.
-
-Primary Architectural Rules:
-1. Live Gemini AI: Used when GEMINI_API_KEY is present and service succeeds.
-   Factual product claims and AI suggestions are treated as editable drafts requiring
-   artisan verification before publishing. Factual claims must originate from the
-   artisan or be clearly marked as AI-generated drafts.
-2. Production Fallback: In production (or when DEMO_MODE is False), failure of the AI provider
-   strictly returns a transparent MANUAL_DRAFT using ONLY information provided by the artisan.
-   Never fabricates heritage claims, geographic GI tags, raw materials, or fake selling prices.
-3. Demo Isolation: Deterministic sample craft profiles are isolated in backend.app.demo.craft_profiles
-   and are ONLY reachable when DEMO_MODE is explicitly True and ENVIRONMENT != 'production'.
-"""
 
 import os
 import json
+import logging
 import httpx
 from typing import Dict, Any, Optional, Tuple
 from decimal import Decimal, ROUND_HALF_UP
@@ -325,7 +312,6 @@ async def generate_catalog_draft(
                             "notice": "AI-generated draft. Factual heritage, materials, and pricing claims must be verified by the artisan before publishing."
                         }
         except Exception as e:
-            import logging
             logging.getLogger("artisan_ai").warning("[AI Adapter] Live Gemini call unavailable or timed out: %s", str(e))
 
     # -------------------------------------------------------------------------
@@ -732,4 +718,4 @@ async def estimate_fair_price(
         "min_fair_price": matched_benchmark["min"],
         "pricing_source": "MARKET_CATEGORY_BENCHMARK",
         "reasoning": f"Fair price estimated based on similar market products in {clean_cat} category."
-    }
+    }

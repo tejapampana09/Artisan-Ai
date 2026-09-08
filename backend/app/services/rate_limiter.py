@@ -6,7 +6,7 @@ Returns HTTP 429 Too Many Requests when limits are exceeded.
 
 import time
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Optional
 from fastapi import HTTPException, Request, status
 
 import os
@@ -45,7 +45,7 @@ class SlidingWindowRateLimiter:
 
 rate_limiter = SlidingWindowRateLimiter()
 
-def get_client_identifier(request: Request, user_id: int = None) -> str:
+def get_client_identifier(request: Request, user_id: Optional[int] = None) -> str:
     """Derives client rate-limit key from user_id if present, else direct client socket IP address."""
     if user_id:
         return f"user:{user_id}"

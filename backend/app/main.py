@@ -20,7 +20,6 @@ from backend.app.routes.intelligence import router as intelligence_router
 from backend.app.routes.pricing import router as pricing_router
 from backend.app.routes.sync import router as sync_router
 from backend.app.routes.auth import router as auth_router
-from backend.app.routes.ondc import router as ondc_router
 from backend.app.routes.channels import router as channels_router
 from backend.app.routes.reviews import router as reviews_router
 from backend.app.routes.notifications import router as notifications_router
@@ -76,7 +75,6 @@ app.include_router(events_router)
 app.include_router(intelligence_router)
 app.include_router(pricing_router)
 app.include_router(sync_router)
-app.include_router(ondc_router)
 app.include_router(channels_router)
 app.include_router(reviews_router)
 app.include_router(notifications_router)

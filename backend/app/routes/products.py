@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, cast
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -18,8 +18,10 @@ def create_product(
     current_user: User = Depends(get_current_user)
 ):
     # Prevent seller spoofing: non-admin users cannot assign products to other sellers
-    if current_user.role == "ADMIN" and product_in.seller_id:
-        seller_id = product_in.seller_id
+    user_role = cast(Optional[str], current_user.role)
+    requested_seller_id = cast(Optional[int], product_in.seller_id)
+    if user_role == "ADMIN" and requested_seller_id is not None:
+        seller_id = requested_seller_id
     else:
         seller_id = current_user.id
 
@@ -96,7 +98,15 @@ def update_product(
         )
 
     # Seller Ownership / Admin Authorization Validation
-    if product.seller_id and current_user.id and product.seller_id != current_user.id and current_user.role != "ADMIN":
+    product_seller_id = cast(Optional[int], product.seller_id)
+    current_user_id = cast(Optional[int], current_user.id)
+    user_role = cast(Optional[str], current_user.role)
+    if (
+        product_seller_id is not None
+        and current_user_id is not None
+        and product_seller_id != current_user_id
+        and user_role != "ADMIN"
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to modify another artisan's product."
@@ -128,7 +138,15 @@ def delete_product(
         )
 
     # Seller Ownership / Admin Authorization Validation
-    if product.seller_id and current_user.id and product.seller_id != current_user.id and current_user.role != "ADMIN":
+    product_seller_id = cast(Optional[int], product.seller_id)
+    current_user_id = cast(Optional[int], current_user.id)
+    user_role = cast(Optional[str], current_user.role)
+    if (
+        product_seller_id is not None
+        and current_user_id is not None
+        and product_seller_id != current_user_id
+        and user_role != "ADMIN"
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to delete another artisan's product."
@@ -155,7 +173,15 @@ def transition_product_status(
         )
 
     # Seller Ownership / Admin Authorization Validation
-    if product.seller_id and current_user.id and product.seller_id != current_user.id and current_user.role != "ADMIN":
+    product_seller_id = cast(Optional[int], product.seller_id)
+    current_user_id = cast(Optional[int], current_user.id)
+    user_role = cast(Optional[str], current_user.role)
+    if (
+        product_seller_id is not None
+        and current_user_id is not None
+        and product_seller_id != current_user_id
+        and user_role != "ADMIN"
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to transition status of another artisan's product."

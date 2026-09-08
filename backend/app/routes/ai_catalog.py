@@ -1,6 +1,6 @@
 import json
 from decimal import Decimal
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, cast
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -100,16 +100,21 @@ async def process_voice_and_image(
     Multimodal AI cataloging endpoint.
     Requires authentication and enforces rate limits (max 10 generations per minute per client).
     """
-    rate_limiter.check_rate_limit(f"aicat:{get_client_identifier(request, current_user.id)}", max_requests=10, window_seconds=60)
+    user_id = cast(Optional[int], current_user.id)
+    rate_limiter.check_rate_limit(
+        f"aicat:{get_client_identifier(request, user_id)}",
+        max_requests=10,
+        window_seconds=60,
+    )
     draft = await generate_catalog_draft(
-        voice_description=req.voice_description,
+        voice_description=req.voice_description or "",
         language=req.language,
         image_url=req.image_url,
         category_hint=req.category_hint,
         material_cost=req.material_cost,
         labour_cost=req.labour_cost,
         packaging_cost=req.packaging_cost,
-        other_cost=req.other_cost
+        other_cost=req.other_cost,
     )
     return AICatalogDraftResponse(**draft)
 
@@ -163,57 +168,60 @@ async def translate_product(
     craft_story = req.craft_story or ""
 
     product = None
-    if req.product_id:
+    if req.product_id is not None:
         product = db.query(Product).filter(Product.id == req.product_id).first()
-        if product:
-            title = product.title
-            description = product.description or ""
-            craft_story = product.craft_story or ""
+        if product is not None:
+            title = cast(str, product.title)
+            description = cast(Optional[str], product.description) or ""
+            craft_story = cast(Optional[str], product.craft_story) or ""
 
             # Check if product has cached translation
-            if product.translations:
+            stored_translations = cast(Optional[str], product.translations)
+            if stored_translations:
                 try:
-                    trans_map = json.loads(product.translations)
+                    trans_map = json.loads(stored_translations)
                     if target_lang in trans_map:
                         cached = trans_map[target_lang]
                         return TranslateProductResponse(
                             title=cached.get("title", title),
                             description=cached.get("description", description),
                             craft_story=cached.get("craft_story", craft_story),
-                            target_language=target_lang
+                            target_language=target_lang,
                         )
                 except Exception:
                     pass
 
-            if target_lang == "en" and product.title_en:
+            title_en_value = cast(Optional[str], product.title_en)
+            if target_lang == "en" and title_en_value:
                 return TranslateProductResponse(
-                    title=product.title_en,
-                    description=product.description_en or description,
-                    craft_story=product.craft_story_en or craft_story,
-                    target_language="en"
+                    title=title_en_value,
+                    description=cast(Optional[str], product.description_en) or description,
+                    craft_story=cast(Optional[str], product.craft_story_en) or craft_story,
+                    target_language="en",
                 )
 
     result = await translate_craft_text(
         title=title,
         description=description,
         craft_story=craft_story,
-        target_language=target_lang
+        target_language=target_lang,
     )
 
     # Save translation to product in DB if product exists
-    if product:
+    if product is not None:
         try:
-            trans_map = json.loads(product.translations) if product.translations else {}
+            stored_translations = cast(Optional[str], product.translations)
+            trans_map = json.loads(stored_translations) if stored_translations else {}
             trans_map[target_lang] = {
                 "title": result["title"],
                 "description": result["description"],
-                "craft_story": result["craft_story"]
+                "craft_story": result["craft_story"],
             }
-            product.translations = json.dumps(trans_map)
+            setattr(product, "translations", json.dumps(trans_map))
             if target_lang == "en":
-                product.title_en = result["title"]
-                product.description_en = result["description"]
-                product.craft_story_en = result["craft_story"]
+                setattr(product, "title_en", result["title"])
+                setattr(product, "description_en", result["description"])
+                setattr(product, "craft_story_en", result["craft_story"])
             db.commit()
         except Exception:
             pass
@@ -246,7 +254,12 @@ async def estimate_product_price(
     """
     Estimates a fair market price for a product based on similar market products or cost inputs.
     """
-    rate_limiter.check_rate_limit(f"estprice:{get_client_identifier(request, current_user.id)}", max_requests=20, window_seconds=60)
+    user_id = cast(Optional[int], current_user.id)
+    rate_limiter.check_rate_limit(
+        f"estprice:{get_client_identifier(request, user_id)}",
+        max_requests=20,
+        window_seconds=60,
+    )
     res = await estimate_fair_price(
         title=req.title or "",
         category=req.category or "Handcrafted",
@@ -255,6 +268,6 @@ async def estimate_product_price(
         material_cost=req.material_cost,
         labour_cost=req.labour_cost,
         packaging_cost=req.packaging_cost,
-        other_cost=req.other_cost
+        other_cost=req.other_cost,
     )
     return PriceEstimateResponse(**res)

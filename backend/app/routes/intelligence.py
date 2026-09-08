@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, cast
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -10,7 +10,26 @@ from backend.app.schemas import (
 )
 from backend.app.services.auth import get_current_user, get_optional_current_user
 from backend.app.services.demand_engine import calculate_category_demand, generate_seller_opportunities
-from backend.app.services.readiness_engine import calculate_artisan_overall_readiness
+
+def _as_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_str(value: Any, default: str = "") -> str:
+    if value is None:
+        return default
+    return str(value)
+
 
 router = APIRouter(prefix="/api", tags=["Market Intelligence & Seller Copilot"])
 
@@ -18,27 +37,21 @@ router = APIRouter(prefix="/api", tags=["Market Intelligence & Seller Copilot"])
 def get_market_demand(db: Session = Depends(get_db)):
     return calculate_category_demand(db)
 
-@router.get("/seller/readiness")
-def get_seller_readiness(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    seller_products = db.query(Product).filter(Product.seller_id == current_user.id).all()
-    return calculate_artisan_overall_readiness(seller_products)
-
 @router.get("/seller/opportunities")
 def get_seller_opportunities(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return generate_seller_opportunities(db, current_user.id)
+    user_id = _as_int(cast(Any, current_user.id), 0)
+    return generate_seller_opportunities(db, user_id)
 
 @router.get("/seller/copilot-insight")
 def get_copilot_insight(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    result = generate_seller_opportunities(db, current_user.id)
+    user_id = _as_int(cast(Any, current_user.id), 0)
+    result = generate_seller_opportunities(db, user_id)
     return result["copilot_insight"]
 
 @router.get("/seller/dashboard", response_model=SellerDashboardResponse)
@@ -46,8 +59,9 @@ def get_seller_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    seller_products = db.query(Product).filter(Product.seller_id == current_user.id).all()
-    seller_product_ids = [p.id for p in seller_products]
+    user_id = _as_int(cast(Any, current_user.id), 0)
+    seller_products = db.query(Product).filter(Product.seller_id == user_id).all()
+    seller_product_ids = [_as_int(cast(Any, p.id), 0) for p in seller_products]
 
     if not seller_product_ids:
         return SellerDashboardResponse(
@@ -68,51 +82,59 @@ def get_seller_dashboard(
         Event.event_type.in_(["VIEW", "SEARCH", "SAVE"])
     ).all()
     
-    views_by_prod = {}
+    views_by_prod: Dict[int, int] = {}
     for ev in event_views:
-        views_by_prod[ev.product_id] = views_by_prod.get(ev.product_id, 0) + 1
-        
+        product_id = _as_int(cast(Any, ev.product_id), 0)
+        views_by_prod[product_id] = views_by_prod.get(product_id, 0) + 1
+
     total_views = sum(views_by_prod.values())
 
     status_counts = {"CONFIRMED": 0, "PROCESSING": 0, "SHIPPED": 0, "DELIVERED": 0, "CANCELLED": 0}
     total_revenue = 0.0
     units_sold = 0
-    
-    prod_stats = {
-        p.id: {"units_sold": 0, "revenue": 0.0, "orders_count": 0}
+
+    prod_stats: Dict[int, Dict[str, Any]] = {
+        _as_int(cast(Any, p.id), 0): {"units_sold": 0, "revenue": 0.0, "orders_count": 0}
         for p in seller_products
     }
 
     for ord in orders:
-        st = (ord.status or "CONFIRMED").upper()
-        if st in status_counts:
-            status_counts[st] += 1
-            
-        if st != "CANCELLED":
-            tot = float(ord.total_price or 0.0)
-            total_revenue += tot
-            units_sold += ord.quantity
-            
-            if ord.product_id in prod_stats:
-                prod_stats[ord.product_id]["units_sold"] += ord.quantity
-                prod_stats[ord.product_id]["revenue"] += tot
-                prod_stats[ord.product_id]["orders_count"] += 1
+        order_status = _as_str(ord.status, "CONFIRMED").upper()
+        if order_status in status_counts:
+            status_counts[order_status] += 1
+
+        if order_status != "CANCELLED":
+            total_price = _as_float(cast(Any, ord.total_price), 0.0)
+            quantity = _as_int(cast(Any, ord.quantity), 0)
+            total_revenue += total_price
+            units_sold += quantity
+
+            product_id = _as_int(cast(Any, ord.product_id), 0)
+            if product_id in prod_stats:
+                prod_stats[product_id]["units_sold"] = _as_int(prod_stats[product_id].get("units_sold"), 0) + quantity
+                prod_stats[product_id]["revenue"] = _as_float(prod_stats[product_id].get("revenue"), 0.0) + total_price
+                prod_stats[product_id]["orders_count"] = _as_int(prod_stats[product_id].get("orders_count"), 0) + 1
 
     perf_list = []
     for p in seller_products:
-        st = prod_stats.get(p.id, {"units_sold": 0, "revenue": 0.0, "orders_count": 0})
+        product_id = _as_int(cast(Any, p.id), 0)
+        title = _as_str(p.title, "")
+        category = _as_str(p.category, "Handcrafted")
+        status_value = _as_str(p.status, "PUBLISHED")
+        image_url = cast(Optional[str], p.image_url) if p.image_url is not None else None
+        st = prod_stats.get(product_id, {"units_sold": 0, "revenue": 0.0, "orders_count": 0})
         perf_list.append(ProductPerformance(
-            product_id=p.id,
-            title=p.title,
-            category=p.category,
-            price=float(p.price),
-            stock=p.stock,
-            status=p.status,
-            image_url=p.image_url,
-            views=views_by_prod.get(p.id, 0),
-            units_sold=st["units_sold"],
-            revenue=st["revenue"],
-            orders_count=st["orders_count"]
+            product_id=product_id,
+            title=title,
+            category=category,
+            price=_as_float(cast(Any, p.price), 0.0),
+            stock=_as_int(cast(Any, p.stock), 0),
+            status=status_value,
+            image_url=image_url,
+            views=views_by_prod.get(product_id, 0),
+            units_sold=_as_int(st.get("units_sold"), 0),
+            revenue=_as_float(st.get("revenue"), 0.0),
+            orders_count=_as_int(st.get("orders_count"), 0)
         ))
 
     return SellerDashboardResponse(
@@ -141,8 +163,9 @@ def export_seller_analytics_csv(
     current_user: User = Depends(get_current_user)
 ):
     """Generates a downloadable CSV report of seller products, cost basis, margins, and sales volume."""
-    seller_products = db.query(Product).filter(Product.seller_id == current_user.id).all()
-    seller_product_ids = [p.id for p in seller_products]
+    user_id = _as_int(cast(Any, current_user.id), 0)
+    seller_products = db.query(Product).filter(Product.seller_id == user_id).all()
+    seller_product_ids = [_as_int(cast(Any, p.id), 0) for p in seller_products]
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -156,29 +179,32 @@ def export_seller_analytics_csv(
 
     if seller_product_ids:
         orders = db.query(Order).filter(Order.product_id.in_(seller_product_ids)).all()
-        sales_map = {}
+        sales_map: Dict[int, Dict[str, float]] = {}
         for ord in orders:
-            if (ord.status or "CONFIRMED").upper() != "CANCELLED":
-                if ord.product_id not in sales_map:
-                    sales_map[ord.product_id] = {"units": 0, "revenue": 0.0}
-                sales_map[ord.product_id]["units"] += ord.quantity
-                sales_map[ord.product_id]["revenue"] += float(ord.total_price or 0.0)
+            order_status = _as_str(ord.status, "CONFIRMED").upper()
+            if order_status != "CANCELLED":
+                product_id = _as_int(cast(Any, ord.product_id), 0)
+                if product_id not in sales_map:
+                    sales_map[product_id] = {"units": 0.0, "revenue": 0.0}
+                sales_map[product_id]["units"] += float(_as_int(cast(Any, ord.quantity), 0))
+                sales_map[product_id]["revenue"] += _as_float(cast(Any, ord.total_price), 0.0)
 
         for p in seller_products:
-            st = sales_map.get(p.id, {"units": 0, "revenue": 0.0})
+            product_id = _as_int(cast(Any, p.id), 0)
+            st = sales_map.get(product_id, {"units": 0.0, "revenue": 0.0})
             writer.writerow([
-                p.id,
-                p.title,
-                p.category,
-                f"{float(p.price):.2f}",
-                p.stock,
-                f"{float(p.material_cost):.2f}",
-                f"{float(p.labour_cost):.2f}",
-                f"{float(p.packaging_cost):.2f}",
-                f"{float(p.min_margin_pct * 100):.1f}%",
-                st["units"],
-                f"{st['revenue']:.2f}",
-                p.status
+                product_id,
+                _as_str(p.title, ""),
+                _as_str(p.category, "Handcrafted"),
+                f"{_as_float(cast(Any, p.price), 0.0):.2f}",
+                _as_int(cast(Any, p.stock), 0),
+                f"{_as_float(cast(Any, p.material_cost), 0.0):.2f}",
+                f"{_as_float(cast(Any, p.labour_cost), 0.0):.2f}",
+                f"{_as_float(cast(Any, p.packaging_cost), 0.0):.2f}",
+                f"{_as_float(cast(Any, p.min_margin_pct), 0.0) * 100:.1f}%",
+                int(st["units"]),
+                f"{_as_float(st.get('revenue'), 0.0):.2f}",
+                _as_str(p.status, "PUBLISHED")
             ])
 
     filename = f"Artisan_Analytics_Report_{current_user.id}.csv"

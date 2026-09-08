@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, List, Optional, cast
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Header, Response
@@ -36,16 +36,16 @@ def record_event(
     if event_in.product_id:
         prod = db.query(Product).filter(Product.id == event_in.product_id).first()
         if prod:
+            prod = cast(Any, prod)
             if not category:
                 category = prod.category
             # Ignore self-views and self-saves by the product seller when explicitly authenticated
-            if auth_header and current_user and prod.seller_id and prod.seller_id == current_user.id and event_in.event_type.upper() in ("VIEW", "SAVE"):
+            if auth_header and current_user is not None and cast(Any, prod.seller_id) and cast(Any, prod.seller_id) == cast(Any, current_user.id) and event_in.event_type.upper() in ("VIEW", "SAVE"):
                 return EventResponse(
                     id=0,
                     event_type=event_in.event_type,
                     product_id=event_in.product_id,
                     category=category,
-                    user_id=current_user.id,
                     metadata_info="Self-interaction ignored",
                     timestamp=datetime.now(timezone.utc)
                 )
@@ -104,8 +104,10 @@ def submit_enquiry(
     product = db.query(Product).filter(Product.id == enquiry.product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    product = cast(Any, product)
+    current_user = cast(Any, current_user)
 
-    if auth_header and product.seller_id and product.seller_id == current_user.id and current_user.role != "ADMIN":
+    if auth_header is not None and bool(product.seller_id) and bool(product.seller_id == current_user.id) and str(current_user.role) != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Self-enquiry not allowed: Artisans cannot submit buyer enquiries for their own products."
@@ -161,6 +163,7 @@ def list_enquiries(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    current_user = cast(Any, current_user)
     query = db.query(Enquiry)
     if product_id:
         query = query.filter(Enquiry.product_id == product_id)
@@ -171,7 +174,7 @@ def list_enquiries(
         query = query.filter(Enquiry.user_id == current_user.id)
     elif role_view == "seller":
         query = query.filter(Enquiry.product_id.in_(seller_product_ids))
-    elif current_user.role != "ADMIN":
+    elif str(current_user.role) != "ADMIN":
         query = query.filter(
             (Enquiry.user_id == current_user.id) | (Enquiry.product_id.in_(seller_product_ids))
         )
@@ -179,6 +182,7 @@ def list_enquiries(
     enquiries = query.order_by(Enquiry.id.desc()).all()
     res = []
     for e in enquiries:
+        e = cast(Any, e)
         prod = e.product
         res.append(EnquiryResponse(
             id=e.id,
@@ -208,12 +212,15 @@ def reply_enquiry(
     enquiry = db.query(Enquiry).filter(Enquiry.id == enquiry_id).first()
     if not enquiry:
         raise HTTPException(status_code=404, detail="Enquiry not found")
+    enquiry = cast(Any, enquiry)
+    current_user = cast(Any, current_user)
 
     prod = enquiry.product
     if not prod:
         raise HTTPException(status_code=404, detail="Product associated with enquiry not found")
+    prod = cast(Any, prod)
 
-    if prod.seller_id != current_user.id and current_user.role != "ADMIN":
+    if bool(prod.seller_id != current_user.id) and str(current_user.role) != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied: Only the artisan who crafted this item can reply to this enquiry."
@@ -261,8 +268,10 @@ def place_order(
     product = db.query(Product).filter(Product.id == order.product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    product = cast(Any, product)
+    current_user = cast(Any, current_user)
 
-    if auth_header and product.seller_id and product.seller_id == current_user.id and current_user.role != "ADMIN":
+    if auth_header is not None and bool(product.seller_id) and bool(product.seller_id == current_user.id) and str(current_user.role) != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Self-purchase not allowed: Artisans cannot purchase their own listed crafts."
@@ -275,7 +284,7 @@ def place_order(
         .values(stock=Product.stock - order.quantity)
     )
     result = db.execute(stmt)
-    if result.rowcount == 0:
+    if cast(Any, result).rowcount == 0:
         db.rollback()
         prod_check = db.query(Product).filter(Product.id == order.product_id).first()
         available = prod_check.stock if prod_check else 0
@@ -356,6 +365,7 @@ def list_orders(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    current_user = cast(Any, current_user)
     query = db.query(Order)
     if product_id:
         query = query.filter(Order.product_id == product_id)
@@ -366,7 +376,7 @@ def list_orders(
         query = query.filter(Order.user_id == current_user.id)
     elif role_view == "seller":
         query = query.filter(Order.product_id.in_(seller_product_ids))
-    elif current_user.role != "ADMIN":
+    elif str(current_user.role) != "ADMIN":
         query = query.filter(
             (Order.user_id == current_user.id) | (Order.product_id.in_(seller_product_ids))
         )
@@ -374,6 +384,7 @@ def list_orders(
     orders = query.order_by(Order.id.desc()).all()
     res = []
     for o in orders:
+        o = cast(Any, o)
         prod = o.product
         res.append(OrderResponse(
             id=o.id,
@@ -404,6 +415,8 @@ def update_order_status(
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    order = cast(Any, order)
+    current_user = cast(Any, current_user)
 
     prod = order.product
     if not prod:
@@ -418,8 +431,8 @@ def update_order_status(
         )
 
     old_status = order.status
-    is_seller = prod.seller_id == current_user.id or current_user.role == "ADMIN"
-    is_buyer = order.user_id == current_user.id
+    is_seller: bool = bool(prod.seller_id == current_user.id or current_user.role == "ADMIN")
+    is_buyer: bool = bool(order.user_id == current_user.id)
 
     if is_seller:
         order.status = new_status
@@ -464,12 +477,13 @@ def update_order_status(
             clean_phone = "".join(filter(str.isdigit, str(order.buyer_phone)))
             if clean_phone:
                 for u in db.query(User).all():
-                    if u.phone and "".join(filter(str.isdigit, str(u.phone))) == clean_phone:
+                    u = cast(Any, u)
+                    if u.phone is not None and "".join(filter(str.isdigit, str(u.phone))) == clean_phone:
                         target_buyer_id = u.id
                         break
 
         # Strictly notify dedicated buyer on all seller-driven status changes
-        if target_buyer_id and is_seller:
+        if target_buyer_id is not None and is_seller:
             db.add(Notification(
                 user_id=target_buyer_id,
                 title=title_tpl,
@@ -508,7 +522,7 @@ def update_order_status(
 def get_trending_products(
     limit: int = Query(6, le=20),
     db: Session = Depends(get_db),
-    response: Response = None
+    response: Response = cast(Response, None)
 ):
     """
     Weighted Demand Telemetry Engine:
@@ -603,26 +617,6 @@ def get_personalized_recommendations(
                 return personalized
 
     return get_trending_products(limit=limit, db=db)
-
-@router.get("/marketplace/ondc/catalog")
-def get_ondc_catalog(db: Session = Depends(get_db)):
-    """
-    ONDC Beckn Protocol Catalog Endpoint (Section 14.3).
-    Returns published artisan inventory formatted to ONDC retail schema.
-    """
-    from backend.app.services.ondc_adapter import handle_ondc_search
-    return handle_ondc_search(query=None, category=None, db=db)
-
-@router.post("/marketplace/ondc/search")
-def search_ondc_catalog(payload: dict, db: Session = Depends(get_db)):
-    """
-    ONDC Beckn Protocol Discovery Endpoint (Section 14.3).
-    """
-    from backend.app.services.ondc_adapter import handle_ondc_search
-    intent = payload.get("message", {}).get("intent", {})
-    query = intent.get("item", {}).get("descriptor", {}).get("name")
-    category = intent.get("category", {}).get("id")
-    return handle_ondc_search(query=query, category=category, db=db)
 
 # Exact Document Spec Endpoint Aliases (Section 18)
 router.add_api_route("/market/trending", get_trending_products, methods=["GET"], response_model=List[ProductResponse], tags=["Market Intelligence & Seller Copilot"])

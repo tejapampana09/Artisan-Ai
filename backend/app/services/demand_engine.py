@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, cast
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from backend.app.models import Event, Product, User
@@ -20,6 +20,18 @@ EVENT_WEIGHTS = {
     "ENQUIRY": 6,
     "ORDER": 10
 }
+
+def _as_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+def _as_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 def calculate_category_demand(db: Session) -> List[Dict[str, Any]]:
     """
@@ -170,11 +182,16 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
     copilot_insight = None
 
     for prod in seller_products:
-        cat_demand = category_demands.get(prod.category) or {
-            "category": prod.category,
+        product_title = str(cast(Any, prod.title) or "")
+        product_category = str(cast(Any, prod.category) or "Handcrafted")
+        product_price = _as_float(cast(Any, prod.price))
+        product_stock = _as_int(cast(Any, prod.stock))
+
+        cat_demand = category_demands.get(product_category) or {
+            "category": product_category,
             "demand_pct": 5,
             "demand_pct_label": "+5%",
-            "benchmark_price_range": f"₹{int(prod.price)}",
+            "benchmark_price_range": f"₹{int(product_price)}",
             "total_events": 0
         }
 
@@ -185,55 +202,55 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
         enquiry_count = db.query(Event).filter(Event.product_id == prod.id, Event.event_type == "ENQUIRY").count()
 
         is_high_demand = cat_demand["demand_pct"] >= 15
-        is_low_inventory = prod.stock <= 8 and prod.stock > 0
-        is_out_of_stock = prod.stock <= 0
+        is_low_inventory = product_stock <= 8 and product_stock > 0
+        is_out_of_stock = product_stock <= 0
 
         if is_out_of_stock:
-            headline = f"{prod.title}: Out of stock alert"
+            headline = f"{product_title}: Out of stock alert"
             action_text = f"Restock craft: 0 units available. Unmet buyer demand detected."
             narrative = (
-                f"\"{prod.title}\" ({prod.category}) is currently completely out of stock. "
+                f"\"{product_title}\" ({product_category}) is currently completely out of stock. "
                 f"Craft a fresh batch of 5–10 units to capture active buyer interest and fulfill pre-orders."
             )
             urgency = "HIGH"
         elif is_high_demand:
-            headline = f"{prod.title}: {prod.category} demand is increasing"
-            action_text = f"Review price: ₹{int(prod.price)} → ₹{int(rec_price)}. Consider producing 10–15 more units."
+            headline = f"{product_title}: {product_category} demand is increasing"
+            action_text = f"Review price: ₹{int(product_price)} → ₹{int(rec_price)}. Consider producing 10–15 more units."
             narrative = (
-                f"{prod.category} demand is increasing (+{cat_demand['demand_pct']}%) for \"{prod.title}\". "
-                f"Your current price is ₹{int(prod.price):,}. Based on your protected margin (≥{int(pricing_rec['safety_constraints']['min_margin_percentage'])}%), "
+                f"{product_category} demand is increasing (+{cat_demand['demand_pct']}%) for \"{product_title}\". "
+                f"Your current price is ₹{int(product_price):,}. Based on your protected margin (≥{int(pricing_rec['safety_constraints']['min_margin_percentage'])}%), "
                 f"demand signals, and comparable products ({cat_demand['benchmark_price_range']}), "
                 f"the recommended price is ₹{int(rec_price):,}. "
                 f"Review the full price explanation before making a decision. Your price will not change automatically."
             )
             urgency = "HIGH" if is_low_inventory else "MEDIUM"
         elif is_low_inventory:
-            headline = f"{prod.title}: Low inventory signal"
-            action_text = f"Replenish inventory: only {prod.stock} units remaining."
+            headline = f"{product_title}: Low inventory signal"
+            action_text = f"Replenish inventory: only {product_stock} units remaining."
             narrative = (
-                f"Stock for \"{prod.title}\" ({prod.category}) is running low ({prod.stock} units left). "
+                f"Stock for \"{product_title}\" ({product_category}) is running low ({product_stock} units left). "
                 f"Prepare additional craft units to prevent stockouts."
             )
             urgency = "MEDIUM"
         else:
-            headline = f"{prod.title}: Steady market interest"
-            action_text = f"Maintain price ₹{int(prod.price):,} and protect artisan margins."
+            headline = f"{product_title}: Steady market interest"
+            action_text = f"Maintain price ₹{int(product_price):,} and protect artisan margins."
             narrative = (
-                f"Market interest for \"{prod.title}\" ({prod.category}) is steady ({cat_demand['demand_pct_label']}). "
-                f"Your price of ₹{int(prod.price):,} satisfies minimum fair wage and margin safety constraints."
+                f"Market interest for \"{product_title}\" ({product_category}) is steady ({cat_demand['demand_pct_label']}). "
+                f"Your price of ₹{int(product_price):,} satisfies minimum fair wage and margin safety constraints."
             )
             urgency = "LOW"
 
         opp = {
-            "product_id": prod.id,
-            "product_title": prod.title,
-            "category": prod.category,
+            "product_id": _as_int(cast(Any, prod.id)),
+            "product_title": product_title,
+            "category": product_category,
             "demand_pct": cat_demand["demand_pct"],
             "demand_label": cat_demand["demand_pct_label"],
-            "stock": prod.stock,
+            "stock": product_stock,
             "buyer_saves": save_count,
             "buyer_enquiries": enquiry_count,
-            "current_price": prod.price,
+            "current_price": product_price,
             "recommended_price": rec_price,
             "minimum_fair_price": pricing_rec["minimum_fair_price"],
             "benchmark_range": cat_demand["benchmark_price_range"],
@@ -259,7 +276,7 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
             "category": top_cat["category"],
             "demand_pct": top_cat["demand_pct"],
             "demand_label": top_cat["demand_pct_label"],
-            "stock": sum(p.stock for p in seller_products),
+            "stock": sum(_as_int(cast(Any, p.stock)) for p in seller_products),
             "buyer_saves": 0,
             "buyer_enquiries": 0,
             "benchmark_range": top_cat["benchmark_price_range"],

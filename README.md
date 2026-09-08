@@ -207,7 +207,7 @@ The repository contains a 100% verified automated test suite covering every comp
 - `test_image_enhancer.py`: Image background enhancer pipeline, fallback corner sampling, and honest fallback handling.
 - `test_offline_audit_fixes.py`: Offline batch synchronization with item status reporting and cost basis preservation.
 - `test_doc_spec_compliance.py`: Specification compliance for market endpoints, enquiry/order endpoints, ONDC adapter, and sync endpoints.
-- `test_integration_phases.py`: Readiness score calculation, sales channels integration, AI provider abstraction, and marketplace adapter abstractions.
+- `test_integration_phases.py`: Sales channels integration, AI provider abstraction, and marketplace adapter abstractions.
 - `test_step1.py` - `test_step7.py`: Core baseline verification of health, catalog CRUD, multimodal AI, market events, intelligence scoring, pricing formulas, and offline client queue reconciliation.
 
 ---

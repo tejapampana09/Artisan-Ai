@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Any, cast
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
@@ -28,6 +29,7 @@ def get_price_recommendation(product_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product with id {product_id} not found"
         )
+    product = cast(Any, product)
 
     recommendation = calculate_price_recommendation(product, db)
     return recommendation
@@ -45,9 +47,11 @@ def submit_price_decision(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product with id {product_id} not found"
         )
+    product = cast(Any, product)
+    current_user = cast(Any, current_user)
 
     # Seller Ownership Validation
-    if product.seller_id and current_user.id and product.seller_id != current_user.id:
+    if bool(product.seller_id) and bool(current_user.id) and bool(product.seller_id != current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to make pricing decisions for another artisan's product."
@@ -60,7 +64,7 @@ def submit_price_decision(
 
     if decision_req.decision == "ACCEPT":
         # Seller accepts: explicitly update product price
-        product.price = rec_price
+        setattr(product, "price", rec_price)
         applied_price = rec_price
     else:
         # Seller rejects: retain previous price unchanged
@@ -92,20 +96,22 @@ def toggle_smart_pricing(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    rate_limiter.check_rate_limit(f"toggle_sp:{get_client_identifier(request, current_user.id)}", max_requests=10, window_seconds=60)
+    current_user = cast(Any, current_user)
+    rate_limiter.check_rate_limit(f"toggle_sp:{get_client_identifier(request, cast(Any, current_user.id))}", max_requests=10, window_seconds=60)
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product with id {product_id} not found"
         )
-    if product.seller_id and current_user.id and product.seller_id != current_user.id:
+    product = cast(Any, product)
+    if bool(product.seller_id) and bool(current_user.id) and bool(product.seller_id != current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to modify pricing settings for this product."
         )
 
-    product.auto_smart_pricing_enabled = not bool(getattr(product, "auto_smart_pricing_enabled", False))
+    setattr(product, "auto_smart_pricing_enabled", not bool(getattr(product, "auto_smart_pricing_enabled", False)))
     db.commit()
     db.refresh(product)
 
@@ -113,13 +119,14 @@ def toggle_smart_pricing(
     decision_record = None
     if product.auto_smart_pricing_enabled:
         decision_record = process_auto_smart_pricing(product, db, bypass_cooldown=True)
+    decision_data = cast(Any, decision_record)
 
     return {
         "product_id": product.id,
         "auto_smart_pricing_enabled": product.auto_smart_pricing_enabled,
         "auto_pricing_applied": decision_record is not None,
-        "decision": decision_record.decision if decision_record else None,
-        "applied_price": float(decision_record.applied_price) if decision_record else float(product.price),
+        "decision": decision_data.decision if decision_data is not None else None,
+        "applied_price": float(cast(Any, decision_data.applied_price)) if decision_data is not None else float(cast(Any, product.price)),
         "message": f"Auto Smart Pricing is now {'ENABLED' if product.auto_smart_pricing_enabled else 'DISABLED'}"
     }
 
@@ -133,14 +140,16 @@ def evaluate_auto_pricing(
     """
     Evaluates and applies autonomous dynamic pricing for a product if auto_smart_pricing_enabled is True.
     """
-    rate_limiter.check_rate_limit(f"eval_auto:{get_client_identifier(request, current_user.id)}", max_requests=10, window_seconds=60)
+    current_user = cast(Any, current_user)
+    rate_limiter.check_rate_limit(f"eval_auto:{get_client_identifier(request, cast(Any, current_user.id))}", max_requests=10, window_seconds=60)
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product with id {product_id} not found"
         )
-    if product.seller_id and current_user.id and product.seller_id != current_user.id:
+    product = cast(Any, product)
+    if bool(product.seller_id) and bool(current_user.id) and bool(product.seller_id != current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to execute pricing evaluation for this product."
@@ -152,7 +161,7 @@ def evaluate_auto_pricing(
         "auto_smart_pricing_enabled": product.auto_smart_pricing_enabled,
         "auto_pricing_applied": decision_record is not None,
         "current_price": float(product.price),
-        "decision": decision_record.decision if decision_record else "NO_CHANGE"
+        "decision": cast(Any, decision_record).decision if decision_record is not None else "NO_CHANGE"
     }
 
 @router.post("/auto-pricing/run-all-cycles")
@@ -164,7 +173,8 @@ def run_all_auto_pricing_cycles(
     Admin-only System cycle endpoint: Runs auto-pricing evaluation on all products with auto_smart_pricing_enabled == True.
     Requires ADMIN authentication.
     """
-    if current_user.role != "ADMIN":
+    current_user = cast(Any, current_user)
+    if str(current_user.role) != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied: Admin privileges required to execute global auto-pricing cycles."
@@ -174,13 +184,14 @@ def run_all_auto_pricing_cycles(
     applied_count = 0
     records = []
     for p in products:
+        p = cast(Any, p)
         rec = process_auto_smart_pricing(p, db, bypass_cooldown=False)
         if rec:
             applied_count += 1
             records.append({
-                "product_id": p.id,
-                "previous_price": float(rec.previous_price),
-                "applied_price": float(rec.applied_price),
+                "product_id": cast(Any, p.id),
+                "previous_price": float(cast(Any, rec.previous_price)),
+                "applied_price": float(cast(Any, rec.applied_price)),
                 "decision": rec.decision
             })
     return {

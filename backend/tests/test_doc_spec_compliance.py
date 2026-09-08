@@ -22,22 +22,6 @@ def test_doc_spec_enquiries_and_orders_endpoints():
     res_ord = client.get("/api/orders")
     assert res_ord.status_code in [200, 401]
 
-def test_doc_spec_ondc_adapter():
-    """Verify Section 14.3 ONDC Beckn protocol adapter catalog and search."""
-    res_cat = client.get("/api/marketplace/ondc/catalog")
-    assert res_cat.status_code == 200
-    cat_data = res_cat.json()
-    assert "context" in cat_data
-    assert cat_data["context"]["action"] == "on_search"
-    assert "message" in cat_data
-    assert "catalog" in cat_data["message"]
-
-    res_search = client.post("/api/marketplace/ondc/search", json={
-        "message": {"intent": {"item": {"descriptor": {"name": "saree"}}}}
-    })
-    assert res_search.status_code == 200
-    assert res_search.json()["context"]["action"] == "on_search"
-
 def test_doc_spec_sync_endpoints():
     """Verify Section 18 /sync/jobs and /sync/status/{id}."""
     res_status = client.get("/api/sync/status/job-test-123")

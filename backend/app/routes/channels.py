@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/channels", tags=["Sales Channels"])
 
 class ChannelPublishRequest(BaseModel):
     product_id: int
-    channel_name: str # "INTERNAL", "ONDC_SANDBOX", "EXPORT_HUB_SANDBOX"
+    channel_name: str # "INTERNAL" or "EXPORT_HUB_SANDBOX"
 
 @router.get("/list")
 def list_sales_channels(current_user: User = Depends(get_current_user)):
@@ -26,15 +26,6 @@ def list_sales_channels(current_user: User = Depends(get_current_user)):
             "status": "ACTIVE",
             "is_real_integration": True,
             "description": "Primary direct-to-consumer buyer marketplace with Craft Passport & Fair Price seal."
-        },
-        {
-            "id": "ONDC_SANDBOX",
-            "name": "ONDC Network (Sandbox)",
-            "type": "EXTERNAL_MOCK",
-            "status": "SANDBOX_READY",
-            "is_real_integration": False,
-            "is_mock": True,
-            "description": "Simulated ONDC protocol channel adapter for network readiness testing."
         },
         {
             "id": "EXPORT_HUB_SANDBOX",
@@ -54,7 +45,7 @@ def publish_to_channel(
 ):
     if req.channel_name == "INTERNAL":
         adapter = InternalMarketplaceAdapter()
-    elif req.channel_name in ["ONDC_SANDBOX", "EXPORT_HUB_SANDBOX"]:
+    elif req.channel_name == "EXPORT_HUB_SANDBOX":
         adapter = MockMarketplaceAdapter(channel_name=req.channel_name)
     else:
         raise HTTPException(

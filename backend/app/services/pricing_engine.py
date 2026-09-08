@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Tuple, Optional, cast
 from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy.orm import Session
 from backend.app.models import Product, Event, PricingDecision
@@ -107,7 +107,7 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
 
     curr_price = to_decimal(product.price)
     demand_factor, demand_label = compute_demand_factor(demand_pct)
-    market_adj, market_pos = compute_market_adjustment(curr_price, benchmark_low, benchmark_high)
+    market_adj, market_pos = compute_market_adjustment(float(curr_price), benchmark_low, benchmark_high)
 
     # 3. Raw Recommended Price Calculation
     # Base calculation starts from current price (or minimum fair price if current price is below safe margin)
@@ -144,7 +144,7 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
         .order_by(PricingDecision.timestamp.desc())
         .first()
     )
-    if last_applied and to_decimal(last_applied.applied_price) == curr_price:
+    if last_applied is not None and to_decimal(last_applied.applied_price) == curr_price:
         new_prod_events = (
             db.query(Event)
             .filter(
@@ -220,8 +220,8 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
         "market_adjustment": float(market_adj),
         "recommended_price": float(rounded_price),
         "market_range": {
-            "low": float(benchmark_low),
-            "high": float(benchmark_high)
+            "low": float(cast(Any, benchmark_low)) if benchmark_low is not None else 0.0,
+            "high": float(cast(Any, benchmark_high)) if benchmark_high is not None else 0.0
         },
         "current_market_position": market_pos,
         "price_change_amount": float(price_change_amount),
@@ -255,7 +255,7 @@ def process_auto_smart_pricing(product: Product, db: Session, cooldown_minutes: 
             .order_by(PricingDecision.timestamp.desc())
             .first()
         )
-        if last_decision and last_decision.timestamp:
+        if last_decision is not None and cast(Any, last_decision.timestamp) is not None:
             now_utc = datetime.now(timezone.utc)
             ts = last_decision.timestamp
             if ts.tzinfo is None:
@@ -273,7 +273,7 @@ def process_auto_smart_pricing(product: Product, db: Session, cooldown_minutes: 
         return None
 
     # Apply price change automatically
-    product.price = rec_price
+    setattr(product, "price", rec_price)
 
     decision_record = PricingDecision(
         product_id=product.id,
