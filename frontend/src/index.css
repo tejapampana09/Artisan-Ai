@@ -93,3 +93,32 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Completely hide all Google Translate top banners, bars, and tooltips */
+.goog-te-banner-frame, 
+.goog-te-banner-frame.skiptranslate, 
+iframe.goog-te-banner-frame,
+iframe.skiptranslate,
+#goog-gt-tt, 
+.goog-te-balloon-frame,
+.VIpgJd-yD05fd-Lg4t2b,
+.VIpgJd-yD05fd-Lg4t2b-sLp2vf,
+.VIpgJd-yD05fd-vFu4df,
+.VIpgJd-yD05fd-yScalb {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0px !important;
+  width: 0px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+body {
+  top: 0px !important;
+  position: static !important;
+}
+
+.goog-text-highlight {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}

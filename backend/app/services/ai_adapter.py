@@ -618,4 +618,118 @@ async def translate_craft_text(
         "description": description,
         "craft_story": craft_story,
         "target_language": target_language
+    }
+
+
+CATEGORY_MARKET_BENCHMARKS = {
+    "Kalamkari": {"suggested": Decimal("2400.00"), "min": Decimal("1800.00")},
+    "Wooden Toys": {"suggested": Decimal("1250.00"), "min": Decimal("850.00")},
+    "Blue Pottery": {"suggested": Decimal("950.00"), "min": Decimal("650.00")},
+    "Bidriware": {"suggested": Decimal("2800.00"), "min": Decimal("2000.00")},
+    "Pochampally Ikat": {"suggested": Decimal("3200.00"), "min": Decimal("2200.00")},
+    "Terracotta": {"suggested": Decimal("650.00"), "min": Decimal("450.00")},
+    "Handloom": {"suggested": Decimal("2200.00"), "min": Decimal("1500.00")},
+    "Other": {"suggested": Decimal("1500.00"), "min": Decimal("1000.00")},
+}
+
+async def estimate_fair_price(
+    title: str = "",
+    category: str = "Handcrafted",
+    materials: str = "",
+    description: str = "",
+    material_cost: Optional[Any] = None,
+    labour_cost: Optional[Any] = None,
+    packaging_cost: Optional[Any] = None,
+    other_cost: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    AI Fair Market Price Estimator:
+    If itemized costs are provided, uses cost + 35% fair margin (exceeding 20% floor).
+    If costs are empty/zero, uses Gemini AI or market benchmarks for similar products.
+    """
+    min_fair, suggested, pricing_avail, pricing_src = calculate_pricing_from_costs(
+        material_cost, labour_cost, packaging_cost, other_cost
+    )
+    if pricing_avail and suggested is not None and min_fair is not None:
+        return {
+            "suggested_price": suggested,
+            "min_fair_price": min_fair,
+            "pricing_source": pricing_src,
+            "reasoning": "Calculated from artisan's reported direct costs with protected 35% profit margin."
+        }
+
+    clean_cat = (category or "Handcrafted").strip()
+    clean_title = (title or "").strip()
+    clean_mat = (materials or "").strip()
+
+    if GEMINI_API_KEY:
+        try:
+            prompt = f"""
+            You are an expert handicraft market valuation AI for traditional Indian artisan products.
+            Product details:
+            Title: "{clean_title}"
+            Category: "{clean_cat}"
+            Materials: "{clean_mat}"
+            Description: "{description}"
+
+            Task: Estimate a fair market selling price (in INR) for this item based on real market prices of similar handmade products in India.
+            
+            Return a valid JSON object with:
+            - suggested_price: Fair market price in INR (number)
+            - min_fair_price: Minimum recommended fair price in INR (number)
+            - reasoning: 1-sentence explanation of market benchmarks for similar products
+            """
+            models_to_try = get_models_to_try()
+            async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
+                for model in models_to_try:
+                    try:
+                        resp = await client.post(
+                            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}",
+                            json={
+                                "contents": [{"parts": [{"text": prompt}]}],
+                                "generationConfig": {"response_mime_type": "application/json"}
+                            },
+                            headers={"Content-Type": "application/json"}
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                            if content.startswith("```"):
+                                lines = content.split("\n")
+                                if lines[0].startswith("```"):
+                                    lines = lines[1:]
+                                if lines and lines[-1].strip() == "```":
+                                    lines = lines[:-1]
+                                content = "\n".join(lines).strip()
+                            parsed = json.loads(content)
+                            raw_sugg = parsed.get("suggested_price")
+                            raw_min = parsed.get("min_fair_price")
+                            if raw_sugg:
+                                sugg_dec = Decimal(str(raw_sugg)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                                min_dec = Decimal(str(raw_min or float(sugg_dec) * 0.75)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                                return {
+                                    "suggested_price": sugg_dec,
+                                    "min_fair_price": min_dec,
+                                    "pricing_source": "MARKET_AI_ESTIMATE",
+                                    "reasoning": parsed.get("reasoning", f"Market price estimate based on similar {clean_cat} products in current Indian craft markets.")
+                                }
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+
+    # Benchmark fallback if AI call is unavailable
+    matched_benchmark = None
+    for cat_key, bench in CATEGORY_MARKET_BENCHMARKS.items():
+        if cat_key.lower() in clean_cat.lower() or cat_key.lower() in clean_title.lower():
+            matched_benchmark = bench
+            break
+    if not matched_benchmark:
+        matched_benchmark = CATEGORY_MARKET_BENCHMARKS.get("Other", {"suggested": Decimal("1500.00"), "min": Decimal("1000.00")})
+
+    return {
+        "suggested_price": matched_benchmark["suggested"],
+        "min_fair_price": matched_benchmark["min"],
+        "pricing_source": "MARKET_CATEGORY_BENCHMARK",
+        "reasoning": f"Fair price estimated based on similar market products in {clean_cat} category."
     }

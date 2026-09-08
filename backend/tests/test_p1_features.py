@@ -404,7 +404,43 @@ def test_buyer_copilot_audit_fixes():
     assert len(data_te["reply_text"]) > 0
 
 
+def test_estimate_product_price_endpoint():
+    """
+    Verify /api/ai/estimate-price calculates fair market price based on category/similar products
+    when no cost inputs are provided, or cost + margin when costs are provided.
+    """
+    uid = uuid.uuid4().hex[:6]
+    reg = client.post("/api/auth/register", json={
+        "name": f"Pricing Artisan {uid}",
+        "email": f"pricing.artisan.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
 
+    # 1. Market Benchmark / AI Price (No cost inputs provided)
+    res_no_costs = client.post("/api/ai/estimate-price", json={
+        "title": "Traditional Kalamkari Silk Saree",
+        "category": "Kalamkari",
+        "materials": "Mulberry Silk"
+    }, headers=headers)
+    assert res_no_costs.status_code == 200
+    data1 = res_no_costs.json()
+    assert float(data1["suggested_price"]) > 0
+    assert float(data1["min_fair_price"]) > 0
+    assert data1["pricing_source"] in ["MARKET_AI_ESTIMATE", "MARKET_CATEGORY_BENCHMARK"]
 
-
+    # 2. Cost-Plus Margin Price (Itemized costs provided)
+    res_with_costs = client.post("/api/ai/estimate-price", json={
+        "title": "Terracotta Diya Set",
+        "category": "Terracotta",
+        "material_cost": 100.0,
+        "labour_cost": 200.0,
+        "packaging_cost": 50.0
+    }, headers=headers)
+    assert res_with_costs.status_code == 200
+    data2 = res_with_costs.json()
+    assert data2["pricing_source"] == "COST_PLUS_MARGIN"
+    assert float(data2["min_fair_price"]) == 420.0  # (350 * 1.20)
+    assert float(data2["suggested_price"]) == 490.0  # (350 * 1.40)
 

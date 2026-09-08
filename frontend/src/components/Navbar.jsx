@@ -5,25 +5,45 @@ import {
 } from 'lucide-react';
 import { useOffline } from '../context/OfflineContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useNotification } from '../context/NotificationContext';
 import { 
   triggerMobilePush, 
   requestNotificationPermission, 
   getNotificationPermissionStatus 
 } from '../services/mobileNotifications';
-import { getNotifications } from '../api/index.js';
+import { getNotifications, markNotificationRead } from '../api/index.js';
 
 export default function Navbar({ activeMode, onToggleMode, user, readyStatus, onOpenAuth, onOpenDownloadApp }) {
   const { language, setIsSelectingLanguage, t } = useLanguage();
   const { isOffline, toggleOfflineMode, queueCount } = useOffline();
+  const toast = useNotification();
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [pushStatus, setPushStatus] = useState(getNotificationPermissionStatus());
-  const prevNotifIdsRef = useRef(new Set());
+
+  const getSeenNotifIds = () => {
+    try {
+      const stored = sessionStorage.getItem('artisan_seen_notif_ids');
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  };
+
+  const saveSeenNotifId = (id) => {
+    try {
+      const current = getSeenNotifIds();
+      current.add(id);
+      sessionStorage.setItem('artisan_seen_notif_ids', JSON.stringify(Array.from(current)));
+    } catch {
+      // Ignore storage errors
+    }
+  };
 
   useEffect(() => {
     if (user) {
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 25000);
+      const interval = setInterval(fetchNotifications, 4000);
       return () => clearInterval(interval);
     }
   }, [user]);
@@ -33,13 +53,16 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
       const data = await getNotifications();
       setNotifications(data);
 
-      // Detect newly arrived unread notifications and fire Native Mobile Device Push
+      const seenIds = getSeenNotifIds();
+
+      // Detect newly arrived unread notifications and fire Native Mobile Device Push & In-App Toast
       data.forEach(n => {
-        if (!n.is_read && !prevNotifIdsRef.current.has(n.id)) {
+        if (!n.is_read && !seenIds.has(n.id)) {
+          saveSeenNotifId(n.id);
           triggerMobilePush(n.title, n.message);
-          prevNotifIdsRef.current.add(n.id);
-        } else if (n.is_read) {
-          prevNotifIdsRef.current.add(n.id);
+          toast.info(`${n.title}: ${n.message}`, 8000);
+        } else {
+          saveSeenNotifId(n.id);
         }
       });
     } catch (err) {
@@ -68,6 +91,24 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
 
   return (
     <>
+      {/* Top Mobile Push Notification Banner Prompt */}
+      {user && pushStatus === 'default' && (
+        <div className="bg-slate-900 text-white px-3 py-2 text-xs flex items-center justify-between border-b border-amber-500/40 shadow-sm z-50">
+          <div className="flex items-center space-x-2 overflow-hidden">
+            <Smartphone className="w-4 h-4 text-amber-400 shrink-0 animate-bounce" />
+            <span className="truncate">
+              <strong>🔔 Enable Mobile Alerts / మొబైల్ నోటిఫికేషన్లు:</strong> Get instant push alerts for orders & enquiries.
+            </span>
+          </div>
+          <button
+            onClick={handleEnableMobilePush}
+            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded-lg text-xs transition-all cursor-pointer shrink-0 ml-2 shadow-sm"
+          >
+            Enable Now / అనుమతించండి
+          </button>
+        </div>
+      )}
+
       {/* Top Fixed Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs w-full overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">

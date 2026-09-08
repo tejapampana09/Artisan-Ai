@@ -88,6 +88,8 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
 
   useEffect(() => {
     loadAccountData();
+    const interval = setInterval(loadAccountData, 5000);
+    return () => clearInterval(interval);
   }, [loadAccountData]);
 
   const handleRemoveWishlist = (productId) => {

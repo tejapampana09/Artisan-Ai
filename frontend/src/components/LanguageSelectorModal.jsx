@@ -20,8 +20,8 @@ export default function LanguageSelectorModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
-      <div className="bg-[#FAF7F2] rounded-3xl max-w-md w-full shadow-2xl border border-stone-200 flex flex-col overflow-hidden max-h-[90vh] my-auto animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200 notranslate" translate="no">
+      <div className="bg-[#FAF7F2] rounded-3xl max-w-md w-full shadow-2xl border border-stone-200 flex flex-col overflow-hidden max-h-[90vh] my-auto animate-in zoom-in-95 duration-200 notranslate" translate="no">
         {/* Header */}
         <div className="p-6 pb-3 text-center relative shrink-0">
           <div className="flex justify-between items-center mb-2">
@@ -59,9 +59,9 @@ export default function LanguageSelectorModal({ isOpen, onClose }) {
                     {lang.flag}
                   </div>
                   <div>
-                    <h4 className="font-extrabold text-sm text-[#2C1A0E] flex items-center space-x-2">
-                      <span>{lang.name}</span>
-                      <span className="text-xs font-medium text-stone-400">
+                    <h4 className="font-extrabold text-sm text-[#2C1A0E] flex items-center space-x-2 notranslate" translate="no">
+                      <span className="notranslate" translate="no">{lang.name}</span>
+                      <span className="text-xs font-medium text-stone-400 notranslate" translate="no">
                         {lang.label}
                       </span>
                     </h4>
@@ -80,6 +80,7 @@ export default function LanguageSelectorModal({ isOpen, onClose }) {
         <div className="p-5 pt-2 bg-[#FAF7F2] border-t border-stone-200/50 shrink-0 text-center">
           <button
             onClick={() => {
+              setLanguage(language || 'te');
               setIsSelectingLanguage(false);
               if (onClose) onClose();
             }}

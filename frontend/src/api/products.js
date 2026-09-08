@@ -70,3 +70,10 @@ export async function translateProduct(payload) {
   });
 }
 
+export async function estimateFairPrice(payload) {
+  return await apiRequest('/ai/estimate-price', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+

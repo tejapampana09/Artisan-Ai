@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Sparkles, Check, AlertCircle } from 'lucide-react';
+import { estimateFairPrice } from '../api/index.js';
 
 const CATEGORIES = [
   'Kalamkari',
@@ -32,6 +33,7 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [estimatingPrice, setEstimatingPrice] = useState(false);
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
@@ -51,22 +53,71 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
   const costBasis = mat + lab + pkg + oth;
   const minFairPrice = costBasis > 0 ? Math.round(costBasis * (1 + (Number(formData.min_margin_pct) || 0.20))) : 0;
 
+  const handleAutoEstimatePrice = async () => {
+    setEstimatingPrice(true);
+    setError('');
+    try {
+      const res = await estimateFairPrice({
+        title: formData.title || 'Craft Item',
+        category: formData.category,
+        materials: formData.materials,
+        description: formData.description,
+        material_cost: mat || null,
+        labour_cost: lab || null,
+        packaging_cost: pkg || null,
+        other_cost: oth || null
+      });
+      if (res?.suggested_price) {
+        setFormData((prev) => ({ ...prev, price: res.suggested_price }));
+      }
+    } catch (err) {
+      console.error('Failed to estimate price:', err);
+    } finally {
+      setEstimatingPrice(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) {
       setError('Title is required');
       return;
     }
-    if (!formData.price || Number(formData.price) <= 0) {
-      setError('A valid listing price is required');
-      return;
-    }
+    
     setSubmitting(true);
     setError('');
+
+    let finalPrice = Number(formData.price);
+    if (!finalPrice || finalPrice <= 0) {
+      try {
+        const res = await estimateFairPrice({
+          title: formData.title,
+          category: formData.category,
+          materials: formData.materials,
+          description: formData.description,
+          material_cost: mat || null,
+          labour_cost: lab || null,
+          packaging_cost: pkg || null,
+          other_cost: oth || null
+        });
+        if (res?.suggested_price) {
+          finalPrice = Number(res.suggested_price);
+        } else {
+          setError('Could not calculate AI price. Please enter a listing price.');
+          setSubmitting(false);
+          return;
+        }
+      } catch (err) {
+        setError('Failed to estimate AI fair price: ' + (err.message || 'Error'));
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const payload = {
         ...formData,
-        price: Number(formData.price),
+        price: finalPrice,
         stock: Number(formData.stock) || 1,
         material_cost: mat,
         labour_cost: lab,
@@ -267,17 +318,30 @@ export default function CreateProductModal({ isOpen, onClose, onCreated }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Listing Price (₹) *</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-semibold text-slate-700">Listing Price (₹)</label>
+                <button
+                  type="button"
+                  onClick={handleAutoEstimatePrice}
+                  disabled={estimatingPrice}
+                  className="text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-lg flex items-center space-x-1 cursor-pointer transition-all active:scale-95"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-600 animate-pulse" />
+                  <span>{estimatingPrice ? 'Calculating...' : '✨ Let AI Decide'}</span>
+                </button>
+              </div>
               <input
                 type="number"
                 name="price"
                 min="0"
-                required
-                placeholder="e.g. 2400"
+                placeholder="e.g. 2400 (or leave blank for AI)"
                 value={formData.price}
                 onChange={handleChange}
                 className="w-full text-sm font-bold border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Leave blank or click button to let AI search similar products & calculate fair price.
+              </p>
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Image URL</label>

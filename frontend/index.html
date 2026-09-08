@@ -9,11 +9,32 @@
     <title>Artisan AI — Rural Commerce & Business Intelligence SaaS</title>
     <meta name="description" content="AI-Powered B2B craft marketplace, voice-first cataloging, and explainable dynamic pricing engine for rural artisans." />
     <style>
-      /* Hide Google Translate top banner & widget frames for seamless clean UI */
-      .goog-te-banner-frame { display: none !important; }
-      body { top: 0px !important; }
-      #goog-gt-tt, .goog-te-balloon-frame { display: none !important; }
-      .goog-text-highlight { background-color: transparent !important; box-shadow: none !important; }
+      /* Completely hide all Google Translate top banners, bars, and tooltips */
+      .goog-te-banner-frame, 
+      .goog-te-banner-frame.skiptranslate, 
+      iframe.goog-te-banner-frame,
+      iframe.skiptranslate,
+      #goog-gt-tt, 
+      .goog-te-balloon-frame,
+      .VIpgJd-yD05fd-Lg4t2b,
+      .VIpgJd-yD05fd-Lg4t2b-sLp2vf,
+      .VIpgJd-yD05fd-vFu4df,
+      .VIpgJd-yD05fd-yScalb {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
+        width: 0px !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+      body {
+        top: 0px !important;
+        position: static !important;
+      }
+      .goog-text-highlight {
+        background-color: transparent !important;
+        box-shadow: none !important;
+      }
     </style>
   </head>
   <body>

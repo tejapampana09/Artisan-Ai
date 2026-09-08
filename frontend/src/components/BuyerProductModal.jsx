@@ -177,6 +177,12 @@ export default function BuyerProductModal({
         <div className="max-w-3xl w-full mx-auto px-4 sm:px-6 py-6 pb-28 space-y-6 flex-1">
           {/* Title & Price Section */}
           <div className="space-y-2 border-b border-stone-200/80 pb-4">
+            {translatedData && (
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-bold">
+                <Globe className="w-3.5 h-3.5 text-amber-700" />
+                <span>🌐 AI Translated to {language.toUpperCase()} (మీ భాషలోకి అనువాదం చేయబడింది)</span>
+              </div>
+            )}
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#2C1A0E]">
               {displayTitle}
             </h1>

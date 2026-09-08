@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import Product, User
 from backend.app.schemas import ProductResponse
-from backend.app.services.ai_adapter import generate_catalog_draft, translate_craft_text
+from backend.app.services.ai_adapter import generate_catalog_draft, translate_craft_text, estimate_fair_price
 from backend.app.services.auth import get_current_user
 from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
 
@@ -166,13 +166,6 @@ async def translate_product(
     if req.product_id:
         product = db.query(Product).filter(Product.id == req.product_id).first()
         if product:
-            # Seller Ownership / Admin Authorization check
-            if product.seller_id and current_user.id and product.seller_id != current_user.id and current_user.role != "ADMIN":
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You do not have permission to translate or modify another artisan's product."
-                )
-        if product:
             title = product.title
             description = product.description or ""
             craft_story = product.craft_story or ""
@@ -226,3 +219,42 @@ async def translate_product(
             pass
 
     return TranslateProductResponse(**result)
+
+
+class PriceEstimateRequest(BaseModel):
+    title: Optional[str] = Field(None, description="Product title or description hint")
+    category: Optional[str] = Field("Handcrafted", description="Product craft category")
+    materials: Optional[str] = Field(None, description="Materials used")
+    description: Optional[str] = Field(None, description="Description text")
+    material_cost: Optional[float] = Field(None, ge=0)
+    labour_cost: Optional[float] = Field(None, ge=0)
+    packaging_cost: Optional[float] = Field(None, ge=0)
+    other_cost: Optional[float] = Field(None, ge=0)
+
+class PriceEstimateResponse(BaseModel):
+    suggested_price: Decimal
+    min_fair_price: Decimal
+    pricing_source: str
+    reasoning: str
+
+@router.post("/estimate-price", response_model=PriceEstimateResponse)
+async def estimate_product_price(
+    req: PriceEstimateRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Estimates a fair market price for a product based on similar market products or cost inputs.
+    """
+    rate_limiter.check_rate_limit(f"estprice:{get_client_identifier(request, current_user.id)}", max_requests=20, window_seconds=60)
+    res = await estimate_fair_price(
+        title=req.title or "",
+        category=req.category or "Handcrafted",
+        materials=req.materials or "",
+        description=req.description or "",
+        material_cost=req.material_cost,
+        labour_cost=req.labour_cost,
+        packaging_cost=req.packaging_cost,
+        other_cost=req.other_cost
+    )
+    return PriceEstimateResponse(**res)

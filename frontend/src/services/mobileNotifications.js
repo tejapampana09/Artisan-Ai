@@ -27,23 +27,25 @@ export function triggerMobilePush(title, body, tag = 'artisan-ai') {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
   try {
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then((reg) => {
         reg.showNotification(title, {
           body,
           icon: '/artisan-logo.png',
           badge: '/artisan-logo.png',
-          tag,
+          tag: tag + '-' + Date.now(),
           vibrate: [200, 100, 200],
           renotify: true
         });
+      }).catch(() => {
+        try {
+          new Notification(title, { body, icon: '/artisan-logo.png', tag });
+        } catch {
+          // Ignore fallback errors
+        }
       });
     } else {
-      new Notification(title, {
-        body,
-        icon: '/artisan-logo.png',
-        tag
-      });
+      new Notification(title, { body, icon: '/artisan-logo.png', tag });
     }
   } catch (err) {
     console.error('Failed to trigger mobile push notification:', err);

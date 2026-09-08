@@ -442,19 +442,19 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
           {/* Metric 1 */}
           <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs space-y-1 text-center">
             <span className="text-[11px] font-semibold text-stone-400 block">New Views</span>
-            <span className="text-xl font-extrabold text-[#2C1A0E]">3</span>
+            <span className="text-xl font-extrabold text-[#2C1A0E]">{dashboardData?.total_views ?? myProducts.reduce((sum, p) => sum + (p.views_count || 0), 0)}</span>
           </div>
 
           {/* Metric 2 */}
           <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs space-y-1 text-center">
             <span className="text-[11px] font-semibold text-stone-400 block">Enquiries</span>
-            <span className="text-xl font-extrabold text-[#2C1A0E]">{enquiries.length || 2}</span>
+            <span className="text-xl font-extrabold text-[#2C1A0E]">{dashboardData?.total_enquiries ?? enquiries.length}</span>
           </div>
 
           {/* Metric 3 */}
           <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs space-y-1 text-center">
             <span className="text-[11px] font-semibold text-stone-400 block">Potential Earnings</span>
-            <span className="text-xl font-extrabold text-[#4A2E1B]">₹{(totalCatalogValue || 1250).toLocaleString('en-IN')}</span>
+            <span className="text-xl font-extrabold text-[#4A2E1B]">₹{totalCatalogValue.toLocaleString('en-IN')}</span>
           </div>
         </div>
       </div>

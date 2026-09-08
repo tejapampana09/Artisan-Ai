@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const LanguageContext = createContext();
 
@@ -642,27 +642,36 @@ export function LanguageProvider({ children }) {
     return !localStorage.getItem('artisan_app_language');
   });
 
-  const triggerGoogleTranslate = (langCode) => {
+  const triggerGoogleTranslate = useCallback((langCode) => {
     try {
-      const target = langCode || 'te';
-      document.cookie = `googtrans=/en/${target}; path=/`;
-      document.cookie = `googtrans=/en/${target}; domain=${window.location.hostname}; path=/`;
-      const selectElem = document.querySelector('.goog-te-combo');
-      if (selectElem) {
-        selectElem.value = target;
-        selectElem.dispatchEvent(new Event('change'));
+      const target = langCode || 'en';
+      if (target === 'en') {
+        document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=${window.location.hostname}; path=/;`;
+      } else {
+        document.cookie = `googtrans=/en/${target}; path=/`;
+        document.cookie = `googtrans=/en/${target}; domain=${window.location.hostname}; path=/`;
       }
     } catch (e) {
-      // Ignore translation DOM error
+      console.warn('Google Translate cookie error:', e);
     }
-  };
+  }, []);
 
   const setLanguage = (langCode) => {
     setLanguageState(langCode);
     localStorage.setItem('artisan_app_language', langCode);
     setIsSelectingLanguage(false);
     triggerGoogleTranslate(langCode);
+
+    // Auto-reload window so Google Translate applies 100% full-page translation instantly
+    window.location.reload();
   };
+
+  useEffect(() => {
+    if (language && language !== 'en') {
+      triggerGoogleTranslate(language);
+    }
+  }, [language, triggerGoogleTranslate]);
 
   // Helper t(key, fallback) that retrieves translation for active language
   const t = (key, fallback = '') => {

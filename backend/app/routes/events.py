@@ -446,20 +446,32 @@ def update_order_status(
     db.commit()
     db.refresh(order)
 
-    # Status-change notifications
+    # Status-change notifications strictly targeted to dedicated buyer
     STATUS_LABELS = {
-        "PROCESSING": ("📦 Order Being Packed!", "Your order for '{title}' is being packed by the artisan."),
-        "SHIPPED":    ("🚚 Order Shipped!", "Your order for '{title}' is on the way! The artisan has dispatched it."),
+        "CONFIRMED":  ("✅ Order Confirmed!", "Your order for '{title}' has been confirmed by the artisan."),
+        "PROCESSING": ("📦 Order Packed & Ready to Dispatch!", "Your order for '{title}' has been packed by the artisan and is ready to dispatch."),
+        "SHIPPED":    ("🚚 Order Dispatched & On The Way!", "Your order for '{title}' has been dispatched by the artisan and is on the way!"),
         "DELIVERED":  ("🎉 Order Delivered!", "Your order for '{title}' has been delivered. Please leave a review!"),
         "CANCELLED":  ("❌ Order Cancelled", "Your order for '{title}' has been cancelled and stock has been restored."),
     }
     if new_status in STATUS_LABELS and new_status != old_status:
         title_tpl, msg_tpl = STATUS_LABELS[new_status]
         label = {"title": prod.title}
-        # Notify buyer on all seller-driven status changes
-        if order.user_id and is_seller:
+        
+        # Dedicated buyer resolution (by explicit user_id or registered phone number / name)
+        target_buyer_id = order.user_id
+        if not target_buyer_id and order.buyer_phone:
+            clean_phone = "".join(filter(str.isdigit, str(order.buyer_phone)))
+            if clean_phone:
+                for u in db.query(User).all():
+                    if u.phone and "".join(filter(str.isdigit, str(u.phone))) == clean_phone:
+                        target_buyer_id = u.id
+                        break
+
+        # Strictly notify dedicated buyer on all seller-driven status changes
+        if target_buyer_id and is_seller:
             db.add(Notification(
-                user_id=order.user_id,
+                user_id=target_buyer_id,
                 title=title_tpl,
                 message=msg_tpl.format(**label),
                 type="ORDER"

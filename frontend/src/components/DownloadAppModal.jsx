@@ -57,6 +57,10 @@ export default function DownloadAppModal({ isOpen, onClose }) {
   }, [isOpen, deferredPrompt, isInstalled]);
 
   if (!isOpen) return null;
+  const isIos = typeof navigator !== 'undefined' && (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
 
   const handleInstallClick = async () => {
     const activePrompt = deferredPrompt || window.deferredPwaPrompt;
@@ -68,6 +72,8 @@ export default function DownloadAppModal({ isOpen, onClose }) {
       }
       setDeferredPrompt(null);
       window.deferredPwaPrompt = null;
+    } else if (isIos) {
+      alert("📲 iPhone Setup Steps / iPhone లో ఇన్స్టాల్ చేయడానికి:\n\n1. Safari బ్రౌజర్ కింద ఉండే Share (📤) ఐకాన్ నొక్కండి.\n2. 'Add to Home Screen' (➕ హోమ్ స్క్రీన్‌కి జోడించు) ఎంచుకోండి.\n3. పైన 'Add' నొక్కండి!");
     } else {
       alert(t('pwaBrowserNote', 'Automatic install prompt initialized! If your browser blocked it, tap the 3 dots menu in Chrome/Edge and select "Install app" or "Add to Home Screen".'));
     }
@@ -113,20 +119,39 @@ export default function DownloadAppModal({ isOpen, onClose }) {
                 <Sparkles className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold text-sm text-amber-900">
-                    {t('instantInstallTitle', 'Instant 1-Click Installation')}
+                    {isIos ? '📱 iPhone / iOS Installation Guide' : t('instantInstallTitle', 'Instant 1-Click Installation')}
                   </h4>
                   <p className="text-xs text-amber-800 mt-0.5">
-                    {t('instantInstallSub', 'No App Store login required. Works natively on Android, iOS, & Desktop.')}
+                    {isIos 
+                      ? 'iPhone లో అప్లికేషన్ ఇన్స్టాల్ చేయడానికి 3 చిన్న స్టెప్స్ పాటించండి:' 
+                      : t('instantInstallSub', 'No App Store login required. Works natively on Android, iOS, & Desktop.')}
                   </p>
                 </div>
               </div>
+
+              {isIos ? (
+                <div className="bg-white p-3.5 rounded-xl border border-amber-200 space-y-2 text-xs text-amber-950 font-medium">
+                  <div className="flex items-center space-x-2">
+                    <Share className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span><strong>1. Share:</strong> Safari కింద ఉన్న Share (📤) ఐకాన్ నొక్కండి.</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <PlusSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span><strong>2. Add to Home Screen:</strong> 'Add to Home Screen' (➕) ఎంచుకోండి.</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span><strong>3. Add:</strong> పైన కుడివైపున ఉన్న 'Add' బటన్ నొక్కండి!</span>
+                  </div>
+                </div>
+              ) : null}
 
               <button
                 onClick={handleInstallClick}
                 className="w-full py-3 px-4 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-xl shadow-lg shadow-orange-500/25 flex items-center justify-center space-x-2 transition-all cursor-pointer transform active:scale-98"
               >
                 <Download className="w-5 h-5" />
-                <span>{t('installAppNowBtn', 'Install App Now / ఆప్‌ని ఇన్స్టాల్ చేయండి')}</span>
+                <span>{isIos ? 'Show iPhone Steps / స్టెప్స్ చూడండి' : t('installAppNowBtn', 'Install App Now / ఆప్‌ని ఇన్స్టాల్ చేయండి')}</span>
               </button>
             </div>
           )}

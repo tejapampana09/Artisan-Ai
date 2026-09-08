@@ -4,12 +4,12 @@
  */
 
 export function getApiBase() {
-  // 1. Explicit Vite env variable
+  // 1. Explicit Vite env variable override if provided
   if (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_BASE) {
     return import.meta.env.VITE_API_BASE;
   }
 
-  // 2. Default relative route (proxied by Vite to http://127.0.0.1:8000)
+  // 2. Relative route: proxied by Vite in local dev (localhost:8000) and CloudFront in prod (dd8bq7j24onss.cloudfront.net/api)
   return '/api';
 }
 

@@ -74,7 +74,10 @@ def get_cors_origins() -> List[str]:
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:4173",
-        "http://127.0.0.1:4173"
+        "http://127.0.0.1:4173",
+        "http://artisan-ai-frontend-339954341605.s3-website-us-east-1.amazonaws.com",
+        "https://dd8bq7j24onss.cloudfront.net",
+        "http://dd8bq7j24onss.cloudfront.net"
     ]
     return list(set(origins + default_dev_origins))
 

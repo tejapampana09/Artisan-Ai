@@ -24,5 +24,7 @@ frontend/.vite/
 .DS_Store
 Thumbs.db
 git.cmd
+*.zip
+scratch_*
 
 

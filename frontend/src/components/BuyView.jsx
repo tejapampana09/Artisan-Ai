@@ -4,7 +4,7 @@ import BuyerProductModal from './BuyerProductModal';
 import BuyerOrderModal from './BuyerOrderModal';
 import BuyerAssistantModal from './BuyerAssistantModal';
 import { getProducts, getTrendingProducts, recordEvent } from '../api/index.js';
-import { getSavedProductIds, saveProductId, removeSavedProductId } from '../services/offlineSync';
+import { getSavedProductIds, saveProductId, removeSavedProductId, getCachedProducts, setCachedProducts } from '../services/offlineSync';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { getLocalizedProductField } from '../utils/multilingual.js';
 
@@ -19,7 +19,10 @@ const CATEGORIES = [
 
 export default function BuyView({ user, onOpenAuth }) {
   const { language, t, getCategoryTranslation } = useLanguage();
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => {
+    const cached = getCachedProducts(user?.id);
+    return cached && cached.length > 0 ? cached : [];
+  });
   const [trending, setTrending] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All Crafts');
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,13 +36,18 @@ export default function BuyView({ user, onOpenAuth }) {
   const [orderModal, setOrderModal] = useState({ isOpen: false, product: null, mode: 'ORDER' });
   const [tickerTrigger, setTickerTrigger] = useState(0);
   const [notification, setNotification] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    const cached = getCachedProducts(user?.id);
+    return !(cached && cached.length > 0);
+  });
 
   // Search debounce ref
   const searchTimeoutRef = useRef(null);
 
   const loadMarketplace = async (overrideParams = {}) => {
-    setLoading(true);
+    if (products.length === 0) {
+      setLoading(true);
+    }
     try {
       const params = { status: 'PUBLISHED', ...overrideParams };
       if (selectedCategory !== 'All Crafts') params.category = selectedCategory;
@@ -53,8 +61,13 @@ export default function BuyView({ user, onOpenAuth }) {
       ]);
       setProducts(allProds);
       setTrending(trendProds);
+      setCachedProducts(allProds, user?.id);
     } catch (err) {
-      console.error(err);
+      console.error('Marketplace load error, using cached products:', err);
+      const cached = getCachedProducts(user?.id);
+      if (cached && cached.length > 0) {
+        setProducts(cached);
+      }
     } finally {
       setLoading(false);
     }
