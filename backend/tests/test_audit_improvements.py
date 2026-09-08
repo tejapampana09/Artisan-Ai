@@ -280,7 +280,8 @@ def test_order_inventory_concurrency_and_data_privacy():
 
 def test_production_security_and_strict_demo_isolation(monkeypatch):
     from backend.app.services.auth import get_current_user, get_current_user_strict
-    from backend.app.database import SessionLocal
+    from backend.tests.conftest import TestingSessionLocal as SessionLocal
+
     from fastapi import HTTPException
 
     db = SessionLocal()

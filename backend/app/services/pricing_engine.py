@@ -107,7 +107,22 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
 
     curr_price = to_decimal(product.price)
     demand_factor, demand_label = compute_demand_factor(demand_pct)
+
+    # ML Demand Engine Integration (Hybrid Prediction)
+    from backend.app.services.ml_demand_engine import predict_product_demand
+    ml_pred = predict_product_demand(product, db)
+    ml_multiplier = ml_pred.get("ml_demand_multiplier", 1.00)
+    ml_score = ml_pred.get("predicted_demand_score", 0.0)
+    ml_level = ml_pred.get("demand_level", "NORMAL")
+    model_src = ml_pred.get("model_source", "RULE_BASED_FALLBACK")
+
+    if model_src == "TRAINED_ML_MODEL":
+        # Combine rule-based category surge and ML predicted demand factor safely
+        demand_factor = max(demand_factor, float(ml_multiplier))
+        demand_factor = max(MIN_DEMAND_FACTOR, min(MAX_DEMAND_FACTOR, round(demand_factor, 3)))
+
     market_adj, market_pos = compute_market_adjustment(float(curr_price), benchmark_low, benchmark_high)
+
 
     # 3. Raw Recommended Price Calculation
     # Base calculation starts from current price (or minimum fair price if current price is below safe margin)
@@ -189,6 +204,12 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
 
     if save_count > 0 or enquiry_count > 0:
         reasoning.append(f"Recorded buyer interest velocity: {save_count} wishlist save(s) and {enquiry_count} active lead(s).")
+
+    if model_src == "TRAINED_ML_MODEL":
+        r2_score = ml_pred.get("model_info", {}).get("r2_score")
+        r2_suffix = f" (R² = {r2_score})" if r2_score is not None else ""
+        reasoning.append(f"RandomForestRegressor ML Demand Engine predicted score {int(ml_score)}/100 ({ml_level} DEMAND, factor {ml_multiplier:.2f}x){r2_suffix} from dataset training metrics.")
+
 
     if price_change_amount > 0:
         reasoning.append(f"Suggested upward adjustment of ₹{float(price_change_amount):,.0f} (+{price_change_pct}%) captures high category demand while protecting sales conversion.")

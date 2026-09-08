@@ -24,6 +24,7 @@ from backend.app.routes.channels import router as channels_router
 from backend.app.routes.reviews import router as reviews_router
 from backend.app.routes.notifications import router as notifications_router
 from backend.app.routes.artisan import router as artisan_router
+from backend.app.routes.ml_demand import router as ml_demand_router
 from backend.app.services.auth import get_current_user as auth_get_current_user
 
 # Initialize database tables directly via SQLAlchemy Base metadata
@@ -32,7 +33,15 @@ ensure_sqlite_schema(engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Clean lifecycle: database connections and resource initialization
+    # Clean lifecycle: auto-train initial ML model if missing
+    import os
+    model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ml", "demand_model.joblib")
+    if not os.path.exists(model_path):
+        try:
+            from backend.ml.train_demand_model import train_and_save_model
+            train_and_save_model()
+        except Exception as e:
+            logging.getLogger("artisan_ai").warning("ML startup model initialization skipped: %s", e)
     yield
 
 app = FastAPI(
@@ -41,6 +50,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
 
 cors_origins = get_cors_origins()
 cors_kwargs = {
@@ -79,6 +89,8 @@ app.include_router(channels_router)
 app.include_router(reviews_router)
 app.include_router(notifications_router)
 app.include_router(artisan_router)
+app.include_router(ml_demand_router)
+
 
 @app.get("/api/health", response_model=HealthResponse)
 def health_check():

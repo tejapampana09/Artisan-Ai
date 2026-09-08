@@ -2,7 +2,8 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 from backend.app.main import app
-from backend.app.database import SessionLocal
+from backend.tests.conftest import TestingSessionLocal as SessionLocal
+
 from backend.app.models import Product, Order
 
 client = TestClient(app)

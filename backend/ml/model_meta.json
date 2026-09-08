@@ -1,0 +1,48 @@
+{
+  "model_name": "RandomForestRegressor",
+  "n_estimators": 100,
+  "max_depth": 12,
+  "trained_at": "2026-09-08T10:13:58.397601+00:00",
+  "n_samples": 1500,
+  "r2_score": 0.667,
+  "mae": 2.4962,
+  "rmse": 3.2527,
+  "categories": [
+    "Kalamkari",
+    "Wooden Toys",
+    "Blue Pottery",
+    "Bidriware",
+    "Pochampally Ikat",
+    "Handloom",
+    "Other"
+  ],
+  "feature_names": [
+    "material_cost",
+    "labour_cost",
+    "packaging_cost",
+    "other_cost",
+    "total_cost",
+    "price_to_cost_ratio",
+    "stock",
+    "category_encoded",
+    "views",
+    "saves",
+    "enquiries",
+    "orders"
+  ],
+  "feature_importances": {
+    "material_cost": 0.0174,
+    "labour_cost": 0.0136,
+    "packaging_cost": 0.0175,
+    "other_cost": 0.0059,
+    "total_cost": 0.0105,
+    "price_to_cost_ratio": 0.0417,
+    "stock": 0.0166,
+    "category_encoded": 0.0106,
+    "views": 0.017,
+    "saves": 0.284,
+    "enquiries": 0.259,
+    "orders": 0.3061
+  },
+  "training_mode": "DOMAIN_INFORMED_BOOTSTRAP"
+}

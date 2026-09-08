@@ -6,8 +6,10 @@ from sqlalchemy.pool import QueuePool
 from fastapi.testclient import TestClient
 
 from backend.app.config import validate_production_config, get_database_url
-from backend.app.database import build_engine, SessionLocal
+import backend.app.database as db_module
+from backend.app.database import build_engine
 from backend.app.models import Product, Order, User
+
 from backend.app.main import app
 
 client = TestClient(app)
@@ -98,8 +100,11 @@ def test_decimal_money_exactness_and_order_total():
     Verify exact Decimal storage and calculation for prices and order totals,
     eliminating IEEE-754 floating-point inaccuracies.
     """
-    db = SessionLocal()
+    from backend.tests.conftest import TestingSessionLocal
+    db = TestingSessionLocal()
+
     try:
+
         import uuid
         uid = uuid.uuid4().hex[:8]
         # Create seller
@@ -172,7 +177,10 @@ def test_decimal_money_exactness_and_order_total():
 
 def test_database_check_constraints_prevent_negative_money():
     """Verify database CheckConstraints enforce non-negative prices and costs."""
-    db = SessionLocal()
+    from backend.tests.conftest import TestingSessionLocal
+    db = TestingSessionLocal()
+
+
     try:
         invalid_prod = Product(
             title="Negative Price Product",

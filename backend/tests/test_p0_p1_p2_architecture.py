@@ -2,8 +2,9 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 from backend.app.main import app
-from backend.app.database import SessionLocal
+from backend.tests.conftest import TestingSessionLocal
 from backend.app.models import Product, User
+
 from backend.app.services.pricing_engine import calculate_price_recommendation
 
 client = TestClient(app)
@@ -13,7 +14,8 @@ def test_other_cost_and_protected_floor_calculation():
     Verifies that cost_basis includes (material_cost + labour_cost + packaging_cost + other_cost)
     and that minimum_fair_price is strictly cost_basis * 1.20 with Decimal arithmetic.
     """
-    db = SessionLocal()
+    db = TestingSessionLocal()
+
     try:
         prod = Product(
             title="Test Protected Craft",
@@ -171,7 +173,8 @@ def test_other_cost_reasoning_and_dynamic_safety_metadata():
     """
     Verifies Issue 3 & Issue 5: reasoning string lists Other costs and safety_constraints dynamically reflect auto mode.
     """
-    db = SessionLocal()
+    db = TestingSessionLocal()
+
     try:
         prod = Product(
             title="Reasoning Craft",
@@ -222,7 +225,7 @@ def test_rate_limiting_and_refined_equilibrium_guard():
     assert exc_info.value.status_code == 429
 
     # 2. Test Refined Equilibrium Guard
-    db = SessionLocal()
+    db = TestingSessionLocal()
     try:
         prod = Product(
             title="Equilibrium Craft",

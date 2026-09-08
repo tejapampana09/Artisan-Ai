@@ -2,8 +2,8 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 from backend.app.main import app
-from backend.app.database import SessionLocal
 from backend.app.models import Product
+from backend.tests.conftest import TestingSessionLocal
 
 client = TestClient(app)
 
@@ -57,7 +57,7 @@ def test_offline_sync_other_cost_support_and_per_item_status():
 
     # Verify database persistence of other_cost
     server_id = prod_result["server_id"]
-    db = SessionLocal()
+    db = TestingSessionLocal()
     try:
         db_prod = db.query(Product).filter(Product.id == server_id).first()
         assert db_prod is not None
