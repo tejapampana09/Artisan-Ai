@@ -11,6 +11,7 @@ import io
 import base64
 import logging
 import math
+from importlib import import_module
 from typing import Tuple, Optional
 import httpx
 import numpy as np
@@ -25,54 +26,82 @@ STUDIO_BACKDROP_PALETTES = {
     "courtyard": ((154, 52, 18), (194, 65, 12))          # Heritage Terracotta Red
 }
 
+_REMBG_SESSION = None
+
+def get_rembg_session():
+    """
+    Caches rembg ONNX session to avoid re-initializing session & downloading model on every request.
+    Tries lightweight 'u2netp' first, falling back to 'u2net'.
+    """
+    global _REMBG_SESSION
+    if _REMBG_SESSION is not None:
+        return _REMBG_SESSION
+    try:
+        rembg = import_module("rembg")
+        try:
+            _REMBG_SESSION = rembg.new_session("u2netp")
+            logger.info("[ImageEnhancer] Initialized rembg u2netp session")
+        except Exception:
+            _REMBG_SESSION = rembg.new_session("u2net")
+            logger.info("[ImageEnhancer] Initialized rembg u2net session")
+        return _REMBG_SESSION
+    except Exception as e:
+        logger.warning("[ImageEnhancer] rembg session initialization failed: %s", e)
+        return None
+
 def remove_cluttered_background_fallback(img_rgba: Image.Image) -> Image.Image:
     """
-    Fallback background removal using corner sampling and color distance thresholding.
-    Masks out background clutter colors near image boundaries (table surface, floor, plain wall).
+    Fallback background removal using multi-point boundary color sampling and adaptive color distance thresholding.
+    Masks out background clutter colors (table surfaces, floors, walls) while preserving craft foreground object.
     """
     arr = np.array(img_rgba)
     h, w, c = arr.shape
     rgb = arr[:, :, :3].astype(np.float32)
     
-    # Sample corner pixels (5x5 boxes in 4 corners) representing cluttered table/floor
-    corners = np.concatenate([
-        rgb[0:5, 0:5].reshape(-1, 3),
-        rgb[0:5, w-5:w].reshape(-1, 3),
-        rgb[h-5:h, 0:5].reshape(-1, 3),
-        rgb[h-5:h, w-5:w].reshape(-1, 3)
+    # Sample edge pixels along top, bottom, left, right borders representing background
+    boundary_samples = np.concatenate([
+        rgb[0:8, :].reshape(-1, 3),        # top edge
+        rgb[h-8:h, :].reshape(-1, 3),      # bottom edge
+        rgb[:, 0:8].reshape(-1, 3),        # left edge
+        rgb[:, w-8:w].reshape(-1, 3)       # right edge
     ], axis=0)
-    bg_color = np.median(corners, axis=0)
     
-    # Euclidean distance from background color
+    bg_color = np.median(boundary_samples, axis=0)
+    
+    # Euclidean color distance from background color
     dist = np.sqrt(np.sum((rgb - bg_color) ** 2, axis=2))
     
-    # Threshold for transparency (tapered alpha transition)
-    alpha = np.clip((dist - 25.0) / 35.0, 0.0, 1.0) * 255.0
+    # Tapered smooth alpha mask transition (transparency threshold)
+    alpha = np.clip((dist - 20.0) / 40.0, 0.0, 1.0) * 255.0
     
-    # Radial mask boost to ensure central product subject is preserved crisp
-    y_idx, x_idx = np.ogrid[:h, :w]
-    cy, cx = h / 2.0, w / 2.0
-    radial_center_boost = np.clip(1.0 - np.sqrt((x_idx - cx)**2 + (y_idx - cy)**2) / (min(h, w) * 0.45), 0.0, 1.0)
-    alpha = np.maximum(alpha, radial_center_boost * 255.0)
+    # Apply subtle blur smoothing on alpha mask to soften edges
+    alpha_img = Image.fromarray(alpha.astype(np.uint8), mode="L")
+    alpha_smoothed = alpha_img.filter(ImageFilter.GaussianBlur(radius=1))
     
-    arr[:, :, 3] = alpha.astype(np.uint8)
+    arr[:, :, 3] = np.array(alpha_smoothed)
     return Image.fromarray(arr, mode="RGBA")
 
 def remove_cluttered_background(img: Image.Image) -> Image.Image:
     """
     Segments the craft product subject and removes background clutter (tables, floor, room background).
-    Tries AI rembg segmentation first, falling back to threshold segmentation if unavailable.
+    Uses cached AI rembg segmentation with post_process_mask=True, falling back to adaptive boundary thresholding.
     """
     img_rgba = img.convert("RGBA")
     
     try:
-        import onnxruntime
-        import rembg
+        import_module("onnxruntime")
+        rembg = import_module("rembg")
+        session = get_rembg_session()
+        
         buf = io.BytesIO()
         img.save(buf, format="PNG")
         input_bytes = buf.getvalue()
         
-        output_bytes = rembg.remove(input_bytes)
+        if session is not None:
+            output_bytes = rembg.remove(input_bytes, session=session, post_process_mask=True)
+        else:
+            output_bytes = rembg.remove(input_bytes, post_process_mask=True)
+            
         output_img = Image.open(io.BytesIO(output_bytes)).convert("RGBA")
         if output_img.width > 0 and output_img.height > 0:
             return output_img

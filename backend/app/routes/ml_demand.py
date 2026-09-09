@@ -7,7 +7,6 @@ from backend.app.database import get_db
 from backend.app.models import User, Product, Event
 from backend.app.services.auth import get_current_user
 from backend.app.services.ml_demand_engine import MLDemandEngine, predict_product_demand
-from backend.ml.train_demand_model import train_and_save_model
 
 router = APIRouter(prefix="/api/ml", tags=["ML Demand Engine"])
 
@@ -87,6 +86,7 @@ def retrain_model(
         )
 
     try:
+        from backend.ml.train_demand_model import train_and_save_model
         new_metadata = train_and_save_model()
         engine = MLDemandEngine()
         engine.load_model()

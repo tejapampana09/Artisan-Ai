@@ -1,7 +1,11 @@
+import logging
 from typing import Dict, List, Any, cast
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from backend.app.models import Event, Product, User
+from backend.app.services.ml_demand_engine import predict_product_demand
+
+logger = logging.getLogger(__name__)
 
 # Standard heritage craft categories recognized by the platform
 STANDARD_CRAFT_CATEGORIES = [
@@ -198,10 +202,24 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
         pricing_rec = calculate_price_recommendation(prod, db)
         rec_price = pricing_rec["recommended_price"]
 
+        try:
+            ml_demand = predict_product_demand(prod, db)
+        except Exception as exc:
+            ml_demand = {
+                "predicted_demand_score": 0.0,
+                "demand_level": "NORMAL",
+                "ml_demand_multiplier": 1.0,
+                "model_source": "RULE_BASED_FALLBACK"
+            }
+            logger.warning("ML demand prediction unavailable for product %s: %s", product_title, exc)
+
+        ml_score = _as_float(ml_demand.get("predicted_demand_score"))
+        ml_is_high_demand = ml_score >= 45.0
+
         save_count = db.query(Event).filter(Event.product_id == prod.id, Event.event_type == "SAVE").count()
         enquiry_count = db.query(Event).filter(Event.product_id == prod.id, Event.event_type == "ENQUIRY").count()
 
-        is_high_demand = cat_demand["demand_pct"] >= 15
+        is_high_demand = cat_demand["demand_pct"] >= 15 or ml_is_high_demand
         is_low_inventory = product_stock <= 8 and product_stock > 0
         is_out_of_stock = product_stock <= 0
 
@@ -247,6 +265,10 @@ def generate_seller_opportunities(db: Session, user_id: int) -> Dict[str, Any]:
             "category": product_category,
             "demand_pct": cat_demand["demand_pct"],
             "demand_label": cat_demand["demand_pct_label"],
+            "ml_demand_score": ml_score,
+            "ml_demand_level": ml_demand.get("demand_level", "NORMAL"),
+            "ml_demand_multiplier": _as_float(ml_demand.get("ml_demand_multiplier"), 1.0),
+            "demand_model_source": ml_demand.get("model_source", "RULE_BASED_FALLBACK"),
             "stock": product_stock,
             "buyer_saves": save_count,
             "buyer_enquiries": enquiry_count,

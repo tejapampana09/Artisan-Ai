@@ -37,7 +37,6 @@ class MLDemandEngine:
 
     def load_model(self) -> bool:
         """Loads joblib model and metadata JSON if present."""
-        import joblib
         model_path = os.path.join(self.output_dir, "demand_model.joblib")
         meta_path = os.path.join(self.output_dir, "model_meta.json")
 
@@ -48,6 +47,7 @@ class MLDemandEngine:
             return False
 
         try:
+            import joblib
             self.model = joblib.load(model_path)
             with open(meta_path, "r", encoding="utf-8") as f:
                 self.metadata = json.load(f)
@@ -63,7 +63,9 @@ class MLDemandEngine:
         return self.model is not None and self.metadata is not None
 
     def get_category_encoding(self, category_name: Optional[str]) -> int:
-        categories = (self.metadata and self.metadata.get("categories")) or STANDARD_CATEGORIES
+        metadata = self.metadata
+        categories = metadata.get("categories") if metadata is not None else None
+        categories = categories or STANDARD_CATEGORIES
         if not category_name:
             return len(categories) - 1
         for idx, cat in enumerate(categories):
@@ -145,8 +147,24 @@ class MLDemandEngine:
                 }
             }
 
+        model = self.model
+        metadata = self.metadata
+        if model is None or metadata is None:
+            return {
+                "product_id": product.id,
+                "predicted_demand_score": 0.0,
+                "demand_level": "NORMAL",
+                "ml_demand_multiplier": 1.00,
+                "features": feature_dict,
+                "model_source": "RULE_BASED_FALLBACK",
+                "model_info": {
+                    "available": False,
+                    "reason": "Model artifacts are unavailable"
+                }
+            }
+
         try:
-            raw_prediction = float(self.model.predict([features])[0])
+            raw_prediction = float(model.predict([features])[0])
             score = max(0.0, min(100.0, round(raw_prediction, 2)))
             
             if score >= 45.0:
@@ -169,13 +187,13 @@ class MLDemandEngine:
                 "model_source": "TRAINED_ML_MODEL",
                 "model_info": {
                     "available": True,
-                    "model_name": self.metadata.get("model_name"),
-                    "n_estimators": self.metadata.get("n_estimators"),
-                    "trained_at": self.metadata.get("trained_at"),
-                    "r2_score": self.metadata.get("r2_score"),
-                    "mae": self.metadata.get("mae"),
-                    "training_mode": self.metadata.get("training_mode"),
-                    "feature_importances": self.metadata.get("feature_importances", {})
+                    "model_name": metadata.get("model_name"),
+                    "n_estimators": metadata.get("n_estimators"),
+                    "trained_at": metadata.get("trained_at"),
+                    "r2_score": metadata.get("r2_score"),
+                    "mae": metadata.get("mae"),
+                    "training_mode": metadata.get("training_mode"),
+                    "feature_importances": metadata.get("feature_importances", {})
                 }
             }
         except Exception as e:

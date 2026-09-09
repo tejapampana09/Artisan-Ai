@@ -347,7 +347,6 @@ def place_order(
         ))
         db.commit()
 
-        trigger_auto_pricing(product, db)
         return evt
     except Exception as e:
         db.rollback()
