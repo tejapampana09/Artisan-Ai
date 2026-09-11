@@ -206,15 +206,55 @@ function AppContent() {
   );
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('[ErrorBoundary caught error]:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center text-slate-100">
+          <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center text-amber-400 mb-4">
+            <span className="text-2xl font-bold">⚠️</span>
+          </div>
+          <h2 className="text-2xl font-bold text-amber-300 mb-2">Something went wrong</h2>
+          <p className="text-xs text-slate-400 max-w-md mb-6">
+            The application encountered a temporary error. Please refresh the page to restore your session.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition-all"
+          >
+            Reload Application
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   return (
-    <LanguageProvider>
-      <OfflineProvider>
-        <NotificationProvider>
-          <AppContent />
-        </NotificationProvider>
-      </OfflineProvider>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <OfflineProvider>
+          <NotificationProvider>
+            <AppContent />
+          </NotificationProvider>
+        </OfflineProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 }
 
