@@ -91,7 +91,7 @@ class GeminiAIProvider(AIProvider):
         Task:
         1. Extract any new or updated product facts from the artisan's latest answer.
            Fields: product_name, category, material, craft, dimensions, weight, handmade, production_time, customizable, region, story.
-        2. Decide if core facts are collected (max 5 questions allowed). If done, set action = "DONE".
+        2. Decide if core facts are collected (max 4 questions allowed, stop early if core details known). If done, set action = "DONE".
         3. If action is "ASK", formulate a response in 2 parts (in {lang_label}):
            - Part A: 1 warm, human appreciation sentence acknowledging what they just shared (e.g. "అబ్బా! సహజ సిద్దమైన రంగులతో చేసారా? చాలా అద్భుతమండి!").
            - Part B: 1 natural follow-up question asking about missing details (e.g. "ఈ కళాఖండం తయారు చేయడానికి మీకు ఎంత సమయం పట్టిందో చెప్పగలరా?").
@@ -162,70 +162,82 @@ class GeminiAIProvider(AIProvider):
         cat = get_val("category")
         p_time = get_val("production_time")
         dims = get_val("dimensions")
+        story = get_val("story") or get_val("craft_story")
 
-        # 1. Fact Extraction from Answer
+        # 1. Dynamic Fact Extraction from Answer
         if ans:
             if not p_name:
                 extracted.append({"field": "product_name", "value": ans[:60], "confidence": 0.95})
                 p_name = ans[:60]
-            elif not mat and any(m in ans.lower() for m in ["పట్టు", "చెక్క", "సిల్క్", "wood", "silk", "brass", "కాటన్", "రంగులు", "కలంకారీ", "కంచు", "మట్టి"]):
+            elif not mat and any(m in ans.lower() for m in ["పట్టు", "చెక్క", "సిల్క్", "wood", "silk", "brass", "కాటన్", "రంగులు", "కలంకారీ", "కంచు", "మట్టి", "నార"]):
                 extracted.append({"field": "material", "value": ans, "confidence": 0.90})
                 mat = ans
-            elif not p_time and any(t in ans.lower() for t in ["గంటల", "రోజుల", "hours", "days", "నెలల", "సమయం"]):
+            elif not p_time and any(t in ans.lower() for t in ["గంటల", "రోజుల", "hours", "days", "నెలల", "సమయం", "వారం"]):
                 extracted.append({"field": "production_time", "value": ans, "confidence": 0.90})
                 p_time = ans
-            elif not dims and any(d in ans.lower() for d in ["ఇంచులు", "inches", "సెం.మీ", "cm", "సైజు", "అడుగుల"]):
+            elif not dims and any(d in ans.lower() for d in ["ఇంచులు", "inches", "సెం.మీ", "cm", "సైజు", "అడుగుల", "ఎత్తు"]):
                 extracted.append({"field": "dimensions", "value": ans, "confidence": 0.90})
                 dims = ans
             else:
                 extracted.append({"field": "craft_story", "value": ans, "confidence": 0.85})
+                story = ans
 
         turn_count = len(turn_history) // 2 + 1
 
-        # 2. Formulate Next Natural Question based on language and current conversation state
+        # 2. Dynamic Missing Fact Analysis & Highest-Value Target Selection
+        missing_fields = []
+        if not p_name: missing_fields.append("product_name")
+        if not mat: missing_fields.append("material")
+        if not p_time: missing_fields.append("production_time")
+        if not dims: missing_fields.append("dimensions")
+        if not story: missing_fields.append("story")
+
+        if turn_count >= 4 or (p_name and mat and len(missing_fields) <= 2 and turn_count >= 3):
+            return {"action": "DONE", "question": None, "extracted_facts": extracted, "reason": "Sufficient high-value core facts extracted"}
+
+        target_field = missing_fields[0] if missing_fields else "story"
+
+        # 3. Formulate Context-Aware Question targeting the chosen missing field
         lang = (language or "te").lower()
 
-        if lang == "te":
-            if not mat:
-                q = f"చాలా సంతోషమండి. '{p_name or 'మీ కళారూపం'}' తయారు చేయడానికి ఏ సహజమైన ముడి పదార్థాలు (పట్టు, టేకు చెక్క, ఇత్తడి, లేదా ప్రకృతి సిద్ధమైన రంగులు) వాడారు?"
-            elif not p_time:
-                q = f"చాలా చక్కటి వివరణ అండి! ఈ హస్తకళను నేయడానికి/చేయడానికి ఎంత సమయం పట్టింది మరియు ఏ సాంప్రదాయ పద్ధతి ఉపయోగించారు?"
-            elif not dims:
-                q = "అద్భుతమండి! ఈ కళాఖండం కొలతలు (సైజు/ఎత్తు) మరియు దీని రంగులు లేదా డిజైన్ ప్రత్యేకత ఏమిటో వివరించండి."
-            elif turn_count < 4:
-                q = "చాలా గొప్ప హస్తకళ అండి! ఈ కళారూపం వెనుక ఉన్న సాంస్కృతిక కథనం లేదా మీ కుటుంబ పరంపర વિશે చెప్పగలరా?"
-            else:
-                return {"action": "DONE", "question": None, "extracted_facts": extracted, "reason": "Gathered sufficient facts"}
-
-        elif lang == "hi":
-            if not mat:
-                q = f"बहुत बढ़िया! '{p_name or 'इस कलाकृति'}' को बनाने में कौन सी प्राकृतिक सामग्री (रेशम, लकड़ी, पीतल या प्राकृतिक रंग) इस्तेमाल हुई है?"
-            elif not p_time:
-                q = "सुंदर जानकारी! इस हस्तकला को तैयार करने में कितना समय लगा और कौन सी पारंपरिक तकनीक इस्तेमाल की गई?"
-            elif not dims:
-                q = "अद्भुत! इस कलाकृति के आकार (साइज़) और इसके रंगों की खास विशेषता के बारे में बताएं।"
-            elif turn_count < 4:
-                q = "बहुत खूब! इस कलाकृति के पीछे की सांस्कृतिक कहानी या आपकी पारिवारिक विरासत के बारे में कुछ बताएं।"
-            else:
-                return {"action": "DONE", "question": None, "extracted_facts": extracted, "reason": "Gathered sufficient facts"}
-
+        if target_field == "product_name":
+            q_map = {
+                "te": "నమస్కారమండి! నేను అనన్యను (మీ కళా మిత్ర). మీ చేతులతో రూపొందించిన ఈ అద్భుతమైన హస్తకళ పేరు ఏమిటో నాకి కాస్త చెబుతారా?",
+                "hi": "नमस्ते जी! मैं अनन्या हूँ (आपकी कला मित्र)। आपके हाथों से बनी इस अद्भुत कलाकृति का नाम क्या है?",
+                "en": "Namaste! I'm Ananya, your craft friend. What is the name of this handcrafted piece?"
+            }
+        elif target_field == "material":
+            q_map = {
+                "te": f"చాలా సంతోషమండి. '{p_name or 'మీ కళారూపం'}' తయారు చేయడానికి ఏ సహజమైన ముడి పదార్థాలు (పట్టు, టేకు చెక్క, ఇత్తడి, లేదా ప్రకృతి సిద్ధమైన రంగులు) వాడారు?",
+                "hi": f"बहुत बढ़िया! '{p_name or 'इस कलाकृति'}' को बनाने में कौन सी प्राकृतिक सामग्री (रेशम, लकड़ी, पीतल या रंग) इस्तेमाल हुई है?",
+                "en": f"Wonderful! What natural materials were used to craft '{p_name or 'this creation'}'?"
+            }
+        elif target_field == "production_time":
+            q_map = {
+                "te": f"చాలా చక్కటి వివరణ అండి! '{p_name or 'ఈ హస్తకళను'}' చేతితో నేయడానికి/చేయడానికి ఎంత సమయం పట్టిందో వివరించండి.",
+                "hi": f"सुंदर जानकारी! '{p_name or 'इस हस्तकला'}' को तैयार करने में आपको कितना समय लगा?",
+                "en": f"Fascinating! How long did it take to handcraft '{p_name or 'this piece'}'?"
+            }
+        elif target_field == "dimensions":
+            q_map = {
+                "te": "అద్భుతమండి! ఈ కళాఖండం కొలతలు (సైజు/ఎత్తు) మరియు దీని డిజైన్ ప్రత్యేకత ఏమిటో వివరించండి.",
+                "hi": "अद्भुत! इस कलाकृति के आकार (साइज़/ऊँचाई) और रंगों की खास विशेषता के बारे में बताएं।",
+                "en": "Beautiful details! Could you share its dimensions (size/height) and describe its unique artistic features?"
+            }
         else:
-            if not mat:
-                q = f"Wonderful! What natural materials (such as pure silk, teak wood, brass, or organic dyes) were used to create '{p_name or 'this craft'}'?"
-            elif not p_time:
-                q = "Fascinating! How many hours or days did it take to handcraft this, and what traditional technique was used?"
-            elif not dims:
-                q = "Beautiful! Could you share its dimensions (size/height) and describe its unique artistic features?"
-            elif turn_count < 4:
-                q = "Inspiring! What is the cultural story or generational heritage behind this artwork?"
-            else:
-                return {"action": "DONE", "question": None, "extracted_facts": extracted, "reason": "Gathered sufficient facts"}
+            q_map = {
+                "te": "చాలా గొప్ప విషయమండి! ఈ కళారూపం వెనుక ఉన్న సాంస్కృతిక విశేషాలు లేదా మీ కుటుంబ పరంపర కథనం ఏమిటి?",
+                "hi": "बहुत खूब! इस कलाकृति के पीछे की सांस्कृतिक कहानी या आपकी पारिवारिक विरासत के बारे में कुछ बताएं।",
+                "en": "Inspiring! What is the cultural story or generational heritage behind this artwork?"
+            }
+
+        q = q_map.get(lang, q_map["en"])
 
         return {
             "action": "ASK",
             "question": q,
-            "target_fields": ["material" if not mat else "production_time"],
-            "reason": "Dynamic smart conversational engine step",
+            "target_fields": [target_field],
+            "reason": f"Dynamic adaptive target selection for missing field '{target_field}'",
             "extracted_facts": extracted
         }
 

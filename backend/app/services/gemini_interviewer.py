@@ -49,10 +49,33 @@ def normalize_fact_entry(value: Any, source: str = "ARTISAN_CONFIRMED", confiden
 
 class AdaptiveInterviewerService:
     """
-    Manages adaptive conversation, fact validation, and max 5 question limit.
+    Manages adaptive conversation, fact validation, dynamic initial questions, and max 5 question limit.
     """
     def __init__(self, provider: Optional[GeminiAIProvider] = None):
         self.provider = provider or GeminiAIProvider()
+
+    async def get_dynamic_initial_question(self, language: str, category_hint: Optional[str] = None, photo_url: Optional[str] = None) -> str:
+        """
+        Dynamically asks Gemini AI to formulate the highest-value initial question given photo/hint.
+        Falls back to get_initial_question(language) if Gemini is unconfigured or fails.
+        """
+        if not self.provider.api_key:
+            return get_initial_question(language)
+
+        try:
+            res = await self.provider.extract_facts_and_next_question(
+                language=language,
+                current_facts={"category": normalize_fact_entry(category_hint)} if category_hint else {},
+                turn_history=[],
+                latest_answer=f"Start interview with hint: {category_hint or 'Handcrafted art'}",
+                photo_url=photo_url
+            )
+            if res and res.get("question"):
+                return res.get("question")
+        except Exception as e:
+            logger.warning("[GeminiInterviewer] Dynamic initial question failed: %s", e)
+
+        return get_initial_question(language)
 
     async def process_artisan_answer(
         self,
@@ -123,8 +146,8 @@ class AdaptiveInterviewerService:
         
         new_count = current_question_count + 1
 
-        # Enforce maximum 5 questions limit
-        if new_count >= 5 or (has_name and has_cat_or_mat and action == "DONE"):
+        # Enforce maximum 4 questions limit (AI can stop early if core facts gathered)
+        if new_count >= 4 or (has_name and has_cat_or_mat and action == "DONE"):
             action = "DONE"
             next_q = None
             is_complete = True

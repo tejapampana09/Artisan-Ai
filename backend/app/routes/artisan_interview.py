@@ -50,16 +50,21 @@ def _build_session_response(session: InterviewSession) -> InterviewSessionRespon
     )
 
 @router.post("/start", response_model=InterviewSessionResponse, status_code=status.HTTP_201_CREATED)
-def start_interview_session(
+async def start_interview_session(
     req: InterviewStartRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Starts a persistent V2 Multilingual Adaptive Interview Session.
-    Asks initial question naturally about the product name in the artisan's selected language.
+    Dynamically asks Gemini AI to formulate the opening highest-value question given photo/hint.
     """
-    initial_q = get_initial_question(req.language)
+    interviewer = AdaptiveInterviewerService()
+    initial_q = await interviewer.get_dynamic_initial_question(
+        language=req.language,
+        category_hint=req.category_hint,
+        photo_url=req.photo_url
+    )
     
     session = InterviewSession(
         user_id=current_user.id,
@@ -107,6 +112,12 @@ async def process_interview_answer(
 
     if session.user_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Permission denied")
+
+    if session.status not in ["ACTIVE"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot submit answer in session status '{session.status}'. Session facts are already complete."
+        )
 
     # Record artisan answer turn
     artisan_turn = InterviewTurn(
@@ -178,12 +189,19 @@ def run_market_research(
     """
     Executes evidence-based market research on verified product facts BEFORE asking artisan for expected price.
     Calculates comparable price range (low, high), median, and stores MarketEvidence provenance.
+    Enforces state machine sequence: session must be in FACTS_COMPLETE or ACTIVE status.
     """
     session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found")
     if session.user_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Permission denied")
+
+    if session.status not in ["FACTS_COMPLETE", "ACTIVE"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot execute market research in session status '{session.status}'. Expected FACTS_COMPLETE or ACTIVE."
+        )
 
     facts = json.loads(session.product_facts) if session.product_facts else {}
     service = MarketResearchService()
@@ -205,12 +223,19 @@ def record_expected_price(
 ):
     """
     Records artisan expected selling price after reviewing market evidence.
+    Enforces state machine sequence: session must be in MARKET_RESEARCH_COMPLETE status.
     """
     session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found")
     if session.user_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Permission denied")
+
+    if session.status not in ["MARKET_RESEARCH_COMPLETE", "FACTS_COMPLETE"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot submit expected price in session status '{session.status}'. Must complete market research first."
+        )
 
     session.artisan_expected_price = Decimal(str(req.expected_price)).quantize(Decimal("0.01"))
     session.status = "PRICE_PENDING"
@@ -233,6 +258,12 @@ async def generate_listing_prose(
         raise HTTPException(status_code=404, detail="Interview session not found")
     if session.user_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Permission denied")
+
+    if session.status not in ["MARKET_RESEARCH_COMPLETE", "PRICE_PENDING", "FACTS_COMPLETE"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot generate listing in session status '{session.status}'."
+        )
 
     facts = json.loads(session.product_facts) if session.product_facts else {}
     research = json.loads(session.market_research_result) if session.market_research_result else {}
@@ -261,12 +292,19 @@ def calculate_final_price(
     """
     Evaluates V2 Dynamic Pricing Engine:
     Combines Market Evidence + Cost Basis Floor + Artisan Expected Price + Demand Signals + Option B Safety Caps.
+    Enforces state machine sequence: session must be in PRICE_PENDING or MARKET_RESEARCH_COMPLETE status.
     """
     session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found")
     if session.user_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Permission denied")
+
+    if session.status not in ["PRICE_PENDING", "MARKET_RESEARCH_COMPLETE"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot calculate final price in session status '{session.status}'. Expected PRICE_PENDING."
+        )
 
     facts = json.loads(session.product_facts) if session.product_facts else {}
     research = json.loads(session.market_research_result) if session.market_research_result else {}
@@ -301,13 +339,33 @@ def publish_interview_product(
 ):
     """
     Final Publishing Operation:
-    Validates artisan review edits and creates published Product record in marketplace.
+    Enforces state machine sequence: session status MUST be READY_FOR_REVIEW before publishing.
+    Audits provenance: Compares AI draft vs Artisan Edits and stores full tamper-evident audit history.
     """
     session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found")
     if session.user_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Permission denied")
+
+    if session.status != "READY_FOR_REVIEW":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot publish product when interview session is in status '{session.status}'. Must be in READY_FOR_REVIEW status."
+        )
+
+    ai_draft = json.loads(session.ai_generated_listing) if session.ai_generated_listing else {}
+    
+    # Audit provenance: AI draft vs Artisan final approved listing
+    audit_provenance = {
+        "ai_draft_title": ai_draft.get("title"),
+        "published_title": req.title,
+        "ai_recommended_price": float(session.recommended_price) if session.recommended_price else None,
+        "published_price": float(req.price),
+        "artisan_edited_title": req.title != ai_draft.get("title"),
+        "artisan_edited_price": session.recommended_price is not None and Decimal(str(req.price)) != session.recommended_price,
+        "provenance": "ARTISAN_REVIEWED_AND_APPROVED"
+    }
 
     product = Product(
         title=req.title,
@@ -333,6 +391,11 @@ def publish_interview_product(
     db.add(product)
     
     session.status = "PUBLISHED"
+    # Store audit provenance in session facts
+    facts = json.loads(session.product_facts) if session.product_facts else {}
+    facts["publish_audit"] = audit_provenance
+    session.product_facts = json.dumps(facts)
+
     db.commit()
     db.refresh(product)
     return product

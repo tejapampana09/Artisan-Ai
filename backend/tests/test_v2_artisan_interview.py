@@ -3,14 +3,25 @@ from fastapi.testclient import TestClient
 from backend.app.main import app
 from backend.app.services.auth import create_access_token
 from backend.app.models import User, Product, InterviewSession
-from backend.app.database import SessionLocal
+from backend.app.database import SessionLocal, engine, Base
 
 client = TestClient(app)
 
 def get_auth_headers(email="lakshmi@artisanai.in"):
+    Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
         user = db.query(User).filter(User.email == email).first()
-        assert user is not None
+        if not user:
+            from backend.app.services.auth import get_password_hash
+            user = User(
+                email=email,
+                name="Lakshmi Devi",
+                password_hash=get_password_hash("password123"),
+                role="SELLER"
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
         token = create_access_token(data={"sub": str(user.id), "ver": getattr(user, "token_version", 1) or 1})
         return {"Authorization": f"Bearer {token}"}
 
@@ -87,6 +98,10 @@ def test_expected_price_and_generate_listing():
     res_start = client.post("/api/interview/start", json={"language": "te", "category_hint": "Saree"}, headers=headers)
     session_id = res_start.json()["id"]
 
+    # Execute Market Research first
+    res_mr = client.post(f"/api/interview/{session_id}/market-research", headers=headers)
+    assert res_mr.status_code == 200
+
     # Submit expected price
     res_exp = client.post(
         f"/api/interview/{session_id}/expected-price",
@@ -111,7 +126,8 @@ def test_final_pricing_option_b_cap():
     res_start = client.post("/api/interview/start", json={"language": "en", "category_hint": "Terracotta"}, headers=headers)
     session_id = res_start.json()["id"]
 
-    # Submit expected price of 2000
+    # Run market research first then submit expected price of 2000
+    client.post(f"/api/interview/{session_id}/market-research", headers=headers)
     client.post(f"/api/interview/{session_id}/expected-price", json={"expected_price": 2000.0}, headers=headers)
 
     # Calculate final price with costs
@@ -137,11 +153,17 @@ def test_publish_interview_product():
     res_start = client.post("/api/interview/start", json={"language": "te", "category_hint": "Brass Lamp"}, headers=headers)
     session_id = res_start.json()["id"]
 
-    # Post answer & expected price
+    # Post answer, market research, expected price & final price
     client.post(f"/api/interview/{session_id}/answer", json={"answer": "Traditional Brass Diya"}, headers=headers)
+    client.post(f"/api/interview/{session_id}/market-research", headers=headers)
     client.post(f"/api/interview/{session_id}/expected-price", json={"expected_price": 800.0}, headers=headers)
+    client.post(
+        f"/api/interview/{session_id}/final-price",
+        json={"material_cost": 200.0, "labour_cost": 200.0, "packaging_cost": 50.0, "other_cost": 50.0},
+        headers=headers
+    )
 
-    # Publish product
+    # Publish product when status is READY_FOR_REVIEW
     publish_payload = {
         "title": "Handmade Brass Diya Lamp",
         "description": "Authentic brass lamp handcrafted by master artisans.",
