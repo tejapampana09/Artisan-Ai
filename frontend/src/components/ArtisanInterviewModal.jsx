@@ -26,10 +26,61 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
 
   const [selectedLang, setSelectedLang] = useState('te');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [uploadedPhotos, setUploadedPhotos] = useState([]);
   const [categoryHint, setCategoryHint] = useState('');
   const [inputText, setInputText] = useState('');
   const [expectedPriceVal, setExpectedPriceVal] = useState('');
   const [publishedProduct, setPublishedProduct] = useState(null);
+
+  const compressImage = (file, maxWidth = 1000, quality = 0.8) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(event.target.result);
+        img.src = event.target.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleMultiplePhotoUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const compressedList = [];
+    for (const file of files) {
+      const dataUrl = await compressImage(file);
+      if (dataUrl) compressedList.push(dataUrl);
+    }
+    setUploadedPhotos((prev) => [...prev, ...compressedList]);
+    if (!photoUrl && compressedList.length > 0) {
+      setPhotoUrl(compressedList[0]);
+    }
+  };
+
+  const handleRemovePhoto = (index) => {
+    setUploadedPhotos((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      if (photoUrl === prev[index]) {
+        setPhotoUrl(next[0] || '');
+      }
+      return next;
+    });
+  };
 
   const {
     isListening,
@@ -66,9 +117,12 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
   const handleStart = async (e) => {
     e.preventDefault();
     try {
+      const primaryPhoto = photoUrl || (uploadedPhotos.length > 0 ? uploadedPhotos[0] : null);
+      const secondaryPhotos = uploadedPhotos.length > 1 ? uploadedPhotos.slice(1) : [];
       await startSession({
         language: selectedLang,
-        photo_url: photoUrl || null,
+        photo_url: primaryPhoto,
+        secondary_images: secondaryPhotos.length > 0 ? JSON.stringify(secondaryPhotos) : null,
         category_hint: categoryHint || null,
       });
     } catch (err) {
@@ -166,10 +220,10 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
             <form onSubmit={handleStart} className="space-y-6 max-w-2xl mx-auto">
               <div className="text-center space-y-2">
                 <h3 className="text-xl font-bold text-amber-300">
-                  Select Your Language & Product Photo
+                  Select Your Language & Upload Craft Photos
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Choose your native language to converse naturally using voice or text.
+                  Choose your native language and upload photos directly from your device camera or gallery.
                 </p>
               </div>
 
@@ -202,19 +256,65 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                 </div>
               </div>
 
-              {/* Photo & Hint Input */}
+              {/* Multiple Photo Upload & Hint Input */}
               <div className="space-y-4 pt-2">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1.5">
-                    <Camera className="w-4 h-4 text-amber-400" /> Product Photo URL (Optional)
+                  <label className="block text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-amber-400" /> Product Photos (Upload Multiple or Use Camera)
                   </label>
-                  <input
-                    type="url"
-                    value={photoUrl}
-                    onChange={(e) => setPhotoUrl(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:ring-1 focus:ring-amber-400 outline-none"
-                  />
+                  
+                  <div className="flex flex-col gap-3">
+                    <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-700 hover:border-amber-500/50 rounded-2xl cursor-pointer bg-slate-950/60 transition-all group">
+                      <Camera className="w-8 h-8 text-slate-400 group-hover:text-amber-400 transition-colors mb-2" />
+                      <span className="text-xs font-semibold text-slate-200">
+                        Click to select images or take a camera photo
+                      </span>
+                      <span className="text-[11px] text-slate-500 mt-0.5">
+                        Supports multiple photos (JPEG, PNG, WebP)
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleMultiplePhotoUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {/* Thumbnails Grid */}
+                    {uploadedPhotos.length > 0 && (
+                      <div className="grid grid-cols-4 gap-3 pt-2">
+                        {uploadedPhotos.map((src, idx) => (
+                          <div key={idx} className="relative group rounded-xl overflow-hidden border border-amber-500/40">
+                            <img src={src} alt={`Craft photo ${idx + 1}`} className="w-full h-20 object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePhoto(idx)}
+                              className="absolute top-1 right-1 bg-red-600/90 text-white p-1 rounded-full text-xs opacity-80 hover:opacity-100 transition-opacity"
+                            >
+                              ✕
+                            </button>
+                            {idx === 0 && (
+                              <span className="absolute bottom-1 left-1 bg-amber-500 text-slate-950 font-bold text-[9px] px-1.5 py-0.5 rounded">
+                                Main
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="pt-1">
+                      <span className="text-[11px] text-slate-400 block mb-1">Or paste a Direct Image URL:</span>
+                      <input
+                        type="url"
+                        value={photoUrl}
+                        onChange={(e) => setPhotoUrl(e.target.value)}
+                        placeholder="https://images.unsplash.com/..."
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-100 focus:ring-1 focus:ring-amber-400 outline-none"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div>
