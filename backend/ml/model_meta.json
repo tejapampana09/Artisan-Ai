@@ -2,7 +2,7 @@
   "model_name": "RandomForestRegressor",
   "n_estimators": 100,
   "max_depth": 12,
-  "trained_at": "2026-09-11T22:12:05.789956+00:00",
+  "trained_at": "2026-09-11T22:16:09.822453+00:00",
   "n_samples": 1500,
   "r2_score": 0.667,
   "mae": 2.4962,

@@ -132,7 +132,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
 
   const handleAnswerSubmit = async (textToSend) => {
     const text = textToSend || inputText;
-    if (!text || !text.trim()) return;
+    if (!text || !text.trim() || loading) return;
 
     try {
       setInputText('');
@@ -364,29 +364,38 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
               />
 
               <VoiceInput
+                language={selectedLang}
+                onSendAnswer={(text) => handleAnswerSubmit(text)}
+                onSubmitAnswer={(text) => handleAnswerSubmit(text)}
+                disabled={loading}
+                loading={loading}
                 isListening={isListening}
                 onStartListening={startListening}
                 onStopListening={stopListening}
                 inputText={inputText}
                 setInputText={setInputText}
-                onSubmitAnswer={() => handleAnswerSubmit()}
-                loading={loading}
               />
 
-              {/* Extracted Facts Sidebar / Card */}
+              {/* Extracted Facts Showcase */}
               {sessionData.extracted_facts && Object.keys(sessionData.extracted_facts).length > 0 && (
-                <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800">
-                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                    Confirmed Facts Gathered So Far
-                  </h4>
+                <div className="bg-slate-950/80 p-5 rounded-2xl border border-amber-500/20 shadow-xl backdrop-blur-md">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      Confirmed Product Facts Gathered
+                    </h4>
+                    <span className="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono">
+                      {Object.keys(sessionData.extracted_facts).length} Verified Facts
+                    </span>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(sessionData.extracted_facts).map(([k, v]) => (
                       <span
                         key={k}
-                        className="bg-slate-800/80 border border-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5"
+                        className="bg-slate-900 border border-slate-700/80 text-slate-200 text-xs px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm hover:border-amber-500/40 transition-colors"
                       >
-                        <span className="font-mono text-amber-400 capitalize">{k}:</span>
-                        <span>{typeof v === 'object' ? v.value || JSON.stringify(v) : String(v)}</span>
+                        <span className="font-semibold text-amber-400 capitalize">{k.replace('_', ' ')}:</span>
+                        <span className="text-slate-100">{typeof v === 'object' ? v.value || JSON.stringify(v) : String(v)}</span>
                       </span>
                     ))}
                   </div>
