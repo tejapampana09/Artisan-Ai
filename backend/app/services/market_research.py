@@ -23,7 +23,7 @@ class MarketResearchService:
     def __init__(self, provider: Optional[GeminiAIProvider] = None):
         self.provider = provider or GeminiAIProvider()
 
-    def execute_market_research(
+    async def execute_market_research(
         self,
         db: Session,
         session_id: int,
@@ -43,32 +43,64 @@ class MarketResearchService:
         evidences = []
         observed_prices = []
 
-        # 1. Fetch External Market Research Evidence from External Indian Craft Marketplace Index
-        external_evidences = self._fetch_external_market_evidence(p_name, cat, mat)
-        for ext in external_evidences:
-            price_dec = to_decimal(ext.get("listed_price"))
-            if price_dec > 0:
-                observed_prices.append(price_dec)
-                ev = MarketEvidence(
-                    session_id=session_id,
-                    source=ext.get("source", "EXTERNAL_MARKET_INDEX"),
-                    title=ext.get("title", f"{cat} Craft"),
-                    category=cat,
-                    material=mat,
-                    listed_price=price_dec,
-                    similarity_score=to_decimal(ext.get("similarity_score", 0.90))
-                )
-                db.add(ev)
-                evidences.append({
-                    "source": "EXTERNAL_MARKET_INDEX",
-                    "platform": ext.get("platform", "Indian Craft Marketplace Index"),
-                    "title": ext.get("title"),
-                    "category": cat,
-                    "material": mat,
-                    "listed_price": float(price_dec),
-                    "similarity_score": float(ext.get("similarity_score", 0.90)),
-                    "attribution": ext.get("attribution", "Live External Craft Benchmark")
-                })
+        # 1. Try Live AI Web Search Craft Evidence from Gemini AI
+        try:
+            live_res = await self.provider.fetch_live_market_research(product_facts)
+            if live_res and "evidences" in live_res and live_res["evidences"]:
+                for ext in live_res["evidences"]:
+                    price_dec = to_decimal(ext.get("listed_price"))
+                    if price_dec > 0:
+                        observed_prices.append(price_dec)
+                        ev = MarketEvidence(
+                            session_id=session_id,
+                            source=ext.get("source", "LIVE_WEB_SEARCH"),
+                            title=ext.get("title", f"{cat} Craft"),
+                            category=ext.get("category", cat),
+                            material=ext.get("material", mat),
+                            listed_price=price_dec,
+                            similarity_score=to_decimal(ext.get("similarity_score", 0.92))
+                        )
+                        db.add(ev)
+                        evidences.append({
+                            "source": ext.get("source", "LIVE_WEB_SEARCH"),
+                            "platform": ext.get("platform", "Live Indian Craft Search"),
+                            "title": ext.get("title"),
+                            "category": ext.get("category", cat),
+                            "material": ext.get("material", mat),
+                            "listed_price": float(price_dec),
+                            "similarity_score": float(ext.get("similarity_score", 0.92)),
+                            "attribution": ext.get("attribution", "Live AI Search Marketplace Listing")
+                        })
+        except Exception as e:
+            logger.warning("[MarketResearchService] Live web search failed: %s", e)
+
+        # Fallback to external market benchmark index if live search provided no items
+        if not evidences:
+            external_evidences = self._fetch_external_market_evidence(p_name, cat, mat)
+            for ext in external_evidences:
+                price_dec = to_decimal(ext.get("listed_price"))
+                if price_dec > 0:
+                    observed_prices.append(price_dec)
+                    ev = MarketEvidence(
+                        session_id=session_id,
+                        source=ext.get("source", "EXTERNAL_MARKET_INDEX"),
+                        title=ext.get("title", f"{cat} Craft"),
+                        category=cat,
+                        material=mat,
+                        listed_price=price_dec,
+                        similarity_score=to_decimal(ext.get("similarity_score", 0.90))
+                    )
+                    db.add(ev)
+                    evidences.append({
+                        "source": "EXTERNAL_MARKET_INDEX",
+                        "platform": ext.get("platform", "Indian Craft Marketplace Index"),
+                        "title": ext.get("title"),
+                        "category": cat,
+                        "material": mat,
+                        "listed_price": float(price_dec),
+                        "similarity_score": float(ext.get("similarity_score", 0.90)),
+                        "attribution": ext.get("attribution", "Live External Craft Benchmark")
+                    })
 
         # 2. Query live internal published products matching category or title
         query = db.query(Product).filter(Product.status == "PUBLISHED")
@@ -103,7 +135,7 @@ class MarketResearchService:
                     "attribution": "Verified Internal Seller Listing"
                 })
 
-        db.commit()
+        db.flush()
 
         # 3. Dynamic Craft Benchmark Fallback if insufficient listings found
         if len(observed_prices) < 2:
@@ -132,7 +164,7 @@ class MarketResearchService:
                 similarity_score=Decimal("0.800")
             )
             db.add(ev_model)
-            db.commit()
+            db.flush()
 
             evidences.append({
                 "source": "EXTERNAL_CRAFT_INDEX_MODEL",
@@ -165,7 +197,7 @@ class MarketResearchService:
             "median": float(median_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
             "comparable_count": len(observed_prices),
             "evidences": evidences,
-            "research_type": "EXTERNAL_MARKET_EVIDENCE"
+            "research_type": "LIVE_WEB_SEARCH" if any(e.get("source") == "LIVE_WEB_SEARCH" for e in evidences) else "EXTERNAL_MARKET_EVIDENCE"
         }
 
     def _fetch_external_market_evidence(self, product_name: str, category: str, material: str) -> List[Dict[str, Any]]:

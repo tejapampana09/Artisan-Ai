@@ -26,8 +26,9 @@ def _build_session_response(session: InterviewSession) -> InterviewSessionRespon
     reasoning = json.loads(session.pricing_explanation) if session.pricing_explanation else []
 
     current_q = None
-    if session.turns and len(session.turns) > 0:
-        last_turn = session.turns[-1]
+    sorted_turns = sorted(session.turns, key=lambda t: (t.turn_number, t.id or 0)) if session.turns else []
+    if sorted_turns:
+        last_turn = sorted_turns[-1]
         if last_turn.speaker == "ASSISTANT":
             current_q = last_turn.question
 
@@ -119,23 +120,12 @@ async def process_interview_answer(
             detail=f"Cannot submit answer in session status '{session.status}'. Session facts are already complete."
         )
 
-    # Record artisan answer turn
-    artisan_turn = InterviewTurn(
-        session_id=session.id,
-        turn_number=session.question_count,
-        speaker="ARTISAN",
-        answer=req.answer.strip(),
-        extracted_facts=json.dumps([])
-    )
-    db.add(artisan_turn)
-
-    # Process turn with AdaptiveInterviewerService
-    interviewer = AdaptiveInterviewerService()
     history = [
         {"speaker": t.speaker, "question": t.question, "answer": t.answer}
         for t in session.turns
     ]
     
+    interviewer = AdaptiveInterviewerService()
     updated_facts, new_extracted, action, next_q, is_complete = await interviewer.process_artisan_answer(
         session_id=session.id,
         language=session.language,
@@ -146,7 +136,14 @@ async def process_interview_answer(
         photo_url=session.photo_url
     )
 
-    artisan_turn.extracted_facts = json.dumps(new_extracted)
+    artisan_turn = InterviewTurn(
+        session_id=session.id,
+        turn_number=session.question_count,
+        speaker="ARTISAN",
+        answer=req.answer.strip(),
+        extracted_facts=json.dumps(new_extracted)
+    )
+    db.add(artisan_turn)
     session.product_facts = json.dumps(updated_facts)
 
     if is_complete or action == "DONE":
@@ -181,7 +178,7 @@ def get_interview_session(
     return _build_session_response(session)
 
 @router.post("/{session_id}/market-research", response_model=InterviewSessionResponse)
-def run_market_research(
+async def run_market_research(
     session_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -205,7 +202,7 @@ def run_market_research(
 
     facts = json.loads(session.product_facts) if session.product_facts else {}
     service = MarketResearchService()
-    research_result = service.execute_market_research(db, session.id, facts)
+    research_result = await service.execute_market_research(db, session.id, facts)
 
     session.market_research_result = json.dumps(research_result)
     session.status = "MARKET_RESEARCH_COMPLETE"

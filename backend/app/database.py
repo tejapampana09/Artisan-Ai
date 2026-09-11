@@ -105,6 +105,13 @@ def ensure_sqlite_schema(eng):
                 if "tracking_history" not in ord_cols:
                     conn.execute(text("ALTER TABLE orders ADD COLUMN tracking_history TEXT"))
 
+            # Check interview_sessions table columns
+            res_sess = conn.execute(text("PRAGMA table_info(interview_sessions)")).fetchall()
+            sess_cols = [row[1] for row in res_sess]
+            if sess_cols:
+                if "market_research_result" not in sess_cols:
+                    conn.execute(text("ALTER TABLE interview_sessions ADD COLUMN market_research_result TEXT"))
+
             conn.commit()
     else:
         # PostgreSQL schema column synchronization

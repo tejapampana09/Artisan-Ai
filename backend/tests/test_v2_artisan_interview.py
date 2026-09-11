@@ -3,13 +3,12 @@ from fastapi.testclient import TestClient
 from backend.app.main import app
 from backend.app.services.auth import create_access_token
 from backend.app.models import User, Product, InterviewSession
-from backend.app.database import SessionLocal, engine, Base
+import backend.app.database as db_module
 
 client = TestClient(app)
 
 def get_auth_headers(email="lakshmi@artisanai.in"):
-    Base.metadata.create_all(bind=engine)
-    with SessionLocal() as db:
+    with db_module.SessionLocal() as db:
         user = db.query(User).filter(User.email == email).first()
         if not user:
             from backend.app.services.auth import get_password_hash

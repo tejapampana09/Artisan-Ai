@@ -35,7 +35,7 @@ main_module.engine = test_engine
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_test_database():
-    from backend.app.models import User, Product, Order, Enquiry, Event, PricingDecision, ProcessedOperation
+    from backend.app.models import User, Product, Order, Enquiry, Event, PricingDecision, ProcessedOperation, InterviewSession, InterviewTurn, MarketEvidence
     Base.metadata.drop_all(bind=test_engine)
     Base.metadata.create_all(bind=test_engine)
     ensure_sqlite_schema(test_engine)
