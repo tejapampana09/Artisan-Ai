@@ -6,6 +6,7 @@ import { getLocalizedProductField } from '../utils/multilingual.js';
 import ArtisanProfileModal from './ArtisanProfileModal.jsx';
 import ReviewsSection from './ReviewsSection.jsx';
 import ImageOverviewModal from './ImageOverviewModal.jsx';
+import { getCraftImage } from '../utils/craftImage.js';
 
 export default function BuyerProductModal({ 
   product, 
@@ -105,8 +106,11 @@ export default function BuyerProductModal({
           title="Click to view 4K Image Overview"
         >
           <img
-            src={product.enhanced_image_url || product.image_url}
+            src={getCraftImage(product)}
             alt={displayTitle}
+            onError={(e) => {
+              e.target.src = 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800';
+            }}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/40 pointer-events-none" />
@@ -329,8 +333,11 @@ export default function BuyerProductModal({
                   >
                     <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-stone-100">
                       <img
-                        src={simProd.enhanced_image_url || simProd.image_url || 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=400'}
+                        src={getCraftImage(simProd)}
                         alt={simProd.title}
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=400';
+                        }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       <span className="absolute top-1.5 left-1.5 text-[9px] font-extrabold bg-[#4A2E1B]/90 text-white px-2 py-0.5 rounded-full backdrop-blur-xs shadow-xs">

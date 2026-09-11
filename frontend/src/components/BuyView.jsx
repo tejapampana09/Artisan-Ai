@@ -7,6 +7,7 @@ import { getProducts, getTrendingProducts, recordEvent } from '../api/index.js';
 import { getSavedProductIds, saveProductId, removeSavedProductId, getCachedProducts, setCachedProducts } from '../services/offlineSync';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { getLocalizedProductField } from '../utils/multilingual.js';
+import { getCraftImage } from '../utils/craftImage.js';
 
 const CATEGORIES = [
   'All Crafts',
@@ -295,7 +296,14 @@ export default function BuyView({ user, onOpenAuth }) {
                 className="bg-white p-3 rounded-2xl border border-orange-200/80 hover:border-orange-400 transition-all cursor-pointer shadow-xs group"
               >
                 <div className="relative rounded-xl overflow-hidden h-28 bg-slate-100">
-                  <img src={p.image_url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  <img
+                    src={getCraftImage(p)}
+                    alt={p.title}
+                    onError={(e) => {
+                      e.target.src = 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=600&auto=format&fit=crop&q=80';
+                    }}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  />
                   <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                     {t('highDemand', 'High Demand')}
                   </span>
@@ -346,8 +354,11 @@ export default function BuyView({ user, onOpenAuth }) {
                     {/* Image with quick-save */}
                     <div className="relative h-48 bg-slate-100 overflow-hidden">
                       <img
-                        src={p.image_url}
+                        src={getCraftImage(p)}
                         alt={cardTitle}
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=600&auto=format&fit=crop&q=80';
+                        }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
                         onClick={() => {
                           setSelectedProduct(p);

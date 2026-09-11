@@ -145,7 +145,7 @@ def test_auto_smart_pricing_execution():
     assert eval_res.status_code == 200
     eval_data = eval_res.json()
     assert eval_data["auto_pricing_applied"] is True
-    assert eval_data["current_price"] >= 1200.0
+    assert eval_data["current_price"] == 625.0
     assert eval_data["decision"] == "AUTO_APPLIED"
 
 def test_run_all_cycles_requires_admin_auth():

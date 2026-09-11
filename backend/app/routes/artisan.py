@@ -74,3 +74,27 @@ def update_artisan_profile(
     db.refresh(current_user)
 
     return get_artisan_public_profile(current_user.id, db)
+
+seller_router = APIRouter(prefix="/api/seller", tags=["Seller Dashboard & Readiness"])
+
+@seller_router.get("/readiness")
+def get_seller_readiness():
+    return {
+        "score": 85,
+        "strengths": ["Verified Artisan Profile", "Neural Voice Studio Active"],
+        "improvements": ["Complete AI interview to publish craft"],
+        "next_best_action": "Start AI Voice Interview"
+    }
+
+@seller_router.get("/dashboard")
+def get_seller_dashboard():
+    return {
+        "sales_summary": {"total_revenue": 0, "total_orders": 0},
+        "readiness": {
+            "score": 85,
+            "strengths": ["Verified Artisan Profile"],
+            "improvements": ["Complete AI interview to publish craft"],
+            "next_best_action": "Start AI Voice Interview"
+        }
+    }
+

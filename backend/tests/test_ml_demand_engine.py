@@ -18,7 +18,7 @@ def test_ml_model_training_and_artifacts():
     assert "mae" in metadata
     assert "feature_importances" in metadata
     assert len(metadata["feature_importances"]) == 12
-    assert metadata["training_mode"] == "DOMAIN_INFORMED_BOOTSTRAP"
+    assert metadata["training_mode"] == "DOMAIN_INFORMED_SYNTHETIC_PROTOTYPE"
 
 def test_ml_demand_engine_prediction():
     db = TestingSessionLocal()

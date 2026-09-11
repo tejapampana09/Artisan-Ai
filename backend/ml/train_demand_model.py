@@ -160,7 +160,8 @@ def train_and_save_model(output_dir: str = None):
         "categories": STANDARD_CATEGORIES,
         "feature_names": feature_names,
         "feature_importances": importances,
-        "training_mode": "DOMAIN_INFORMED_BOOTSTRAP"
+        "training_mode": "DOMAIN_INFORMED_SYNTHETIC_PROTOTYPE",
+        "notice": "Domain-informed demand scoring prototype trained on synthetic craft heuristics (ready for retraining on real transaction telemetry)."
     }
     
     with open(meta_path, "w", encoding="utf-8") as f:

@@ -2,7 +2,7 @@
   "model_name": "RandomForestRegressor",
   "n_estimators": 100,
   "max_depth": 12,
-  "trained_at": "2026-09-09T17:54:12.498237+00:00",
+  "trained_at": "2026-09-11T20:42:32.235103+00:00",
   "n_samples": 1500,
   "r2_score": 0.667,
   "mae": 2.4962,
@@ -44,5 +44,6 @@
     "enquiries": 0.259,
     "orders": 0.3061
   },
-  "training_mode": "DOMAIN_INFORMED_BOOTSTRAP"
+  "training_mode": "DOMAIN_INFORMED_SYNTHETIC_PROTOTYPE",
+  "notice": "Domain-informed demand scoring prototype trained on synthetic craft heuristics (ready for retraining on real transaction telemetry)."
 }

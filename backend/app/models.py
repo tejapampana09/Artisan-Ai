@@ -33,6 +33,7 @@ class User(Base):
     enquiries = relationship("Enquiry", back_populates="user")
     reviews = relationship("Review", back_populates="buyer")
     notifications = relationship("Notification", back_populates="user")
+    interview_sessions = relationship("InterviewSession", back_populates="user")
 
 class Product(Base):
     __tablename__ = "products"
@@ -231,5 +232,71 @@ class ProcessedOperation(Base):
     entity_type = Column(String, nullable=False) # "PRODUCT" or "PRICE_DECISION"
     result_json = Column(Text, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class InterviewSession(Base):
+    """
+    V2 Multilingual Adaptive Interview Session.
+    Tracks state of artisan product understanding conversation.
+    """
+    __tablename__ = "interview_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    language = Column(String, default="te", nullable=False) # te, hi, ta, bn, en
+    photo_url = Column(Text, nullable=True)
+    category_hint = Column(String, nullable=True)
+    question_count = Column(Integer, default=0, nullable=False) # max 5
+    status = Column(String, default="ACTIVE", nullable=False) # ACTIVE, FACTS_COMPLETE, MARKET_RESEARCH_COMPLETE, PRICE_PENDING, READY_FOR_REVIEW, PUBLISHED, ABANDONED
+    product_facts = Column(Text, nullable=True) # JSON object string of extracted facts with provenance
+    ai_generated_listing = Column(Text, nullable=True) # JSON object string of generated title, desc, story, tags, translations
+    market_research_result = Column(Text, nullable=True) # JSON object string of comparable market research summary
+    artisan_expected_price = Column(Numeric(12, 2), nullable=True)
+    recommended_price = Column(Numeric(12, 2), nullable=True)
+    pricing_explanation = Column(Text, nullable=True) # JSON list of bullet points
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="interview_sessions")
+    turns = relationship("InterviewTurn", back_populates="session", cascade="all, delete-orphan")
+    market_evidences = relationship("MarketEvidence", back_populates="session", cascade="all, delete-orphan")
+
+class InterviewTurn(Base):
+    """
+    Individual question/answer turn in an adaptive interview session.
+    """
+    __tablename__ = "interview_turns"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("interview_sessions.id"), index=True, nullable=False)
+    turn_number = Column(Integer, nullable=False)
+    speaker = Column(String, nullable=False) # ASSISTANT or ARTISAN
+    question = Column(Text, nullable=True)
+    answer = Column(Text, nullable=True)
+    extracted_facts = Column(Text, nullable=True) # JSON array string of facts extracted in this turn
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    session = relationship("InterviewSession", back_populates="turns")
+
+class MarketEvidence(Base):
+    """
+    Evidence-based market research data points retrieved for comparable crafts.
+    """
+    __tablename__ = "market_evidences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("interview_sessions.id"), index=True, nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), index=True, nullable=True)
+    source = Column(String, default="OBSERVED_MARKET_DATA", nullable=False) # OBSERVED_MARKET_DATA, MODEL_ESTIMATE, BACKEND_CALCULATION
+    title = Column(String, nullable=False)
+    category = Column(String, nullable=False)
+    material = Column(String, nullable=True)
+    listed_price = Column(Numeric(12, 2), nullable=False)
+    similarity_score = Column(Numeric(4, 3), default=Decimal("1.000"), nullable=False)
+    source_url = Column(Text, nullable=True)
+    retrieved_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    session = relationship("InterviewSession", back_populates="market_evidences")
+    product = relationship("Product")
+
 
 

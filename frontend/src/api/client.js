@@ -163,3 +163,6 @@ export async function apiRequest(endpoint, options = {}) {
     }
   }
 }
+
+export const apiFetch = apiRequest;
+

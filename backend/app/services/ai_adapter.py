@@ -123,7 +123,7 @@ def build_production_manual_draft(
         "pricing_available": pricing_avail,
         "pricing_source": pricing_src,
         "image_url": clean_image,
-        "enhanced_image_url": clean_image,
+        "enhanced_image_url": None,
         "transcription": clean_desc,
         "language_detected": language,
         "lifecycle_state": "MANUAL_DRAFT",
@@ -270,7 +270,7 @@ async def generate_catalog_draft(
                         }
 
                         # Run ImageEnhancementService pipeline for studio lighting & backdrop composition
-                        enhanced_image_url = clean_image
+                        enhanced_image_url = None
                         if clean_image:
                             try:
                                 from backend.app.services.image_enhancer import enhance_studio_image
@@ -287,7 +287,7 @@ async def generate_catalog_draft(
                             "requires_artisan_verification": True,
                             "title": primary_title,
                             "category": parsed.get("category", clean_category_hint or "Handloom"),
-                            "materials": parsed.get("materials", "Craft materials as stated by artisan"),
+                            "materials": parsed.get("materials", ""),
                             "description": primary_desc,
                             "craft_story": primary_story,
                             "title_en": primary_title,

@@ -48,8 +48,8 @@ class AICatalogDraftResponse(BaseModel):
     min_margin_pct: Decimal = Decimal("0.20")
     pricing_available: bool = True
     pricing_source: str = "COST_BASED_CALCULATION"
-    image_url: str = ""
-    enhanced_image_url: str = ""
+    image_url: Optional[str] = ""
+    enhanced_image_url: Optional[str] = None
     transcription: str = ""
     language_detected: str = "en"
     lifecycle_state: str = "AI_GENERATED"

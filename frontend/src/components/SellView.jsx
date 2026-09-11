@@ -7,7 +7,7 @@ import {
 import ProductList from './ProductList';
 import CreateProductModal from './CreateProductModal';
 import ProductDetailModal from './ProductDetailModal';
-import AICatalogStudioModal from './AICatalogStudioModal';
+import ArtisanInterviewModal from './ArtisanInterviewModal';
 import CopilotWidget from './CopilotWidget';
 import MarketDemandWidget from './MarketDemandWidget';
 import { 
@@ -1236,12 +1236,12 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         </div>
       )}
 
-      {/* AI Voice Catalog Studio Modal */}
-      <AICatalogStudioModal
+      {/* AI Voice Catalog Studio Modal V2 */}
+      <ArtisanInterviewModal
         isOpen={isAIOpen}
         onClose={() => setIsAIOpen(false)}
-        onPublished={async (msg) => {
-          showNotification(msg);
+        onProductCreated={async (prod) => {
+          showNotification(`Product "${prod?.title || prod?.name || 'Item'}" cataloged & published with AI!`);
           await loadDashboard();
         }}
       />

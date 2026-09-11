@@ -193,6 +193,7 @@ class MLDemandEngine:
                     "r2_score": metadata.get("r2_score"),
                     "mae": metadata.get("mae"),
                     "training_mode": metadata.get("training_mode"),
+                    "notice": metadata.get("notice", "Domain-informed demand scoring prototype trained on synthetic craft heuristics (ready for retraining on real transaction telemetry)."),
                     "feature_importances": metadata.get("feature_importances", {})
                 }
             }

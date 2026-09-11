@@ -103,7 +103,6 @@ class ProductUpdate(BaseModel):
     min_margin_pct: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     auto_smart_pricing_enabled: Optional[bool] = None
 
-
 class ProductResponse(ProductBase):
     model_config = ConfigDict(from_attributes=True)
 
@@ -324,6 +323,3 @@ class BuyerCopilotResponse(BaseModel):
     search_query_used: Optional[str] = None
     match_count: int = 0
     is_fallback: bool = False
-
-
-

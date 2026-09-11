@@ -10,8 +10,8 @@ SAMPLE_PRODUCTS = [
         "materials": "Pure Mulberry Silk, Natural Dyes, Tamarind Twig Ink",
         "price": 1250.0,
         "stock": 6,
-        "image_url": None,
-        "enhanced_image_url": None,
+        "image_url": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80",
+        "enhanced_image_url": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80",
         "status": "PUBLISHED",
         "material_cost": 480.0,
         "labour_cost": 420.0,
@@ -26,8 +26,8 @@ SAMPLE_PRODUCTS = [
         "materials": "Ivory Wood (Aale Mara), Natural Lacquer, Turmeric & Indigo dye",
         "price": 850.0,
         "stock": 14,
-        "image_url": None,
-        "enhanced_image_url": None,
+        "image_url": "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=800&auto=format&fit=crop&q=80",
+        "enhanced_image_url": "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=800&auto=format&fit=crop&q=80",
         "status": "PUBLISHED",
         "material_cost": 260.0,
         "labour_cost": 310.0,
@@ -42,8 +42,8 @@ SAMPLE_PRODUCTS = [
         "materials": "Ground Quartz, Glass, Natural Multani Mitti, Cobalt Oxide",
         "price": 1650.0,
         "stock": 8,
-        "image_url": None,
-        "enhanced_image_url": None,
+        "image_url": "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=800&auto=format&fit=crop&q=80",
+        "enhanced_image_url": "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=800&auto=format&fit=crop&q=80",
         "status": "PUBLISHED",
         "material_cost": 520.0,
         "labour_cost": 620.0,
@@ -58,8 +58,8 @@ SAMPLE_PRODUCTS = [
         "materials": "Zinc-Copper Alloy, 99.9% Pure Silver Wire",
         "price": 2100.0,
         "stock": 5,
-        "image_url": None,
-        "enhanced_image_url": None,
+        "image_url": "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?w=800&auto=format&fit=crop&q=80",
+        "enhanced_image_url": "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?w=800&auto=format&fit=crop&q=80",
         "status": "PUBLISHED",
         "material_cost": 720.0,
         "labour_cost": 810.0,
@@ -77,5 +77,8 @@ def seed_sample_products(db: Session, seller_id: int):
         if not existing:
             prod = Product(**p, seller_id=seller_id)
             db.add(prod)
+        else:
+            if not existing.image_url:
+                existing.image_url = p["image_url"]
+                existing.enhanced_image_url = p["enhanced_image_url"]
     db.commit()
-

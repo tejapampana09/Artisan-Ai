@@ -22,7 +22,10 @@ self.addEventListener('fetch', (event) => {
   // Network-first strategy for HTML and API to prevent stale JS caching
   if (event.request.url.includes('/api/')) {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
+      fetch(event.request).catch(async () => {
+        const cached = await caches.match(event.request);
+        return cached || new Response(JSON.stringify({ error: 'Offline' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+      })
     );
   } else {
     event.respondWith(
@@ -32,7 +35,10 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
         }
         return networkResponse;
-      }).catch(() => caches.match(event.request))
+      }).catch(async () => {
+        const cached = await caches.match(event.request);
+        return cached || new Response('Offline', { status: 503 });
+      })
     );
   }
 });

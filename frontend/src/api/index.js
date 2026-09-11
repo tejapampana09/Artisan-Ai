@@ -6,4 +6,5 @@ export * from './seller.js';
 export * from './sync.js';
 export * from './user.js';
 export * from './trust.js';
+export * from '../services/interviewApi.js';
 

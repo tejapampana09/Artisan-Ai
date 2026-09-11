@@ -50,6 +50,32 @@ def record_event(
                     timestamp=datetime.now(timezone.utc)
                 )
 
+    # Anti-Abuse Control 1: Deduplicate SAVE (1 SAVE per user/product)
+    user_id = current_user.id if current_user else None
+    ev_type = event_in.event_type.upper().strip()
+
+    if ev_type == "SAVE" and event_in.product_id and user_id:
+        existing_save = db.query(Event).filter(
+            Event.event_type == "SAVE",
+            Event.product_id == event_in.product_id,
+            Event.user_id == user_id
+        ).first()
+        if existing_save:
+            return existing_save
+
+    # Anti-Abuse Control 2: Rate-limit VIEW (1 VIEW per user/product per 1-hour window)
+    if ev_type == "VIEW" and event_in.product_id and user_id:
+        from datetime import timedelta
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+        recent_view = db.query(Event).filter(
+            Event.event_type == "VIEW",
+            Event.product_id == event_in.product_id,
+            Event.user_id == user_id,
+            Event.timestamp >= cutoff
+        ).first()
+        if recent_view:
+            return recent_view
+
     # Privacy Protection: Whitelist & sanitize metadata_info (reject freeform PII or long payloads)
     clean_meta = None
     if event_in.metadata_info:

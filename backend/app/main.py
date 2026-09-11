@@ -23,8 +23,9 @@ from backend.app.routes.auth import router as auth_router
 from backend.app.routes.channels import router as channels_router
 from backend.app.routes.reviews import router as reviews_router
 from backend.app.routes.notifications import router as notifications_router
-from backend.app.routes.artisan import router as artisan_router
+from backend.app.routes.artisan import router as artisan_router, seller_router
 from backend.app.routes.ml_demand import router as ml_demand_router
+from backend.app.routes.artisan_interview import router as interview_router
 from backend.app.services.auth import get_current_user as auth_get_current_user
 
 # Initialize database tables directly via SQLAlchemy Base metadata
@@ -89,8 +90,39 @@ app.include_router(channels_router)
 app.include_router(reviews_router)
 app.include_router(notifications_router)
 app.include_router(artisan_router)
+app.include_router(seller_router)
 app.include_router(ml_demand_router)
+app.include_router(interview_router)
 
+
+TTS_VOICE_MAP = {
+    "te": "te-IN-ShrutiNeural",
+    "hi": "hi-IN-SwaraNeural",
+    "ta": "ta-IN-PallaviNeural",
+    "bn": "bn-IN-TanishaaNeural",
+    "en": "en-IN-NeerjaNeural"
+}
+
+@app.get("/api/tts/speak")
+async def tts_speak_stream(text: str, lang: str = "te"):
+    import edge_tts
+    from fastapi.responses import StreamingResponse
+    if not text or not text.strip():
+        raise HTTPException(status_code=400, detail="Text parameter is required")
+    
+    clean_lang = (lang or "te").lower()
+    voice = TTS_VOICE_MAP.get(clean_lang, "te-IN-ShrutiNeural")
+
+    async def generate_chunks():
+        try:
+            communicate = edge_tts.Communicate(text, voice)
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    yield chunk["data"]
+        except Exception as e:
+            logging.getLogger("artisan_ai").warning("[TTS Stream Error] %s", e)
+
+    return StreamingResponse(generate_chunks(), media_type="audio/mpeg")
 
 @app.get("/api/health", response_model=HealthResponse)
 def health_check():

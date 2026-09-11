@@ -125,24 +125,31 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
 
 
     # 3. Raw Recommended Price Calculation
-    # Base calculation starts from current price (or minimum fair price if current price is below safe margin)
-    base_anchor = max(curr_price, minimum_fair_price)
-    raw_recommended = (base_anchor * Decimal(str(demand_factor)) * Decimal(str(market_adj))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    raw_recommended = (curr_price * Decimal(str(demand_factor)) * Decimal(str(market_adj))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    if raw_recommended <= Decimal("0.00"):
+        raw_recommended = max(curr_price, minimum_fair_price)
 
-    # 4. Apply Safety Constraints
-    # Constraint A: Maximum upward limit (+25%)
-    max_upward_allowed = (curr_price * (Decimal("1.0") + MAX_UPWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    # Constraint B: Maximum downward limit (-10%)
-    min_downward_allowed = (curr_price * (Decimal("1.0") - MAX_DOWNWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    # 4. Apply Safety Constraints (Option B — Absolute +25% single-cycle cap)
+    if curr_price > 0:
+        max_upward_allowed = (curr_price * (Decimal("1.0") + MAX_UPWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        min_downward_allowed = (curr_price * (Decimal("1.0") - MAX_DOWNWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    bounded_price = min(max_upward_allowed, max(min_downward_allowed, raw_recommended))
-
-    # Constraint C: STRICT SAFETY RULE: Recommended Price >= Minimum Fair Price
-    final_recommended = max(bounded_price, minimum_fair_price)
+        if curr_price < minimum_fair_price:
+            # Gradually progress towards minimum fair price floor without exceeding +25% in a single cycle
+            final_recommended = min(max_upward_allowed, minimum_fair_price)
+        else:
+            bounded_price = min(max_upward_allowed, max(min_downward_allowed, raw_recommended))
+            final_recommended = max(bounded_price, minimum_fair_price)
+    else:
+        max_upward_allowed = minimum_fair_price
+        min_downward_allowed = Decimal("0.00")
+        final_recommended = max(raw_recommended, minimum_fair_price)
 
     # 5. Sensible Rupee Rounding (round to nearest ₹5)
     rounded_price = (Decimal(round(float(final_recommended) / 5.0) * 5)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    if rounded_price < minimum_fair_price:
+    if curr_price > 0 and rounded_price > max_upward_allowed:
+        rounded_price = max_upward_allowed
+    if curr_price >= minimum_fair_price and rounded_price < minimum_fair_price:
         rounded_price = minimum_fair_price
 
     price_change_amount = (rounded_price - curr_price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -211,7 +218,9 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
         reasoning.append(f"RandomForestRegressor ML Demand Engine predicted score {int(ml_score)}/100 ({ml_level} DEMAND, factor {ml_multiplier:.2f}x){r2_suffix} from dataset training metrics.")
 
 
-    if price_change_amount > 0:
+    if curr_price > 0 and curr_price < minimum_fair_price:
+        reasoning.append(f"Listing price is below protected minimum fair floor (₹{float(minimum_fair_price):,.0f}). Upward recommendation is capped at +25% (₹{float(rounded_price):,.0f}) to progress gradually towards cost floor.")
+    elif price_change_amount > 0:
         reasoning.append(f"Suggested upward adjustment of ₹{float(price_change_amount):,.0f} (+{price_change_pct}%) captures high category demand while protecting sales conversion.")
     elif price_change_amount < 0:
         reasoning.append(f"Suggested downward adjustment of ₹{abs(float(price_change_amount)):,.0f} ({price_change_pct}%) improves market competitiveness while remaining safely above minimum fair price.")

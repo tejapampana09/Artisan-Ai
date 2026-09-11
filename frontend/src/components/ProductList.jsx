@@ -46,6 +46,9 @@ export default function ProductList({ products, onSelectProduct, onEditProduct, 
               <img
                 src={p.image_url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400&auto=format&fit=crop&q=80'}
                 alt={getLocalizedProductField(p, 'title', language)}
+                onError={(e) => {
+                  e.target.src = 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=400&auto=format&fit=crop&q=80';
+                }}
                 className="w-16 h-16 rounded-xl object-cover border border-slate-200 shadow-xs flex-shrink-0"
               />
               <div>

@@ -18,7 +18,7 @@ def test_database_url_normalization():
     """Verify postgres:// is safely converted to postgresql:// dialect prefix."""
     raw_heroku_style = "postgres://artisan_user:secure_pwd@db.host.internal:5432/artisan_prod"
     normalized = get_database_url(raw_heroku_style)
-    assert normalized == "postgresql://artisan_user:secure_pwd@db.host.internal:5432/artisan_prod"
+    assert normalized == "postgresql+psycopg://artisan_user:secure_pwd@db.host.internal:5432/artisan_prod"
 
     sqlite_url = "sqlite:///./artisan.db"
     assert get_database_url(sqlite_url) == "sqlite:///./artisan.db"
