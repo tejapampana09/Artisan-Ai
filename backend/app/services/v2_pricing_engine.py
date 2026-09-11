@@ -1,20 +1,12 @@
 import logging
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Dict, Any, List, Optional
-from sqlalchemy.orm import Session
-from backend.app.models import Product, Event
-from backend.app.services.demand_engine import calculate_category_demand
-from backend.app.services.ml_demand_engine import predict_product_demand
+from backend.app.services.pricing_engine import to_decimal
 
 logger = logging.getLogger("artisan_ai")
 
 MAX_UPWARD_ADJUSTMENT_PCT = Decimal("0.25")
 MAX_DOWNWARD_ADJUSTMENT_PCT = Decimal("0.10")
-
-def to_decimal(val, default="0.00") -> Decimal:
-    if val is None:
-        return Decimal(default)
-    return Decimal(str(val))
 
 class V2PricingEngine:
     """

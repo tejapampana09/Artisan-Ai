@@ -5,16 +5,12 @@ import logging
 import httpx
 from typing import Dict, Any, Optional, Tuple
 from decimal import Decimal, ROUND_HALF_UP
+from backend.app.services.pricing_engine import to_decimal
 
 from backend.app.config import (
     GEMINI_API_KEY, 
     AI_REQUEST_TIMEOUT_SECONDS
 )
-
-def to_decimal(val, default="0.00") -> Decimal:
-    if val is None:
-        return Decimal(default)
-    return Decimal(str(val))
 
 def get_models_to_try() -> list:
     """Returns an ordered fallback list of Gemini models starting with configured GEMINI_MODEL."""

@@ -6,13 +6,9 @@ from sqlalchemy.orm import Session
 from backend.app.models import Product, MarketEvidence
 from backend.app.services.ai_adapter import CATEGORY_MARKET_BENCHMARKS
 from backend.app.services.ai_provider import GeminiAIProvider
+from backend.app.services.pricing_engine import to_decimal
 
 logger = logging.getLogger("artisan_ai")
-
-def to_decimal(val, default="0.00") -> Decimal:
-    if val is None:
-        return Decimal(default)
-    return Decimal(str(val))
 
 class MarketResearchService:
     """

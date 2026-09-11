@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Store, ShoppingBag, Sparkles, UserCheck, Wifi, WifiOff, Home, 
-  Bell, Globe, User, Smartphone
+  Store, ShoppingBag, UserCheck, Wifi, WifiOff, Home, 
+  Bell, Globe, Smartphone
 } from 'lucide-react';
 import { useOffline } from '../context/OfflineContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -13,7 +13,7 @@ import {
 } from '../services/mobileNotifications';
 import { getNotifications, markNotificationRead } from '../api/index.js';
 
-export default function Navbar({ activeMode, onToggleMode, user, readyStatus, onOpenAuth, onOpenDownloadApp }) {
+export default function Navbar({ activeMode, onToggleMode, user, onOpenAuth, onOpenDownloadApp }) {
   const { language, setIsSelectingLanguage, t } = useLanguage();
   const { isOffline, toggleOfflineMode, queueCount } = useOffline();
   const toast = useNotification();
@@ -40,14 +40,6 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      fetchNotifications();
-      const interval = setInterval(fetchNotifications, 4000);
-      return () => clearInterval(interval);
-    }
-  }, [user]);
-
   const fetchNotifications = async () => {
     try {
       const data = await getNotifications();
@@ -59,16 +51,30 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
       data.forEach(n => {
         if (!n.is_read && !seenIds.has(n.id)) {
           saveSeenNotifId(n.id);
-          triggerMobilePush(n.title, n.message);
-          toast.info(`${n.title}: ${n.message}`, 8000);
-        } else {
-          saveSeenNotifId(n.id);
+
+          triggerMobilePush(
+            n.title || "Artisan AI Notification",
+            n.message || "You have a new update.",
+            { notificationId: n.id, type: n.type || "INFO" }
+          );
+
+          if (toast && toast.info) {
+            toast.info(`${n.title}: ${n.message}`);
+          }
         }
       });
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 4000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   const handleEnableMobilePush = async () => {
     const granted = await requestNotificationPermission();

@@ -2,6 +2,17 @@ import React, { useState } from 'react';
 import { IndianRupee, ShieldAlert, Sparkles, TrendingUp, HelpCircle, RefreshCw } from 'lucide-react';
 
 export default function PriceRecommendation({ priceData, onRecalculate, loading }) {
+  const breakdown = priceData?.breakdown || {};
+
+  const [costs, setCosts] = useState({
+    material_cost: breakdown.material_cost || 0,
+    labour_cost: breakdown.labour_cost || 0,
+    packaging_cost: breakdown.packaging_cost || 0,
+    other_cost: breakdown.other_cost || 0,
+  });
+
+  const [showCostEditor, setShowCostEditor] = useState(false);
+
   if (!priceData) return null;
 
   const {
@@ -13,17 +24,7 @@ export default function PriceRecommendation({ priceData, onRecalculate, loading 
     is_capped = false,
     uncapped_recommended_price = 0,
     max_capped_price = 0,
-    breakdown = {}
   } = priceData;
-
-  const [costs, setCosts] = useState({
-    material_cost: breakdown.material_cost || 0,
-    labour_cost: breakdown.labour_cost || 0,
-    packaging_cost: breakdown.packaging_cost || 0,
-    other_cost: breakdown.other_cost || 0,
-  });
-
-  const [showCostEditor, setShowCostEditor] = useState(false);
 
   const handleCostChange = (field, val) => {
     setCosts((prev) => ({ ...prev, [field]: parseFloat(val) || 0 }));

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, ShieldCheck, MessageSquare, Send, CheckCircle2 } from 'lucide-react';
+import { Star, ShieldCheck, MessageSquare, Send } from 'lucide-react';
 import { getProductReviews, createProductReview } from '../api/trust.js';
 import { useNotification } from '../context/NotificationContext.jsx';
 
@@ -13,12 +13,6 @@ export default function ReviewsSection({ productId, user, product }) {
 
   const isSellerOwner = user && product && product.seller_id === user.id;
 
-  useEffect(() => {
-    if (productId) {
-      fetchReviews();
-    }
-  }, [productId]);
-
   const fetchReviews = async () => {
     setLoading(true);
     try {
@@ -30,6 +24,12 @@ export default function ReviewsSection({ productId, user, product }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (productId) {
+      fetchReviews();
+    }
+  }, [productId]);
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();
