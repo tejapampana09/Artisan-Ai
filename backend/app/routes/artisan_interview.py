@@ -1,7 +1,9 @@
 import json
+import asyncio
+import logging
 from decimal import Decimal
 from typing import Optional, List, Dict, Any, cast
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
@@ -11,11 +13,14 @@ from backend.app.schemas.artisan_interview import (
     FinalPriceRequest, PublishListingRequest, InterviewSessionResponse
 )
 from backend.app.schemas import ProductResponse
-from backend.app.services.auth import get_current_user
-from backend.app.services.gemini_interviewer import AdaptiveInterviewerService, get_initial_question, normalize_fact_entry
+from backend.app.services.auth import get_current_user, decode_access_token
+from backend.app.services.gemini_interviewer import AdaptiveInterviewerService, normalize_fact_entry
 from backend.app.services.market_research import MarketResearchService
 from backend.app.services.listing_generator import ListingGeneratorService
 from backend.app.services.v2_pricing_engine import V2PricingEngine
+from backend.app.services.gemini_live_service import GeminiLiveService
+
+logger = logging.getLogger("artisan_ai")
 
 router = APIRouter(prefix="/api/interview", tags=["V2 Artisan Adaptive Interview"])
 
@@ -58,7 +63,7 @@ async def start_interview_session(
 ):
     """
     Starts a persistent V2 Multilingual Adaptive Interview Session.
-    Dynamically asks Gemini AI to formulate the opening highest-value question given photo/hint.
+    Formulates initial opening question and stores primary + secondary photo references.
     """
     interviewer = AdaptiveInterviewerService()
     initial_q = await interviewer.get_dynamic_initial_question(
@@ -67,6 +72,12 @@ async def start_interview_session(
         photo_url=req.photo_url
     )
     
+    initial_facts = {}
+    if req.category_hint:
+        initial_facts["category"] = normalize_fact_entry(req.category_hint, source="ARTISAN_CONFIRMED")
+    if req.secondary_images:
+        initial_facts["secondary_photos"] = req.secondary_images if isinstance(req.secondary_images, list) else [str(req.secondary_images)]
+
     session = InterviewSession(
         user_id=current_user.id,
         language=req.language,
@@ -74,9 +85,7 @@ async def start_interview_session(
         category_hint=req.category_hint,
         question_count=1,
         status="ACTIVE",
-        product_facts=json.dumps({
-            "category": normalize_fact_entry(req.category_hint or "Handcrafted", source="ARTISAN_CONFIRMED")
-        }) if req.category_hint else json.dumps({})
+        product_facts=json.dumps(initial_facts)
     )
     db.add(session)
     db.commit()
@@ -104,20 +113,20 @@ async def process_interview_answer(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Submits artisan answer, extracts facts with provenance, updates session state,
-    and returns next question or FACTS_COMPLETE state. Enforces question_count <= 5.
+    Submits artisan answer using SELECT FOR UPDATE row-level locking.
+    Extracts facts with provenance, updates session state, and returns next question or FACTS_COMPLETE.
     """
-    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).with_for_update().first()
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found")
 
     if session.user_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    if session.status not in ["ACTIVE"]:
+    if session.status != "ACTIVE":
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot submit answer in session status '{session.status}'. Session facts are already complete."
+            detail=f"Cannot submit answer in session status '{session.status}'. Session status must be 'ACTIVE'."
         )
 
     history = [
@@ -184,20 +193,19 @@ async def run_market_research(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Executes evidence-based market research on verified product facts BEFORE asking artisan for expected price.
-    Calculates comparable price range (low, high), median, and stores MarketEvidence provenance.
-    Enforces state machine sequence: session must be in FACTS_COMPLETE or ACTIVE status.
+    Executes evidence-based market research on verified product facts.
+    Enforces strict state machine sequence: session MUST be in FACTS_COMPLETE status.
     """
-    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).with_for_update().first()
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found")
     if session.user_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    if session.status not in ["FACTS_COMPLETE", "ACTIVE"]:
+    if session.status != "FACTS_COMPLETE":
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot execute market research in session status '{session.status}'. Expected FACTS_COMPLETE or ACTIVE."
+            detail=f"Cannot execute market research in session status '{session.status}'. Must be in FACTS_COMPLETE status."
         )
 
     facts = json.loads(session.product_facts) if session.product_facts else {}
@@ -220,18 +228,19 @@ def record_expected_price(
 ):
     """
     Records artisan expected selling price after reviewing market evidence.
-    Enforces state machine sequence: session must be in MARKET_RESEARCH_COMPLETE status.
+    Enforces strict state machine sequence: session MUST be in MARKET_RESEARCH_COMPLETE status.
+    Transitions session status to PRICE_PENDING.
     """
-    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).with_for_update().first()
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found")
     if session.user_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    if session.status not in ["MARKET_RESEARCH_COMPLETE", "FACTS_COMPLETE"]:
+    if session.status != "MARKET_RESEARCH_COMPLETE":
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot submit expected price in session status '{session.status}'. Must complete market research first."
+            detail=f"Cannot submit expected price in session status '{session.status}'. Must be in MARKET_RESEARCH_COMPLETE status."
         )
 
     session.artisan_expected_price = Decimal(str(req.expected_price)).quantize(Decimal("0.01"))
@@ -248,18 +257,19 @@ async def generate_listing_prose(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Generates AI product listing prose based strictly on verified facts. Zero fabricated heritage claims.
+    Generates AI product listing prose based strictly on verified facts.
+    Sub-operation inside PRICE_PENDING status.
     """
-    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).with_for_update().first()
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found")
     if session.user_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    if session.status not in ["MARKET_RESEARCH_COMPLETE", "PRICE_PENDING", "FACTS_COMPLETE"]:
+    if session.status != "PRICE_PENDING":
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot generate listing in session status '{session.status}'."
+            detail=f"Cannot generate listing in session status '{session.status}'. Must be in PRICE_PENDING status."
         )
 
     facts = json.loads(session.product_facts) if session.product_facts else {}
@@ -288,29 +298,27 @@ def calculate_final_price(
 ):
     """
     Evaluates V2 Dynamic Pricing Engine:
-    Combines Market Evidence + Cost Basis Floor + Artisan Expected Price + Demand Signals + Option B Safety Caps.
-    Enforces state machine sequence: session must be in PRICE_PENDING or MARKET_RESEARCH_COMPLETE status.
+    Combines Market Evidence + Cost Basis Floor + Artisan Expected Price + Option B Safety Caps.
+    Enforces strict state machine sequence: session MUST be in PRICE_PENDING status.
+    Transitions session status to READY_FOR_REVIEW.
     """
-    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).with_for_update().first()
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found")
     if session.user_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    if session.status not in ["PRICE_PENDING", "MARKET_RESEARCH_COMPLETE"]:
+    if session.status != "PRICE_PENDING":
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot calculate final price in session status '{session.status}'. Expected PRICE_PENDING."
+            detail=f"Cannot calculate final price in session status '{session.status}'. Must be in PRICE_PENDING status."
         )
 
     facts = json.loads(session.product_facts) if session.product_facts else {}
     research = json.loads(session.market_research_result) if session.market_research_result else {}
-    cat_val = facts.get("category", {}).get("value") if isinstance(facts.get("category"), dict) else facts.get("category")
 
     engine = V2PricingEngine()
     pricing_res = engine.calculate_v2_recommendation(
-        db=db,
-        category=cat_val or "Handcrafted",
         material_cost=req.material_cost,
         labour_cost=req.labour_cost,
         packaging_cost=req.packaging_cost,
@@ -319,8 +327,9 @@ def calculate_final_price(
         artisan_expected_price=session.artisan_expected_price
     )
 
-    session.recommended_price = Decimal(str(pricing_res["recommended_price"])).quantize(Decimal("0.01"))
-    session.pricing_explanation = json.dumps(pricing_res["reasoning"])
+    rec_price = pricing_res.get("recommended_price")
+    session.recommended_price = Decimal(str(rec_price)).quantize(Decimal("0.01")) if rec_price else None
+    session.pricing_explanation = json.dumps(pricing_res.get("reasoning", []))
     session.status = "READY_FOR_REVIEW"
     db.commit()
     db.refresh(session)
@@ -336,10 +345,10 @@ def publish_interview_product(
 ):
     """
     Final Publishing Operation:
-    Enforces state machine sequence: session status MUST be READY_FOR_REVIEW before publishing.
-    Audits provenance: Compares AI draft vs Artisan Edits and stores full tamper-evident audit history.
+    Enforces state machine sequence: session status MUST be in READY_FOR_REVIEW status.
+    Transitions session status to PUBLISHED.
     """
-    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).with_for_update().first()
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found")
     if session.user_id != current_user.id and current_user.role != "ADMIN":
@@ -396,3 +405,76 @@ def publish_interview_product(
     db.commit()
     db.refresh(product)
     return product
+
+@router.websocket("/{session_id}/live-ws")
+async def interview_live_websocket(
+    session_id: int,
+    websocket: WebSocket,
+    db: Session = Depends(get_db)
+):
+    """
+    Bidirectional WebSocket endpoint for live Gemini audio interview.
+    Requires first message to be an auth packet: { "type": "auth", "token": "JWT..." }.
+    Avoids passing auth tokens in URL or query params.
+    """
+    await websocket.accept()
+
+    try:
+        # Wait up to 5.0s for first message auth packet
+        raw_msg = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+        msg = json.loads(raw_msg)
+
+        if msg.get("type") != "auth" or not msg.get("token"):
+            await websocket.send_json({"type": "error", "message": "First message must be auth packet with token."})
+            await websocket.close(code=1008)
+            return
+
+        token = msg["token"]
+        payload = decode_access_token(token)
+        if not payload or "sub" not in payload:
+            await websocket.send_json({"type": "error", "message": "Invalid or expired authentication token."})
+            await websocket.close(code=1008)
+            return
+
+        user_id = int(payload["sub"])
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            await websocket.send_json({"type": "error", "message": "User account not found."})
+            await websocket.close(code=1008)
+            return
+
+        session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+        if not session:
+            await websocket.send_json({"type": "error", "message": "Interview session not found."})
+            await websocket.close(code=1008)
+            return
+
+        if session.user_id != user.id and user.role != "ADMIN":
+            await websocket.send_json({"type": "error", "message": "Permission denied."})
+            await websocket.close(code=1008)
+            return
+
+        if session.status != "ACTIVE":
+            await websocket.send_json({"type": "error", "message": f"Session status is '{session.status}'. Must be in ACTIVE status."})
+            await websocket.close(code=1008)
+            return
+
+        # Start Gemini Live bidirectional proxy loop
+        live_service = GeminiLiveService(db, session)
+        await live_service.start_proxy_loop(websocket)
+
+    except asyncio.TimeoutError:
+        try:
+            await websocket.send_json({"type": "error", "message": "Authentication timeout."})
+            await websocket.close(code=1008)
+        except Exception:
+            pass
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.error(f"[interview_live_websocket] Error: {e}")
+        try:
+            await websocket.close(code=1011)
+        except Exception:
+            pass
+

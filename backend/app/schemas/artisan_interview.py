@@ -5,7 +5,8 @@ from datetime import datetime
 
 class InterviewStartRequest(BaseModel):
     language: str = Field("te", max_length=10, description="Selected language e.g. te, hi, ta, bn, en")
-    photo_url: Optional[str] = Field(None, description="Uploaded photo URL or base64 data URI")
+    photo_url: Optional[str] = Field(None, description="Uploaded primary photo URL or base64 data URI")
+    secondary_images: Optional[Any] = Field(None, description="Supporting craft photo URLs or list")
     category_hint: Optional[str] = Field(None, max_length=100, description="Optional craft category hint")
 
 class InterviewAnswerRequest(BaseModel):

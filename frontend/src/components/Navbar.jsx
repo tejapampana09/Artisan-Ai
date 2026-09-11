@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Store, ShoppingBag, UserCheck, Wifi, WifiOff, Home, 
-  Bell, Globe, Smartphone
+  Store, ShoppingBag, Home, Bell, Globe, Smartphone, UserCheck, Wifi, WifiOff, LogOut, Check
 } from 'lucide-react';
 import { useOffline } from '../context/OfflineContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -36,7 +35,7 @@ export default function Navbar({ activeMode, onToggleMode, user, onOpenAuth, onO
       current.add(id);
       sessionStorage.setItem('artisan_seen_notif_ids', JSON.stringify(Array.from(current)));
     } catch {
-      // Ignore storage errors
+      // Ignore
     }
   };
 
@@ -46,18 +45,14 @@ export default function Navbar({ activeMode, onToggleMode, user, onOpenAuth, onO
       setNotifications(data);
 
       const seenIds = getSeenNotifIds();
-
-      // Detect newly arrived unread notifications and fire Native Mobile Device Push & In-App Toast
       data.forEach(n => {
         if (!n.is_read && !seenIds.has(n.id)) {
           saveSeenNotifId(n.id);
-
           triggerMobilePush(
             n.title || "Artisan AI Notification",
             n.message || "You have a new update.",
             { notificationId: n.id, type: n.type || "INFO" }
           );
-
           if (toast && toast.info) {
             toast.info(`${n.title}: ${n.message}`);
           }
@@ -80,7 +75,7 @@ export default function Navbar({ activeMode, onToggleMode, user, onOpenAuth, onO
     const granted = await requestNotificationPermission();
     setPushStatus(getNotificationPermissionStatus());
     if (granted) {
-      triggerMobilePush('🔔 Mobile Notifications Enabled!', 'You will now receive instant push alerts for orders, enquiries, and price updates.');
+      triggerMobilePush('🔔 Mobile Notifications Enabled!', 'You will now receive instant push alerts.');
     }
   };
 
@@ -97,212 +92,155 @@ export default function Navbar({ activeMode, onToggleMode, user, onOpenAuth, onO
 
   return (
     <>
-      {/* Top Mobile Push Notification Banner Prompt */}
-      {user && pushStatus === 'default' && (
-        <div className="bg-slate-900 text-white px-3 py-2 text-xs flex items-center justify-between border-b border-amber-500/40 shadow-sm z-50">
-          <div className="flex items-center space-x-2 overflow-hidden">
-            <Smartphone className="w-4 h-4 text-amber-400 shrink-0 animate-bounce" />
-            <span className="truncate">
-              <strong>🔔 Enable Mobile Alerts / మొబైల్ నోటిఫికేషన్లు:</strong> Get instant push alerts for orders & enquiries.
-            </span>
-          </div>
-          <button
-            onClick={handleEnableMobilePush}
-            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded-lg text-xs transition-all cursor-pointer shrink-0 ml-2 shadow-sm"
-          >
-            Enable Now / అనుమతించండి
-          </button>
-        </div>
-      )}
-
-      {/* Top Fixed Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs w-full overflow-x-hidden">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      {/* Top Header Bar */}
+      <header className="bg-white border-b border-[#E7E7E2] sticky top-0 z-40 w-full overflow-x-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* Logo & Title */}
+            
+            {/* Brand Logo & Title */}
             <div 
               onClick={() => onToggleMode(!user ? 'HOME' : user.role === 'BUYER' ? 'BUY' : 'SELL')}
-              className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group shrink-0"
-              title={!user ? "Return to Home" : user.role === 'BUYER' ? "Go to Marketplace" : "Go to Artisan Studio"}
+              className="flex items-center space-x-3 cursor-pointer group"
             >
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-[#176B4D]/10 flex items-center justify-center p-1.5 border border-[#176B4D]/20">
                 <img src="/artisan-logo.png" alt="Artisan AI Logo" className="w-full h-full object-contain" />
               </div>
               <div>
-                <div className="flex items-center space-x-1.5">
-                  <span className="font-bold text-lg sm:text-xl tracking-tight text-slate-900 group-hover:text-amber-800 transition-colors">Artisan AI</span>
-                  <span className="text-[9px] sm:text-[10px] font-bold uppercase px-1.5 py-0.2 rounded-full bg-slate-900 text-amber-300 border border-amber-500/30">
-                    {t('enterpriseTag', 'Enterprise')}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 hidden sm:block">{t('navbarTitle', 'Artisan AI Marketplace')}</p>
+                <span className="font-bold text-lg text-[#171717] tracking-tight group-hover:text-[#176B4D] transition-colors">
+                  Artisan AI
+                </span>
+                <span className="ml-2 text-[10px] font-semibold text-[#176B4D] bg-[#176B4D]/10 border border-[#176B4D]/20 px-2 py-0.5 rounded-full">
+                  Craft Studio
+                </span>
               </div>
             </div>
 
-            {/* Desktop Mode Switcher & Right Controls */}
-            <div className="hidden md:flex items-center space-x-2 sm:space-x-3">
-              {/* Mode Switcher */}
-              <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200 shadow-inner">
-                {!user && (
-                  <button
-                    onClick={() => onToggleMode('HOME')}
-                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                      activeMode === 'HOME'
-                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Home className="w-3.5 h-3.5 text-amber-600" />
-                    <span>{t('home', 'Home')}</span>
-                  </button>
-                )}
-                {user?.role !== 'BUYER' && (
-                  <button
-                    onClick={() => onToggleMode('SELL')}
-                    className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                      activeMode === 'SELL'
-                        ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/30 font-bold'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Store className="w-3.5 h-3.5" />
-                    <span>{t('artisanStudio', 'Artisan Studio')}</span>
-                  </button>
-                )}
+            {/* Navigation Tabs (Seller View Mode Switchers) */}
+            <div className="hidden md:flex items-center space-x-1">
+              {!user && (
                 <button
-                  onClick={() => onToggleMode('BUY')}
-                  className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                    activeMode === 'BUY'
-                      ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30 font-bold'
-                      : 'text-slate-600 hover:text-slate-900'
+                  onClick={() => onToggleMode('HOME')}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                    activeMode === 'HOME'
+                      ? 'bg-[#176B4D] text-white shadow-sm'
+                      : 'text-[#666666] hover:text-[#171717] hover:bg-[#FAFAF7]'
                   }`}
                 >
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>{t('buyerMarketplace', 'Buyer Marketplace')}</span>
+                  Home
                 </button>
-              </div>
-
-              {/* Download App Button */}
+              )}
+              {user?.role !== 'BUYER' && (
+                <button
+                  onClick={() => onToggleMode('SELL')}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                    activeMode === 'SELL'
+                      ? 'bg-[#176B4D] text-white shadow-sm'
+                      : 'text-[#666666] hover:text-[#171717] hover:bg-[#FAFAF7]'
+                  }`}
+                >
+                  Artisan Studio
+                </button>
+              )}
               <button
-                onClick={onOpenDownloadApp}
-                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-bold text-xs transition-all cursor-pointer shadow-2xs"
-                title="Download Artisan AI App / ఆప్‌ని ఇన్స్టాల్ చేయండి"
+                onClick={() => onToggleMode('BUY')}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  activeMode === 'BUY'
+                    ? 'bg-[#176B4D] text-white shadow-sm'
+                    : 'text-[#666666] hover:text-[#171717] hover:bg-[#FAFAF7]'
+                }`}
               >
-                <Smartphone className="w-3.5 h-3.5 text-amber-700" />
-                <span className="text-[11px] font-bold">{t('appLabel', 'App')}</span>
+                Buyer Marketplace
               </button>
+            </div>
 
-              {/* Language Selector Button */}
+            {/* Right Action Icons & User Account */}
+            <div className="flex items-center space-x-3">
+              {/* Language Selector */}
               <button
                 onClick={() => setIsSelectingLanguage(true)}
-                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-900 font-bold text-xs transition-all cursor-pointer"
-                title="Change Language / మీ భాషను ఎంచుకోండి"
+                className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-[#FAFAF7] border border-[#E7E7E2] text-[#171717] font-semibold text-xs hover:border-[#176B4D]/40 transition-all"
+                title="Change Language"
               >
-                <Globe className="w-3.5 h-3.5 text-indigo-700" />
-                <span className="uppercase text-[11px] font-extrabold">{language}</span>
+                <Globe className="w-3.5 h-3.5 text-[#176B4D]" />
+                <span className="uppercase text-[11px] font-bold">{language}</span>
               </button>
 
-              {/* Offline Indicator */}
+              {/* Offline / Cloud Status Badge */}
               <button
                 onClick={() => toggleOfflineMode()}
-                className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
                   isOffline
-                    ? 'bg-orange-50 border-orange-300 text-orange-800 shadow-xs'
-                    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    ? 'bg-amber-50 border-amber-200 text-amber-900'
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-900'
                 }`}
-                title={isOffline ? 'Switch to online cloud sync' : 'Switch to rural offline cache'}
               >
                 {isOffline ? (
                   <>
-                    <WifiOff className="w-3.5 h-3.5 text-orange-600 animate-pulse" />
-                    <span>{t('offline', 'Offline')}</span>
-                    {queueCount > 0 && (
-                      <span className="px-1.5 py-0.2 bg-orange-200 text-orange-900 rounded-full font-bold text-[10px]">
-                        {queueCount}
-                      </span>
-                    )}
+                    <WifiOff className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
+                    <span>Offline</span>
                   </>
                 ) : (
                   <>
-                    <Wifi className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{t('cloud', 'Cloud')}</span>
+                    <Wifi className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Cloud</span>
                   </>
                 )}
               </button>
 
-              {/* Notifications */}
+              {/* Notifications Bell */}
               {user && (
                 <div className="relative">
                   <button
                     onClick={() => setShowNotifications(!showNotifications)}
-                    className="p-2 rounded-xl bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 text-slate-700 transition-all cursor-pointer relative"
-                    title="System Notifications"
+                    className="p-2 rounded-xl bg-[#FAFAF7] border border-[#E7E7E2] hover:border-[#176B4D]/40 text-[#171717] transition-all relative"
+                    title="Notifications"
                   >
-                    <Bell className="w-4 h-4 text-amber-700" />
+                    <Bell className="w-4 h-4 text-[#171717]" />
                     {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                      <span className="absolute -top-1 -right-1 bg-[#176B4D] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                         {unreadCount}
                       </span>
                     )}
                   </button>
 
+                  {/* Notification Dropdown Panel */}
                   {showNotifications && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 z-60 overflow-hidden text-xs">
-                      <div className="p-3 bg-amber-50 border-b border-amber-200/60 flex items-center justify-between">
-                        <span className="font-bold text-amber-900 flex items-center">
-                          <Bell className="w-3.5 h-3.5 mr-1 text-amber-700" />
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-[#E7E7E2] z-50 overflow-hidden text-xs">
+                      <div className="p-3 bg-[#FAFAF7] border-b border-[#E7E7E2] flex items-center justify-between">
+                        <span className="font-bold text-[#171717] flex items-center gap-1.5">
+                          <Bell className="w-3.5 h-3.5 text-[#176B4D]" />
                           Notifications
                         </span>
-                        <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
+                        <span className="text-[10px] bg-[#176B4D]/10 text-[#176B4D] px-2 py-0.5 rounded-full font-bold">
                           {unreadCount} unread
                         </span>
                       </div>
 
-                      {/* Mobile Device Push Permission Banner */}
-                      <div className="px-3 py-2 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 text-[11px]">
-                        <div className="flex items-center space-x-1.5">
-                          <Smartphone className="w-3.5 h-3.5 text-amber-400" />
-                          <span className="font-medium">Mobile Push Alerts</span>
-                        </div>
-                        {pushStatus === 'granted' ? (
-                          <span className="text-[10px] bg-emerald-900/90 text-emerald-300 px-2 py-0.5 rounded-full font-bold border border-emerald-500/30">
-                            Active ✓
-                          </span>
-                        ) : (
-                          <button
-                            onClick={handleEnableMobilePush}
-                            className="text-[10px] bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-md font-bold transition-all cursor-pointer shadow-2xs"
-                          >
-                            Enable Alerts
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                      <div className="max-h-64 overflow-y-auto divide-y divide-[#E7E7E2]">
                         {notifications.length === 0 ? (
-                          <div className="p-4 text-center text-slate-400 text-xs">
-                            No notifications yet.
+                          <div className="p-4 text-center text-[#666666] text-xs">
+                            No new notifications.
                           </div>
                         ) : (
                           notifications.map((n) => (
                             <div
                               key={n.id}
                               className={`p-3 space-y-1 transition-colors ${
-                                n.is_read ? 'bg-white opacity-70' : 'bg-amber-50/30'
+                                n.is_read ? 'bg-white opacity-70' : 'bg-emerald-50/40'
                               }`}
                             >
                               <div className="flex items-center justify-between">
-                                <span className="font-bold text-slate-900 text-xs">{n.title}</span>
+                                <span className="font-bold text-[#171717] text-xs">{n.title}</span>
                                 {!n.is_read && (
                                   <button
                                     onClick={() => handleMarkRead(n.id)}
-                                    className="text-[10px] text-amber-700 hover:underline font-semibold"
+                                    className="text-[10px] text-[#176B4D] hover:underline font-semibold"
                                   >
                                     Mark read
                                   </button>
                                 )}
                               </div>
-                              <p className="text-slate-600 text-[11px] leading-snug">{n.message}</p>
+                              <p className="text-[#666666] text-[11px] leading-snug">{n.message}</p>
                             </div>
                           ))
                         )}
@@ -312,56 +250,27 @@ export default function Navbar({ activeMode, onToggleMode, user, onOpenAuth, onO
                 </div>
               )}
 
-              {/* Account Badge */}
+              {/* User Account / Sign In Button */}
               <button
                 onClick={onOpenAuth}
-                className="flex items-center space-x-2 bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 py-1.5 px-3 rounded-full text-xs text-slate-700 transition-all cursor-pointer shadow-2xs"
+                className="flex items-center space-x-2 bg-[#FAFAF7] hover:bg-emerald-50 border border-[#E7E7E2] hover:border-[#176B4D]/40 py-1.5 px-3.5 rounded-xl text-xs text-[#171717] transition-all font-semibold"
               >
-                <UserCheck className="w-3.5 h-3.5 text-amber-600" />
-                <span className="font-semibold truncate max-w-[110px]">{user?.name || 'Sign In'}</span>
+                <UserCheck className="w-3.5 h-3.5 text-[#176B4D]" />
+                <span className="truncate max-w-[100px]">{user?.name || 'Sign In'}</span>
               </button>
             </div>
 
-            {/* Compact Mobile Top Right Controls */}
-            <div className="flex md:hidden items-center space-x-1.5 shrink-0">
-              <button
-                onClick={onOpenDownloadApp}
-                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-extrabold text-xs cursor-pointer active:scale-95 transition-transform"
-                title="Download App"
-              >
-                <Smartphone className="w-3.5 h-3.5 text-amber-700" />
-                <span className="text-[10px] font-bold">App</span>
-              </button>
-
-              <button
-                onClick={() => setIsSelectingLanguage(true)}
-                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 font-extrabold text-xs cursor-pointer active:scale-95 transition-transform"
-              >
-                <Globe className="w-3.5 h-3.5 text-indigo-700" />
-                <span className="uppercase text-[10px]">{language}</span>
-              </button>
-
-              <button
-                onClick={onOpenAuth}
-                className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 cursor-pointer active:scale-95 transition-transform"
-                title="Account / Sign In"
-              >
-                <UserCheck className="w-4 h-4 text-amber-600" />
-              </button>
-            </div>
           </div>
         </div>
       </header>
 
-      {/* Floating Mobile Bottom Navigation Bar (iOS Liquid Glass Aesthetic) */}
-      <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 bg-white/75 backdrop-blur-2xl text-stone-800 rounded-full p-2 shadow-[0_12px_40px_rgba(0,0,0,0.18)] border border-white/70 flex items-center justify-around ring-1 ring-black/5">
+      {/* Responsive Mobile Bottom Navigation Bar */}
+      <nav className="md:hidden fixed bottom-3 left-4 right-4 z-50 bg-white/90 backdrop-blur-md text-[#171717] rounded-2xl p-2 shadow-lg border border-[#E7E7E2] flex items-center justify-around">
         {!user && (
           <button
             onClick={() => onToggleMode('HOME')}
-            className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-full transition-all active:scale-95 cursor-pointer ${
-              activeMode === 'HOME'
-                ? 'bg-[#4A2E1B] text-white font-extrabold shadow-md shadow-[#4A2E1B]/25 scale-105'
-                : 'text-stone-600 hover:text-stone-950 font-semibold'
+            className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-xl text-xs font-semibold ${
+              activeMode === 'HOME' ? 'bg-[#176B4D] text-white' : 'text-[#666666]'
             }`}
           >
             <Home className="w-4 h-4" />
@@ -372,10 +281,8 @@ export default function Navbar({ activeMode, onToggleMode, user, onOpenAuth, onO
         {user?.role !== 'BUYER' && (
           <button
             onClick={() => onToggleMode('SELL')}
-            className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-full transition-all active:scale-95 cursor-pointer ${
-              activeMode === 'SELL'
-                ? 'bg-[#4A2E1B] text-white font-extrabold shadow-md shadow-[#4A2E1B]/25 scale-105'
-                : 'text-stone-600 hover:text-stone-950 font-semibold'
+            className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-xl text-xs font-semibold ${
+              activeMode === 'SELL' ? 'bg-[#176B4D] text-white' : 'text-[#666666]'
             }`}
           >
             <Store className="w-4 h-4" />
@@ -385,10 +292,8 @@ export default function Navbar({ activeMode, onToggleMode, user, onOpenAuth, onO
 
         <button
           onClick={() => onToggleMode('BUY')}
-          className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-full transition-all active:scale-95 cursor-pointer ${
-            activeMode === 'BUY'
-              ? 'bg-[#4A2E1B] text-white font-extrabold shadow-md shadow-[#4A2E1B]/25 scale-105'
-              : 'text-stone-600 hover:text-stone-950 font-semibold'
+          className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-xl text-xs font-semibold ${
+            activeMode === 'BUY' ? 'bg-[#176B4D] text-white' : 'text-[#666666]'
           }`}
         >
           <ShoppingBag className="w-4 h-4" />
@@ -396,18 +301,10 @@ export default function Navbar({ activeMode, onToggleMode, user, onOpenAuth, onO
         </button>
 
         <button
-          onClick={onOpenDownloadApp}
-          className="flex flex-col items-center justify-center py-1.5 px-3 rounded-full text-amber-900 hover:text-amber-950 transition-all active:scale-95 cursor-pointer font-bold"
-        >
-          <Smartphone className="w-4 h-4 text-amber-700" />
-          <span className="text-[10px] mt-0.5">App</span>
-        </button>
-
-        <button
           onClick={() => setIsSelectingLanguage(true)}
-          className="flex flex-col items-center justify-center py-1.5 px-3 rounded-full text-stone-600 hover:text-stone-950 transition-all active:scale-95 cursor-pointer font-semibold"
+          className="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-[#666666]"
         >
-          <Globe className="w-4 h-4 text-amber-700" />
+          <Globe className="w-4 h-4 text-[#176B4D]" />
           <span className="text-[10px] mt-0.5 uppercase">{language}</span>
         </button>
       </nav>

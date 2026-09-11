@@ -8,39 +8,39 @@ export default function NotificationCenter() {
   if (!notifications || notifications.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col space-y-2 max-w-sm w-full px-4 pointer-events-none">
+    <div className="fixed top-4 right-4 z-[100] flex flex-col space-y-2 max-w-sm w-full px-4 pointer-events-none">
       {notifications.map((n) => {
-        let bgClass = 'bg-slate-900 text-white border-slate-700';
+        let bgClass = 'bg-white text-[#171717] border-[#E7E7E2]';
         let Icon = Info;
-        let iconColor = 'text-blue-400';
+        let iconColor = 'text-[#176B4D]';
 
         if (n.type === 'success') {
-          bgClass = 'bg-emerald-950/90 text-emerald-100 border-emerald-800/60';
+          bgClass = 'bg-emerald-50 text-emerald-950 border-emerald-200';
           Icon = CheckCircle2;
-          iconColor = 'text-emerald-400';
+          iconColor = 'text-[#176B4D]';
         } else if (n.type === 'error') {
-          bgClass = 'bg-rose-950/90 text-rose-100 border-rose-800/60';
+          bgClass = 'bg-red-50 text-red-950 border-red-200';
           Icon = AlertCircle;
-          iconColor = 'text-rose-400';
+          iconColor = 'text-red-600';
         } else if (n.type === 'warning') {
-          bgClass = 'bg-amber-950/90 text-amber-100 border-amber-800/60';
+          bgClass = 'bg-amber-50 text-amber-950 border-amber-200';
           Icon = AlertTriangle;
-          iconColor = 'text-amber-400';
+          iconColor = 'text-amber-700';
         }
 
         return (
           <div
             key={n.id}
-            className={`pointer-events-auto p-3.5 rounded-xl border backdrop-blur-md shadow-xl flex items-start space-x-3 transition-all duration-300 transform translate-y-0 ${bgClass}`}
+            className={`pointer-events-auto p-4 rounded-2xl border shadow-lg flex items-start space-x-3 transition-all duration-300 ${bgClass}`}
             role="alert"
           >
             <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${iconColor}`} />
-            <div className="flex-1 text-xs font-medium leading-relaxed break-words">
+            <div className="flex-1 text-xs font-semibold leading-snug break-words">
               {n.message}
             </div>
             <button
               onClick={() => removeNotification(n.id)}
-              className="text-slate-400 hover:text-white p-0.5 rounded-lg transition-colors cursor-pointer"
+              className="text-[#666666] hover:text-[#171717] p-0.5 rounded-lg transition-colors cursor-pointer"
               title="Dismiss"
             >
               <X className="w-4 h-4" />

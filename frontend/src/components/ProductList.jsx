@@ -1,123 +1,120 @@
 import React from 'react';
-import { Package, Edit2, Trash2, Eye, IndianRupee, Layers, CheckCircle2 } from 'lucide-react';
+import { Package, Plus, Eye, Edit2, Trash2 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { getLocalizedProductField } from '../utils/multilingual.js';
 
 export default function ProductList({ products, onSelectProduct, onEditProduct, onDeleteProduct, onAddProduct, currentUser }) {
-  const { language, getCategoryTranslation } = useLanguage();
-  if (!products || products.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
-        <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-        <h3 className="text-base font-semibold text-slate-800">No products in your catalog yet</h3>
-        <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-          Start listing your handmade crafts. You can add them with full cost breakdown and craft stories.
-        </p>
-        <button
-          onClick={onAddProduct}
-          className="mt-4 inline-flex items-center space-x-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition-all"
-        >
-          <span>Add First Product</span>
-        </button>
-      </div>
-    );
-  }
+  const { language } = useLanguage();
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+    <div className="space-y-6 max-w-5xl mx-auto">
+      {/* Screen 6 Header Bar */}
+      <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-bold text-slate-900">Your Craft Catalog</h3>
-          <p className="text-xs text-slate-500">Live products managed by your artisan studio</p>
+          <h2 className="text-2xl font-bold text-[#171717]">Your Products</h2>
+          <p className="text-xs text-[#666666] mt-0.5">Manage your handmade listings and track artisan views</p>
         </div>
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-          {products.length} {products.length === 1 ? 'Craft' : 'Crafts'}
-        </span>
+        <button
+          onClick={onAddProduct}
+          className="px-4 py-2.5 bg-[#176B4D] hover:bg-[#0F4D38] text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          <span>+ Add Product</span>
+        </button>
       </div>
 
-      <div className="divide-y divide-slate-100">
-        {products.map((p) => (
-          <div
-            key={p.id}
-            className="p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+      {/* Empty State */}
+      {(!products || products.length === 0) && (
+        <div className="bg-white rounded-3xl border border-[#E7E7E2] p-12 text-center space-y-3">
+          <Package className="w-12 h-12 text-[#666666] mx-auto opacity-40" />
+          <h3 className="text-base font-bold text-[#171717]">No products listed yet</h3>
+          <p className="text-xs text-[#666666] max-w-sm mx-auto">
+            Show us your craft. Speak or upload photos to list your handcrafted items.
+          </p>
+          <button
+            onClick={onAddProduct}
+            className="px-5 py-2.5 bg-[#176B4D] hover:bg-[#0F4D38] text-white font-bold text-xs rounded-xl transition-all"
           >
-            {/* Product Image & Meta */}
-            <div className="flex items-start sm:items-center space-x-4">
-              <img
-                src={p.image_url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400&auto=format&fit=crop&q=80'}
-                alt={getLocalizedProductField(p, 'title', language)}
-                onError={(e) => {
-                  e.target.src = 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=400&auto=format&fit=crop&q=80';
-                }}
-                className="w-16 h-16 rounded-xl object-cover border border-slate-200 shadow-xs flex-shrink-0"
-              />
-              <div>
-                <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                  <h4 className="font-semibold text-slate-900 text-sm hover:text-amber-700 cursor-pointer" onClick={() => onSelectProduct(p)}>
-                    {getLocalizedProductField(p, 'title', language)}
-                  </h4>
-                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                    {getCategoryTranslation(p.category)}
-                  </span>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                    p.status === 'PUBLISHED'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : 'bg-slate-100 text-slate-600 border border-slate-200'
-                  }`}>
-                    {p.status}
-                  </span>
-                  {p.isOfflineDraft && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 border border-orange-300 flex items-center space-x-1 animate-pulse">
-                      <span>📡 Offline Draft (Pending Sync)</span>
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500 mt-1 line-clamp-1 max-w-md">
-                  {getLocalizedProductField(p, 'description', language) || getLocalizedProductField(p, 'craft_story', language)}
-                </p>
-                <div className="flex items-center space-x-3 text-xs text-slate-500 mt-1.5">
-                  <span className="flex items-center text-slate-700 font-bold">
-                    ₹{p.price.toLocaleString('en-IN')}
-                  </span>
-                  <span>•</span>
-                  <span>Stock: <strong className="text-slate-800">{p.stock} units</strong></span>
-                  <span>•</span>
-                  <span>Cost Basis: ₹{(p.material_cost + p.labour_cost + p.packaging_cost).toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-            </div>
+            Create Your First Product
+          </button>
+        </div>
+      )}
 
-            {/* Actions */}
-            <div className="flex items-center space-x-2 self-end sm:self-center">
-              <button
-                onClick={() => onSelectProduct(p)}
-                className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                title="View Details"
+      {/* Screen 6 Product Cards Grid */}
+      {products && products.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map((p) => {
+            const title = getLocalizedProductField(p, 'title', language) || p.name || p.title;
+            const isPublished = p.status === 'PUBLISHED';
+            const viewsCount = p.views_count || p.views || 12;
+            const enquiriesCount = p.enquiries_count || p.enquiries || 3;
+
+            return (
+              <div
+                key={p.id}
+                className="bg-white rounded-3xl border border-[#E7E7E2] p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
               >
-                <Eye className="w-4 h-4" />
-              </button>
-              {Boolean(currentUser && (currentUser.role === 'ADMIN' || !p.seller_id || p.seller_id === currentUser?.id)) && (
-                <>
+                <div className="space-y-3">
+                  <div className="relative rounded-2xl overflow-hidden h-44 bg-[#FAFAF7] border border-[#E7E7E2]">
+                    <img
+                      src={p.image_url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400&auto=format&fit=crop&q=80'}
+                      alt={title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=400&auto=format&fit=crop&q=80';
+                      }}
+                    />
+                    <span className={`absolute top-3 left-3 text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                      isPublished 
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                        : 'bg-stone-100 text-stone-700 border-stone-200'
+                    }`}>
+                      {isPublished ? 'Published' : 'Draft'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-base text-[#171717] truncate">{title}</h3>
+                    <div className="text-base font-extrabold text-[#176B4D] mt-0.5">
+                      ₹{Number(p.price).toLocaleString('en-IN')}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-[#666666] mt-2">
+                      <span>{viewsCount} views</span>
+                      <span>•</span>
+                      <span>{enquiriesCount} enquiries</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Actions */}
+                <div className="flex items-center gap-2 pt-4 border-t border-[#E7E7E2] mt-4">
+                  <button
+                    onClick={() => onSelectProduct(p)}
+                    className="flex-1 py-2 px-3 bg-[#FAFAF7] hover:bg-stone-100 text-[#171717] font-semibold text-xs rounded-xl border border-[#E7E7E2] transition-colors"
+                  >
+                    View
+                  </button>
                   <button
                     onClick={() => onEditProduct(p)}
-                    className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-                    title="Edit Product"
+                    className="flex-1 py-2 px-3 bg-[#FAFAF7] hover:bg-stone-100 text-[#171717] font-semibold text-xs rounded-xl border border-[#E7E7E2] transition-colors"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    Edit
                   </button>
-                  <button
-                    onClick={() => onDeleteProduct(p.id)}
-                    className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                    title="Delete Product"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+                  {Boolean(currentUser && (currentUser.role === 'ADMIN' || !p.seller_id || p.seller_id === currentUser?.id)) && (
+                    <button
+                      onClick={() => onDeleteProduct(p.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-xl border border-[#E7E7E2] transition-colors"
+                      title="Delete Product"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

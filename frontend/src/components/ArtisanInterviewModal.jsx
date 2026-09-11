@@ -8,6 +8,8 @@ import MarketInsights from './MarketInsights';
 import PriceRecommendation from './PriceRecommendation';
 import ProductReview from './ProductReview';
 import useVoiceInput from '../hooks/useVoiceInput';
+import { useGeminiLiveSession } from '../hooks/useGeminiLiveSession';
+import { runMarketResearch } from '../services/interviewApi';
 
 export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreated }) {
   const {
@@ -15,6 +17,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     setStep,
     sessionId,
     sessionData,
+    setSessionData,
     loading,
     error,
     startSession,
@@ -98,6 +101,30 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     language: selectedLang,
   });
 
+  // Gemini Live WebSocket Session Hook
+  const {
+    isConnected: isLiveConnected,
+    isSpeaking: isLiveSpeaking,
+    isListening: isLiveListening,
+    liveTranscript,
+    error: liveError,
+    sendTextMessage,
+    triggerInterrupt,
+    stopAllPlayback,
+  } = useGeminiLiveSession({
+    sessionId,
+    active: step === INTERVIEW_STEPS.INTERVIEW && isOpen,
+    onFactsUpdated: (facts, count) => {
+      setSessionData((prev) => prev ? { ...prev, product_facts: facts, question_count: count } : prev);
+    },
+    onStatusComplete: (facts) => {
+      runMarketResearch(sessionId).then((researchData) => {
+        setSessionData(researchData);
+        setStep(INTERVIEW_STEPS.MARKET_RESEARCH);
+      }).catch(console.error);
+    }
+  });
+
   // Keep inputText updated if voice transcript changes
   useEffect(() => {
     if (transcript) {
@@ -107,10 +134,10 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
 
   // Speak AI question automatically when step is INTERVIEW
   useEffect(() => {
-    if (step === INTERVIEW_STEPS.INTERVIEW && sessionData?.current_question) {
+    if (step === INTERVIEW_STEPS.INTERVIEW && sessionData?.current_question && !isLiveSpeaking) {
       speakText(sessionData.current_question);
     }
-  }, [step, sessionData?.current_question]);
+  }, [step, sessionData?.current_question, isLiveSpeaking]);
 
   if (!isOpen) return null;
 
@@ -136,6 +163,9 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
 
     try {
       setInputText('');
+      if (isLiveConnected) {
+        sendTextMessage(text.trim());
+      }
       await sendAnswer(text.trim());
     } catch (err) {
       console.error('Failed to send answer:', err);
@@ -187,17 +217,16 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                Artisan AI Studio V2
-                <span className="text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                  Gemini Live Voice Mode
+                Create Your Product
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold">
+                  Talk to Ananya
                 </span>
               </h2>
               <p className="text-xs text-slate-400">
-                Interactive Multilingual Audio Counselor & Dynamic Pricing Engine
+                Show us your craft. Ananya will help with the rest.
               </p>
             </div>
           </div>
-
           <button
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-all"
@@ -207,9 +236,9 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
         </div>
 
         {/* Global Error Banner */}
-        {error && (
+        {(error || liveError) && (
           <div className="mx-6 mt-4 p-3 bg-red-950/60 border border-red-500/40 rounded-xl text-xs text-red-200">
-            {error}
+            {error || liveError}
           </div>
         )}
 
@@ -219,11 +248,11 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
           {step === INTERVIEW_STEPS.PHOTO_LANG && (
             <form onSubmit={handleStart} className="space-y-6 max-w-2xl mx-auto">
               <div className="text-center space-y-2">
-                <h3 className="text-xl font-bold text-amber-300">
-                  Select Your Language & Upload Craft Photos
+                <h3 className="text-xl font-bold text-slate-100">
+                  Select Your Language & Upload Craft Photo
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Choose your native language and upload photos directly from your device camera or gallery.
+                  Choose your native language and upload photos of your product.
                 </p>
               </div>
 
@@ -305,7 +334,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                     )}
 
                     <div className="pt-1">
-                      <span className="text-[11px] text-slate-400 block mb-1">Or paste a Direct Image URL:</span>
+                      <span className="text-[11px] text-slate-400 block mb-1">Or enter image web link:</span>
                       <input
                         type="url"
                         value={photoUrl}
@@ -352,15 +381,32 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
               <VirtualAssistant
                 question={sessionData.current_question}
                 language={sessionData.language || selectedLang}
-                isSpeaking={isSpeaking}
-                isListening={isListening}
+                isSpeaking={isLiveSpeaking || isSpeaking}
+                isListening={isLiveListening || isListening}
                 isMuted={isMuted}
                 autoListen={autoListen}
+                isConnected={isLiveConnected}
+                liveTranscript={liveTranscript}
+                questionCount={sessionData.question_count || 1}
                 onToggleMute={toggleMute}
                 onToggleAutoListen={toggleAutoListen}
                 onSpeak={() => speakText(sessionData.current_question)}
-                onStopSpeak={stopSpeaking}
-                questionCount={sessionData.question_count || 1}
+                onStopSpeak={() => {
+                  stopSpeaking();
+                  triggerInterrupt();
+                }}
+                onSendAnswer={handleAnswerSubmit}
+                onEndCall={async () => {
+                  stopAllPlayback();
+                  try {
+                    const researchData = await runMarketResearch(sessionId);
+                    setSessionData(researchData);
+                    setStep(INTERVIEW_STEPS.MARKET_RESEARCH);
+                  } catch (e) {
+                    setStep(INTERVIEW_STEPS.MARKET_RESEARCH);
+                  }
+                }}
+                loading={loading}
               />
 
               <VoiceInput
@@ -377,7 +423,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
               />
 
               {/* Extracted Facts Showcase */}
-              {sessionData.extracted_facts && Object.keys(sessionData.extracted_facts).length > 0 && (
+              {sessionData.product_facts && Object.keys(sessionData.product_facts).length > 0 && (
                 <div className="bg-slate-950/80 p-5 rounded-2xl border border-amber-500/20 shadow-xl backdrop-blur-md">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -385,11 +431,11 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                       Confirmed Product Facts Gathered
                     </h4>
                     <span className="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono">
-                      {Object.keys(sessionData.extracted_facts).length} Verified Facts
+                      {Object.keys(sessionData.product_facts).length} Verified Facts
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {Object.entries(sessionData.extracted_facts).map(([k, v]) => (
+                    {Object.entries(sessionData.product_facts).map(([k, v]) => (
                       <span
                         key={k}
                         className="bg-slate-900 border border-slate-700/80 text-slate-200 text-xs px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm hover:border-amber-500/40 transition-colors"
@@ -409,7 +455,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
             <div className="space-y-6">
               <InterviewProgress sessionData={sessionData} />
 
-              <MarketInsights sessionData={sessionData} />
+              <MarketInsights marketData={sessionData.market_research_result || sessionData.market_research} />
 
               <div className="flex justify-end pt-4">
                 <button
@@ -455,7 +501,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                 <button
                   type="submit"
                   disabled={loading || !expectedPriceVal}
-                  className="px-8 py-3 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold text-sm rounded-xl shadow-lg flex items-center gap-2 transition-all"
+                  className="px-8 py-3 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-bold text-sm rounded-xl shadow-lg flex items-center gap-2 transition-all"
                 >
                   {loading ? 'Calculating Fair Valuation...' : 'Calculate AI Fair Price'}
                   <ArrowRight className="w-4 h-4" />

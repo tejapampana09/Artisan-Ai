@@ -1,9 +1,13 @@
 import { apiFetch } from '../api/client.js';
+import { getAuthToken } from '../api/auth.js';
 
-export async function startInterviewSession({ language = 'te', photo_url = null, category_hint = null }) {
+export { getAuthToken };
+
+
+export async function startInterviewSession({ language = 'te', photo_url = null, secondary_images = null, category_hint = null }) {
   return apiFetch('/interview/start', {
     method: 'POST',
-    body: JSON.stringify({ language, photo_url, category_hint }),
+    body: JSON.stringify({ language, photo_url, secondary_images, category_hint }),
   });
 }
 

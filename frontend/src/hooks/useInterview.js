@@ -25,11 +25,11 @@ export function useInterview() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const startSession = useCallback(async ({ language = 'te', photo_url = null, category_hint = null }) => {
+  const startSession = useCallback(async ({ language = 'te', photo_url = null, secondary_images = null, category_hint = null }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await startInterviewSession({ language, photo_url, category_hint });
+      const data = await startInterviewSession({ language, photo_url, secondary_images, category_hint });
       setSessionId(data.id);
       setSessionData(data);
       setStep(INTERVIEW_STEPS.INTERVIEW);
