@@ -27,5 +27,8 @@ Thumbs.db
 git.cmd
 *.zip
 scratch_*
+oxlint_report.json
+report.json
+
 
 
