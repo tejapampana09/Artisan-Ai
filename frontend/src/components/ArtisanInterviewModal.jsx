@@ -10,8 +10,6 @@ import ProductReview from './ProductReview';
 import useVoiceInput from '../hooks/useVoiceInput';
 
 export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreated }) {
-  if (!isOpen) return null;
-
   const {
     step,
     setStep,
@@ -62,6 +60,8 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
       speakText(sessionData.current_question);
     }
   }, [step, sessionData?.current_question]);
+
+  if (!isOpen) return null;
 
   const handleStart = async (e) => {
     e.preventDefault();
