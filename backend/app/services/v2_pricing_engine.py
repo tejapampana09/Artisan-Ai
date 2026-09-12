@@ -31,7 +31,9 @@ class V2PricingEngine:
         min_margin_pct: Optional[Any] = None,
         market_research_result: Optional[Dict[str, Any]] = None,
         artisan_expected_price: Optional[Any] = None,
-        current_price: Optional[Any] = None
+        current_price: Optional[Any] = None,
+        ml_demand_multiplier: Optional[Any] = None,
+        ml_demand_info: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         # 1. Cost Floor Availability & Calculation
         has_cost_inputs = any(
@@ -83,6 +85,13 @@ class V2PricingEngine:
         else:
             raw_target = minimum_fair_price * Decimal("1.25")
 
+        # 4b. Integrate ML Demand Signal (RandomForest Model Inference)
+        bounded_ml: Optional[Decimal] = None
+        if ml_demand_multiplier is not None:
+            bounded_ml = min(Decimal("1.15"), max(Decimal("0.95"), Decimal(str(ml_demand_multiplier))))
+            raw_target = (raw_target * bounded_ml).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            pricing_factors.append("ML Demand Signal")
+
         curr_price = to_decimal(current_price) if current_price is not None and Decimal(str(current_price)) > 0 else minimum_fair_price
 
         # 5. Apply Safety Caps (+25% upper limit / -10% lower limit)
@@ -118,6 +127,14 @@ class V2PricingEngine:
         else:
             reasoning.append("Cost floor details not specified.")
 
+        if bounded_ml is not None:
+            if ml_demand_info and ml_demand_info.get("model_source") == "TRAINED_ML_MODEL":
+                lvl = ml_demand_info.get("demand_level", "NORMAL")
+                score = ml_demand_info.get("predicted_demand_score", 0)
+                reasoning.append(f"ML Demand Model evaluates {lvl} market interest (score {score}/100, {float(bounded_ml):.2f}x multiplier).")
+            else:
+                reasoning.append(f"ML demand signal factored at {float(bounded_ml):.2f}x multiplier.")
+
         return {
             "recommended_price": to_decimal_str(rounded_price),
             "cost_floor_available": cost_floor_available,
@@ -131,6 +148,7 @@ class V2PricingEngine:
                 "high": to_decimal_str(m_high)
             },
             "market_median": to_decimal_str(m_median),
+            "ml_demand_multiplier": float(bounded_ml) if bounded_ml is not None else 1.0,
             "pricing_factors": pricing_factors,
             "warnings": warnings,
             "reasoning": reasoning,

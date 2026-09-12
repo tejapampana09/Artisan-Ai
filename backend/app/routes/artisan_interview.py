@@ -317,6 +317,21 @@ def calculate_final_price(
     facts = json.loads(session.product_facts) if session.product_facts else {}
     research = json.loads(session.market_research_result) if session.market_research_result else {}
 
+    # Run ML Demand Inference on session facts + category telemetry
+    from backend.app.services.ml_demand_engine import MLDemandEngine
+    ml_engine = MLDemandEngine()
+    category_val = facts.get("category", {}).get("value") if isinstance(facts.get("category"), dict) else facts.get("category")
+    ml_res = ml_engine.predict_for_session(
+        db=db,
+        category=category_val or session.category_hint,
+        material_cost=req.material_cost,
+        labour_cost=req.labour_cost,
+        packaging_cost=req.packaging_cost,
+        other_cost=req.other_cost,
+        expected_price=session.artisan_expected_price
+    )
+    ml_multiplier = ml_res.get("ml_demand_multiplier", 1.00)
+
     engine = V2PricingEngine()
     pricing_res = engine.calculate_v2_recommendation(
         material_cost=req.material_cost,
@@ -324,7 +339,9 @@ def calculate_final_price(
         packaging_cost=req.packaging_cost,
         other_cost=req.other_cost,
         market_research_result=research,
-        artisan_expected_price=session.artisan_expected_price
+        artisan_expected_price=session.artisan_expected_price,
+        ml_demand_multiplier=ml_multiplier,
+        ml_demand_info=ml_res
     )
 
     rec_price = pricing_res.get("recommended_price")
@@ -363,23 +380,24 @@ def publish_interview_product(
     ai_draft = json.loads(session.ai_generated_listing) if session.ai_generated_listing else {}
     
     # Audit provenance: AI draft vs Artisan final approved listing
+    final_title = req.title or req.name or "Handcrafted Artisan Product"
     audit_provenance = {
         "ai_draft_title": ai_draft.get("title"),
-        "published_title": req.title,
+        "published_title": final_title,
         "ai_recommended_price": float(session.recommended_price) if session.recommended_price else None,
         "published_price": float(req.price),
-        "artisan_edited_title": req.title != ai_draft.get("title"),
+        "artisan_edited_title": final_title != ai_draft.get("title"),
         "artisan_edited_price": session.recommended_price is not None and Decimal(str(req.price)) != session.recommended_price,
         "provenance": "ARTISAN_REVIEWED_AND_APPROVED"
     }
 
     product = Product(
-        title=req.title,
+        title=final_title,
         category=req.category,
         materials=req.materials,
         description=req.description,
         craft_story=req.craft_story,
-        title_en=req.title_en or req.title,
+        title_en=req.title_en or final_title,
         description_en=req.description_en or req.description,
         craft_story_en=req.craft_story_en or req.craft_story,
         translations=req.translations,

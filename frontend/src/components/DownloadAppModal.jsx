@@ -42,14 +42,19 @@ export default function DownloadAppModal({ isOpen, onClose }) {
     if (isOpen && (deferredPrompt || window.deferredPwaPrompt) && !isInstalled) {
       const activePrompt = deferredPrompt || window.deferredPwaPrompt;
       try {
-        activePrompt.prompt();
-        activePrompt.userChoice.then(({ outcome }) => {
-          if (outcome === 'accepted') {
-            setIsInstalled(true);
-          }
-          setDeferredPrompt(null);
-          window.deferredPwaPrompt = null;
-        }).catch(() => {});
+        const promptPromise = activePrompt.prompt();
+        if (promptPromise && typeof promptPromise.catch === 'function') {
+          promptPromise.catch(() => {});
+        }
+        if (activePrompt.userChoice && typeof activePrompt.userChoice.then === 'function') {
+          activePrompt.userChoice.then(({ outcome }) => {
+            if (outcome === 'accepted') {
+              setIsInstalled(true);
+            }
+            setDeferredPrompt(null);
+            window.deferredPwaPrompt = null;
+          }).catch(() => {});
+        }
       } catch (e) {
         // Browser requires user gesture or already prompted
       }

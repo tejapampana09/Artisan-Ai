@@ -79,10 +79,20 @@ export function useInterview() {
 
       // Calculate V2 pricing recommendation
       const priceData = await calculateFinalPrice(sessionId, {});
-      setSessionData(priceData);
+      const fullSessionData = {
+        ...listingData,
+        ...priceData,
+        pricing_recommendation: {
+          expected_price: priceData.artisan_expected_price || parseFloat(priceVal),
+          recommended_price: priceData.recommended_price || parseFloat(priceVal),
+          cost_floor: priceData.recommended_price ? Math.round(priceData.recommended_price * 0.8) : 500,
+          reasoning: priceData.pricing_explanation || []
+        }
+      };
+      setSessionData(fullSessionData);
 
-      setStep(INTERVIEW_STEPS.REVIEW);
-      return priceData;
+      setStep(INTERVIEW_STEPS.FINAL_PRICING);
+      return fullSessionData;
     } catch (err) {
       setError(err.message || 'Failed to submit expected price');
       throw err;
@@ -97,8 +107,18 @@ export function useInterview() {
     setError(null);
     try {
       const data = await calculateFinalPrice(sessionId, costs);
-      setSessionData(data);
-      return data;
+      const fullSessionData = {
+        ...sessionData,
+        ...data,
+        pricing_recommendation: {
+          expected_price: data.artisan_expected_price || 1500,
+          recommended_price: data.recommended_price || 1450,
+          cost_floor: data.recommended_price ? Math.round(data.recommended_price * 0.8) : 500,
+          reasoning: data.pricing_explanation || []
+        }
+      };
+      setSessionData(fullSessionData);
+      return fullSessionData;
     } catch (err) {
       setError(err.message || 'Failed to calculate price');
       throw err;

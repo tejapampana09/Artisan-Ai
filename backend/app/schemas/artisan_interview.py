@@ -22,7 +22,8 @@ class FinalPriceRequest(BaseModel):
     other_cost: Optional[float] = Field(None, ge=0)
 
 class PublishListingRequest(BaseModel):
-    title: str = Field(..., min_length=2, max_length=255)
+    title: Optional[str] = Field(None, min_length=2, max_length=255)
+    name: Optional[str] = Field(None, max_length=255)
     category: str = Field(..., min_length=2, max_length=100)
     materials: Optional[str] = Field(None, max_length=500)
     description: Optional[str] = None

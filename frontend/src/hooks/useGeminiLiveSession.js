@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getAuthToken } from '../services/interviewApi';
 
-export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStatusComplete }) {
+export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStatusComplete, onUserTranscript }) {
   const [isConnected, setIsConnected] = useState(false);
+  const [isSimulated, setIsSimulated] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
+  const [userTranscript, setUserTranscript] = useState('');
   const [error, setError] = useState(null);
 
   const wsRef = useRef(null);
@@ -122,14 +124,20 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
         const msg = JSON.parse(event.data);
         if (msg.type === 'connected') {
           setIsConnected(true);
+          setIsSimulated(Boolean(msg.simulated || !msg.live_mode));
         } else if (msg.type === 'audio' && msg.pcm) {
           play24kHzPCMChunk(msg.pcm);
         } else if (msg.type === 'transcript') {
           setLiveTranscript(msg.text);
+        } else if (msg.type === 'user_transcript') {
+          setUserTranscript(msg.text);
+          if (onUserTranscript) {
+            onUserTranscript(msg.text, Boolean(msg.is_final));
+          }
         } else if (msg.type === 'interrupted') {
           stopAllPlayback();
         } else if (msg.type === 'facts_updated') {
-          if (onFactsUpdated) onFactsUpdated(msg.extracted_facts, msg.question_count);
+          if (onFactsUpdated) onFactsUpdated(msg.extracted_facts, msg.question_count, msg.next_question);
         } else if (msg.type === 'status_change' && msg.status === 'FACTS_COMPLETE') {
           if (onStatusComplete) onStatusComplete(msg.extracted_facts);
         } else if (msg.type === 'error') {
@@ -218,9 +226,11 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
 
   return {
     isConnected,
+    isSimulated,
     isSpeaking,
     isListening,
     liveTranscript,
+    userTranscript,
     error,
     sendTextMessage,
     triggerInterrupt,

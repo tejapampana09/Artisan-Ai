@@ -86,3 +86,6 @@ def get_cors_origins() -> List[str]:
 # AI API configuration
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
 AI_REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "25.0"))
+
+# Canonical Base URL for public links and evidence provenance
+CANONICAL_BASE_URL: str = os.getenv("CANONICAL_BASE_URL", "http://localhost:5173").rstrip("/")

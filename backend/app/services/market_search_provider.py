@@ -217,6 +217,7 @@ class InternalMarketplaceProvider(MarketSearchProvider):
 
         evidences = []
         prices = []
+        base_url = os.getenv("CANONICAL_BASE_URL", "http://localhost:5173").rstrip("/")
         for p in products:
             if p.price and Decimal(str(p.price)) > 0:
                 p_dec = Decimal(str(p.price))
@@ -224,7 +225,7 @@ class InternalMarketplaceProvider(MarketSearchProvider):
                 evidences.append({
                     "title": p.title,
                     "source": "Artisan AI Marketplace",
-                    "source_url": f"/products/{p.id}",
+                    "source_url": f"{base_url}/products/{p.id}",
                     "listed_price": to_decimal_str(p_dec),
                     "currency": "INR",
                     "retrieved_at": datetime.datetime.utcnow().isoformat() + "Z",

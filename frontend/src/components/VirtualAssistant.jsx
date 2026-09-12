@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Volume2, VolumeX, Sparkles, Mic, MicOff, Radio, Square, 
   Keyboard, Send, PhoneOff, RefreshCw, MessageSquare 
@@ -12,6 +12,7 @@ export default function VirtualAssistant({
   isMuted,
   autoListen,
   isConnected,
+  isSimulated,
   liveTranscript,
   questionCount,
   onToggleMute,
@@ -22,8 +23,14 @@ export default function VirtualAssistant({
   onEndCall,
   loading
 }) {
-  const [showTextInput, setShowTextInput] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(Boolean(isSimulated));
   const [inputText, setInputText] = useState('');
+
+  useEffect(() => {
+    if (isSimulated) {
+      setShowTextInput(true);
+    }
+  }, [isSimulated]);
 
   const langLabels = {
     te: 'తెలుగు (Telugu)',
@@ -84,9 +91,14 @@ export default function VirtualAssistant({
 
         {/* Status Badges */}
         <div className="flex items-center gap-2">
-          {isConnected && (
+          {isConnected && !isSimulated && (
             <span className="text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
               <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" /> 🟢 LIVE
+            </span>
+          )}
+          {isConnected && isSimulated && (
+            <span className="text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/40 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+              <MessageSquare className="w-3.5 h-3.5 text-amber-400" /> 🟡 TEXT MODE
             </span>
           )}
           {questionCount && (

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { X, Sparkles, Languages, Camera, ArrowRight, IndianRupee, CheckCircle2, ShoppingBag } from 'lucide-react';
 import { useInterview, INTERVIEW_STEPS } from '../hooks/useInterview';
 import VirtualAssistant from './VirtualAssistant';
-import VoiceInput from './VoiceInput';
 import InterviewProgress from './InterviewProgress';
 import MarketInsights from './MarketInsights';
 import PriceRecommendation from './PriceRecommendation';
@@ -104,9 +103,11 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
   // Gemini Live WebSocket Session Hook
   const {
     isConnected: isLiveConnected,
+    isSimulated: isLiveSimulated,
     isSpeaking: isLiveSpeaking,
     isListening: isLiveListening,
     liveTranscript,
+    userTranscript,
     error: liveError,
     sendTextMessage,
     triggerInterrupt,
@@ -114,8 +115,13 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
   } = useGeminiLiveSession({
     sessionId,
     active: step === INTERVIEW_STEPS.INTERVIEW && isOpen,
-    onFactsUpdated: (facts, count) => {
-      setSessionData((prev) => prev ? { ...prev, product_facts: facts, question_count: count } : prev);
+    onFactsUpdated: (facts, count, nextQuestion) => {
+      setSessionData((prev) => prev ? {
+        ...prev,
+        product_facts: facts,
+        question_count: count,
+        current_question: nextQuestion || prev.current_question
+      } : prev);
     },
     onStatusComplete: (facts) => {
       runMarketResearch(sessionId).then((researchData) => {
@@ -132,12 +138,12 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     }
   }, [transcript]);
 
-  // Speak AI question automatically when step is INTERVIEW
+  // Speak AI question automatically via browser TTS only when in simulated fallback mode
   useEffect(() => {
-    if (step === INTERVIEW_STEPS.INTERVIEW && sessionData?.current_question && !isLiveSpeaking) {
+    if (step === INTERVIEW_STEPS.INTERVIEW && sessionData?.current_question && isLiveSimulated && !isSpeaking) {
       speakText(sessionData.current_question);
     }
-  }, [step, sessionData?.current_question, isLiveSpeaking]);
+  }, [step, sessionData?.current_question, isLiveSimulated, isSpeaking]);
 
   if (!isOpen) return null;
 
@@ -163,10 +169,11 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
 
     try {
       setInputText('');
-      if (isLiveConnected) {
+      if (isLiveConnected && !isLiveSimulated) {
         sendTextMessage(text.trim());
+      } else {
+        await sendAnswer(text.trim());
       }
-      await sendAnswer(text.trim());
     } catch (err) {
       console.error('Failed to send answer:', err);
     }
@@ -378,6 +385,22 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
             <div className="space-y-6">
               <InterviewProgress sessionData={sessionData} />
 
+              {/* Voice Unavailable Fallback Mode Notice */}
+              {isLiveSimulated && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 flex items-center justify-between">
+                  <span>Voice mode unavailable. You can continue with text.</span>
+                  <span className="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded font-mono font-semibold">Fallback Mode</span>
+                </div>
+              )}
+
+              {/* Live Spoken User Transcript Display */}
+              {userTranscript && (
+                <div className="bg-slate-950/70 border border-amber-500/20 rounded-xl p-3 text-xs text-slate-200 flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">You said</span>
+                  <span className="italic">{userTranscript}</span>
+                </div>
+              )}
+
               <VirtualAssistant
                 question={sessionData.current_question}
                 language={sessionData.language || selectedLang}
@@ -386,6 +409,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                 isMuted={isMuted}
                 autoListen={autoListen}
                 isConnected={isLiveConnected}
+                isSimulated={isLiveSimulated}
                 liveTranscript={liveTranscript}
                 questionCount={sessionData.question_count || 1}
                 onToggleMute={toggleMute}
@@ -407,19 +431,6 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                   }
                 }}
                 loading={loading}
-              />
-
-              <VoiceInput
-                language={selectedLang}
-                onSendAnswer={(text) => handleAnswerSubmit(text)}
-                onSubmitAnswer={(text) => handleAnswerSubmit(text)}
-                disabled={loading}
-                loading={loading}
-                isListening={isListening}
-                onStartListening={startListening}
-                onStopListening={stopListening}
-                inputText={inputText}
-                setInputText={setInputText}
               />
 
               {/* Extracted Facts Showcase */}
@@ -562,11 +573,11 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
               <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex items-center gap-4 text-left">
                 <img
                   src={publishedProduct.image_url}
-                  alt={publishedProduct.name}
+                  alt={publishedProduct.title || publishedProduct.name}
                   className="w-16 h-16 rounded-xl object-cover border border-slate-700"
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-slate-100 truncate">{publishedProduct.name}</div>
+                  <div className="text-sm font-semibold text-slate-100 truncate">{publishedProduct.title || publishedProduct.name}</div>
                   <div className="text-xs text-amber-400 font-bold mt-0.5">
                     ₹{Number(publishedProduct.price).toLocaleString('en-IN')}
                   </div>

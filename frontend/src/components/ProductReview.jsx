@@ -1,21 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, Edit2, Check, IndianRupee, Tag, ShieldCheck, Image as ImageIcon, Send, ArrowLeft } from 'lucide-react';
 
 export default function ProductReview({ sessionData, priceData, onPublish, onBack, loading }) {
-  const listing = sessionData?.listing_draft || {};
-  const facts = sessionData?.extracted_facts || {};
+  const listing = sessionData?.ai_generated_listing || sessionData?.listing_draft || {};
+  const facts = sessionData?.product_facts || sessionData?.extracted_facts || {};
   const recPrice = priceData?.recommended_price || sessionData?.recommended_price || 0;
+
+  const getFactVal = (f) => {
+    if (!f) return '';
+    return typeof f === 'object' ? f.value || JSON.stringify(f) : String(f);
+  };
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: listing.name || facts.product_name || 'Handcrafted Artisan Product',
-    description: listing.description || facts.description || '',
-    category: listing.category || facts.category || 'Handicrafts',
-    craft_story: listing.craft_story || facts.craft_story || '',
+    name: listing.title || listing.name || getFactVal(facts.product_name) || 'Handcrafted Artisan Product',
+    description: listing.description || getFactVal(facts.description) || '',
+    category: listing.category || getFactVal(facts.category) || 'Handicrafts',
+    craft_story: listing.craft_story || listing.artisan_story || getFactVal(facts.craft_story) || '',
     price: recPrice,
     image_url: sessionData?.photo_url || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800',
     tags: (listing.tags || ['Handmade', 'Artisan', 'Authentic']).join(', '),
   });
+
+  useEffect(() => {
+    if (sessionData) {
+      const l = sessionData.ai_generated_listing || sessionData.listing_draft || {};
+      const f = sessionData.product_facts || sessionData.extracted_facts || {};
+      const p = priceData?.recommended_price || sessionData.recommended_price || 0;
+      setFormData({
+        name: l.title || l.name || getFactVal(f.product_name) || 'Handcrafted Artisan Product',
+        description: l.description || getFactVal(f.description) || '',
+        category: l.category || getFactVal(f.category) || 'Handicrafts',
+        craft_story: l.craft_story || l.artisan_story || getFactVal(f.craft_story) || '',
+        price: p || recPrice,
+        image_url: sessionData.photo_url || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800',
+        tags: (l.tags || ['Handmade', 'Artisan', 'Authentic']).join(', '),
+      });
+    }
+  }, [sessionData, priceData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -24,11 +46,14 @@ export default function ProductReview({ sessionData, priceData, onPublish, onBac
 
   const handlePublishSubmit = (e) => {
     e.preventDefault();
+    const pubTitle = formData.name || formData.title || 'Handcrafted Creation';
     const payload = {
-      name: formData.name,
-      description: formData.description,
-      category: formData.category,
-      craft_story: formData.craft_story,
+      title: pubTitle,
+      name: pubTitle,
+      description: formData.description || '',
+      category: formData.category || 'Handicrafts',
+      craft_story: formData.craft_story || '',
+      materials: getFactVal(facts.material) || '',
       price: parseFloat(formData.price) || recPrice,
       image_url: formData.image_url,
       tags: typeof formData.tags === 'string' ? formData.tags.split(',').map((t) => t.trim()).filter(Boolean) : formData.tags,

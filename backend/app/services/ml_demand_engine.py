@@ -212,6 +212,123 @@ class MLDemandEngine:
                 }
             }
 
+    def predict_for_session(
+        self,
+        db: Session,
+        category: Optional[str] = None,
+        material_cost: Optional[Any] = None,
+        labour_cost: Optional[Any] = None,
+        packaging_cost: Optional[Any] = None,
+        other_cost: Optional[Any] = None,
+        expected_price: Optional[Any] = None
+    ) -> Dict[str, Any]:
+        """
+        Runs RandomForestRegressor inference on interview session facts.
+        Aggregates category-level real buyer signals from Event table.
+        Returns predicted demand score, level, and bounded multiplier [0.95, 1.15].
+        """
+        mat_cost = float(material_cost or 0.0)
+        lab_cost = float(labour_cost or 0.0)
+        pkg_cost = float(packaging_cost or 0.0)
+        oth_cost = float(other_cost or 0.0)
+        tot_cost = mat_cost + lab_cost + pkg_cost + oth_cost
+
+        curr_price = float(expected_price or (tot_cost * 1.35 if tot_cost > 0 else 500.0))
+        p_ratio = round(curr_price / max(tot_cost, 1.0), 3)
+
+        stock = 1
+        cat_encoded = self.get_category_encoding(category)
+
+        # Real buyer engagement counts from events table for this category
+        views = db.query(Event).filter(Event.category.ilike(f"%{category}%"), Event.event_type == "VIEW").count() if category else 0
+        saves = db.query(Event).filter(Event.category.ilike(f"%{category}%"), Event.event_type == "SAVE").count() if category else 0
+        enquiries = db.query(Event).filter(Event.category.ilike(f"%{category}%"), Event.event_type == "ENQUIRY").count() if category else 0
+        orders = db.query(Event).filter(Event.category.ilike(f"%{category}%"), Event.event_type == "ORDER").count() if category else 0
+
+        features = [
+            mat_cost,
+            lab_cost,
+            pkg_cost,
+            oth_cost,
+            tot_cost,
+            p_ratio,
+            stock,
+            cat_encoded,
+            views,
+            saves,
+            enquiries,
+            orders
+        ]
+
+        feature_dict = {
+            "material_cost": mat_cost,
+            "labour_cost": lab_cost,
+            "packaging_cost": pkg_cost,
+            "other_cost": oth_cost,
+            "total_cost": tot_cost,
+            "price_to_cost_ratio": p_ratio,
+            "stock": stock,
+            "category": category or "Handcrafted",
+            "category_encoded": cat_encoded,
+            "views": views,
+            "saves": saves,
+            "enquiries": enquiries,
+            "orders": orders
+        }
+
+        if not self.is_available() or self.model is None:
+            return {
+                "predicted_demand_score": 0.0,
+                "demand_level": "NORMAL",
+                "ml_demand_multiplier": 1.00,
+                "features": feature_dict,
+                "model_source": "RULE_BASED_FALLBACK",
+                "model_info": {
+                    "available": False,
+                    "reason": "Model artifacts not initialized"
+                }
+            }
+
+        try:
+            raw_prediction = float(self.model.predict([features])[0])
+            score = max(0.0, min(100.0, round(raw_prediction, 2)))
+
+            if score >= 45.0:
+                level = "HIGH"
+            elif score >= 20.0:
+                level = "MODERATE"
+            else:
+                level = "NORMAL"
+
+            multiplier = round(0.95 + (score / 100.0) * 0.20, 3)
+            multiplier = max(0.95, min(1.15, multiplier))
+
+            return {
+                "predicted_demand_score": score,
+                "demand_level": level,
+                "ml_demand_multiplier": multiplier,
+                "features": feature_dict,
+                "model_source": "TRAINED_ML_MODEL",
+                "model_info": {
+                    "available": True,
+                    "model_name": self.metadata.get("model_name") if self.metadata else "RandomForestRegressor",
+                    "r2_score": self.metadata.get("r2_score") if self.metadata else None,
+                }
+            }
+        except Exception as e:
+            logger.error("ML Inference error for session demand: %s", e)
+            return {
+                "predicted_demand_score": 0.0,
+                "demand_level": "NORMAL",
+                "ml_demand_multiplier": 1.00,
+                "features": feature_dict,
+                "model_source": "RULE_BASED_FALLBACK",
+                "model_info": {
+                    "available": False,
+                    "reason": f"Inference exception: {str(e)}"
+                }
+            }
+
 def predict_product_demand(product: Product, db: Session) -> Dict[str, Any]:
     engine = MLDemandEngine()
     return engine.predict(product, db)
