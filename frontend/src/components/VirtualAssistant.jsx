@@ -171,8 +171,16 @@ export default function VirtualAssistant({
           </div>
 
           <div className="text-base md:text-lg font-semibold text-slate-100 leading-relaxed">
-            "{liveTranscript || question || "నమస్కారమండి! నేను అనన్యను. మీ అద్భుతమైన కళారాధన గురించి మాట్లాడటం నాకెంతో సంతోషం."}"
+            "{question || "నమస్కారమండి! నేను అనన్యను. మీ అద్భుతమైన కళారాధన గురించి మాట్లాడటం నాకెంతో సంతోషం."}"
           </div>
+
+          {/* Real-time spoken subtitles */}
+          {isSpeaking && liveTranscript && liveTranscript !== question && (
+            <div className="text-xs text-amber-300/90 italic mt-3 pt-2.5 border-t border-slate-800/80 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+              <span>Speaking: "{liveTranscript}"</span>
+            </div>
+          )}
         </div>
 
 

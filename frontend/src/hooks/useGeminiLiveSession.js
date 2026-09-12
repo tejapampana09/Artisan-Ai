@@ -1,6 +1,22 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getAuthToken } from '../services/interviewApi';
 
+// High-fidelity linear interpolation resampler from arbitrary input sample rate to 16kHz
+function downsampleTo16kHz(float32Array, inputSampleRate) {
+  if (!inputSampleRate || inputSampleRate === 16000) return float32Array;
+  const ratio = inputSampleRate / 16000;
+  const newLength = Math.round(float32Array.length / ratio);
+  const result = new Float32Array(newLength);
+  for (let i = 0; i < newLength; i++) {
+    const originalIndex = i * ratio;
+    const index1 = Math.floor(originalIndex);
+    const index2 = Math.min(index1 + 1, float32Array.length - 1);
+    const fraction = originalIndex - index1;
+    result[i] = float32Array[index1] * (1 - fraction) + float32Array[index2] * fraction;
+  }
+  return result;
+}
+
 export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStatusComplete, onUserTranscript }) {
   const [isConnected, setIsConnected] = useState(false);
   const [isSimulated, setIsSimulated] = useState(false);
@@ -16,6 +32,7 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
   const mediaStreamRef = useRef(null);
   const processorRef = useRef(null);
   const activeSourcesRef = useRef([]);
+  const nextStartTimeRef = useRef(0);
 
   // Clear all playing audio buffers (barge-in queue flush)
   const stopAllPlayback = useCallback(() => {
@@ -27,6 +44,7 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
       }
     });
     activeSourcesRef.current = [];
+    nextStartTimeRef.current = 0;
     setIsSpeaking(false);
   }, []);
 
@@ -46,10 +64,10 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
     return window.btoa(binary);
   };
 
-  // Helper: Play 24kHz Int16 PCM Base64 chunk
+  // Helper: Play 24kHz Int16 PCM Base64 chunk with seamless scheduling
   const play24kHzPCMChunk = useCallback((base64PCM) => {
     try {
-      if (!playAudioContextRef.current) {
+      if (!playAudioContextRef.current || playAudioContextRef.current.state === 'closed') {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         playAudioContextRef.current = new AudioCtx({ sampleRate: 24000 });
       }
@@ -60,14 +78,16 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
 
       const binaryStr = window.atob(base64PCM);
       const len = binaryStr.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
+      // Ensure even number of bytes for 16-bit PCM alignment
+      const alignedLen = len - (len % 2);
+      const bytes = new Uint8Array(alignedLen);
+      for (let i = 0; i < alignedLen; i++) {
         bytes[i] = binaryStr.charCodeAt(i);
       }
-      const int16 = new Int16Array(bytes.buffer);
+      const int16 = new Int16Array(bytes.buffer, bytes.byteOffset, alignedLen / 2);
       const float32 = new Float32Array(int16.length);
       for (let i = 0; i < int16.length; i++) {
-        float32[i] = int16[i] / (int16[i] < 0 ? 32768 : 32767);
+        float32[i] = int16[i] / 32768.0;
       }
 
       const buffer = ctx.createBuffer(1, float32.length, 24000);
@@ -76,18 +96,23 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(ctx.destination);
-      
+
       activeSourcesRef.current.push(source);
       setIsSpeaking(true);
+
+      // Web Audio API chronological timeline scheduling
+      const now = ctx.currentTime;
+      const startTime = Math.max(now, nextStartTimeRef.current);
+      source.start(startTime);
+      nextStartTimeRef.current = startTime + buffer.duration;
 
       source.onended = () => {
         activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== source);
         if (activeSourcesRef.current.length === 0) {
           setIsSpeaking(false);
+          nextStartTimeRef.current = 0;
         }
       };
-
-      source.start();
     } catch (err) {
       console.error('[useGeminiLiveSession] Error playing PCM chunk:', err);
     }
@@ -114,7 +139,6 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
     ws.onopen = () => {
       setIsConnected(true);
       setError(null);
-      // Send first message authentication packet
       const token = getAuthToken();
       ws.send(JSON.stringify({ type: 'auth', token }));
     };
@@ -137,9 +161,13 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
         } else if (msg.type === 'interrupted') {
           stopAllPlayback();
         } else if (msg.type === 'question') {
+          setLiveTranscript('');
           if (onFactsUpdated) onFactsUpdated(null, msg.question_count, msg.text);
         } else if (msg.type === 'facts_updated') {
+          setLiveTranscript('');
           if (onFactsUpdated) onFactsUpdated(msg.extracted_facts, msg.question_count, msg.next_question);
+        } else if (msg.type === 'turn_complete') {
+          // Assistant finished generating audio turn
         } else if (msg.type === 'status_change' && msg.status === 'FACTS_COMPLETE') {
           if (onStatusComplete) onStatusComplete(msg.extracted_facts);
         } else if (msg.type === 'error') {
@@ -160,24 +188,39 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
       setIsListening(false);
     };
 
-    // Start browser microphone stream
+    // Start browser microphone stream with hardware echo cancellation and resampler
     async function startMicStream() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          }
+        });
         mediaStreamRef.current = stream;
 
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioCtx({ sampleRate: 16000 });
+        const ctx = new AudioCtx();
         audioContextRef.current = ctx;
 
+        const nativeSampleRate = ctx.sampleRate || 48000;
         const source = ctx.createMediaStreamSource(stream);
         const processor = ctx.createScriptProcessor(4096, 1, 1);
         processorRef.current = processor;
 
         processor.onaudioprocess = (e) => {
+          // Acoustic Echo Gate: Do not stream microphone when assistant is actively speaking!
+          if (activeSourcesRef.current.length > 0) {
+            return;
+          }
+
           if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            const inputData = e.inputBuffer.getChannelData(0);
-            const pcmBase64 = float32ToPCMBase64(inputData);
+            const rawFloat32 = e.inputBuffer.getChannelData(0);
+            // Downsample native mic rate (e.g. 48kHz / 44.1kHz) to pure 16,000Hz PCM
+            const resampled16k = downsampleTo16kHz(rawFloat32, nativeSampleRate);
+            const pcmBase64 = float32ToPCMBase64(resampled16k);
             wsRef.current.send(JSON.stringify({ type: 'audio', pcm: pcmBase64 }));
           }
         };
@@ -211,7 +254,7 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
       }
       stopAllPlayback();
     };
-  }, [sessionId, active, play24kHzPCMChunk, stopAllPlayback]);
+  }, [sessionId, active, play24kHzPCMChunk, stopAllPlayback, onFactsUpdated, onStatusComplete, onUserTranscript]);
 
   const sendTextMessage = useCallback((text) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -239,3 +282,4 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
     stopAllPlayback,
   };
 }
+

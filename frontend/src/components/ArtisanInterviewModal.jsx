@@ -118,8 +118,8 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     onFactsUpdated: (facts, count, nextQuestion) => {
       setSessionData((prev) => prev ? {
         ...prev,
-        product_facts: facts,
-        question_count: count,
+        product_facts: (facts !== null && facts !== undefined) ? facts : prev.product_facts,
+        question_count: count || prev.question_count,
         current_question: nextQuestion || prev.current_question
       } : prev);
     },
