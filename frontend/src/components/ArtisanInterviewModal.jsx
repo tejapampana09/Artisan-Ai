@@ -70,33 +70,19 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     setUploadedPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const {
-    isListening,
-    transcript,
-    startListening,
-    stopListening,
-    speakText,
-    stopSpeaking,
-    isSpeaking,
-    isMuted,
-    autoListen,
-    toggleMute,
-    toggleAutoListen
-  } = useVoiceInput({
-    language: selectedLang,
-  });
-
   const [isProcessingAnswer, setIsProcessingAnswer] = useState(false);
 
-  // Gemini Live WebSocket Session Hook
+  // 1. Gemini Live WebSocket Session Hook
   const {
     isConnected: isLiveConnected,
     isSimulated: isLiveSimulated,
     isSpeaking: isLiveSpeaking,
     isListening: isLiveListening,
+    isMuted: isLiveMuted,
     liveTranscript,
     userTranscript,
     error: liveError,
+    toggleMute: toggleLiveMute,
     sendTextMessage,
     triggerInterrupt,
     stopAllPlayback,
@@ -121,21 +107,58 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     }
   });
 
-  // Keep inputText updated if voice transcript changes (from Web Speech or Gemini Live)
-  useEffect(() => {
-    if (transcript) {
-      setInputText(transcript);
-    } else if (userTranscript) {
-      setInputText(userTranscript);
-    }
-  }, [transcript, userTranscript]);
+  // Strict Mutual Exclusion: When Live Audio is connected, Fallback is completely disabled
+  const isLiveAudio = isLiveConnected && !isLiveSimulated;
 
-  // Speak AI question automatically via browser TTS only when in simulated fallback mode
+  // 2. Fallback Web Speech Hook (Only active when Live Audio is NOT available)
+  const {
+    isListening: isFallbackListening,
+    transcript: fallbackTranscript,
+    startListening: startFallbackListen,
+    stopListening: stopFallbackListen,
+    speakText: speakFallbackText,
+    stopSpeaking: stopFallbackSpeaking,
+    isSpeaking: isFallbackSpeaking,
+    isMuted: isFallbackMuted,
+    toggleMute: toggleFallbackMute,
+  } = useVoiceInput({
+    language: selectedLang,
+  });
+
+  // When Live Audio connects, immediately terminate any active fallback speech or TTS
   useEffect(() => {
-    if (step === INTERVIEW_STEPS.INTERVIEW && sessionData?.current_question && isLiveSimulated && !isSpeaking) {
-      speakText(sessionData.current_question);
+    if (isLiveAudio) {
+      stopFallbackSpeaking();
+      stopFallbackListen();
     }
-  }, [step, sessionData?.current_question, isLiveSimulated, isSpeaking]);
+  }, [isLiveAudio, stopFallbackSpeaking, stopFallbackListen]);
+
+  // Keep inputText updated ONLY from the active mode
+  useEffect(() => {
+    if (isLiveAudio) {
+      if (userTranscript) {
+        setInputText(userTranscript);
+      }
+    } else {
+      if (fallbackTranscript) {
+        setInputText(fallbackTranscript);
+      }
+    }
+  }, [isLiveAudio, userTranscript, fallbackTranscript]);
+
+  // Speak AI question via fallback browser TTS ONLY when Live Mode is NOT active
+  useEffect(() => {
+    if (
+      step === INTERVIEW_STEPS.INTERVIEW &&
+      sessionData?.current_question &&
+      !isLiveAudio &&
+      isLiveSimulated &&
+      !isFallbackSpeaking &&
+      !isFallbackMuted
+    ) {
+      speakFallbackText(sessionData.current_question);
+    }
+  }, [step, sessionData?.current_question, isLiveAudio, isLiveSimulated, isFallbackSpeaking, isFallbackMuted, speakFallbackText]);
 
   if (!isOpen) return null;
 
@@ -435,25 +458,24 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
               <VirtualAssistant
                 question={sessionData.current_question}
                 language={sessionData.language || selectedLang}
-                isSpeaking={isLiveSpeaking || isSpeaking}
-                isListening={isListening}
-                isMuted={isMuted}
+                isSpeaking={isLiveAudio ? isLiveSpeaking : isFallbackSpeaking}
+                isListening={isLiveAudio ? isLiveListening : isFallbackListening}
+                isMuted={isLiveAudio ? isLiveMuted : isFallbackMuted}
                 isConnected={isLiveConnected}
                 isSimulated={isLiveSimulated}
-                liveTranscript={liveTranscript}
-                speechTranscript={transcript}
+                liveTranscript={isLiveAudio ? liveTranscript : ''}
+                speechTranscript={!isLiveAudio ? fallbackTranscript : ''}
                 questionCount={sessionData.question_count || 1}
-                onToggleMute={toggleMute}
-                onSpeak={() => speakText(sessionData.current_question)}
-                onStopSpeak={() => {
-                  stopSpeaking();
-                  triggerInterrupt();
-                }}
-                onStartListen={startListening}
-                onStopListen={stopListening}
+                onToggleMute={isLiveAudio ? toggleLiveMute : toggleFallbackMute}
+                onSpeak={isLiveAudio ? undefined : () => speakFallbackText(sessionData.current_question)}
+                onStopSpeak={isLiveAudio ? () => { stopAllPlayback(); triggerInterrupt(); } : stopFallbackSpeaking}
+                onStartListen={isLiveAudio ? toggleLiveMute : startFallbackListen}
+                onStopListen={isLiveAudio ? toggleLiveMute : stopFallbackListen}
                 onSendAnswer={handleAnswerSubmit}
                 onEndCall={async () => {
                   stopAllPlayback();
+                  stopFallbackSpeaking();
+                  stopFallbackListen();
                   try {
                     const researchData = await runMarketResearch(sessionId);
                     setSessionData(researchData);

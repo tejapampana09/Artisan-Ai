@@ -22,10 +22,12 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
   const [isSimulated, setIsSimulated] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
   const [userTranscript, setUserTranscript] = useState('');
   const [error, setError] = useState(null);
 
+  const isMutedRef = useRef(false);
   const wsRef = useRef(null);
   const audioContextRef = useRef(null);
   const playAudioContextRef = useRef(null);
@@ -230,8 +232,8 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
         processorRef.current = processor;
 
         processor.onaudioprocess = (e) => {
-          // Acoustic Echo Gate: Do not stream microphone when assistant is actively speaking!
-          if (activeSourcesRef.current.length > 0) {
+          // Acoustic Echo Gate & Mute Gate: Do not stream mic when muted or when assistant is actively speaking!
+          if (isMutedRef.current || activeSourcesRef.current.length > 0) {
             return;
           }
 
@@ -278,6 +280,20 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
     };
   }, [sessionId, active]);
 
+  const toggleMute = useCallback(() => {
+    setIsMuted((prev) => {
+      const next = !prev;
+      isMutedRef.current = next;
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getAudioTracks().forEach((track) => {
+          track.enabled = !next;
+        });
+      }
+      setIsListening(!next);
+      return next;
+    });
+  }, []);
+
   const sendTextMessage = useCallback((text) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'answer_text', text }));
@@ -296,9 +312,11 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
     isSimulated,
     isSpeaking,
     isListening,
+    isMuted,
     liveTranscript,
     userTranscript,
     error,
+    toggleMute,
     sendTextMessage,
     triggerInterrupt,
     stopAllPlayback,
