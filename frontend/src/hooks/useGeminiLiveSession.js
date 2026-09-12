@@ -136,6 +136,8 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
           }
         } else if (msg.type === 'interrupted') {
           stopAllPlayback();
+        } else if (msg.type === 'question') {
+          if (onFactsUpdated) onFactsUpdated(null, msg.question_count, msg.text);
         } else if (msg.type === 'facts_updated') {
           if (onFactsUpdated) onFactsUpdated(msg.extracted_facts, msg.question_count, msg.next_question);
         } else if (msg.type === 'status_change' && msg.status === 'FACTS_COMPLETE') {

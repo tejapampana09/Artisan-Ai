@@ -40,6 +40,8 @@ export default function VirtualAssistant({
     en: 'English'
   };
 
+
+
   const handleTextSubmit = (e) => {
     if (e) e.preventDefault();
     if (!inputText.trim() || loading) return;
@@ -172,6 +174,7 @@ export default function VirtualAssistant({
             "{liveTranscript || question || "నమస్కారమండి! నేను అనన్యను. మీ అద్భుతమైన కళారాధన గురించి మాట్లాడటం నాకెంతో సంతోషం."}"
           </div>
         </div>
+
 
         {/* Inline Text Response Form (Toggled via Keyboard Button) */}
         {showTextInput && (

@@ -107,7 +107,7 @@ STRICT BEHAVIORAL PROTOCOL:
                 "setup": {
                     "model": GEMINI_LIVE_MODEL,
                     "generationConfig": {
-                        "responseModalities": ["AUDIO", "TEXT"],
+                        "responseModalities": ["AUDIO"],
                         "speechConfig": {
                             "voiceConfig": {
                                 "prebuiltVoiceConfig": {
@@ -201,11 +201,17 @@ STRICT BEHAVIORAL PROTOCOL:
                     resp = json.loads(raw_msg)
                     
                     # 1. Handle setupComplete lifecycle frame -> Send approved opening question
-                    if resp.get("setupComplete"):
+                    if "setupComplete" in resp:
                         logger.info(f"[GeminiLiveService] Setup complete for session #{self.session.id}")
                         await client_ws.send_json({"type": "setup_complete"})
                         
                         initial_q = self._get_current_or_initial_question()
+                        if initial_q:
+                            await client_ws.send_json({
+                                "type": "question",
+                                "text": initial_q,
+                                "question_count": self.session.question_count or 1
+                            })
                         if initial_q and self.gemini_ws:
                             init_turn = {
                                 "clientContent": {
@@ -220,7 +226,7 @@ STRICT BEHAVIORAL PROTOCOL:
                         continue
 
                     # 2. Handle goAway frame (graceful termination signal)
-                    if resp.get("goAway"):
+                    if "goAway" in resp:
                         logger.info(f"[GeminiLiveService] Received goAway frame for session #{self.session.id}")
                         await client_ws.send_json({
                             "type": "go_away",
@@ -230,7 +236,7 @@ STRICT BEHAVIORAL PROTOCOL:
                         break
 
                     # 3. Handle sessionResumptionUpdate
-                    if resp.get("sessionResumptionUpdate"):
+                    if "sessionResumptionUpdate" in resp:
                         await client_ws.send_json({
                             "type": "session_resumption",
                             "update": resp.get("sessionResumptionUpdate")
@@ -239,7 +245,7 @@ STRICT BEHAVIORAL PROTOCOL:
 
                     # 4. Handle serverContent frame
                     server_content = resp.get("serverContent")
-                    if not server_content:
+                    if server_content is None:
                         continue
 
                     # Check for Gemini Live interruption frame
