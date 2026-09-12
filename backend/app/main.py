@@ -26,6 +26,8 @@ from backend.app.routes.notifications import router as notifications_router
 from backend.app.routes.artisan import router as artisan_router, seller_router
 from backend.app.routes.ml_demand import router as ml_demand_router
 from backend.app.routes.artisan_interview import router as interview_router
+from backend.app.routes.uploads import router as uploads_router, UPLOAD_DIR
+from fastapi.staticfiles import StaticFiles
 from backend.app.services.auth import get_current_user as auth_get_current_user
 
 # Initialize database tables directly via SQLAlchemy Base metadata
@@ -93,6 +95,10 @@ app.include_router(artisan_router)
 app.include_router(seller_router)
 app.include_router(ml_demand_router)
 app.include_router(interview_router)
+app.include_router(uploads_router)
+
+# Mount local uploads directory for static file serving
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
 TTS_VOICE_MAP = {

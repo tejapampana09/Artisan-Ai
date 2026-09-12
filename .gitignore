@@ -29,6 +29,8 @@ git.cmd
 scratch_*
 oxlint_report.json
 report.json
+backend/uploads/*
+!backend/uploads/.gitkeep
 
 
 

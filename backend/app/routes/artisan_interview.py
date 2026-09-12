@@ -37,6 +37,14 @@ def _build_session_response(session: InterviewSession) -> InterviewSessionRespon
         if last_turn.speaker == "ASSISTANT":
             current_q = last_turn.question
 
+    pricing_rec = facts.get("pricing_recommendation")
+    cost_flr = None
+    if pricing_rec and pricing_rec.get("cost_floor"):
+        try:
+            cost_flr = float(pricing_rec["cost_floor"])
+        except (ValueError, TypeError):
+            pass
+
     return InterviewSessionResponse(
         id=session.id,
         user_id=session.user_id,
@@ -51,7 +59,9 @@ def _build_session_response(session: InterviewSession) -> InterviewSessionRespon
         market_research_result=research,
         artisan_expected_price=float(session.artisan_expected_price) if session.artisan_expected_price is not None else None,
         recommended_price=float(session.recommended_price) if session.recommended_price is not None else None,
+        cost_floor=cost_flr,
         pricing_explanation=reasoning,
+        pricing_recommendation=pricing_rec,
         created_at=session.created_at
     )
 
@@ -266,10 +276,10 @@ async def generate_listing_prose(
     if session.user_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    if session.status != "PRICE_PENDING":
+    if session.status not in ["PRICE_PENDING", "READY_FOR_REVIEW"]:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot generate listing in session status '{session.status}'. Must be in PRICE_PENDING status."
+            detail=f"Cannot generate listing in session status '{session.status}'. Must be in PRICE_PENDING or READY_FOR_REVIEW status."
         )
 
     facts = json.loads(session.product_facts) if session.product_facts else {}
@@ -308,10 +318,10 @@ def calculate_final_price(
     if session.user_id != current_user.id and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    if session.status != "PRICE_PENDING":
+    if session.status not in ["PRICE_PENDING", "READY_FOR_REVIEW"]:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot calculate final price in session status '{session.status}'. Must be in PRICE_PENDING status."
+            detail=f"Cannot calculate final price in session status '{session.status}'. Must be in PRICE_PENDING or READY_FOR_REVIEW status."
         )
 
     facts = json.loads(session.product_facts) if session.product_facts else {}
@@ -347,6 +357,8 @@ def calculate_final_price(
     rec_price = pricing_res.get("recommended_price")
     session.recommended_price = Decimal(str(rec_price)).quantize(Decimal("0.01")) if rec_price else None
     session.pricing_explanation = json.dumps(pricing_res.get("reasoning", []))
+    facts["pricing_recommendation"] = pricing_res
+    session.product_facts = json.dumps(facts)
     session.status = "READY_FOR_REVIEW"
     db.commit()
     db.refresh(session)

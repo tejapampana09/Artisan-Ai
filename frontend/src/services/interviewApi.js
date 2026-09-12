@@ -3,6 +3,31 @@ import { getAuthToken } from '../api/auth.js';
 
 export { getAuthToken };
 
+export async function uploadImageFile(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const token = getAuthToken();
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const res = await fetch('/api/uploads/image', {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Upload failed' }));
+    throw new Error(err.detail || 'Image upload failed');
+  }
+  
+  const data = await res.json();
+  return data.url; // e.g. "/uploads/craft_123.jpg"
+}
+
 
 export async function startInterviewSession({ language = 'te', photo_url = null, secondary_images = null, category_hint = null }) {
   return apiFetch('/interview/start', {

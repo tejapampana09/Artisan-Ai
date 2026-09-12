@@ -14,8 +14,10 @@ export const INTERVIEW_STEPS = {
   INTERVIEW: 'INTERVIEW',
   MARKET_RESEARCH: 'MARKET_RESEARCH',
   EXPECTED_PRICE: 'EXPECTED_PRICE',
+  COST_INPUT: 'COST_INPUT',
   FINAL_PRICING: 'FINAL_PRICING',
-  REVIEW: 'REVIEW'
+  REVIEW: 'REVIEW',
+  SUCCESS: 'SUCCESS'
 };
 
 export function useInterview() {
@@ -51,7 +53,6 @@ export function useInterview() {
       setSessionData(data);
 
       if (data.status === 'FACTS_COMPLETE') {
-        // Auto trigger market research when interview questions complete
         const researchData = await runMarketResearch(sessionId);
         setSessionData(researchData);
         setStep(INTERVIEW_STEPS.MARKET_RESEARCH);
@@ -65,34 +66,16 @@ export function useInterview() {
     }
   }, [sessionId]);
 
-  const sendExpectedPrice = useCallback(async (priceVal) => {
+  const submitArtisanExpectedPrice = useCallback(async (priceVal) => {
     if (!sessionId) return;
     setLoading(true);
     setError(null);
     try {
       const data = await submitExpectedPrice(sessionId, priceVal);
       setSessionData(data);
-
-      // Generate AI listing prose
-      const listingData = await generateListingProse(sessionId);
-      setSessionData(listingData);
-
-      // Calculate V2 pricing recommendation
-      const priceData = await calculateFinalPrice(sessionId, {});
-      const fullSessionData = {
-        ...listingData,
-        ...priceData,
-        pricing_recommendation: {
-          expected_price: priceData.artisan_expected_price || parseFloat(priceVal),
-          recommended_price: priceData.recommended_price || parseFloat(priceVal),
-          cost_floor: priceData.recommended_price ? Math.round(priceData.recommended_price * 0.8) : 500,
-          reasoning: priceData.pricing_explanation || []
-        }
-      };
-      setSessionData(fullSessionData);
-
-      setStep(INTERVIEW_STEPS.FINAL_PRICING);
-      return fullSessionData;
+      // Advance to explicit Cost Input screen
+      setStep(INTERVIEW_STEPS.COST_INPUT);
+      return data;
     } catch (err) {
       setError(err.message || 'Failed to submit expected price');
       throw err;
@@ -101,31 +84,64 @@ export function useInterview() {
     }
   }, [sessionId]);
 
+  const submitCostBreakdown = useCallback(async (costs) => {
+    if (!sessionId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      // 1. Calculate final price with real cost inputs and Option B safety caps
+      const priceData = await calculateFinalPrice(sessionId, costs);
+      
+      // 2. Generate AI listing prose
+      const listingData = await generateListingProse(sessionId);
+
+      const fullData = {
+        ...sessionData,
+        ...priceData,
+        ...listingData,
+        pricing_recommendation: priceData.pricing_recommendation || {
+          recommended_price: priceData.recommended_price,
+          cost_floor: priceData.cost_floor,
+          artisan_expected_price: priceData.artisan_expected_price,
+          reasoning: priceData.pricing_explanation || []
+        }
+      };
+      setSessionData(fullData);
+      setStep(INTERVIEW_STEPS.FINAL_PRICING);
+      return fullData;
+    } catch (err) {
+      setError(err.message || 'Failed to calculate pricing and generate listing');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId, sessionData]);
+
   const recalculatePrice = useCallback(async (costs) => {
     if (!sessionId) return;
     setLoading(true);
     setError(null);
     try {
       const data = await calculateFinalPrice(sessionId, costs);
-      const fullSessionData = {
+      const fullData = {
         ...sessionData,
         ...data,
-        pricing_recommendation: {
-          expected_price: data.artisan_expected_price || 1500,
-          recommended_price: data.recommended_price || 1450,
-          cost_floor: data.recommended_price ? Math.round(data.recommended_price * 0.8) : 500,
+        pricing_recommendation: data.pricing_recommendation || {
+          recommended_price: data.recommended_price,
+          cost_floor: data.cost_floor,
+          artisan_expected_price: data.artisan_expected_price,
           reasoning: data.pricing_explanation || []
         }
       };
-      setSessionData(fullSessionData);
-      return fullSessionData;
+      setSessionData(fullData);
+      return fullData;
     } catch (err) {
-      setError(err.message || 'Failed to calculate price');
+      setError(err.message || 'Failed to recalculate price');
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [sessionId, sessionData]);
 
   const publishProduct = useCallback(async (publishPayload) => {
     if (!sessionId) return;
@@ -133,6 +149,7 @@ export function useInterview() {
     setError(null);
     try {
       const product = await publishInterviewProduct(sessionId, publishPayload);
+      setStep(INTERVIEW_STEPS.SUCCESS);
       return product;
     } catch (err) {
       setError(err.message || 'Failed to publish product');
@@ -147,11 +164,13 @@ export function useInterview() {
     setStep,
     sessionId,
     sessionData,
+    setSessionData,
     loading,
     error,
     startSession,
     sendAnswer,
-    sendExpectedPrice,
+    submitArtisanExpectedPrice,
+    submitCostBreakdown,
     recalculatePrice,
     publishProduct
   };

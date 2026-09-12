@@ -16,9 +16,15 @@ export default function ProductReview({ sessionData, priceData, onPublish, onBac
     name: listing.title || listing.name || getFactVal(facts.product_name) || 'Handcrafted Artisan Product',
     description: listing.description || getFactVal(facts.description) || '',
     category: listing.category || getFactVal(facts.category) || 'Handicrafts',
+    materials: listing.materials || getFactVal(facts.materials) || getFactVal(facts.material) || 'Handcrafted raw materials',
     craft_story: listing.craft_story || listing.artisan_story || getFactVal(facts.craft_story) || '',
     price: recPrice,
-    image_url: sessionData?.photo_url || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800',
+    stock: 5,
+    material_cost: sessionData?.material_cost ?? priceData?.material_cost ?? 0,
+    labour_cost: sessionData?.labour_cost ?? priceData?.labour_cost ?? 0,
+    packaging_cost: sessionData?.packaging_cost ?? priceData?.packaging_cost ?? 0,
+    other_cost: sessionData?.other_cost ?? priceData?.other_cost ?? 0,
+    image_url: sessionData?.photo_url || '',
     tags: (listing.tags || ['Handmade', 'Artisan', 'Authentic']).join(', '),
   });
 
@@ -31,9 +37,15 @@ export default function ProductReview({ sessionData, priceData, onPublish, onBac
         name: l.title || l.name || getFactVal(f.product_name) || 'Handcrafted Artisan Product',
         description: l.description || getFactVal(f.description) || '',
         category: l.category || getFactVal(f.category) || 'Handicrafts',
+        materials: l.materials || getFactVal(f.materials) || getFactVal(f.material) || 'Handcrafted raw materials',
         craft_story: l.craft_story || l.artisan_story || getFactVal(f.craft_story) || '',
         price: p || recPrice,
-        image_url: sessionData.photo_url || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800',
+        stock: 5,
+        material_cost: sessionData?.material_cost ?? priceData?.material_cost ?? 0,
+        labour_cost: sessionData?.labour_cost ?? priceData?.labour_cost ?? 0,
+        packaging_cost: sessionData?.packaging_cost ?? priceData?.packaging_cost ?? 0,
+        other_cost: sessionData?.other_cost ?? priceData?.other_cost ?? 0,
+        image_url: sessionData.photo_url || '',
         tags: (l.tags || ['Handmade', 'Artisan', 'Authentic']).join(', '),
       });
     }
@@ -52,10 +64,18 @@ export default function ProductReview({ sessionData, priceData, onPublish, onBac
       name: pubTitle,
       description: formData.description || '',
       category: formData.category || 'Handicrafts',
+      materials: formData.materials || '',
       craft_story: formData.craft_story || '',
-      materials: getFactVal(facts.material) || '',
+      title_en: pubTitle,
+      description_en: formData.description || '',
+      craft_story_en: formData.craft_story || '',
       price: parseFloat(formData.price) || recPrice,
-      image_url: formData.image_url,
+      stock: parseInt(formData.stock, 10) || 5,
+      material_cost: parseFloat(formData.material_cost) || 0,
+      labour_cost: parseFloat(formData.labour_cost) || 0,
+      packaging_cost: parseFloat(formData.packaging_cost) || 0,
+      other_cost: parseFloat(formData.other_cost) || 0,
+      image_url: formData.image_url || sessionData?.photo_url || null,
       tags: typeof formData.tags === 'string' ? formData.tags.split(',').map((t) => t.trim()).filter(Boolean) : formData.tags,
     };
     onPublish(payload);
@@ -88,15 +108,19 @@ export default function ProductReview({ sessionData, priceData, onPublish, onBac
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Image Preview & Confirmed Facts */}
           <div className="space-y-4">
-            <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950 aspect-square group">
-              <img
-                src={formData.image_url}
-                alt={formData.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800';
-                }}
-              />
+            <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950 aspect-square flex items-center justify-center group">
+              {formData.image_url ? (
+                <img
+                  src={formData.image_url}
+                  alt={formData.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center p-6 text-slate-500">
+                  <ImageIcon className="w-12 h-12 mb-2 text-slate-600" />
+                  <span className="text-xs">No craft image</span>
+                </div>
+              )}
               <div className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-md px-2.5 py-1 rounded-full border border-slate-700 text-[10px] font-semibold text-emerald-400 flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3" /> AI Verified Facts
               </div>
@@ -165,8 +189,8 @@ export default function ProductReview({ sessionData, priceData, onPublish, onBac
               )}
             </div>
 
-            {/* Price & Category Row */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Price, Stock & Category Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">Listing Price (₹)</label>
                 {isEditing ? (
@@ -194,6 +218,31 @@ export default function ProductReview({ sessionData, priceData, onPublish, onBac
                     )}
                   </div>
                 )}
+                {priceData?.cost_floor && parseFloat(formData.price) < priceData.cost_floor && (
+                  <p className="text-[10px] text-red-400 mt-1 font-semibold">
+                    ⚠️ Below safe cost floor (₹{Number(priceData.cost_floor).toLocaleString('en-IN')})
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Stock Quantity</label>
+                {isEditing ? (
+                  <input
+                    type="number"
+                    name="stock"
+                    min="1"
+                    step="1"
+                    value={formData.stock}
+                    onChange={handleChange}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:ring-1 focus:ring-amber-400 outline-none"
+                    required
+                  />
+                ) : (
+                  <span className="inline-block bg-slate-800 text-slate-200 text-xs px-3 py-1.5 rounded-lg border border-slate-700 font-medium">
+                    {formData.stock} units
+                  </span>
+                )}
               </div>
 
               <div>
@@ -212,6 +261,25 @@ export default function ProductReview({ sessionData, priceData, onPublish, onBac
                   </span>
                 )}
               </div>
+            </div>
+
+            {/* Materials */}
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Craft Materials</label>
+              {isEditing ? (
+                <input
+                  type="text"
+                  name="materials"
+                  value={formData.materials}
+                  onChange={handleChange}
+                  placeholder="e.g. Teak wood, natural lac, brass bells"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:ring-1 focus:ring-amber-400 outline-none"
+                />
+              ) : (
+                <span className="inline-block text-xs text-slate-300 bg-slate-950/60 px-3 py-1.5 rounded-lg border border-slate-800">
+                  {formData.materials || 'Handcrafted raw materials'}
+                </span>
+              )}
             </div>
 
             {/* Description */}

@@ -55,5 +55,7 @@ class InterviewSessionResponse(BaseModel):
     market_research_result: Optional[Dict[str, Any]] = None
     artisan_expected_price: Optional[float] = None
     recommended_price: Optional[float] = None
+    cost_floor: Optional[float] = None
     pricing_explanation: List[str] = Field(default_factory=list)
+    pricing_recommendation: Optional[Dict[str, Any]] = None
     created_at: datetime

@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Languages, Camera, ArrowRight, IndianRupee, CheckCircle2, ShoppingBag } from 'lucide-react';
+import { X, Sparkles, Languages, Camera, ArrowRight, IndianRupee, CheckCircle2, ShoppingBag, Loader2 } from 'lucide-react';
 import { useInterview, INTERVIEW_STEPS } from '../hooks/useInterview';
 import VirtualAssistant from './VirtualAssistant';
 import InterviewProgress from './InterviewProgress';
 import MarketInsights from './MarketInsights';
 import PriceRecommendation from './PriceRecommendation';
 import ProductReview from './ProductReview';
+import CostBreakdownInput from './CostBreakdownInput';
 import useVoiceInput from '../hooks/useVoiceInput';
 import { useGeminiLiveSession } from '../hooks/useGeminiLiveSession';
-import { runMarketResearch } from '../services/interviewApi';
+import { runMarketResearch, uploadImageFile } from '../services/interviewApi';
 
 export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreated }) {
   const {
@@ -21,7 +22,8 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     error,
     startSession,
     sendAnswer,
-    sendExpectedPrice,
+    submitArtisanExpectedPrice,
+    submitCostBreakdown,
     recalculatePrice,
     publishProduct,
   } = useInterview();
@@ -60,17 +62,30 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     });
   };
 
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
   const handleMultiplePhotoUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    const compressedList = [];
-    for (const file of files) {
-      const dataUrl = await compressImage(file);
-      if (dataUrl) compressedList.push(dataUrl);
-    }
-    setUploadedPhotos((prev) => [...prev, ...compressedList]);
-    if (!photoUrl && compressedList.length > 0) {
-      setPhotoUrl(compressedList[0]);
+    setIsUploadingPhoto(true);
+    try {
+      const urls = [];
+      for (const file of files) {
+        try {
+          const uploadedUrl = await uploadImageFile(file);
+          if (uploadedUrl) urls.push(uploadedUrl);
+        } catch (uploadErr) {
+          console.warn('Backend file upload failed, falling back to compressed preview:', uploadErr);
+          const dataUrl = await compressImage(file);
+          if (dataUrl) urls.push(dataUrl);
+        }
+      }
+      setUploadedPhotos((prev) => [...prev, ...urls]);
+      if (!photoUrl && urls.length > 0) {
+        setPhotoUrl(urls[0]);
+      }
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -193,7 +208,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     if (!expectedPriceVal || parseFloat(expectedPriceVal) <= 0) return;
 
     try {
-      await sendExpectedPrice(expectedPriceVal);
+      await submitArtisanExpectedPrice(expectedPriceVal);
     } catch (err) {
       console.error('Failed to send expected price:', err);
     }
@@ -310,17 +325,29 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                   
                   <div className="flex flex-col gap-3">
                     <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-700 hover:border-amber-500/50 rounded-2xl cursor-pointer bg-slate-950/60 transition-all group">
-                      <Camera className="w-8 h-8 text-slate-400 group-hover:text-amber-400 transition-colors mb-2" />
-                      <span className="text-xs font-semibold text-slate-200">
-                        Click to select images or take a camera photo
-                      </span>
-                      <span className="text-[11px] text-slate-500 mt-0.5">
-                        Supports multiple photos (JPEG, PNG, WebP)
-                      </span>
+                      {isUploadingPhoto ? (
+                        <>
+                          <Loader2 className="w-8 h-8 text-amber-400 animate-spin mb-2" />
+                          <span className="text-xs font-semibold text-amber-300">
+                            Uploading craft image...
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="w-8 h-8 text-slate-400 group-hover:text-amber-400 transition-colors mb-2" />
+                          <span className="text-xs font-semibold text-slate-200">
+                            Click to select images or take a camera photo
+                          </span>
+                          <span className="text-[11px] text-slate-500 mt-0.5">
+                            Supports multiple photos (JPEG, PNG, WebP)
+                          </span>
+                        </>
+                      )}
                       <input
                         type="file"
                         accept="image/*"
                         multiple
+                        disabled={isUploadingPhoto}
                         onChange={handleMultiplePhotoUpload}
                         className="hidden"
                       />
@@ -442,7 +469,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                     setSessionData(researchData);
                     setStep(INTERVIEW_STEPS.MARKET_RESEARCH);
                   } catch (e) {
-                    setStep(INTERVIEW_STEPS.MARKET_RESEARCH);
+                    console.error('Market research failed on end call:', e);
                   }
                 }}
                 loading={loading || isProcessingAnswer}
@@ -534,14 +561,33 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                   disabled={loading || !expectedPriceVal}
                   className="px-8 py-3 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-bold text-sm rounded-xl shadow-lg flex items-center gap-2 transition-all"
                 >
-                  {loading ? 'Calculating Fair Valuation...' : 'Calculate AI Fair Price'}
+                  {loading ? 'Saving Expected Price...' : 'Continue to Production Costs'}
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </form>
           )}
 
-          {/* STEP 5: FINAL PRICING RECOMMENDATION */}
+          {/* STEP 5: PRODUCTION COST BREAKDOWN */}
+          {step === INTERVIEW_STEPS.COST_INPUT && (
+            <div className="space-y-6">
+              <InterviewProgress 
+                sessionData={sessionData} 
+                questionCount={4} 
+                maxQuestions={4} 
+                facts={sessionData?.product_facts || {}} 
+              />
+
+              <CostBreakdownInput
+                onSubmit={submitCostBreakdown}
+                onSkip={() => submitCostBreakdown({ material_cost: 0, labour_cost: 0, packaging_cost: 0, other_cost: 0 })}
+                loading={loading}
+                expectedPrice={expectedPriceVal}
+              />
+            </div>
+          )}
+
+          {/* STEP 6: FINAL PRICING RECOMMENDATION */}
           {step === INTERVIEW_STEPS.FINAL_PRICING && sessionData?.pricing_recommendation && (
             <div className="space-y-6">
               <InterviewProgress 
@@ -553,6 +599,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
 
               <PriceRecommendation
                 priceData={sessionData.pricing_recommendation}
+                sessionData={sessionData}
                 onRecalculate={recalculatePrice}
                 loading={loading}
               />
