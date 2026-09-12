@@ -190,7 +190,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     try {
       setIsProcessingAnswer(true);
       setInputText('');
-      if (isListening) stopListening();
+      if (isFallbackListening) stopFallbackListen();
       if (isLiveConnected && !isLiveSimulated) {
         sendTextMessage(text.trim());
       } else {
@@ -198,6 +198,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
       }
     } catch (err) {
       console.error('Failed to send answer:', err);
+    } finally {
       setIsProcessingAnswer(false);
     }
   };
@@ -464,7 +465,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                 isConnected={isLiveConnected}
                 isSimulated={isLiveSimulated}
                 liveTranscript={isLiveAudio ? liveTranscript : ''}
-                speechTranscript={!isLiveAudio ? fallbackTranscript : ''}
+                speechTranscript={isLiveAudio ? userTranscript : fallbackTranscript}
                 questionCount={sessionData.question_count || 1}
                 onToggleMute={isLiveAudio ? toggleLiveMute : toggleFallbackMute}
                 onSpeak={isLiveAudio ? undefined : () => speakFallbackText(sessionData.current_question)}

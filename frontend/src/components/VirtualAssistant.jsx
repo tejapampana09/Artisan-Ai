@@ -33,6 +33,11 @@ export default function VirtualAssistant({
     }
   }, [speechTranscript]);
 
+  // Clear input text when moving to a new question
+  useEffect(() => {
+    setInputText('');
+  }, [question, questionCount]);
+
   const langLabels = {
     te: 'తెలుగు (Telugu)',
     hi: 'हिंदी (Hindi)',

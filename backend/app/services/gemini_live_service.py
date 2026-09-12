@@ -43,6 +43,7 @@ class GeminiLiveService:
         self.interviewer_service = AdaptiveInterviewerService()
         self.gemini_ws: Optional[websockets.WebSocketClientProtocol] = None
         self.answer_processing: bool = False
+        self.last_user_spoken_text: str = ""
 
     def _get_language_code(self) -> str:
         lang_code_map = {
@@ -176,6 +177,7 @@ STRICT BEHAVIORAL PROTOCOL:
                     elif msg_type == "answer_text" and msg.get("text"):
                         # Process text answer and trigger backend fact extraction & question count check
                         user_text = msg["text"].strip()
+                        self.last_user_spoken_text = ""
                         if user_text and not self.answer_processing:
                             self.answer_processing = True
                             try:
@@ -267,6 +269,7 @@ STRICT BEHAVIORAL PROTOCOL:
                     if final_trans and final_trans.get("text"):
                         user_spoken_text = final_trans["text"].strip()
                         if user_spoken_text:
+                            self.last_user_spoken_text = user_spoken_text
                             await client_ws.send_json({
                                 "type": "user_transcript",
                                 "text": user_spoken_text,
@@ -298,6 +301,15 @@ STRICT BEHAVIORAL PROTOCOL:
 
                     if server_content.get("turnComplete"):
                         await client_ws.send_json({"type": "turn_complete"})
+                        # Spoken voice auto-advancement: if artisan spoke and completed turn, process the answer!
+                        if self.last_user_spoken_text and len(self.last_user_spoken_text.strip()) >= 2 and not self.answer_processing:
+                            spoken_text = self.last_user_spoken_text.strip()
+                            self.last_user_spoken_text = ""
+                            self.answer_processing = True
+                            try:
+                                await self._process_artisan_text_answer(client_ws, spoken_text)
+                            finally:
+                                self.answer_processing = False
 
             except Exception as e:
                 logger.warning(f"[GeminiLiveService] Exception in gemini_to_client loop: {e}")
@@ -314,6 +326,7 @@ STRICT BEHAVIORAL PROTOCOL:
         transitions session status to FACTS_COMPLETE when done, and dispatches the backend-approved
         next question to Gemini Live to speak.
         """
+        self.last_user_spoken_text = ""
         # 1. Acquire row lock on interview session for concurrency protection
         session = self.db.query(InterviewSession).filter(InterviewSession.id == self.session.id).with_for_update().first()
         if not session:
