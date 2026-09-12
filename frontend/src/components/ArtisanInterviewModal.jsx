@@ -56,9 +56,6 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
         }
       }
       setUploadedPhotos((prev) => [...prev, ...urls]);
-      if (!photoUrl && urls.length > 0) {
-        setPhotoUrl(urls[0]);
-      }
     } catch (uploadErr) {
       console.error('Photo upload failed:', uploadErr);
       setUploadError(uploadErr?.message || 'Failed to upload photo to server. Please try again.');
@@ -70,13 +67,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
   };
 
   const handleRemovePhoto = (index) => {
-    setUploadedPhotos((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      if (photoUrl === prev[index]) {
-        setPhotoUrl(next[0] || '');
-      }
-      return next;
-    });
+    setUploadedPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const {
@@ -152,7 +143,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     e.preventDefault();
     setUploadError(null);
     try {
-      const primaryPhoto = photoUrl || (uploadedPhotos.length > 0 ? uploadedPhotos[0] : null);
+      const primaryPhoto = (uploadedPhotos.length > 0 ? uploadedPhotos[0] : (photoUrl ? photoUrl.trim() : null)) || null;
       if (primaryPhoto && primaryPhoto.startsWith('data:image')) {
         setUploadError('Direct Base64 data URLs are not permitted. Please upload your photo file directly.');
         return;
@@ -373,16 +364,18 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                       </div>
                     )}
 
-                    <div className="pt-1">
-                      <span className="text-[11px] text-slate-400 block mb-1">Or enter image web link:</span>
-                      <input
-                        type="url"
-                        value={photoUrl}
-                        onChange={(e) => setPhotoUrl(e.target.value)}
-                        placeholder="https://images.unsplash.com/..."
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-100 focus:ring-1 focus:ring-amber-400 outline-none"
-                      />
-                    </div>
+                    {uploadedPhotos.length === 0 && (
+                      <div className="pt-1">
+                        <span className="text-[11px] text-slate-400 block mb-1">Or paste an image web link:</span>
+                        <input
+                          type="text"
+                          value={photoUrl}
+                          onChange={(e) => setPhotoUrl(e.target.value)}
+                          placeholder="https://example.com/craft.jpg"
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-100 focus:ring-1 focus:ring-amber-400 outline-none"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
