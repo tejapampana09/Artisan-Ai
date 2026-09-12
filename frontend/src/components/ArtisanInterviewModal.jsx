@@ -36,56 +36,36 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
   const [expectedPriceVal, setExpectedPriceVal] = useState('');
   const [publishedProduct, setPublishedProduct] = useState(null);
 
-  const compressImage = (file, maxWidth = 1000, quality = 0.8) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          let { width, height } = img;
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
-        };
-        img.onerror = () => resolve(event.target.result);
-        img.src = event.target.result;
-      };
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(file);
-    });
-  };
-
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
 
   const handleMultiplePhotoUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setIsUploadingPhoto(true);
+    setUploadError(null);
     try {
       const urls = [];
       for (const file of files) {
-        try {
-          const uploadedUrl = await uploadImageFile(file);
-          if (uploadedUrl) urls.push(uploadedUrl);
-        } catch (uploadErr) {
-          console.warn('Backend file upload failed, falling back to compressed preview:', uploadErr);
-          const dataUrl = await compressImage(file);
-          if (dataUrl) urls.push(dataUrl);
+        if (!file.type.startsWith('image/')) {
+          throw new Error(`File "${file.name}" is not an image. Please select a valid JPEG, PNG, or WebP photo.`);
+        }
+        const uploadedUrl = await uploadImageFile(file);
+        if (uploadedUrl) {
+          urls.push(uploadedUrl);
         }
       }
       setUploadedPhotos((prev) => [...prev, ...urls]);
       if (!photoUrl && urls.length > 0) {
         setPhotoUrl(urls[0]);
       }
+    } catch (uploadErr) {
+      console.error('Photo upload failed:', uploadErr);
+      setUploadError(uploadErr?.message || 'Failed to upload photo to server. Please try again.');
+      // STOP immediately. Do NOT silently store base64!
     } finally {
       setIsUploadingPhoto(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -170,8 +150,13 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
 
   const handleStart = async (e) => {
     e.preventDefault();
+    setUploadError(null);
     try {
       const primaryPhoto = photoUrl || (uploadedPhotos.length > 0 ? uploadedPhotos[0] : null);
+      if (primaryPhoto && primaryPhoto.startsWith('data:image')) {
+        setUploadError('Direct Base64 data URLs are not permitted. Please upload your photo file directly.');
+        return;
+      }
       const secondaryPhotos = uploadedPhotos.length > 1 ? uploadedPhotos.slice(1) : [];
       await startSession({
         language: selectedLang,
@@ -324,6 +309,18 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                   </label>
                   
                   <div className="flex flex-col gap-3">
+                    {uploadError && (
+                      <div className="p-3 bg-red-950/70 border border-red-500/50 rounded-xl text-xs text-red-200 flex items-center justify-between">
+                        <span>⚠️ {uploadError}</span>
+                        <button
+                          type="button"
+                          onClick={() => setUploadError(null)}
+                          className="text-[10px] bg-red-900 hover:bg-red-800 px-2.5 py-1 rounded-md text-white font-semibold transition-colors"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
                     <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-700 hover:border-amber-500/50 rounded-2xl cursor-pointer bg-slate-950/60 transition-all group">
                       {isUploadingPhoto ? (
                         <>

@@ -89,16 +89,20 @@ export function useInterview() {
     setLoading(true);
     setError(null);
     try {
-      // 1. Calculate final price with real cost inputs and Option B safety caps
-      const priceData = await calculateFinalPrice(sessionId, costs);
-      
-      // 2. Generate AI listing prose
+      // 1. Generate AI listing prose
       const listingData = await generateListingProse(sessionId);
+
+      // 2. Calculate final price with real cost inputs and Option B safety caps
+      const priceData = await calculateFinalPrice(sessionId, costs);
 
       const fullData = {
         ...sessionData,
-        ...priceData,
         ...listingData,
+        ...priceData,
+        material_cost: costs?.material_cost ? parseFloat(costs.material_cost) : 0,
+        labour_cost: costs?.labour_cost ? parseFloat(costs.labour_cost) : 0,
+        packaging_cost: costs?.packaging_cost ? parseFloat(costs.packaging_cost) : 0,
+        other_cost: costs?.other_cost ? parseFloat(costs.other_cost) : 0,
         pricing_recommendation: priceData.pricing_recommendation || {
           recommended_price: priceData.recommended_price,
           cost_floor: priceData.cost_floor,
@@ -126,6 +130,10 @@ export function useInterview() {
       const fullData = {
         ...sessionData,
         ...data,
+        material_cost: costs?.material_cost !== undefined ? parseFloat(costs.material_cost) : (sessionData?.material_cost || 0),
+        labour_cost: costs?.labour_cost !== undefined ? parseFloat(costs.labour_cost) : (sessionData?.labour_cost || 0),
+        packaging_cost: costs?.packaging_cost !== undefined ? parseFloat(costs.packaging_cost) : (sessionData?.packaging_cost || 0),
+        other_cost: costs?.other_cost !== undefined ? parseFloat(costs.other_cost) : (sessionData?.other_cost || 0),
         pricing_recommendation: data.pricing_recommendation || {
           recommended_price: data.recommended_price,
           cost_floor: data.cost_floor,
