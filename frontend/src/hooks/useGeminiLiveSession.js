@@ -34,6 +34,17 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
   const activeSourcesRef = useRef([]);
   const nextStartTimeRef = useRef(0);
 
+  // Stable callback refs to prevent re-render teardown of the WebSocket
+  const onFactsUpdatedRef = useRef(onFactsUpdated);
+  const onStatusCompleteRef = useRef(onStatusComplete);
+  const onUserTranscriptRef = useRef(onUserTranscript);
+
+  useEffect(() => {
+    onFactsUpdatedRef.current = onFactsUpdated;
+    onStatusCompleteRef.current = onStatusComplete;
+    onUserTranscriptRef.current = onUserTranscript;
+  });
+
   // Clear all playing audio buffers (barge-in queue flush)
   const stopAllPlayback = useCallback(() => {
     activeSourcesRef.current.forEach((src) => {
@@ -129,6 +140,9 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
       return;
     }
 
+    setIsSimulated(false);
+    setError(null);
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     // When running under local dev server (port 5173), target backend port 8000
     let host = window.location.host;
@@ -160,21 +174,21 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
           setLiveTranscript(msg.text);
         } else if (msg.type === 'user_transcript') {
           setUserTranscript(msg.text);
-          if (onUserTranscript) {
-            onUserTranscript(msg.text, Boolean(msg.is_final));
+          if (onUserTranscriptRef.current) {
+            onUserTranscriptRef.current(msg.text, Boolean(msg.is_final));
           }
         } else if (msg.type === 'interrupted') {
           stopAllPlayback();
         } else if (msg.type === 'question') {
           setLiveTranscript('');
-          if (onFactsUpdated) onFactsUpdated(null, msg.question_count, msg.text);
+          if (onFactsUpdatedRef.current) onFactsUpdatedRef.current(null, msg.question_count, msg.text);
         } else if (msg.type === 'facts_updated') {
           setLiveTranscript('');
-          if (onFactsUpdated) onFactsUpdated(msg.extracted_facts, msg.question_count, msg.next_question);
+          if (onFactsUpdatedRef.current) onFactsUpdatedRef.current(msg.extracted_facts, msg.question_count, msg.next_question);
         } else if (msg.type === 'turn_complete') {
           // Assistant finished generating audio turn
         } else if (msg.type === 'status_change' && msg.status === 'FACTS_COMPLETE') {
-          if (onStatusComplete) onStatusComplete(msg.extracted_facts);
+          if (onStatusCompleteRef.current) onStatusCompleteRef.current(msg.extracted_facts);
         } else if (msg.type === 'error') {
           setError(msg.message);
         }
@@ -262,7 +276,7 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
       }
       stopAllPlayback();
     };
-  }, [sessionId, active, play24kHzPCMChunk, stopAllPlayback, onFactsUpdated, onStatusComplete, onUserTranscript]);
+  }, [sessionId, active]);
 
   const sendTextMessage = useCallback((text) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
