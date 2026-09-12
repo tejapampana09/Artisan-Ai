@@ -100,6 +100,8 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     language: selectedLang,
   });
 
+  const [isProcessingAnswer, setIsProcessingAnswer] = useState(false);
+
   // Gemini Live WebSocket Session Hook
   const {
     isConnected: isLiveConnected,
@@ -116,6 +118,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     sessionId,
     active: step === INTERVIEW_STEPS.INTERVIEW && isOpen,
     onFactsUpdated: (facts, count, nextQuestion) => {
+      setIsProcessingAnswer(false);
       setSessionData((prev) => prev ? {
         ...prev,
         product_facts: (facts !== null && facts !== undefined) ? facts : prev.product_facts,
@@ -124,6 +127,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
       } : prev);
     },
     onStatusComplete: (facts) => {
+      setIsProcessingAnswer(false);
       runMarketResearch(sessionId).then((researchData) => {
         setSessionData(researchData);
         setStep(INTERVIEW_STEPS.MARKET_RESEARCH);
@@ -131,12 +135,14 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
     }
   });
 
-  // Keep inputText updated if voice transcript changes
+  // Keep inputText updated if voice transcript changes (from Web Speech or Gemini Live)
   useEffect(() => {
     if (transcript) {
       setInputText(transcript);
+    } else if (userTranscript) {
+      setInputText(userTranscript);
     }
-  }, [transcript]);
+  }, [transcript, userTranscript]);
 
   // Speak AI question automatically via browser TTS only when in simulated fallback mode
   useEffect(() => {
@@ -165,10 +171,12 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
 
   const handleAnswerSubmit = async (textToSend) => {
     const text = textToSend || inputText;
-    if (!text || !text.trim() || loading) return;
+    if (!text || !text.trim() || loading || isProcessingAnswer) return;
 
     try {
+      setIsProcessingAnswer(true);
       setInputText('');
+      if (isListening) stopListening();
       if (isLiveConnected && !isLiveSimulated) {
         sendTextMessage(text.trim());
       } else {
@@ -176,6 +184,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
       }
     } catch (err) {
       console.error('Failed to send answer:', err);
+      setIsProcessingAnswer(false);
     }
   };
 
@@ -383,7 +392,12 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
           {/* STEP 2: ADAPTIVE INTERVIEW */}
           {step === INTERVIEW_STEPS.INTERVIEW && sessionData && (
             <div className="space-y-6">
-              <InterviewProgress sessionData={sessionData} />
+              <InterviewProgress 
+                sessionData={sessionData} 
+                questionCount={sessionData.question_count || 1} 
+                maxQuestions={4} 
+                facts={sessionData.product_facts || {}} 
+              />
 
               {/* Voice Unavailable Fallback Mode Notice */}
               {isLiveSimulated && (
@@ -405,20 +419,21 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                 question={sessionData.current_question}
                 language={sessionData.language || selectedLang}
                 isSpeaking={isLiveSpeaking || isSpeaking}
-                isListening={isLiveListening || isListening}
+                isListening={isListening}
                 isMuted={isMuted}
-                autoListen={autoListen}
                 isConnected={isLiveConnected}
                 isSimulated={isLiveSimulated}
                 liveTranscript={liveTranscript}
+                speechTranscript={transcript}
                 questionCount={sessionData.question_count || 1}
                 onToggleMute={toggleMute}
-                onToggleAutoListen={toggleAutoListen}
                 onSpeak={() => speakText(sessionData.current_question)}
                 onStopSpeak={() => {
                   stopSpeaking();
                   triggerInterrupt();
                 }}
+                onStartListen={startListening}
+                onStopListen={stopListening}
                 onSendAnswer={handleAnswerSubmit}
                 onEndCall={async () => {
                   stopAllPlayback();
@@ -430,7 +445,7 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
                     setStep(INTERVIEW_STEPS.MARKET_RESEARCH);
                   }
                 }}
-                loading={loading}
+                loading={loading || isProcessingAnswer}
               />
 
               {/* Extracted Facts Showcase */}
@@ -464,7 +479,12 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
           {/* STEP 3: MARKET RESEARCH INSIGHTS */}
           {step === INTERVIEW_STEPS.MARKET_RESEARCH && sessionData && (
             <div className="space-y-6">
-              <InterviewProgress sessionData={sessionData} />
+              <InterviewProgress 
+                sessionData={sessionData} 
+                questionCount={4} 
+                maxQuestions={4} 
+                facts={sessionData.product_facts || {}} 
+              />
 
               <MarketInsights marketData={sessionData.market_research_result || sessionData.market_research} />
 
@@ -524,7 +544,12 @@ export default function ArtisanInterviewModal({ isOpen, onClose, onProductCreate
           {/* STEP 5: FINAL PRICING RECOMMENDATION */}
           {step === INTERVIEW_STEPS.FINAL_PRICING && sessionData?.pricing_recommendation && (
             <div className="space-y-6">
-              <InterviewProgress sessionData={sessionData} />
+              <InterviewProgress 
+                sessionData={sessionData} 
+                questionCount={4} 
+                maxQuestions={4} 
+                facts={sessionData.product_facts || {}} 
+              />
 
               <PriceRecommendation
                 priceData={sessionData.pricing_recommendation}

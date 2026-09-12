@@ -69,7 +69,7 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
     try {
       if (!playAudioContextRef.current || playAudioContextRef.current.state === 'closed') {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        playAudioContextRef.current = new AudioCtx({ sampleRate: 24000 });
+        playAudioContextRef.current = new AudioCtx();
       }
       const ctx = playAudioContextRef.current;
       if (ctx.state === 'suspended') {
@@ -226,7 +226,10 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
         };
 
         source.connect(processor);
-        processor.connect(ctx.destination);
+        const silentGain = ctx.createGain();
+        silentGain.gain.value = 0;
+        processor.connect(silentGain);
+        silentGain.connect(ctx.destination);
         setIsListening(true);
       } catch (err) {
         console.warn('[useGeminiLiveSession] Microphone access not granted or not supported:', err);

@@ -111,7 +111,7 @@ STRICT BEHAVIORAL PROTOCOL:
                         "speechConfig": {
                             "voiceConfig": {
                                 "prebuiltVoiceConfig": {
-                                    "voiceName": "Puck"
+                                    "voiceName": "Aoede"
                                 }
                             }
                         }
@@ -161,14 +161,14 @@ STRICT BEHAVIORAL PROTOCOL:
                     msg_type = msg.get("type")
 
                     if msg_type == "audio" and msg.get("pcm"):
-                        # Send 16kHz PCM audio chunk to Gemini Live using current audio payload format
+                        # Send 16kHz PCM audio chunk to Gemini Live using mediaChunks
                         if self.gemini_ws:
                             realtime_frame = {
                                 "realtimeInput": {
-                                    "audio": {
+                                    "mediaChunks": [{
                                         "mimeType": "audio/pcm;rate=16000",
                                         "data": msg["pcm"]
-                                    }
+                                    }]
                                 }
                             }
                             await self.gemini_ws.send(json.dumps(realtime_frame))
@@ -262,7 +262,7 @@ STRICT BEHAVIORAL PROTOCOL:
                             "is_final": False
                         })
 
-                    # B. Handle finalized user input transcription -> Bridge to AdaptiveInterviewerService
+                    # B. Handle finalized user input transcription -> Bridge to UI answer box
                     final_trans = server_content.get("inputTranscription") or server_content.get("input_transcription")
                     if final_trans and final_trans.get("text"):
                         user_spoken_text = final_trans["text"].strip()
@@ -272,15 +272,8 @@ STRICT BEHAVIORAL PROTOCOL:
                                 "text": user_spoken_text,
                                 "is_final": True
                             })
-                            # Protect against duplicate concurrent processing
-                            if not self.answer_processing:
-                                self.answer_processing = True
-                                try:
-                                    await self._process_artisan_text_answer(client_ws, user_spoken_text)
-                                finally:
-                                    self.answer_processing = False
 
-                    # C. Handle Assistant Model Audio / Text Output
+                    # C. Handle Assistant Model Audio / Spoken Output
                     model_turn = server_content.get("modelTurn")
                     if model_turn:
                         parts = model_turn.get("parts", [])
@@ -294,9 +287,9 @@ STRICT BEHAVIORAL PROTOCOL:
                                     "mimeType": inline_data.get("mimeType", "audio/pcm;rate=24000")
                                 })
 
-                            # Forward Text Transcript
+                            # Forward Text Transcript ONLY if NOT an internal thinking block
                             text_val = p.get("text")
-                            if text_val:
+                            if text_val and not p.get("thought"):
                                 await client_ws.send_json({
                                     "type": "transcript",
                                     "speaker": "ASSISTANT",
