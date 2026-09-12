@@ -130,7 +130,12 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host.includes('localhost') ? 'localhost:8000' : window.location.host;
+    // When running under local dev server (port 5173), target backend port 8000
+    let host = window.location.host;
+    if (window.location.port === '5173' || host.includes('localhost') || host.includes('127.0.0.1')) {
+      const hostname = window.location.hostname || '127.0.0.1';
+      host = `${hostname}:8000`;
+    }
     const wsUrl = `${protocol}//${host}/api/interview/${sessionId}/live-ws`;
 
     const ws = new WebSocket(wsUrl);
@@ -179,8 +184,8 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
     };
 
     ws.onerror = (err) => {
-      console.error('[useGeminiLiveSession] WebSocket error:', err);
-      setError('Live connection error');
+      console.warn('[useGeminiLiveSession] WebSocket live audio connection warning, fallback active:', err);
+      setIsSimulated(true);
     };
 
     ws.onclose = () => {
