@@ -106,7 +106,8 @@ class AdaptiveInterviewerService:
         if not extracted and latest_answer.strip():
             ans = latest_answer.strip()
             if current_question_count == 1:
-                extracted.append({"field": "material", "value": ans, "confidence": 0.95})
+                extracted.append({"field": "product_name", "value": ans[:60], "confidence": 0.90})
+                extracted.append({"field": "material", "value": ans, "confidence": 0.90})
             elif current_question_count == 2:
                 extracted.append({"field": "production_time", "value": ans, "confidence": 0.95})
                 extracted.append({"field": "handmade", "value": "True", "confidence": 0.98})

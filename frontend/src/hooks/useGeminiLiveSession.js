@@ -183,9 +183,11 @@ export function useGeminiLiveSession({ sessionId, active, onFactsUpdated, onStat
           stopAllPlayback();
         } else if (msg.type === 'question') {
           setLiveTranscript('');
+          setUserTranscript('');
           if (onFactsUpdatedRef.current) onFactsUpdatedRef.current(null, msg.question_count, msg.text);
         } else if (msg.type === 'facts_updated') {
           setLiveTranscript('');
+          setUserTranscript('');
           if (onFactsUpdatedRef.current) onFactsUpdatedRef.current(msg.extracted_facts, msg.question_count, msg.next_question);
         } else if (msg.type === 'turn_complete') {
           // Assistant finished generating audio turn

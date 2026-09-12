@@ -75,6 +75,7 @@ STRICT BEHAVIORAL PROTOCOL:
 2. When the artisan speaks, listen attentively and quietly. Do not interrupt with questions of your own.
 3. You will receive instructions starting with "BACKEND_QUESTION:". When you receive a "BACKEND_QUESTION:", speak that exact question warmly, politely, and naturally to the artisan in {lang_label} (using polite honorifics like 'అండి' in Telugu, 'జీ' in Hindi).
 4. Keep your spoken output brief, clear, and friendly (1-2 sentences maximum). Do not invent follow-up questions or add unapproved topics.
+5. Transcribe artisan spoken input strictly in {lang_label} script (Telugu script for Telugu, Devanagari for Hindi). Never output foreign scripts or phonetic approximations in other alphabets.
 """.strip()
 
     def _get_current_or_initial_question(self) -> str:
@@ -258,21 +259,38 @@ STRICT BEHAVIORAL PROTOCOL:
                     # A. Handle interim user input transcription (UI subtitles only)
                     interim_trans = server_content.get("interimInputTranscription") or server_content.get("interim_input_transcription")
                     if interim_trans and interim_trans.get("text"):
-                        await client_ws.send_json({
-                            "type": "user_transcript",
-                            "text": interim_trans["text"],
-                            "is_final": False
-                        })
+                        interim_text = interim_trans["text"].strip()
+                        if interim_text:
+                            if self.last_user_spoken_text:
+                                if interim_text.startswith(self.last_user_spoken_text):
+                                    display_text = interim_text
+                                else:
+                                    display_text = f"{self.last_user_spoken_text} {interim_text}".strip()
+                            else:
+                                display_text = interim_text
+                            await client_ws.send_json({
+                                "type": "user_transcript",
+                                "text": display_text,
+                                "is_final": False
+                            })
 
-                    # B. Handle finalized user input transcription -> Bridge to UI answer box
+                    # B. Handle finalized user input transcription -> Accumulate full sentence!
                     final_trans = server_content.get("inputTranscription") or server_content.get("input_transcription")
                     if final_trans and final_trans.get("text"):
                         user_spoken_text = final_trans["text"].strip()
                         if user_spoken_text:
-                            self.last_user_spoken_text = user_spoken_text
+                            if not self.last_user_spoken_text:
+                                self.last_user_spoken_text = user_spoken_text
+                            elif user_spoken_text.startswith(self.last_user_spoken_text):
+                                self.last_user_spoken_text = user_spoken_text
+                            elif self.last_user_spoken_text.endswith(user_spoken_text):
+                                pass
+                            else:
+                                self.last_user_spoken_text = f"{self.last_user_spoken_text} {user_spoken_text}".strip()
+
                             await client_ws.send_json({
                                 "type": "user_transcript",
-                                "text": user_spoken_text,
+                                "text": self.last_user_spoken_text,
                                 "is_final": True
                             })
 

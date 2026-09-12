@@ -14,10 +14,9 @@ def get_models_to_try() -> list:
     configured = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
     defaults = [
         "gemini-3.5-flash-lite",
-        "gemini-3.1-flash-lite",
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash"
+        "gemini-flash-latest",
+        "gemini-flash-lite-latest",
+        "gemini-3.1-flash-lite-preview"
     ]
     return [configured] + [m for m in defaults if m != configured]
 
@@ -91,6 +90,11 @@ class GeminiAIProvider(AIProvider):
         Task:
         1. Extract any new or updated product facts from the artisan's latest answer.
            Fields: product_name, category, material, craft, dimensions, weight, handmade, production_time, customizable, region, story.
+           - Extract FULL meaningful phrases, NOT broken syllables or single ambiguous words.
+           - If the artisan describes their craft (e.g. "బుట్టలు", "చీర", "బొమ్మలు"), extract `product_name` and `category`.
+           - If the artisan describes raw materials (e.g. "తాటి ఆకులు", "పట్టు", "జనుము"), extract `material`.
+           - If the artisan mentions craft time (e.g. "3 రోజులు", "వారం"), extract `production_time` and set `handmade` to "True".
+           - If the artisan mentions story or tradition, extract `story`.
         2. Decide if core facts are collected (max 4 questions allowed, stop early if core details known). If done, set action = "DONE".
         3. If action is "ASK", formulate a response in 2 parts (in {lang_label}):
            - Part A: 1 warm, human appreciation sentence acknowledging what they just shared (e.g. "అబ్బా! సహజ సిద్దమైన రంగులతో చేసారా? చాలా అద్భుతమండి!").
