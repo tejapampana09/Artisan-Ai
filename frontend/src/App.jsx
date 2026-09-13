@@ -20,7 +20,7 @@ function AppContent() {
   const [activeMode, setActiveMode] = useState('HOME');
   const [user, setUser] = useState(null);
   const [readyStatus, setReadyStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showSplash, setShowSplash] = useState(() => {
     try {
       return !sessionStorage.getItem('artisan_splash_seen');
@@ -53,21 +53,19 @@ function AppContent() {
 
   const loadInitialData = async () => {
     try {
+      // Non-blocking background health and readiness checks
+      checkHealth().catch(() => {});
+      checkReady().then(ready => {
+        if (ready) setReadyStatus(ready);
+      }).catch(() => {});
+
       const token = getAuthToken();
       if (!token) {
-        const [, ready] = await Promise.all([checkHealth(), checkReady()]);
-        setReadyStatus(ready);
         setUser(null);
-        setActiveMode('HOME');
         return;
       }
 
-      const [, ready, userData] = await Promise.all([
-        checkHealth(),
-        checkReady(),
-        getCurrentUser()
-      ]);
-      setReadyStatus(ready);
+      const userData = await getCurrentUser();
       if (userData && !userData.detail && !userData.error) {
         setUser(userData);
         setStoredUser(userData);
@@ -80,14 +78,10 @@ function AppContent() {
         }
       } else {
         setUser(null);
-        setActiveMode('HOME');
       }
     } catch (e) {
       console.error('Initial load failed', e);
       setUser(null);
-      setActiveMode('HOME');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -137,33 +131,24 @@ function AppContent() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 md:pb-6 overflow-x-hidden">
         <OfflineSyncBanner />
 
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="flex items-center space-x-3 text-slate-500">
-              <div className="w-5 h-5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-sm font-medium">{t('connectingBackend', 'Connecting to Artisan AI backend...')}</span>
-            </div>
-          </div>
-        ) : (
-          <div>
-            {activeMode === 'HOME' ? (
-              <LandingPage
-                onSelectMode={handleToggleMode}
-                onOpenAuth={() => setIsAuthOpen(true)}
-                user={user}
-              />
-            ) : activeMode === 'SELL' ? (
-              <SellView 
-                user={user} 
-                onOpenAuth={() => setIsAuthOpen(true)} 
-                onSwitchMode={handleToggleMode}
-                key={`sell_${refreshTrigger}`} 
-              />
-            ) : (
-              <BuyView user={user} onOpenAuth={() => setIsAuthOpen(true)} key={`buy_${refreshTrigger}`} />
-            )}
-          </div>
-        )}
+        <div>
+          {activeMode === 'HOME' ? (
+            <LandingPage
+              onSelectMode={handleToggleMode}
+              onOpenAuth={() => setIsAuthOpen(true)}
+              user={user}
+            />
+          ) : activeMode === 'SELL' ? (
+            <SellView 
+              user={user} 
+              onOpenAuth={() => setIsAuthOpen(true)} 
+              onSwitchMode={handleToggleMode}
+              key={`sell_${refreshTrigger}`} 
+            />
+          ) : (
+            <BuyView user={user} onOpenAuth={() => setIsAuthOpen(true)} key={`buy_${refreshTrigger}`} />
+          )}
+        </div>
       </main>
 
       {/* Auth Modal */}
