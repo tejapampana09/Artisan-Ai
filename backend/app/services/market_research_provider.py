@@ -56,7 +56,8 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
         clean_q = query.strip()
         from backend.app.config import GEMINI_MODEL, GEMINI_FALLBACK_MODELS
 
-        models_to_try = [GEMINI_MODEL] + [m.strip() for m in GEMINI_FALLBACK_MODELS.split(",") if m.strip()]
+        fallback_list = GEMINI_FALLBACK_MODELS if isinstance(GEMINI_FALLBACK_MODELS, list) else [m.strip() for m in str(GEMINI_FALLBACK_MODELS).split(",") if m.strip()]
+        models_to_try = [GEMINI_MODEL] + fallback_list
 
         prompt = (
             f'Search Google for current Indian e-commerce listings for: "{clean_q}". '
