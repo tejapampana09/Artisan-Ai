@@ -63,38 +63,35 @@ class GeminiAIProvider(BaseAIProvider):
             )
 
         prompt = f"""You are Artisan AI's master cataloging assistant for traditional Indian handicrafts.
-Your task is to generate clean, professional, factual product catalog information based STRICTLY on the artisan's provided inputs.
+Your task is to transform the provided ARTISAN FACTS into clean, professional product catalog fields.
 
-SOURCE OF TRUTH & STRICT FACTUALITY RULES:
+CANONICAL SOURCE OF TRUTH (ARTISAN FACTS):
+{facts_json_str}
+
+STRICT FACTUALITY RULES:
 1. CRAFT STORY:
-   - Create a polished craft story ONLY from facts explicitly provided by the artisan in Q3 or description.
-   - NEVER invent family history, generation count, village/location of origin, awards, GI certification, or cultural claims not explicitly stated by the artisan.
-   - If no story/heritage facts were provided, write a simple clean craft summary based strictly on the product description.
+   - Create a polished craft story ONLY from facts provided in `artisan_story` or `special_characteristics`.
+   - NEVER invent family history, generation count, village/location of origin, awards, GI certification, or cultural claims that are not in ARTISAN FACTS.
+   - If `artisan_story` is empty or says nothing about family tradition, write a clean product craft summary based strictly on the product description.
 2. MATERIALS:
-   - Extract ONLY materials explicitly named by the artisan in Q2 or description.
-   - NEVER invent specific wood species (e.g. Teak, Rosewood), specific metals, or specific finishes (e.g. natural lacquer) unless explicitly stated.
-   - If no materials are mentioned, return an empty array [].
+   - Use ONLY materials explicitly listed in `materials` of ARTISAN FACTS.
+   - NEVER invent specific wood species (e.g. Teak, Rosewood), specific metals, or specific finishes (e.g. natural lacquer) unless listed in ARTISAN FACTS.
+   - If `materials` in ARTISAN FACTS is empty, return an empty array [].
 3. PRICING:
-   - Do NOT estimate, output, or include any prices, costs, or margins. Pricing is strictly calculated by a separate pricing engine.
+   - Do NOT estimate, output, or include any prices, costs, or margins.
 4. TITLE & DESCRIPTION:
-   - Create a clean, market-ready title (max 10 words) and product overview (2-3 sentences).
+   - Create a clean product title (max 10 words) and product overview (2-3 sentences).
 5. CATEGORY & TAGS:
-   - Select an appropriate category (Kalamkari, Wooden Toys, Blue Pottery, Bidriware, Pochampally Ikat, Terracotta, Handloom, Other) and 4-6 relevant discovery tags.
-
-ARTISAN PRODUCT INFORMATION:
-- Target Language: {language}
-- Craft Hint: {clean_cat or 'Not specified'}
-- Q1 (Product Name & Craft): {q1_val or 'Not provided'}
-- Q2 (Materials & Handiwork): {q2_val or 'Not provided'}
-- Q3 (Craft Process & Story): {q3_val or 'Not provided'}
-- General Voice / Text Description: {clean_desc or 'Not provided'}
+   - Select an appropriate category and 4-6 relevant discovery tags based on ARTISAN FACTS.
+6. TRANSLATIONS:
+   - Provide title, description, and craft_story in English AND in target native language '{language}'.
 
 Return ONLY valid JSON matching this schema:
 {{
   "title": "Clean product title in English",
   "description": "Product overview in English",
   "craft_story": "Factual craft story in English",
-  "materials": ["Material 1", "Material 2"],
+  "materials": ["Material 1"],
   "category": "Category Name",
   "tags": ["tag1", "tag2", "tag3"]
 }}"""

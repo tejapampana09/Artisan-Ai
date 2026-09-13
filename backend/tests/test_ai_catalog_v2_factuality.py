@@ -364,3 +364,26 @@ def test_8_native_mapping_verification():
         assert draft["title_en"] == "Kondapalli Wooden Toy"
         assert draft["description_en"] == "Traditional wooden toy from Andhra Pradesh."
         assert draft["craft_story_en"] == "Crafted over 2 days by traditional artisans."
+
+
+def test_9_manual_draft_fallback_preserves_artisan_facts():
+    """Test 9 — Manual Fallback: When force_fallback=True or AI fails, ArtisanFacts are preserved in manual draft."""
+    facts = ArtisanFacts(
+        product_name="Kondapalli Wooden Toy",
+        craft_type="Wooden Toys",
+        materials=["wood", "natural dyes"],
+        artisan_story="2 days crafting time"
+    )
+
+    draft = asyncio.run(generate_catalog_draft(
+        artisan_facts=facts,
+        language="en",
+        force_fallback=True
+    ))
+
+    assert draft["source"] == "MANUAL_DRAFT"
+    assert draft["title"] == "Kondapalli Wooden Toy"
+    assert draft["category"] == "Wooden Toys"
+    assert draft["materials"] == "wood, natural dyes"
+    assert draft["craft_story"] == "2 days crafting time"
+

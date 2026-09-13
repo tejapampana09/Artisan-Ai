@@ -183,7 +183,7 @@ def calculate_pricing_from_costs(
     return min_fair, suggested, True, "COST_PLUS_MARGIN"
 
 def build_production_manual_draft(
-    voice_description: str,
+    voice_description: str = "",
     language: str = "en",
     image_url: Optional[str] = None,
     category_hint: Optional[str] = None,
@@ -191,25 +191,31 @@ def build_production_manual_draft(
     labour_cost: Optional[Any] = None,
     packaging_cost: Optional[Any] = None,
     other_cost: Optional[Any] = None,
+    qna_answers: Optional[Dict[str, str]] = None,
+    artisan_facts: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     Constructs a 100% honest manual draft when AI is unavailable in production.
-    - Zero fabrication of craft stories, GI status, materials, or fake selling prices.
-    - Preserves artisan's exact words.
-    - Derives title honestly from first line (up to 80 chars) or 'Craft Draft (Pending Title)'.
+    - Preserves canonical ArtisanFacts (product_name, materials, artisan_story, craft_type) without fabrication.
     - If costs are missing, pricing is left as None (pricing_available=False).
     """
     clean_desc = (voice_description or "").strip()
     clean_image = (image_url or "").strip()
     clean_cat = (category_hint or "").strip() or None
 
-    first_line = clean_desc.split("\n")[0].strip()
-    if len(first_line) > 3:
-        title = first_line[:80].strip()
-    elif clean_cat:
-        title = f"Handcrafted {clean_cat}"
-    else:
-        title = "Craft Draft (Pending Title)"
+    facts = extract_artisan_facts(
+        artisan_facts=artisan_facts,
+        qna_answers=qna_answers,
+        voice_description=clean_desc,
+        category_hint=clean_cat
+    )
+
+    first_desc_line = clean_desc.split("\n")[0][:80].strip() if clean_desc else ""
+    title = facts.product_name or first_desc_line or (f"Handcrafted {facts.craft_type or clean_cat}" if (facts.craft_type or clean_cat) else "Craft Draft (Pending Title)")
+    category = facts.craft_type or clean_cat or "Handcrafted"
+    materials_str = ", ".join(facts.materials) if facts.materials else ""
+    story = facts.artisan_story or ""
+    description = facts.special_characteristics or clean_desc or title
 
     min_fair, suggested, pricing_avail, pricing_src = calculate_pricing_from_costs(
         material_cost, labour_cost, packaging_cost, other_cost
@@ -220,21 +226,26 @@ def build_production_manual_draft(
     pkg_dec = to_decimal(packaging_cost) if packaging_cost is not None else None
     oth_dec = to_decimal(other_cost) if other_cost is not None else None
 
+    trans_map = {
+        language: {"title": title, "description": description, "craft_story": story},
+        "en": {"title": title, "description": description, "craft_story": story}
+    }
+
     return {
         "source": "MANUAL_DRAFT",
         "is_live_ai": False,
         "is_demo_data": False,
         "requires_artisan_verification": True,
         "title": title,
-        "category": clean_cat or "Handcrafted",
-        "materials": "",
-        "description": clean_desc,
-        "craft_story": "",
+        "category": category,
+        "materials": materials_str,
+        "description": description,
+        "craft_story": story,
         "title_en": title,
-        "description_en": clean_desc,
-        "craft_story_en": "",
-        "translations": json.dumps({"en": {"title": title, "description": clean_desc, "craft_story": ""}}),
-        "tags": [clean_cat] if clean_cat else [],
+        "description_en": description,
+        "craft_story_en": story,
+        "translations": json.dumps(trans_map),
+        "tags": [category] if category else [],
         "suggested_price": suggested,
         "min_fair_price": min_fair,
         "material_cost": mat_dec,
@@ -249,7 +260,7 @@ def build_production_manual_draft(
         "transcription": clean_desc,
         "language_detected": language,
         "lifecycle_state": "MANUAL_DRAFT",
-        "notice": "Live AI generation is temporarily unavailable. Your original description has been preserved as an editable manual draft. Please complete and verify details manually."
+        "notice": "Live AI generation is temporarily unavailable. Your verified artisan facts have been preserved as an editable manual draft. Please complete and verify details manually."
     }
 
 async def generate_catalog_draft(
@@ -466,7 +477,9 @@ Return a valid JSON object matching this schema EXACTLY:
         material_cost=material_cost,
         labour_cost=labour_cost,
         packaging_cost=packaging_cost,
-        other_cost=other_cost
+        other_cost=other_cost,
+        qna_answers=qna_answers,
+        artisan_facts=artisan_facts_obj
     )
 
 
