@@ -274,6 +274,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const baseTranscriptRef = useRef('');
   const currentQnaAnswersRef = useRef(qnaAnswers);
   const currentVoiceTextRef = useRef(voiceText);
+  const activeTargetKeyRef = useRef(null);
 
   useEffect(() => {
     currentQnaAnswersRef.current = qnaAnswers;
@@ -398,6 +399,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   };
 
   const handleNavQnaIndex = (newIdx) => {
+    stopRecording();
     stopCurrentAudio();
     setActiveQnaIndex(newIdx);
     const questions = getAdaptiveQnaQuestions(qnaAnswers, selectedPhoto, selectedLang);
@@ -503,9 +505,14 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   // Native WebRTC Audio Recording with Timer & Honest Fallback
   const startRecording = async (targetQnaKey = null) => {
     try {
+      // 1. Cleanly tear down any ongoing audio or previous mic session
+      stopCurrentAudio();
+      stopRecording();
+      activeTargetKeyRef.current = targetQnaKey;
       setMicError(null);
       setRecordingSeconds(0);
       audioChunksRef.current = [];
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -535,10 +542,21 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         setRecordingSeconds((prev) => prev + 1);
       }, 1000);
 
-      // Real-Time Browser Speech-to-Text Recognition with Auto-Reconnect through Pauses
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
+      // Dedicated session starter for SpeechRecognition to prevent Chrome InvalidStateError
+      const startSpeechSession = () => {
+        if (!isRecordingRef.current) return;
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return;
+
         try {
+          if (recognitionRef.current) {
+            try {
+              recognitionRef.current.onend = null;
+              recognitionRef.current.abort();
+            } catch (e) {}
+            recognitionRef.current = null;
+          }
+
           const recognition = new SpeechRecognition();
           recognitionRef.current = recognition;
           const langMap = { te: 'te-IN', hi: 'hi-IN', en: 'en-IN', ta: 'ta-IN', bn: 'bn-IN' };
@@ -554,8 +572,9 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
             if (sessionTranscript && sessionTranscript.trim()) {
               const base = baseTranscriptRef.current;
               const combined = base ? `${base} ${sessionTranscript.trim()}` : sessionTranscript.trim();
-              if (targetQnaKey) {
-                setQnaAnswers((prev) => ({ ...prev, [targetQnaKey]: combined }));
+              const currentKey = activeTargetKeyRef.current;
+              if (currentKey) {
+                setQnaAnswers((prev) => ({ ...prev, [currentKey]: combined }));
               } else {
                 setVoiceText(combined);
               }
@@ -563,29 +582,32 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
           };
 
           recognition.onerror = (e) => {
-            console.warn('SpeechRecognition error:', e);
+            if (e.error !== 'no-speech' && e.error !== 'aborted') {
+              console.warn('SpeechRecognition error:', e.error);
+            }
           };
 
           recognition.onend = () => {
-            // When browser speech pauses (e.g. user takes a breath), auto-resume and keep building the text
+            // When browser pauses on silence, update base and spin up a fresh session seamlessly
             if (isRecordingRef.current) {
-              const latestText = (targetQnaKey ? currentQnaAnswersRef.current[targetQnaKey] : currentVoiceTextRef.current) || '';
+              const currentKey = activeTargetKeyRef.current;
+              const latestText = (currentKey ? currentQnaAnswersRef.current[currentKey] : currentVoiceTextRef.current) || '';
               baseTranscriptRef.current = latestText.trim();
               setTimeout(() => {
-                if (isRecordingRef.current && recognitionRef.current) {
-                  try {
-                    recognitionRef.current.start();
-                  } catch (e) {}
+                if (isRecordingRef.current) {
+                  startSpeechSession();
                 }
-              }, 100);
+              }, 120);
             }
           };
 
           recognition.start();
-        } catch (e) {
-          console.warn('Speech recognition parallel listener skipped', e);
+        } catch (err) {
+          console.warn('Speech recognition start failed:', err);
         }
-      }
+      };
+
+      startSpeechSession();
     } catch (err) {
       console.warn('Microphone permission or hardware error:', err);
       setIsRecording(false);
@@ -609,7 +631,9 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       recognitionRef.current = null;
     }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (e) {}
     }
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
