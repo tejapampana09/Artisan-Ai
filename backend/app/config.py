@@ -84,3 +84,8 @@ def get_cors_origins() -> List[str]:
 # AI API configuration
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
 AI_REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "25.0"))
+
+# Market Research API configuration
+MARKET_RESEARCH_PROVIDER: str = os.getenv("MARKET_RESEARCH_PROVIDER", "WEB_SEARCH").strip().upper()
+MARKET_RESEARCH_API_KEY: str = os.getenv("MARKET_RESEARCH_API_KEY", "").strip()
+

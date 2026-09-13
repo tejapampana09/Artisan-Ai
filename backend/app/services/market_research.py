@@ -7,7 +7,7 @@ from backend.app.schemas import (
     ArtisanFacts, MarketListing, MarketSummary, MarketResearchResponse
 )
 from backend.app.services.market_research_provider import (
-    BaseMarketResearchProvider, NoOpMarketResearchProvider
+    BaseMarketResearchProvider, NoOpMarketResearchProvider, get_default_market_research_provider
 )
 from backend.app.services.market_similarity import calculate_market_similarity
 
@@ -64,7 +64,7 @@ async def research_market(
             notice="Insufficient artisan facts provided to construct a market search query."
         )
 
-    active_provider = provider if provider is not None else NoOpMarketResearchProvider()
+    active_provider = provider if provider is not None else get_default_market_research_provider()
     raw_listings = await active_provider.search_comparable_products(query, limit=20)
 
     retained_listings: List[MarketListing] = []
