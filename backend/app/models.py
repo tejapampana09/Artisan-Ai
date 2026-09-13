@@ -232,4 +232,25 @@ class ProcessedOperation(Base):
     result_json = Column(Text, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+class DraftCatalog(Base):
+    __tablename__ = "draft_catalogs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    draft_token = Column(String, unique=True, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
+    
+    artisan_facts_json = Column(Text, nullable=False)
+    catalog_draft_json = Column(Text, nullable=False)
+    market_summary_json = Column(Text, nullable=True)
+    price_recommendation_json = Column(Text, nullable=True)
+    
+    material_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
+    labour_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
+    packaging_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
+    other_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
+    min_margin_pct = Column(Numeric(5, 4), default=Decimal("0.2000"), nullable=False)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 

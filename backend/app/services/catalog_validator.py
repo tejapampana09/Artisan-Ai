@@ -183,3 +183,68 @@ def validate_catalog_draft(
         catalog["category"] = facts_craft_type
 
     return catalog
+
+def validate_edited_catalog_strictly(
+    edited_catalog: Dict[str, Any],
+    artisan_facts: Optional[ArtisanFacts] = None
+) -> List[str]:
+    """
+    Strictly validates human edits against canonical ArtisanFacts during the publish phase (Behavior B).
+    Returns a list of violation error messages if the edited catalog contains unverified materials,
+    unsupported family heritage claims, or unverified award/certification/GI tags.
+    Returns an empty list [] if validation succeeds.
+    """
+    if artisan_facts is None:
+        return []
+
+    errors: List[str] = []
+
+    facts_materials = artisan_facts.materials or []
+    facts_story = (artisan_facts.artisan_story or "").strip()
+    facts_spec = (artisan_facts.special_characteristics or "").strip()
+    facts_lower = [f.lower().strip() for f in facts_materials if f.strip()]
+
+    # 1. Strict Materials Check
+    raw_materials = edited_catalog.get("materials")
+    if raw_materials:
+        if isinstance(raw_materials, str):
+            edited_list = [m.strip() for m in raw_materials.split(",") if m.strip()]
+        elif isinstance(raw_materials, list):
+            edited_list = [str(m).strip() for m in raw_materials if str(m).strip()]
+        else:
+            edited_list = []
+
+        if not facts_materials and edited_list:
+            errors.append("No materials were declared in your verified Q&A facts, but materials were specified in publish request.")
+        else:
+            unverified = []
+            for mat in edited_list:
+                mat_l = mat.lower()
+                if not any(f in mat_l or mat_l in f for f in facts_lower):
+                    unverified.append(mat)
+            if unverified:
+                errors.append(f"Material(s) '{', '.join(unverified)}' are not listed in your verified artisan facts ({', '.join(facts_materials)}).")
+
+    # 2. Strict Heritage Claims Check
+    fs_lower = facts_story.lower()
+    negative_signals = ["ఏమీ చెప్పలేదు", "చెప్పలేదు", "no family", "nothing", "not specified", "no story"]
+    has_negative = any(neg in fs_lower for neg in negative_signals)
+    has_explicit_heritage = (not has_negative) and any(
+        kw in fs_lower
+        for kw in ["family", "generations", "generation", "years", "ancestor", "ancestors", "తరాల", "సంవత్సరాల"]
+    )
+
+    if not has_explicit_heritage:
+        for field_name in ["craft_story", "description", "title"]:
+            text_val = (edited_catalog.get(field_name) or "").lower()
+            if any(term in text_val for term in FORBIDDEN_HERITAGE_TERMS):
+                errors.append(f"Unverified family heritage claim found in {field_name}. Please remove ancestral/generational claims not present in your Q&A answers.")
+
+    # 3. Strict Awards / GI Tag Check
+    for field_name in ["title", "description", "craft_story"]:
+        text_val = (edited_catalog.get(field_name) or "").lower()
+        if any(term in text_val for term in FORBIDDEN_AWARD_TERMS):
+            errors.append(f"Unverified award/GI tag claim found in {field_name}. Official awards or GI status must be verified.")
+
+    return errors
+

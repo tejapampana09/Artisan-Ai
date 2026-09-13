@@ -35,7 +35,8 @@ async def process_full_catalog_pipeline(
     other_cost: Optional[float] = None,
     qna_answers: Optional[Dict[str, str]] = None,
     provider: Optional[BaseMarketResearchProvider] = None,
-    db: Optional[Session] = None
+    db: Optional[Session] = None,
+    user_id: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Unified Catalog Orchestrator:
@@ -125,7 +126,34 @@ async def process_full_catalog_pipeline(
     min_fair = Decimal(str(pricing_rec["minimum_fair_price"]))
     rec_price = Decimal(str(pricing_rec["recommended_price"]))
 
+    import json
+    import uuid
+    from backend.app.models import DraftCatalog
+
+    draft_token = f"draft_{uuid.uuid4().hex[:16]}"
+
+    if db is not None:
+        try:
+            draft_rec = DraftCatalog(
+                draft_token=draft_token,
+                user_id=user_id,
+                artisan_facts_json=json.dumps(canonical_facts.model_dump()),
+                catalog_draft_json=json.dumps(catalog_fields),
+                market_summary_json=json.dumps(market_summary_dict),
+                price_recommendation_json=json.dumps(pricing_rec),
+                material_cost=Decimal(str(material_cost or 0.0)),
+                labour_cost=Decimal(str(labour_cost or 0.0)),
+                packaging_cost=Decimal(str(packaging_cost or 0.0)),
+                other_cost=Decimal(str(other_cost or 0.0)),
+                min_margin_pct=Decimal("0.20")
+            )
+            db.add(draft_rec)
+            db.commit()
+        except Exception:
+            pass
+
     return {
+        "draft_token": draft_token,
         "source": validated_catalog.get("source", "MANUAL_DRAFT"),
         "is_live_ai": validated_catalog.get("is_live_ai", False),
         "is_demo_data": False,

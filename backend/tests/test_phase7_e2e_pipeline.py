@@ -111,13 +111,96 @@ def test_phase7_3_publish_final_validation_strips_unverified_materials(db):
     }
 
     from backend.app.routes.ai_catalog import approve_and_publish_product, CatalogApproveRequest
+    from fastapi import HTTPException
 
     req = CatalogApproveRequest(**approve_payload)
     mock_user = type("User", (), {"id": 1})()
 
-    published = approve_and_publish_product(req, db=db, current_user=mock_user)
+    # Strict validation rejects unverified 24K Gold Leaf and Diamond Dust with 400 Bad Request
+    with pytest.raises(HTTPException) as exc_info:
+        approve_and_publish_product(req, db=db, current_user=mock_user)
 
-    # Final validation must strip unverified "24K Gold Leaf" and "Diamond Dust"
-    assert "24K Gold Leaf" not in published.materials
-    assert "Diamond Dust" not in published.materials
-    assert "Teak Wood" in published.materials
+    assert exc_info.value.status_code == 400
+    assert "Material(s)" in exc_info.value.detail
+
+def test_phase7_trust_boundary_1_server_owned_draft_token_and_cost_floor(db):
+    from backend.app.services.catalog_orchestrator import process_full_catalog_pipeline_sync
+    from backend.app.routes.ai_catalog import approve_and_publish_product, CatalogApproveRequest
+    from fastapi import HTTPException
+
+    original_facts = ArtisanFacts(
+        product_name="Terracotta Water Jug",
+        craft_type="Pottery",
+        materials=["Clay", "Terracotta"],
+        handmade=True
+    )
+
+    # 1. Process catalog generates server-owned DraftCatalog entry
+    draft_res = process_full_catalog_pipeline_sync(
+        artisan_facts=original_facts,
+        material_cost=300.0,
+        labour_cost=200.0,
+        packaging_cost=50.0,
+        other_cost=50.0,
+        db=db,
+        user_id=1
+    )
+
+    draft_token = draft_res["draft_token"]
+    assert draft_token.startswith("draft_")
+
+    mock_user = type("User", (), {"id": 1})()
+
+    # 2. Client attempts to lower cost floor by omitting costs and setting price = 500
+    # Server uses server-owned cost basis from DraftCatalog (floor ₹720) and rejects 500!
+    publish_payload_low_price = {
+        "draft_token": draft_token,
+        "title": "Terracotta Water Jug",
+        "category": "Pottery",
+        "materials": "Clay, Terracotta",
+        "description": "Handcrafted terracotta jug",
+        "craft_story": "Traditional pottery",
+        "price": 500.0,
+        "material_cost": 0.0, # Client attempts to spoof costs as 0
+        "labour_cost": 0.0
+    }
+
+    with pytest.raises(HTTPException) as exc_info:
+        approve_and_publish_product(CatalogApproveRequest(**publish_payload_low_price), db=db, current_user=mock_user)
+
+    assert exc_info.value.status_code == 400
+    assert "below minimum fair price floor" in exc_info.value.detail
+
+    # 3. Client attempts to spoof material to "Clay, Gold Leaf" using valid draft token
+    # Server retrieves server-owned facts from DraftCatalog and rejects Gold Leaf with 400!
+    publish_payload_spoofed_mat = {
+        "draft_token": draft_token,
+        "title": "Terracotta Water Jug",
+        "category": "Pottery",
+        "materials": "Clay, Terracotta, 24K Gold Leaf",
+        "description": "Handcrafted terracotta jug",
+        "craft_story": "Traditional pottery",
+        "price": 850.0
+    }
+
+    with pytest.raises(HTTPException) as exc_info:
+        approve_and_publish_product(CatalogApproveRequest(**publish_payload_spoofed_mat), db=db, current_user=mock_user)
+
+    assert exc_info.value.status_code == 400
+    assert "24K Gold Leaf" in exc_info.value.detail
+
+    # 4. Valid publish using draft_token and verified materials succeeds!
+    valid_publish_payload = {
+        "draft_token": draft_token,
+        "title": "Terracotta Water Jug",
+        "category": "Pottery",
+        "materials": "Clay, Terracotta",
+        "description": "Handcrafted terracotta jug",
+        "craft_story": "Traditional pottery",
+        "price": 850.0
+    }
+
+    published = approve_and_publish_product(CatalogApproveRequest(**valid_publish_payload), db=db, current_user=mock_user)
+    assert published.id is not None
+    assert published.price == Decimal("850.00")
+
