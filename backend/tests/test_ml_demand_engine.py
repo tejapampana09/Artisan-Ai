@@ -166,18 +166,24 @@ def test_ml_api_endpoints():
     assert pred_data["model_source"] in ["TRAINED_ML_MODEL", "RULE_BASED_FALLBACK"]
 
 def test_ml_retrain_endpoint_threshold_protection():
-    # Register artisan & login to get JWT auth header
+    import uuid
+    rnd_id = uuid.uuid4().hex[:8]
     reg_res = client.post("/api/auth/register", json={
-        "name": "Admin Retrainer",
-        "email": "retrainer@example.com",
-        "phone": "+919876543210",
+        "name": f"Admin Retrainer {rnd_id}",
+        "email": f"retrainer_{rnd_id}@example.com",
+        "phone": f"+9198{rnd_id[:8]}",
         "password": "Password123!",
         "role": "ARTISAN"
     })
-    token = reg_res.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    token = reg_res.json().get("access_token")
+    if not token:
+        login_res = client.post("/api/auth/login", json={
+            "email_or_phone": f"retrainer_{rnd_id}@example.com",
+            "password": "Password123!"
+        })
+        token = login_res.json().get("access_token")
 
-    # Call /api/ml/retrain without reaching minimum event threshold (< 20 events)
+    headers = {"Authorization": f"Bearer {token}"}
     res_retrain = client.post("/api/ml/retrain", headers=headers)
     assert res_retrain.status_code == 400
     detail = res_retrain.json()["detail"]

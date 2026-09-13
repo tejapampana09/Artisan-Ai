@@ -110,7 +110,7 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
       )}
 
       {/* Top Fixed Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs w-full overflow-x-hidden">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs w-full">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo & Title */}
@@ -239,70 +239,6 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
                       </span>
                     )}
                   </button>
-
-                  {showNotifications && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 z-60 overflow-hidden text-xs">
-                      <div className="p-3 bg-amber-50 border-b border-amber-200/60 flex items-center justify-between">
-                        <span className="font-bold text-amber-900 flex items-center">
-                          <Bell className="w-3.5 h-3.5 mr-1 text-amber-700" />
-                          Notifications
-                        </span>
-                        <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
-                          {unreadCount} unread
-                        </span>
-                      </div>
-
-                      {/* Mobile Device Push Permission Banner */}
-                      <div className="px-3 py-2 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 text-[11px]">
-                        <div className="flex items-center space-x-1.5">
-                          <Smartphone className="w-3.5 h-3.5 text-amber-400" />
-                          <span className="font-medium">Mobile Push Alerts</span>
-                        </div>
-                        {pushStatus === 'granted' ? (
-                          <span className="text-[10px] bg-emerald-900/90 text-emerald-300 px-2 py-0.5 rounded-full font-bold border border-emerald-500/30">
-                            Active ✓
-                          </span>
-                        ) : (
-                          <button
-                            onClick={handleEnableMobilePush}
-                            className="text-[10px] bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-md font-bold transition-all cursor-pointer shadow-2xs"
-                          >
-                            Enable Alerts
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
-                        {notifications.length === 0 ? (
-                          <div className="p-4 text-center text-slate-400 text-xs">
-                            No notifications yet.
-                          </div>
-                        ) : (
-                          notifications.map((n) => (
-                            <div
-                              key={n.id}
-                              className={`p-3 space-y-1 transition-colors ${
-                                n.is_read ? 'bg-white opacity-70' : 'bg-amber-50/30'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-slate-900 text-xs">{n.title}</span>
-                                {!n.is_read && (
-                                  <button
-                                    onClick={() => handleMarkRead(n.id)}
-                                    className="text-[10px] text-amber-700 hover:underline font-semibold"
-                                  >
-                                    Mark read
-                                  </button>
-                                )}
-                              </div>
-                              <p className="text-slate-600 text-[11px] leading-snug">{n.message}</p>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -318,6 +254,21 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
 
             {/* Compact Mobile Top Right Controls */}
             <div className="flex md:hidden items-center space-x-1.5 shrink-0">
+              {user && (
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="p-2 rounded-xl bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 text-slate-700 transition-all cursor-pointer relative"
+                  title="System Notifications"
+                >
+                  <Bell className="w-4 h-4 text-amber-700" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
               <button
                 onClick={onOpenDownloadApp}
                 className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-extrabold text-xs cursor-pointer active:scale-95 transition-transform"
@@ -346,6 +297,71 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
           </div>
         </div>
       </header>
+
+      {/* Notifications Popover Modal */}
+      {showNotifications && (
+        <>
+          <div 
+            className="fixed inset-0 z-50 bg-slate-900/20 backdrop-blur-xs" 
+            onClick={() => setShowNotifications(false)} 
+          />
+          <div className="fixed top-16 right-3 sm:right-6 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-55 overflow-hidden text-xs">
+            <div className="p-3.5 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Bell className="w-4 h-4 text-amber-400" />
+                <h3 className="font-bold text-sm">Notifications</h3>
+                {unreadCount > 0 && (
+                  <span className="bg-rose-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
+                    {unreadCount} new
+                  </span>
+                )}
+              </div>
+              <button 
+                onClick={() => setShowNotifications(false)} 
+                className="text-slate-400 hover:text-white text-base font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+              {notifications.length === 0 ? (
+                <div className="p-6 text-center text-slate-500">
+                  <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2 opacity-50" />
+                  <p>No notifications yet</p>
+                </div>
+              ) : (
+                notifications.map((n) => (
+                  <div 
+                    key={n.id} 
+                    className={`p-3 transition-colors ${n.is_read ? 'bg-white text-slate-600' : 'bg-amber-50/50 text-slate-900 font-medium'}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-xs">{n.title}</h4>
+                        <p className="text-slate-600 text-xs mt-0.5 leading-relaxed">{n.message}</p>
+                        {n.created_at && (
+                          <span className="text-[10px] text-slate-400 mt-1 block">
+                            {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                      {!n.is_read && (
+                        <button
+                          onClick={() => handleMarkRead(n.id)}
+                          className="text-[10px] font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded-md shrink-0 cursor-pointer"
+                        >
+                          Mark read
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Floating Mobile Bottom Navigation Bar (iOS Liquid Glass Aesthetic) */}
       <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 bg-white/75 backdrop-blur-2xl text-stone-800 rounded-full p-2 shadow-[0_12px_40px_rgba(0,0,0,0.18)] border border-white/70 flex items-center justify-around ring-1 ring-black/5">

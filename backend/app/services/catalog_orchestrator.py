@@ -126,27 +126,11 @@ async def process_full_catalog_pipeline(
         "currency": "INR"
     }
 
-    has_costs = ((material_cost or 0.0) + (labour_cost or 0.0) + (packaging_cost or 0.0) + (other_cost or 0.0)) > 0
-    has_market = market_median is not None and float(market_median) > 0
-
-    if has_costs:
-        min_fair = Decimal(str(pricing_rec["minimum_fair_price"]))
-        rec_price = Decimal(str(pricing_rec["recommended_price"]))
-        pricing_available = True
-        pricing_source = "COST_PLUS_MARKET" if has_market else "COST_PLUS_MARGIN"
-        notice_text = None
-    elif has_market:
-        min_fair = None
-        rec_price = Decimal(str(round(float(market_median) / 5.0) * 5))
-        pricing_available = True
-        pricing_source = "MARKET_BASED_RECOMMENDATION"
-        notice_text = f"Recommended selling price of ₹{rec_price} estimated from live comparable market research."
-    else:
-        min_fair = None
-        rec_price = None
-        pricing_available = False
-        pricing_source = "AWAITING_ARTISAN_INPUT"
-        notice_text = "Cost inputs omitted; please set selling price manually or enter costs to enable floor protection."
+    min_fair = Decimal(str(pricing_rec["minimum_fair_price"])) if (pricing_rec.get("minimum_fair_price") and pricing_rec["minimum_fair_price"] > 0) else None
+    rec_price = Decimal(str(pricing_rec["recommended_price"])) if (pricing_rec.get("recommended_price") is not None and pricing_rec["recommended_price"] > 0) else None
+    pricing_available = rec_price is not None and float(rec_price) > 0
+    pricing_source = pricing_rec.get("safety_constraints", {}).get("pricing_case", "MARKET_BASED_RECOMMENDATION")
+    notice_text = None
 
     import json
     import uuid
@@ -212,7 +196,7 @@ async def process_full_catalog_pipeline(
         "artisan_facts": canonical_facts.model_dump(),
         "market_summary": market_summary_dict,
         "market_research": market_response.model_dump(),
-        "price_recommendation": pricing_rec if (has_costs or has_market) else None
+        "price_recommendation": pricing_rec
     }
 
 def process_full_catalog_pipeline_sync(*args, **kwargs) -> Dict[str, Any]:

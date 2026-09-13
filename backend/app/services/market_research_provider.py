@@ -47,10 +47,8 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
         if not query or not query.strip() or not self.api_key:
             return []
 
-        clean_q = query.strip()
-        results: List[Dict[str, Any]] = []
-
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={self.api_key}"
+        from backend.app.config import GEMINI_MODEL
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={self.api_key}"
         prompt = f"""Search live Google Search for current e-commerce product listings in India for: "{clean_q}".
 Find real comparable product listings available for sale online in India (e.g. on Myntra, Meesho, Amazon, Craftsvilla, iTokri, Ajio, FlipKart, etc.).
 Extract real product listings and their prices in Indian Rupees (INR).
@@ -176,18 +174,6 @@ class WebSearchMarketResearchProvider(BaseMarketResearchProvider):
             except Exception as err:
                 logger.warning("Serper market search request failed for query '%s': %s", clean_q, err)
 
-        # 3. Fallback: Live Bing HTML search (if API keys missing or results < limit)
-        if len(results) < limit:
-            try:
-                bing_items = await self._search_bing_html(clean_q, limit=limit - len(results))
-                for item in bing_items:
-                    url_key = (item.get("url") or item.get("title", "")).lower()
-                    if url_key and url_key not in seen_urls:
-                        seen_urls.add(url_key)
-                        results.append(item)
-            except Exception as err:
-                logger.warning("Bing HTML market search request failed for query '%s': %s", clean_q, err)
-
         return results[:limit]
 
     async def _search_serper(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
@@ -228,7 +214,6 @@ class WebSearchMarketResearchProvider(BaseMarketResearchProvider):
                     domain = urlparse(url).netloc.replace("www.", "").capitalize() if url else "CraftMarketplace"
                     source = cand.get("source") or domain or "CraftMarketplace"
 
-                    # Parse price
                     parsed_price = self._extract_price(cand.get("price"), title, snippet)
 
                     results.append({
@@ -242,52 +227,6 @@ class WebSearchMarketResearchProvider(BaseMarketResearchProvider):
                         "materials": [],
                         "observed_at": datetime.now(timezone.utc)
                     })
-
-        return results
-
-    async def _search_bing_html(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
-        search_url = f"https://www.bing.com/search?q={query.replace(' ', '+')}+price+INR+buy+online"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Accept-Language": "en-US,en;q=0.9"
-        }
-        results = []
-
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-            resp = await client.get(search_url, headers=headers)
-            if resp.status_code != 200:
-                return []
-
-            html = resp.text
-            blocks = re.findall(r'<li class="b_algo".*?>.*?<h2[^>]*><a href="([^"]+)".*?>(.*?)</a></h2>(.*?)</li>', html, re.DOTALL)
-
-            for raw_url, raw_title, rest_html in blocks:
-                if len(results) >= limit:
-                    break
-
-                clean_title = re.sub(r'<[^>]+>', '', raw_title).strip()
-                clean_snippet = re.sub(r'<[^>]+>', '', rest_html).strip()
-                clean_snippet = " ".join(clean_snippet.split())
-
-                if not clean_title or "bing.com" in raw_url:
-                    continue
-
-                domain = urlparse(raw_url).netloc.replace("www.", "").capitalize() if raw_url else "CraftMarketplace"
-                source = domain if domain else "CraftMarketplace"
-
-                parsed_price = self._extract_price(None, clean_title, clean_snippet)
-
-                results.append({
-                    "title": clean_title,
-                    "price": parsed_price,
-                    "currency": "INR",
-                    "source": source,
-                    "url": raw_url,
-                    "description": clean_snippet,
-                    "category": query,
-                    "materials": [],
-                    "observed_at": datetime.now(timezone.utc)
-                })
 
         return results
 

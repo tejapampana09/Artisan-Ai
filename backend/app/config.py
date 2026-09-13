@@ -83,9 +83,23 @@ def get_cors_origins() -> List[str]:
 
 # AI API configuration
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
+GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.6-flash").strip()
+_raw_fallback_models = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.6-flash-lite,gemini-2.5-flash,gemini-1.5-flash")
+GEMINI_FALLBACK_MODELS: List[str] = [m.strip() for m in _raw_fallback_models.split(",") if m.strip()]
 AI_REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "25.0"))
 
-# Market Research API configuration
+# Market Research API & Search Strategy configuration
 MARKET_RESEARCH_PROVIDER: str = os.getenv("MARKET_RESEARCH_PROVIDER", "WEB_SEARCH").strip().upper()
 MARKET_RESEARCH_API_KEY: str = os.getenv("MARKET_RESEARCH_API_KEY", "").strip()
+MARKET_SEARCH_COUNTRY: str = os.getenv("MARKET_SEARCH_COUNTRY", "IN").strip()
+MARKET_SEARCH_LANGUAGE: str = os.getenv("MARKET_SEARCH_LANGUAGE", "en").strip()
+MARKET_SEARCH_MAX_RESULTS: int = int(os.getenv("MARKET_SEARCH_MAX_RESULTS", "10"))
+
+# Pricing Engine Business Constants & Bounds
+MIN_MARGIN_PCT: float = float(os.getenv("PRICING_MIN_MARGIN_PCT", "0.20"))
+MARKET_MEDIAN_WEIGHT: float = float(os.getenv("PRICING_MARKET_MEDIAN_WEIGHT", "0.30"))
+MAX_UPWARD_ADJUSTMENT_PCT: float = float(os.getenv("PRICING_MAX_UPWARD_ADJUSTMENT_PCT", "0.25"))
+MAX_DOWNWARD_ADJUSTMENT_PCT: float = float(os.getenv("PRICING_MAX_DOWNWARD_ADJUSTMENT_PCT", "0.10"))
+MIN_DEMAND_FACTOR: float = float(os.getenv("PRICING_MIN_DEMAND_FACTOR", "0.95"))
+MAX_DEMAND_FACTOR: float = float(os.getenv("PRICING_MAX_DEMAND_FACTOR", "1.15"))
 

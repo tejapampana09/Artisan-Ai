@@ -95,9 +95,9 @@ def validate_catalog_draft(
     raw_gen_materials = catalog.get("materials")
     if not facts_materials:
         if isinstance(raw_gen_materials, list):
-            catalog["materials"] = raw_gen_materials
+            catalog["materials"] = []
         else:
-            catalog["materials"] = raw_gen_materials or ""
+            catalog["materials"] = ""
     else:
         if isinstance(raw_gen_materials, str):
             gen_list = [m.strip() for m in raw_gen_materials.split(",") if m.strip()]

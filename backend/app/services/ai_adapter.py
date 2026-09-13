@@ -141,15 +141,9 @@ def to_decimal(val, default="0.00") -> Decimal:
 
 def get_models_to_try() -> list:
     """Returns an ordered fallback list of active Gemini models starting with configured GEMINI_MODEL."""
-    configured = os.getenv("GEMINI_MODEL", "gemini-3.6-flash").strip()
-    defaults = [
-        "gemini-3.6-flash",
-        "gemini-3.6-flash-lite",
-        "gemini-2.5-flash",
-        "gemini-1.5-flash"
-    ]
-    models = [configured]
-    for m in defaults:
+    from backend.app.config import GEMINI_MODEL, GEMINI_FALLBACK_MODELS
+    models = [GEMINI_MODEL]
+    for m in GEMINI_FALLBACK_MODELS:
         if m not in models:
             models.append(m)
     return models
@@ -440,7 +434,7 @@ Return a valid JSON object matching this schema EXACTLY:
                     if "title" in parsed or "native_title" in parsed:
                         # Application-side strict sanitization for materials
                         mat_list = sanitize_materials(artisan_facts_obj.materials, parsed.get("materials"))
-                        materials_str = ", ".join(mat_list) if mat_list else "Not specified"
+                        materials_str = ", ".join(mat_list) if mat_list else ""
 
                         # Application-side cleaning for tags
                         raw_tags = parsed.get("tags", [])
@@ -524,6 +518,12 @@ Return a valid JSON object matching this schema EXACTLY:
                             "transcription": clean_desc,
                             "language_detected": language,
                             "lifecycle_state": "AI_GENERATED",
+                            "artisan_facts": artisan_facts_obj.model_dump(),
+                            "ai_observations": {
+                                "visual_materials": parsed.get("materials", []),
+                                "visual_category": parsed.get("category", clean_category_hint or "Handcrafted"),
+                                "visual_tags": tags_list
+                            },
                             "notice": "AI-generated draft. Factual heritage and materials claims must be verified by the artisan before publishing."
                         }
                         return validate_catalog_draft(raw_draft, artisan_facts_obj)
