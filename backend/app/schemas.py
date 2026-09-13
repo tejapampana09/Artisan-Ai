@@ -7,6 +7,36 @@ class HealthResponse(BaseModel):
     version: str = "1.0.0"
     timestamp: datetime
 
+class ArtisanFacts(BaseModel):
+    product_name: Optional[str] = Field(
+        default="",
+        description="Product name explicitly provided by artisan"
+    )
+    craft_type: Optional[str] = Field(
+        default="",
+        description="Craft type/category explicitly provided by artisan"
+    )
+    materials: List[str] = Field(
+        default_factory=list,
+        description="Materials explicitly stated by artisan"
+    )
+    handmade: Optional[bool] = Field(
+        default=None,
+        description="Whether artisan explicitly stated the product is handmade"
+    )
+    making_time: Optional[str] = Field(
+        default="",
+        description="Time required to make the product, only if stated by artisan"
+    )
+    artisan_story: Optional[str] = Field(
+        default="",
+        description="Story/heritage information explicitly stated by artisan"
+    )
+    special_characteristics: Optional[str] = Field(
+        default="",
+        description="Special characteristics explicitly stated by artisan"
+    )
+
 class ReadyResponse(BaseModel):
     status: str
     database: str

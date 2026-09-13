@@ -3,13 +3,135 @@ import os
 import json
 import logging
 import httpx
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 from decimal import Decimal, ROUND_HALF_UP
+from pydantic import BaseModel, Field
 
 from backend.app.config import (
     GEMINI_API_KEY, 
     AI_REQUEST_TIMEOUT_SECONDS
 )
+
+from backend.app.schemas import ArtisanFacts
+
+def extract_artisan_facts(
+    artisan_facts: Optional[Any] = None,
+    qna_answers: Optional[Dict[str, str]] = None,
+    voice_description: str = "",
+    category_hint: Optional[str] = None
+) -> ArtisanFacts:
+    """
+    Normalizes any input format (ArtisanFacts, dict, qna_answers, voice_description)
+    into a canonical source-of-truth ArtisanFacts Pydantic instance without inferring unstated facts.
+    Priority:
+    A. artisan_facts (Pydantic model or dict)
+    B. qna_answers (q1_title/q1_product, q2_materials, q3_story)
+    C. voice_description (conservative fallback into special_characteristics)
+    """
+    if artisan_facts:
+        if isinstance(artisan_facts, ArtisanFacts):
+            af_dict = artisan_facts.model_dump()
+        elif isinstance(artisan_facts, dict):
+            af_dict = dict(artisan_facts)
+        else:
+            af_dict = {}
+
+        raw_m = af_dict.get("materials", [])
+        if isinstance(raw_m, str):
+            clean_m = [item.strip() for item in raw_m.split(",") if item.strip()]
+        elif isinstance(raw_m, list):
+            clean_m = [str(item).strip() for item in raw_m if str(item).strip()]
+        else:
+            clean_m = []
+
+        return ArtisanFacts(
+            product_name=(af_dict.get("product_name") or "").strip(),
+            craft_type=(af_dict.get("craft_type") or "").strip(),
+            materials=clean_m,
+            handmade=af_dict.get("handmade"),
+            making_time=(af_dict.get("making_time") or "").strip(),
+            artisan_story=(af_dict.get("artisan_story") or "").strip(),
+            special_characteristics=(af_dict.get("special_characteristics") or "").strip(),
+        )
+
+    if qna_answers:
+        q1 = (qna_answers.get('q1_title') or qna_answers.get('q1_product') or '').strip()
+        q2 = (qna_answers.get('q2_materials') or '').strip()
+        q3 = (qna_answers.get('q3_story') or '').strip()
+
+        mat_list = []
+        if q2:
+            mat_list = [p.strip() for p in q2.split(",") if p.strip()]
+
+        return ArtisanFacts(
+            product_name=q1,
+            craft_type=(category_hint or "").strip(),
+            materials=mat_list,
+            handmade=None,
+            making_time="",
+            artisan_story=q3,
+            special_characteristics=""
+        )
+
+    v_clean = (voice_description or "").strip()
+    return ArtisanFacts(
+        product_name="",
+        craft_type=(category_hint or "").strip(),
+        materials=[],
+        handmade=None,
+        making_time="",
+        artisan_story="",
+        special_characteristics=v_clean
+    )
+
+def sanitize_materials(facts_materials: List[str], generated_materials: Any) -> List[str]:
+    """
+    Filters AI generated materials strictly against artisan facts.
+    If facts_materials is empty, returns empty list [].
+    If facts_materials is specified, filters out unmentioned materials.
+    """
+    if not facts_materials:
+        return []
+
+    if isinstance(generated_materials, str):
+        gen_list = [m.strip() for m in generated_materials.split(",") if m.strip()]
+    elif isinstance(generated_materials, list):
+        gen_list = [str(m).strip() for m in generated_materials if str(m).strip()]
+    else:
+        gen_list = []
+
+    facts_lower = [f.lower().strip() for f in facts_materials if f.strip()]
+    sanitized = []
+    for gen in gen_list:
+        gen_l = gen.lower()
+        if any(f in gen_l or gen_l in f for f in facts_lower):
+            sanitized.append(gen)
+
+    return sanitized if sanitized else facts_materials
+
+def sanitize_craft_story(facts_story: str, generated_story: str, fallback_desc: str) -> str:
+    """
+    Validates that AI did not hallucinate family heritage/traditions when artisan_story is empty or non-hereditary.
+    """
+    fs_lower = (facts_story or "").lower()
+    negative_signals = ["ఏమీ చెప్పలేదు", "చెప్పలేదు", "no family", "nothing", "not specified", "no story"]
+    has_negative = any(neg in fs_lower for neg in negative_signals)
+
+    has_explicit_heritage = (not has_negative) and any(
+        kw in fs_lower
+        for kw in ["family", "generations", "generation", "years", "ancestor", "తరాల", "సంవత్సరాల"]
+    )
+    if not has_explicit_heritage:
+        forbidden = [
+            "generation", "generations", "ancestral", "centuries-old",
+            "passed down", "family tradition", "heritage tradition",
+            "three generations", "20 years of family"
+        ]
+        gen_lower = (generated_story or "").lower()
+        if any(f in gen_lower for f in forbidden):
+            return fallback_desc or "Handcrafted artisan item created with traditional care."
+
+    return generated_story or fallback_desc or "Handcrafted artisan item."
 
 def to_decimal(val, default="0.00") -> Decimal:
     if val is None:
@@ -131,7 +253,7 @@ def build_production_manual_draft(
     }
 
 async def generate_catalog_draft(
-    voice_description: str,
+    voice_description: str = "",
     language: str = "en",
     image_url: Optional[str] = None,
     category_hint: Optional[str] = None,
@@ -140,21 +262,27 @@ async def generate_catalog_draft(
     packaging_cost: Optional[Any] = None,
     other_cost: Optional[Any] = None,
     qna_answers: Optional[Dict[str, str]] = None,
+    artisan_facts: Optional[Any] = None,
     force_fallback: bool = False
 ) -> Dict[str, Any]:
     """
     Generates an AI Catalog Draft with strict provenance and safety boundaries:
-    - V2 Strict Factuality: Zero fabricated heritage, family history, awards, or materials.
-    - Decoupled Pricing: Pricing is NOT generated by prompt; calculated via pricing engine or cost inputs.
-    - Structured Q&A Input & Dual Language Output.
+    - Canonical ArtisanFacts Source of Truth: Gemini receives single structured ArtisanFacts object.
+    - Application-side Sanitizers: Rejects unmentioned materials and fabricated family traditions.
+    - Decoupled Pricing: Pricing calculated separately via cost inputs or pricing engine.
+    - Dual Language Output: Primary fields map to selected target language.
     """
     clean_desc = (voice_description or "").strip()
     clean_image = (image_url or "").strip()
     clean_category_hint = (category_hint or "").strip() or None
 
-    q1_val = (qna_answers.get('q1_title') or qna_answers.get('q1_product') or '').strip() if qna_answers else ''
-    q2_val = (qna_answers.get('q2_materials') or '').strip() if qna_answers else ''
-    q3_val = (qna_answers.get('q3_story') or '').strip() if qna_answers else ''
+    artisan_facts_obj = extract_artisan_facts(
+        artisan_facts=artisan_facts,
+        qna_answers=qna_answers,
+        voice_description=clean_desc,
+        category_hint=clean_category_hint
+    )
+    facts_json_str = json.dumps(artisan_facts_obj.model_dump(), ensure_ascii=False, indent=2)
 
     has_user_costs = any(
         c is not None and Decimal(str(c)) > 0 
@@ -167,42 +295,37 @@ async def generate_catalog_draft(
     if GEMINI_API_KEY and not force_fallback:
         try:
             prompt = f"""You are Artisan AI's master cataloging assistant for traditional Indian handicrafts.
-Your task is to generate clean, professional, factual product catalog information based STRICTLY on the artisan's provided inputs.
+Your task is to transform the provided ARTISAN FACTS into clean, professional product catalog fields.
 
-SOURCE OF TRUTH & STRICT FACTUALITY RULES:
+CANONICAL SOURCE OF TRUTH (ARTISAN FACTS):
+{facts_json_str}
+
+STRICT FACTUALITY RULES:
 1. CRAFT STORY:
-   - Create a polished craft story ONLY from facts explicitly provided by the artisan in Q3 or description.
-   - NEVER invent family history, generation count, village/location of origin, awards, GI certification, or cultural claims not explicitly stated by the artisan.
-   - If no story/heritage facts were provided, write a simple clean craft summary based strictly on the product description.
+   - Create a polished craft story ONLY from facts provided in `artisan_story` or `special_characteristics`.
+   - NEVER invent family history, generation count, village/location of origin, awards, GI certification, or cultural claims that are not in ARTISAN FACTS.
+   - If `artisan_story` is empty or says nothing about family tradition, write a clean product craft summary based strictly on the product description.
 2. MATERIALS:
-   - Extract ONLY materials explicitly named by the artisan in Q2 or description.
-   - NEVER invent specific wood species (e.g. Teak, Rosewood), specific metals, or specific finishes (e.g. natural lacquer) unless explicitly stated.
-   - If no materials are mentioned, return an empty array [].
+   - Use ONLY materials explicitly listed in `materials` of ARTISAN FACTS.
+   - NEVER invent specific wood species (e.g. Teak, Rosewood), specific metals, or specific finishes (e.g. natural lacquer) unless listed in ARTISAN FACTS.
+   - If `materials` in ARTISAN FACTS is empty, return an empty array [].
 3. PRICING:
-   - Do NOT estimate, output, or include any prices, costs, or margins. Pricing is strictly calculated by a separate pricing engine.
+   - Do NOT estimate, output, or include any prices, costs, or margins.
 4. TITLE & DESCRIPTION:
-   - Create a clean, market-ready title (max 10 words) and product overview (2-3 sentences).
+   - Create a clean product title (max 10 words) and product overview (2-3 sentences).
 5. CATEGORY & TAGS:
-   - Select an appropriate category (Kalamkari, Wooden Toys, Blue Pottery, Bidriware, Pochampally Ikat, Terracotta, Handloom, Other) and 4-6 relevant discovery tags.
+   - Select an appropriate category and 4-6 relevant discovery tags based on ARTISAN FACTS.
 6. TRANSLATIONS:
-   - Provide title, description, and craft_story in English AND in native language '{language}'.
-
-ARTISAN PRODUCT INFORMATION:
-- Target Language: {language}
-- Craft Hint: {clean_category_hint or 'Not specified'}
-- Q1 (Product Name & Craft): {q1_val or 'Not provided'}
-- Q2 (Materials & Handiwork): {q2_val or 'Not provided'}
-- Q3 (Craft Process & Story): {q3_val or 'Not provided'}
-- General Voice / Text Description: {clean_desc or 'Not provided'}
+   - Provide title, description, and craft_story in English AND in target native language '{language}'.
 
 Return a valid JSON object matching this schema EXACTLY:
 {{
   "title": "Clean product title in English",
   "description": "Product overview in English (2-3 sentences)",
   "craft_story": "Factual craft story in English",
-  "materials": ["Material 1", "Material 2"],
+  "materials": ["Material 1"],
   "category": "Category Name",
-  "tags": ["tag1", "tag2", "tag3", "tag4"],
+  "tags": ["tag1", "tag2", "tag3"],
   "native_title": "Product title in target language ({language})",
   "native_description": "Product overview in target language ({language})",
   "native_craft_story": "Factual craft story in target language ({language})"
@@ -241,14 +364,8 @@ Return a valid JSON object matching this schema EXACTLY:
 
                     # Validate required core fields from AI
                     if "title" in parsed or "native_title" in parsed:
-                        # Application-side cleaning for materials
-                        raw_mat = parsed.get("materials", [])
-                        if isinstance(raw_mat, list):
-                            mat_list = [str(m).strip() for m in raw_mat if str(m).strip()]
-                        elif isinstance(raw_mat, str):
-                            mat_list = [m.strip() for m in raw_mat.split(",") if m.strip()]
-                        else:
-                            mat_list = []
+                        # Application-side strict sanitization for materials
+                        mat_list = sanitize_materials(artisan_facts_obj.materials, parsed.get("materials"))
                         materials_str = ", ".join(mat_list) if mat_list else "Not specified"
 
                         # Application-side cleaning for tags
@@ -274,13 +391,15 @@ Return a valid JSON object matching this schema EXACTLY:
                             pricing_source = "AWAITING_ARTISAN_INPUT"
                             mat = lab = pkg = oth = Decimal("0.00")
 
-                        title_en = parsed.get("title") or q1_val or clean_desc[:80] or "Handcrafted Craft Item"
+                        title_en = parsed.get("title") or artisan_facts_obj.product_name or clean_desc[:80] or "Handcrafted Craft Item"
                         desc_en = parsed.get("description") or clean_desc or "Handmade artisan craft product."
-                        story_en = parsed.get("craft_story") or q3_val or desc_en
+                        raw_story_en = parsed.get("craft_story") or artisan_facts_obj.artisan_story or desc_en
+                        story_en = sanitize_craft_story(artisan_facts_obj.artisan_story, raw_story_en, desc_en)
 
                         title_native = parsed.get("native_title") or title_en
                         desc_native = parsed.get("native_description") or desc_en
-                        story_native = parsed.get("native_craft_story") or story_en
+                        raw_story_native = parsed.get("native_craft_story") or story_en
+                        story_native = sanitize_craft_story(artisan_facts_obj.artisan_story, raw_story_native, desc_native)
 
                         trans_map = {
                             language: {"title": title_native, "description": desc_native, "craft_story": story_native},

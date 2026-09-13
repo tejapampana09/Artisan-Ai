@@ -14,7 +14,10 @@ from backend.app.services.rate_limiter import rate_limiter, get_client_identifie
 
 router = APIRouter(prefix="/api/ai", tags=["AI Cataloging"])
 
+from backend.app.schemas import ArtisanFacts
+
 class AICatalogRequest(BaseModel):
+    artisan_facts: Optional[ArtisanFacts] = Field(default=None, description="Canonical verified artisan facts object")
     qna_answers: Optional[Dict[str, str]] = Field(default=None, description="Structured Q&A answers object (q1_product, q2_materials, q3_story)")
     voice_description: Optional[str] = Field(default="", description="Artisan voice note or text description")
     language: str = Field("en", max_length=10, description="Language code e.g. en, te, hi")
@@ -108,6 +111,7 @@ async def process_voice_and_image(
         window_seconds=60,
     )
     draft = await generate_catalog_draft(
+        artisan_facts=req.artisan_facts,
         voice_description=req.voice_description or "",
         language=req.language,
         image_url=req.image_url,
