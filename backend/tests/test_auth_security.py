@@ -110,3 +110,17 @@ def test_invalid_jwt_token_rejected():
     headers = {"Authorization": "Bearer invalid.jwt.token.string"}
     res = client.get("/api/notifications", headers=headers)
     assert res.status_code == 401
+
+
+def test_admin_self_registration_is_blocked():
+    """Verify that public registration attempting to specify role='ADMIN' is blocked with 403 Forbidden."""
+    uid = uuid.uuid4().hex[:6]
+    res = client.post("/api/auth/register", json={
+        "name": "Attacker Admin",
+        "email": f"attacker.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ADMIN"
+    })
+    assert res.status_code == 403
+    assert "cannot be self-registered" in res.json()["detail"].lower()
+

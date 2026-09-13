@@ -138,7 +138,15 @@ def get_current_user(
                 detail="Invalid or expired authentication token.",
                 headers={"WWW-Authenticate": "Bearer"}
             )
-        user = db.query(User).filter(User.id == int(payload["sub"])).first()
+        try:
+            user_id_int = int(str(payload.get("sub")))
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired authentication token.",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        user = db.query(User).filter(User.id == user_id_int).first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

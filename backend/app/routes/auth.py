@@ -59,7 +59,12 @@ def register_user(payload: UserRegister, request: Request, db: Session = Depends
                 detail="A user with this email or phone number is already registered."
             )
 
-    user_role = (payload.role or "ARTISAN").upper()
+    user_role = (payload.role or "ARTISAN").upper().strip()
+    if user_role not in {"ARTISAN", "BUYER"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Role 'ADMIN' cannot be self-registered. Public self-registration is permitted for ARTISAN or BUYER roles only."
+        )
     user_active_mode = "BUY" if user_role == "BUYER" else (payload.active_mode or "SELL")
 
     new_user = User(
