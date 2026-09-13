@@ -303,7 +303,11 @@ async def prepare_image_part(image_url: str, client: httpx.AsyncClient) -> Optio
 
     if url_str.startswith("http://") or url_str.startswith("https://"):
         try:
-            r = await client.get(url_str, timeout=10.0)
+            img_headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+            }
+            r = await client.get(url_str, timeout=10.0, follow_redirects=True, headers=img_headers)
             if r.status_code == 200 and r.content:
                 mime_type = r.headers.get("content-type", "image/jpeg").split(";")[0]
                 if not mime_type.startswith("image/"):

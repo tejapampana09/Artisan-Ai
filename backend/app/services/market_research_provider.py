@@ -138,7 +138,7 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                     f"https://generativelanguage.googleapis.com/v1beta/models/"
                     f"{model}:generateContent?key={self.api_key}"
                 )
-                async with httpx.AsyncClient(timeout=25.0) as client:
+                async with httpx.AsyncClient(timeout=12.0) as client:
                     resp = await client.post(api_url, json=payload, headers={"Content-Type": "application/json"})
 
                 if resp.status_code == 429:
