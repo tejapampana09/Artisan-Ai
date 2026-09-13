@@ -1,5 +1,6 @@
 import pytest
 from decimal import Decimal
+from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 
 from backend.app.config import MARKET_MEDIAN_WEIGHT, MIN_MARGIN_PCT
@@ -8,6 +9,7 @@ from backend.app.services.pricing_engine import (
     CONFIG_MARKET_MEDIAN_WEIGHT
 )
 from backend.app.routes.ai_catalog import AICatalogRequest
+from backend.app.schemas import MarketResearchResponse, MarketSummary
 from backend.app.main import app
 
 client = TestClient(app)
@@ -43,53 +45,46 @@ def test_scenario_2_case_1_no_market_no_costs_returns_pricing_unavailable():
     assert rec["safety_constraints"]["pricing_case"] == "CASE_1_PRICE_NOT_PROVIDED"
 
 
-def test_scenario_3_case_2_artisan_price_below_market_moves_to_market_median():
-    """Case 2: Artisan price below market -> move target recommendation to market median."""
-    rec = calculate_price_recommendation_from_inputs(
-        title="Terracotta Diya Set",
-        category="Pottery",
-        current_price=300.0,
-        market_median=700.0,
-        benchmark_low=600.0,
-        benchmark_high=800.0
-    )
-    assert rec["pricing_available"] is True
-    assert rec["safety_constraints"]["pricing_case"] == "CASE_2_BELOW_MARKET"
-    assert rec["recommended_price"] == 700.0
+def test_scenario_3_exact_boundary_matrix_cases():
+    """
+    Exact SIH-compliant Market Boundary Test Matrix:
+    Market range = ₹600 - ₹800, Median = ₹700
+    - ₹599 -> BELOW -> recommend ₹700
+    - ₹600 -> INSIDE -> preserve ₹600
+    - ₹700 -> INSIDE -> preserve ₹700
+    - ₹800 -> INSIDE -> preserve ₹800
+    - ₹801 -> ABOVE -> preserve ₹801 & premium_positioning = True
+    """
+    low, high, med = 600.0, 800.0, 700.0
+
+    # 1. Below (₹599)
+    r599 = calculate_price_recommendation_from_inputs("P", "C", current_price=599.0, market_median=med, benchmark_low=low, benchmark_high=high)
+    assert r599["safety_constraints"]["pricing_case"] == "CASE_2_BELOW_MARKET"
+    assert r599["recommended_price"] == 700.0
+
+    # 2. Inside Low Boundary (₹600)
+    r600 = calculate_price_recommendation_from_inputs("P", "C", current_price=600.0, market_median=med, benchmark_low=low, benchmark_high=high)
+    assert r600["safety_constraints"]["pricing_case"] == "CASE_3_INSIDE_MARKET"
+    assert r600["recommended_price"] == 600.0
+
+    # 3. Inside Median (₹700)
+    r700 = calculate_price_recommendation_from_inputs("P", "C", current_price=700.0, market_median=med, benchmark_low=low, benchmark_high=high)
+    assert r700["safety_constraints"]["pricing_case"] == "CASE_3_INSIDE_MARKET"
+    assert r700["recommended_price"] == 700.0
+
+    # 4. Inside High Boundary (₹800)
+    r800 = calculate_price_recommendation_from_inputs("P", "C", current_price=800.0, market_median=med, benchmark_low=low, benchmark_high=high)
+    assert r800["safety_constraints"]["pricing_case"] == "CASE_3_INSIDE_MARKET"
+    assert r800["recommended_price"] == 800.0
+
+    # 5. Above (₹801)
+    r801 = calculate_price_recommendation_from_inputs("P", "C", current_price=801.0, market_median=med, benchmark_low=low, benchmark_high=high)
+    assert r801["safety_constraints"]["pricing_case"] == "CASE_4_ABOVE_MARKET"
+    assert r801["recommended_price"] == 801.0
+    assert r801["safety_constraints"]["premium_positioning"] is True
 
 
-def test_scenario_4_case_3_artisan_price_inside_market_preserves_artisan_price():
-    """Case 3: Artisan price inside market range -> preserve artisan price exactly."""
-    rec = calculate_price_recommendation_from_inputs(
-        title="Wooden Elephant Carving",
-        category="Woodwork",
-        current_price=750.0,
-        market_median=700.0,
-        benchmark_low=600.0,
-        benchmark_high=800.0
-    )
-    assert rec["pricing_available"] is True
-    assert rec["safety_constraints"]["pricing_case"] == "CASE_3_INSIDE_MARKET"
-    assert rec["recommended_price"] == 750.0
-
-
-def test_scenario_5_case_4_artisan_price_above_market_preserves_price_and_flags_premium():
-    """Case 4: Artisan price above market range -> preserve artisan price & set premium_positioning = True."""
-    rec = calculate_price_recommendation_from_inputs(
-        title="Silk Zari Saree",
-        category="Textiles",
-        current_price=1200.0,
-        market_median=700.0,
-        benchmark_low=600.0,
-        benchmark_high=800.0
-    )
-    assert rec["pricing_available"] is True
-    assert rec["safety_constraints"]["pricing_case"] == "CASE_4_ABOVE_MARKET"
-    assert rec["recommended_price"] == 1200.0
-    assert rec["safety_constraints"]["premium_positioning"] is True
-
-
-def test_scenario_6_cost_floor_enforcement():
+def test_scenario_4_cost_floor_enforcement():
     """Cost floor: If costs are provided, final recommendation respects minimum fair price (cost basis + 20%)."""
     # Material 500, Labour 300, Pkg 100, Other 100 -> Cost basis 1000 -> Min fair price 1200
     rec = calculate_price_recommendation_from_inputs(
@@ -111,7 +106,7 @@ def test_scenario_6_cost_floor_enforcement():
     assert rec["recommended_price"] >= 1200.0  # Must be floored at 1200.0
 
 
-def test_scenario_7_selling_price_pipeline_in_ai_catalog_request():
+def test_scenario_5_selling_price_schema_and_validation():
     """Verify AICatalogRequest schema accepts selling_price and validates correctly."""
     req_dict = {
         "title": "Kalamkari Fabric",
@@ -123,6 +118,74 @@ def test_scenario_7_selling_price_pipeline_in_ai_catalog_request():
     assert req.selling_price == 650.0
 
 
-def test_scenario_8_config_median_weight_imported_from_config():
+@patch("backend.app.routes.ai_catalog.get_current_user")
+@patch("backend.app.services.catalog_orchestrator.generate_catalog_draft")
+@patch("backend.app.services.catalog_orchestrator.research_market")
+def test_scenario_6_e2e_selling_price_pipeline_reaches_pricing_engine(
+    mock_research,
+    mock_generate,
+    mock_user
+):
+    """
+    Full End-to-End API Integration Test:
+    POST /api/ai/process-catalog with selling_price = 650.0
+    Proves: selling_price -> AICatalogRequest -> process_full_catalog_pipeline -> pricing_engine!
+    """
+    mock_user_obj = MagicMock()
+    mock_user_obj.id = 1
+    mock_user.return_value = mock_user_obj
+
+    mock_generate.return_value = {
+        "title": "Handcrafted Silk Shawl",
+        "category": "Textiles",
+        "materials": "Silk",
+        "description": "Beautiful handwoven silk shawl",
+        "craft_story": "Woven by traditional artisans",
+        "title_en": "Handcrafted Silk Shawl",
+        "description_en": "Beautiful handwoven silk shawl",
+        "craft_story_en": "Woven by traditional artisans",
+        "translations": None,
+        "tags": ["silk", "shawl"],
+        "image_url": "https://example.com/shawl.jpg",
+        "enhanced_image_url": "https://example.com/shawl_enhanced.jpg"
+    }
+
+    mock_mkt_resp = MarketResearchResponse(
+        query="Handcrafted Silk Shawl Textiles",
+        provider="MockMarketProvider",
+        listings=[],
+        summary=MarketSummary(
+            sample_size=5,
+            min_price=600.0,
+            max_price=800.0,
+            median_price=700.0,
+            average_price=700.0,
+            currency="INR",
+            price_range_str="₹600 - ₹800"
+        ),
+        notes="Mock research"
+    )
+    mock_research.return_value = mock_mkt_resp
+
+    payload = {
+        "voice_description": "Handwoven silk shawl",
+        "category_hint": "Textiles",
+        "selling_price": 650.0
+    }
+
+    response = client.post("/api/ai/process-catalog", json=payload)
+    assert response.status_code == 200, f"Expected 200 OK, got {response.status_code}: {response.text}"
+
+    data = response.json()
+    assert "price_recommendation" in data
+    price_rec = data["price_recommendation"]
+
+    # Proves selling_price reached pricing engine through the full pipeline!
+    assert price_rec["current_price"] == 650.0
+    assert price_rec["recommended_price"] == 650.0
+    assert price_rec["safety_constraints"]["pricing_case"] == "CASE_3_INSIDE_MARKET"
+
+
+def test_scenario_7_config_median_weight_imported_from_config():
     """Verify config constants are properly imported and synchronized."""
     assert CONFIG_MARKET_MEDIAN_WEIGHT == MARKET_MEDIAN_WEIGHT

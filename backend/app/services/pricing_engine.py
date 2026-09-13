@@ -208,17 +208,17 @@ def calculate_price_recommendation_from_inputs(
         is_above = False
         is_inside = False
 
-        if med_dec is not None and med_dec > 0:
-            if curr_price < (med_dec * Decimal("0.85")):
+        # Determine classification boundaries (Explicit market low/high take precedence over derived ±15% median)
+        mkt_low = low_dec
+        mkt_high = high_dec
+        if (mkt_low is None or mkt_high is None) and (med_dec is not None and med_dec > 0):
+            mkt_low = med_dec * Decimal("0.85")
+            mkt_high = med_dec * Decimal("1.15")
+
+        if mkt_low is not None and mkt_high is not None:
+            if curr_price < mkt_low:
                 is_below = True
-            elif curr_price > (med_dec * Decimal("1.15")):
-                is_above = True
-            else:
-                is_inside = True
-        elif low_dec is not None and high_dec is not None:
-            if curr_price < low_dec:
-                is_below = True
-            elif curr_price > high_dec:
+            elif curr_price > mkt_high:
                 is_above = True
             else:
                 is_inside = True
@@ -226,18 +226,18 @@ def calculate_price_recommendation_from_inputs(
             is_inside = True
 
         if is_below:
-            # Case 2 — Artisan price below market range -> move to market median!
+            # Case 2 — Artisan price below market range -> move to market median / midpoint!
             pricing_case = "CASE_2_BELOW_MARKET"
-            target_mkt = med_dec or low_dec or curr_price
+            target_mkt = med_dec or ((mkt_low + mkt_high) / Decimal("2.0") if (mkt_low is not None and mkt_high is not None) else curr_price)
             raw_recommended = target_mkt
-            reasoning.append(f"Your price (₹{float(curr_price):,.0f}) is below observed market range (median ₹{float(target_mkt):,.0f}). We suggest adjusting toward market fair value.")
+            reasoning.append(f"Your price (₹{float(curr_price):,.0f}) is below observed market range (fair value ₹{float(target_mkt):,.0f}). We suggest adjusting toward market fair value.")
 
         elif is_above:
             # Case 4 — Artisan price above market range -> preserve artisan price & flag premium!
             pricing_case = "CASE_4_ABOVE_MARKET"
             raw_recommended = curr_price
-            mkt_ref_str = f"₹{float(med_dec):,.0f}" if med_dec else f"₹{float(high_dec):,.0f}"
-            reasoning.append(f"Your price (₹{float(curr_price):,.0f}) is above the observed market range (median {mkt_ref_str}). Premium handcrafted positioning flagged.")
+            mkt_ref_str = f"₹{float(med_dec):,.0f}" if med_dec else f"₹{float(mkt_high):,.0f}"
+            reasoning.append(f"Your price (₹{float(curr_price):,.0f}) is above observed market range ({mkt_ref_str}). Premium handcrafted positioning flagged.")
 
         else:
             # Case 3 — Artisan price inside market range -> preserve artisan price exactly!
@@ -256,7 +256,11 @@ def calculate_price_recommendation_from_inputs(
         else:
             final_recommended = raw_recommended
 
-        rounded_price = (Decimal(round(float(final_recommended) / 5.0) * 5)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if has_artisan_price and (pricing_case in ["CASE_3_INSIDE_MARKET", "CASE_4_ABOVE_MARKET"]):
+            rounded_price = final_recommended
+        else:
+            rounded_price = (Decimal(round(float(final_recommended) / 5.0) * 5)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            
         if has_costs and rounded_price < minimum_fair_price:
             rounded_price = minimum_fair_price
         pricing_available = True
