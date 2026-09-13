@@ -77,4 +77,12 @@ def setup_test_database():
     yield
 
     app.dependency_overrides.clear()
-    Base.metadata.drop_all(bind=test_engine)
+
+@pytest.fixture
+def db():
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+

@@ -72,14 +72,56 @@ def compute_market_adjustment(
     bounded_adj = max(MIN_MARKET_ADJUSTMENT, min(MAX_MARKET_ADJUSTMENT, adj))
     return float(bounded_adj), pos
 
-def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, Any]:
+MARKET_MEDIAN_WEIGHT = Decimal("0.30")
+
+def compute_market_median_signal(
+    base_anchor: Decimal,
+    market_median: Optional[Any] = None,
+    minimum_fair_price: Optional[Decimal] = None,
+    product_currency: str = "INR",
+    market_currency: Optional[str] = None
+) -> Tuple[Optional[Decimal], bool, Optional[str]]:
+    """
+    Computes a market-aware pricing anchor (70% base_anchor + 30% market_median)
+    while enforcing currency matching and protected minimum fair price floor.
+    Returns (market_anchor, signal_used, status_code).
+    """
+    if market_median is None:
+        return None, False, "NO_MARKET_DATA"
+
+    try:
+        med_dec = to_decimal(market_median)
+        if med_dec <= 0:
+            return None, False, "INVALID_MARKET_MEDIAN"
+    except Exception:
+        return None, False, "INVALID_MARKET_MEDIAN"
+
+    prod_curr = (product_currency or "INR").upper().strip()
+    mkt_curr = (market_currency or "INR").upper().strip()
+    if market_currency is not None and mkt_curr != prod_curr:
+        return None, False, "CURRENCY_MISMATCH"
+
+    market_anchor = (base_anchor * (Decimal("1.0") - MARKET_MEDIAN_WEIGHT)) + (med_dec * MARKET_MEDIAN_WEIGHT)
+    
+    if minimum_fair_price is not None:
+        market_anchor = max(market_anchor, minimum_fair_price)
+
+    return market_anchor.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), True, "SUCCESS"
+
+def calculate_price_recommendation(
+    product: Product,
+    db: Session,
+    market_median: Optional[Any] = None,
+    market_currency: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Deterministic explainable dynamic pricing calculation:
-    1. Minimum Fair Price = (Material + Labour + Packaging) * (1 + Min Margin %)
+    1. Minimum Fair Price = (Material + Labour + Packaging + Other) * (1 + Min Margin %)
     2. Demand Factor: bounded [0.95, 1.15]
     3. Market Adjustment: bounded [0.95, 1.05]
-    4. Safety Rule: Recommended Price >= Minimum Fair Price
-    5. Capped bounds: Max +25% upward, Max -10% downward
+    4. Market Median Signal: 30% weight when provided and currency matches
+    5. Safety Rules: Recommended Price >= Minimum Fair Price floor
+    6. Capped bounds: Max +25% upward, Max -10% downward per cycle
     """
     # 1. Cost Basis & Minimum Fair Price using Decimal arithmetic
     mat_cost = to_decimal(getattr(product, "material_cost", 0.0))
@@ -90,7 +132,6 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
     
     margin_pct = to_decimal(getattr(product, "min_margin_pct", 0.20), "0.20")
     minimum_fair_price = (cost_basis * (Decimal("1.0") + margin_pct)).quantize(Decimal("1.00"), rounding=ROUND_HALF_UP)
-
 
     # 2. Category Demand & Benchmark Range from pure database records
     all_demands = {d["category"]: d for d in calculate_category_demand(db)}
@@ -123,11 +164,20 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
 
     market_adj, market_pos = compute_market_adjustment(float(curr_price), benchmark_low, benchmark_high)
 
-
     # 3. Raw Recommended Price Calculation
     # Base calculation starts from current price (or minimum fair price if current price is below safe margin)
     base_anchor = max(curr_price, minimum_fair_price)
-    raw_recommended = (base_anchor * Decimal(str(demand_factor)) * Decimal(str(market_adj))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    market_anchor, market_signal_used, market_status = compute_market_median_signal(
+        base_anchor=base_anchor,
+        market_median=market_median,
+        minimum_fair_price=minimum_fair_price,
+        product_currency="INR",
+        market_currency=market_currency
+    )
+
+    anchor_to_use = market_anchor if (market_signal_used and market_anchor is not None) else base_anchor
+    raw_recommended = (anchor_to_use * Decimal(str(demand_factor)) * Decimal(str(market_adj))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     # 4. Apply Safety Constraints
     # Constraint A: Maximum upward limit (+25%)
@@ -197,6 +247,13 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
         f"Protected minimum fair price is ₹{float(minimum_fair_price):,.0f}, ensuring your configured {int(float(margin_pct) * 100)}% minimum margin.",
     ]
 
+    if market_signal_used and market_median is not None:
+        med_dec = to_decimal(market_median)
+        reasoning.append(f"Comparable market median is ₹{float(med_dec):,.0f} based on retained market listings.")
+        reasoning.append("Market median contributes 30% weight to the pricing anchor.")
+    elif market_status == "CURRENCY_MISMATCH":
+        reasoning.append("Market median excluded because currency does not match the product pricing currency.")
+
     if benchmark_low is not None and benchmark_high is not None:
         reasoning.insert(1, f"Comparable craft market benchmark range is ₹{int(benchmark_low):,}–₹{int(benchmark_high):,} (Current position: {market_pos}).")
     else:
@@ -209,7 +266,6 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
         r2_score = ml_pred.get("model_info", {}).get("r2_score")
         r2_suffix = f" (R² = {r2_score})" if r2_score is not None else ""
         reasoning.append(f"RandomForestRegressor ML Demand Engine predicted score {int(ml_score)}/100 ({ml_level} DEMAND, factor {ml_multiplier:.2f}x){r2_suffix} from dataset training metrics.")
-
 
     if price_change_amount > 0:
         reasoning.append(f"Suggested upward adjustment of ₹{float(price_change_amount):,.0f} (+{price_change_pct}%) captures high category demand while protecting sales conversion.")
@@ -240,6 +296,9 @@ def calculate_price_recommendation(product: Product, db: Session) -> Dict[str, A
         "demand_factor": float(demand_factor),
         "market_adjustment": float(market_adj),
         "recommended_price": float(rounded_price),
+        "market_median": float(to_decimal(market_median)) if (market_signal_used and market_median is not None) else None,
+        "market_weight": 0.30 if market_signal_used else 0.0,
+        "market_signal_used": market_signal_used,
         "market_range": {
             "low": float(cast(Any, benchmark_low)) if benchmark_low is not None else 0.0,
             "high": float(cast(Any, benchmark_high)) if benchmark_high is not None else 0.0
