@@ -9,7 +9,7 @@ from backend.app.schemas import (
     BuyerCopilotRequest, BuyerCopilotResponse, ProductResponse,
     MarketResearchRequest, MarketResearchResponse
 )
-from backend.app.services.auth import get_current_user, get_optional_current_user
+from backend.app.services.auth import get_current_user, get_optional_current_user, get_current_user_strict
 from backend.app.services.demand_engine import calculate_category_demand, generate_seller_opportunities
 from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
 
@@ -324,7 +324,7 @@ async def buyer_copilot_chat(
 async def perform_market_research(
     req: MarketResearchRequest,
     request: Request,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_strict)
 ):
     """
     Market Research & External Comparable Products endpoint.
