@@ -128,25 +128,30 @@ async def research_market(
         retained_listings.append(listing_model)
 
     # Calculate Market Summary statistics on valid positive prices ONLY
-    valid_prices = [l.price for l in retained_listings if l.price is not None and l.price > 0]
+    total_comparable_count = len(retained_listings)
+    priced_listings = [l for l in retained_listings if l.price is not None and l.price > 0]
+    valid_prices = [l.price for l in priced_listings if l.price is not None]
+
+    summary_currency = priced_listings[0].currency if priced_listings else (retained_listings[0].currency if retained_listings else "INR")
 
     if valid_prices:
         min_p = round(min(valid_prices), 2)
         med_p = round(float(statistics.median(valid_prices)), 2)
         max_p = round(max(valid_prices), 2)
-        count = len(valid_prices)
+        priced_count = len(valid_prices)
     else:
         min_p = None
         med_p = None
         max_p = None
-        count = 0
+        priced_count = 0
 
     summary = MarketSummary(
-        comparable_count=count,
+        comparable_count=total_comparable_count,
+        priced_comparable_count=priced_count,
         min_price=min_p,
         median_price=med_p,
         max_price=max_p,
-        currency="INR"
+        currency=summary_currency
     )
 
     notice = None

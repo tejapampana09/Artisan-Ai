@@ -36,9 +36,14 @@ main_module.engine = test_engine
 @pytest.fixture(scope="function", autouse=True)
 def setup_test_database():
     from backend.app.models import User, Product, Order, Enquiry, Event, PricingDecision, ProcessedOperation
-    Base.metadata.drop_all(bind=test_engine)
     Base.metadata.create_all(bind=test_engine)
     ensure_sqlite_schema(test_engine)
+    with test_engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            try:
+                conn.execute(table.delete())
+            except Exception:
+                pass
     
     from backend.app.models import User
     from backend.app.seed import seed_sample_products

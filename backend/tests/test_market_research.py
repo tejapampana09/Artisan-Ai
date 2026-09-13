@@ -83,7 +83,8 @@ def test_4_invalid_zero_negative_prices_excluded_from_statistics():
     provider = MockMarketResearchProvider(mock_listings=custom_mock)
     res = asyncio.run(research_market(facts, provider=provider))
 
-    assert res.summary.comparable_count == 1
+    assert res.summary.comparable_count == 3
+    assert res.summary.priced_comparable_count == 1
     assert res.summary.min_price == 500.0
     assert res.summary.median_price == 500.0
     assert res.summary.max_price == 500.0
@@ -123,9 +124,10 @@ def test_5_listings_without_prices_do_not_affect_statistics():
     provider = MockMarketResearchProvider(mock_listings=custom_mock)
     res = asyncio.run(research_market(facts, provider=provider))
 
-    # All 3 listings retained, but only 2 valid prices contributed to summary
+    # All 3 listings retained: total comparable_count is 3, priced_comparable_count is 2
     assert len(res.results) == 3
-    assert res.summary.comparable_count == 2
+    assert res.summary.comparable_count == 3
+    assert res.summary.priced_comparable_count == 2
     assert res.summary.min_price == 600.0
     assert res.summary.median_price == 800.0
     assert res.summary.max_price == 1000.0
@@ -230,3 +232,26 @@ def test_11_market_research_api_endpoint():
     assert "results" in data
     assert "summary" in data
     assert data["query"] == "Bamboo Basket Basketry Bamboo"
+
+def test_12_custom_currency_resolution():
+    facts = ArtisanFacts(
+        product_name="Bamboo Basket",
+        craft_type="Basketry",
+        materials=["Bamboo"]
+    )
+    usd_mock = [
+        {
+            "title": "Handcrafted Bamboo Basket",
+            "price": 25.0,
+            "currency": "USD",
+            "url": "https://example.com/usd/1",
+            "category": "Basketry",
+            "materials": ["Bamboo"]
+        }
+    ]
+    provider = MockMarketResearchProvider(mock_listings=usd_mock)
+    res = asyncio.run(research_market(facts, provider=provider))
+
+    assert res.summary.currency == "USD"
+    assert res.summary.min_price == 25.0
+

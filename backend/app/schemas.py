@@ -375,6 +375,7 @@ class MarketListing(BaseModel):
 
 class MarketSummary(BaseModel):
     comparable_count: int = 0
+    priced_comparable_count: int = 0
     min_price: Optional[float] = None
     median_price: Optional[float] = None
     max_price: Optional[float] = None
