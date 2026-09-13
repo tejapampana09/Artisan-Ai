@@ -652,7 +652,11 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       setAiDraft(res);
       setStep('REVIEW');
     } catch (err) {
-      notify.error('AI processing failed: ' + err.message);
+      if (err.message?.includes('401') || err.message?.toLowerCase().includes('authenticated')) {
+        notify.error('Please sign in to your artisan account to generate AI catalogs.');
+      } else {
+        notify.error('AI processing failed: ' + (err.message || 'Server error'));
+      }
       setStep('INPUT');
     } finally {
       setLoading(false);
