@@ -269,6 +269,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const audioChunksRef = useRef([]);
   const timerIntervalRef = useRef(null);
   const activeAudioRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   const stopCurrentAudio = () => {
     if (activeAudioRef.current) {
@@ -517,24 +518,35 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         setRecordingSeconds((prev) => prev + 1);
       }, 1000);
 
-      // Concurrent Speech Recognition if available
-      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      // Real-Time Browser Speech-to-Text Recognition
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
         try {
+          const recognition = new SpeechRecognition();
+          recognitionRef.current = recognition;
           const langMap = { te: 'te-IN', hi: 'hi-IN', en: 'en-IN', ta: 'ta-IN', bn: 'bn-IN' };
           recognition.lang = langMap[selectedLang] || 'en-IN';
           recognition.interimResults = true;
+          recognition.continuous = true;
+
           recognition.onresult = (event) => {
-            const transcript = Array.from(event.results)
-              .map((res) => res[0].transcript)
-              .join('');
-            if (transcript) {
+            let fullTranscript = '';
+            for (let i = 0; i < event.results.length; i++) {
+              fullTranscript += event.results[i][0].transcript;
+            }
+            if (fullTranscript && fullTranscript.trim()) {
               if (targetQnaKey) {
-                setQnaAnswers((prev) => ({ ...prev, [targetQnaKey]: transcript }));
+                setQnaAnswers((prev) => ({ ...prev, [targetQnaKey]: fullTranscript }));
               } else {
-                setVoiceText(transcript);
+                setVoiceText(fullTranscript);
               }
             }
           };
+
+          recognition.onerror = (e) => {
+            console.warn('SpeechRecognition error:', e);
+          };
+
           recognition.start();
         } catch (e) {
           console.warn('Speech recognition parallel listener skipped', e);
@@ -553,6 +565,13 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   };
 
   const stopRecording = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.stop();
+      } catch (e) {}
+      recognitionRef.current = null;
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
