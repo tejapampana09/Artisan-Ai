@@ -263,4 +263,47 @@ def test_postgresql_schema_migration_sql_compatibility():
     assert "DEFAULT FALSE" in content
 
 
+def test_publish_persists_validated_artisan_facts_category():
+    """Verify that publish endpoint persists the verified ArtisanFacts.craft_type category over client-submitted category."""
+    uid = uuid.uuid4().hex[:6]
+    reg = client.post("/api/auth/register", json={
+        "name": f"Cat Seller {uid}",
+        "email": f"cat.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    draft_res = client.post("/api/ai/process-catalog", json={
+        "artisan_facts": {
+            "product_name": "Carved Wooden Stool",
+            "craft_type": "Woodwork",
+            "materials": ["Teak Wood"],
+            "handmade": True,
+            "making_time": "2 days",
+            "artisan_story": "Woodcarving",
+            "special_characteristics": "Polished"
+        },
+        "material_cost": 200.0,
+        "labour_cost": 100.0
+    }, headers=headers)
+    assert draft_res.status_code == 200
+    draft_token = draft_res.json()["draft_token"]
+
+    # Publish request attempts to set category = "Electronics"
+    pub_res = client.post("/api/ai/approve-and-publish", json={
+        "draft_token": draft_token,
+        "title": "Carved Wooden Stool",
+        "category": "Electronics",
+        "materials": "Teak Wood",
+        "price": 500.0
+    }, headers=headers)
+    assert pub_res.status_code == 201
+    prod = pub_res.json()
+    # Verified ArtisanFacts.craft_type ("Woodwork") MUST override client "Electronics"
+    assert prod["category"] == "Woodwork"
+
+
+
 

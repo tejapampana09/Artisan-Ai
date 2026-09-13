@@ -246,6 +246,7 @@ def approve_and_publish_product(
     final_description = validated_edited.get("description", req.description)
     final_craft_story = validated_edited.get("craft_story", req.craft_story)
     final_title = validated_edited.get("title", req.title)
+    final_category = validated_edited.get("category", req.category)
     final_title_en = validated_edited.get("title_en") or req.title_en or final_title
     final_description_en = validated_edited.get("description_en") or req.description_en or final_description
     final_craft_story_en = validated_edited.get("craft_story_en") or req.craft_story_en or final_craft_story
@@ -253,7 +254,7 @@ def approve_and_publish_product(
 
     product = Product(
         title=final_title,
-        category=req.category,
+        category=final_category,
         materials=final_materials,
         description=final_description,
         craft_story=final_craft_story,
