@@ -270,6 +270,18 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const timerIntervalRef = useRef(null);
   const activeAudioRef = useRef(null);
   const recognitionRef = useRef(null);
+  const isRecordingRef = useRef(false);
+  const baseTranscriptRef = useRef('');
+  const currentQnaAnswersRef = useRef(qnaAnswers);
+  const currentVoiceTextRef = useRef(voiceText);
+
+  useEffect(() => {
+    currentQnaAnswersRef.current = qnaAnswers;
+  }, [qnaAnswers]);
+
+  useEffect(() => {
+    currentVoiceTextRef.current = voiceText;
+  }, [voiceText]);
 
   const stopCurrentAudio = () => {
     if (activeAudioRef.current) {
@@ -513,12 +525,17 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
       mediaRecorder.start();
       setIsRecording(true);
+      isRecordingRef.current = true;
+
+      // Capture whatever text was already in the input before starting speech
+      const initialText = (targetQnaKey ? currentQnaAnswersRef.current[targetQnaKey] : currentVoiceTextRef.current) || '';
+      baseTranscriptRef.current = initialText.trim();
 
       timerIntervalRef.current = setInterval(() => {
         setRecordingSeconds((prev) => prev + 1);
       }, 1000);
 
-      // Real-Time Browser Speech-to-Text Recognition
+      // Real-Time Browser Speech-to-Text Recognition with Auto-Reconnect through Pauses
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
         try {
@@ -530,21 +547,38 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
           recognition.continuous = true;
 
           recognition.onresult = (event) => {
-            let fullTranscript = '';
+            let sessionTranscript = '';
             for (let i = 0; i < event.results.length; i++) {
-              fullTranscript += event.results[i][0].transcript;
+              sessionTranscript += event.results[i][0].transcript;
             }
-            if (fullTranscript && fullTranscript.trim()) {
+            if (sessionTranscript && sessionTranscript.trim()) {
+              const base = baseTranscriptRef.current;
+              const combined = base ? `${base} ${sessionTranscript.trim()}` : sessionTranscript.trim();
               if (targetQnaKey) {
-                setQnaAnswers((prev) => ({ ...prev, [targetQnaKey]: fullTranscript }));
+                setQnaAnswers((prev) => ({ ...prev, [targetQnaKey]: combined }));
               } else {
-                setVoiceText(fullTranscript);
+                setVoiceText(combined);
               }
             }
           };
 
           recognition.onerror = (e) => {
             console.warn('SpeechRecognition error:', e);
+          };
+
+          recognition.onend = () => {
+            // When browser speech pauses (e.g. user takes a breath), auto-resume and keep building the text
+            if (isRecordingRef.current) {
+              const latestText = (targetQnaKey ? currentQnaAnswersRef.current[targetQnaKey] : currentVoiceTextRef.current) || '';
+              baseTranscriptRef.current = latestText.trim();
+              setTimeout(() => {
+                if (isRecordingRef.current && recognitionRef.current) {
+                  try {
+                    recognitionRef.current.start();
+                  } catch (e) {}
+                }
+              }, 100);
+            }
           };
 
           recognition.start();
@@ -555,6 +589,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     } catch (err) {
       console.warn('Microphone permission or hardware error:', err);
       setIsRecording(false);
+      isRecordingRef.current = false;
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = null;
@@ -565,9 +600,10 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   };
 
   const stopRecording = () => {
+    isRecordingRef.current = false;
     if (recognitionRef.current) {
       try {
-        recognitionRef.current.onresult = null;
+        recognitionRef.current.onend = null;
         recognitionRef.current.stop();
       } catch (e) {}
       recognitionRef.current = null;
