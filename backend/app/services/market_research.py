@@ -17,40 +17,23 @@ def build_market_query(
     category_hint: Optional[str] = None
 ) -> str:
     """
-    Deterministically constructs a search query string from verified ArtisanFacts and catalog hints.
+    Deterministically constructs a clean marketplace search query string.
     """
-    parts = []
-    
-    if artisan_facts.product_name and artisan_facts.product_name.strip():
-        parts.append(artisan_facts.product_name.strip())
-    elif title_hint and title_hint.strip() and title_hint.strip().lower() not in ["handmade artisan craft product.", "handmade artisan craft product", "craft"]:
-        parts.append(title_hint.strip())
-        
-    if artisan_facts.craft_type and artisan_facts.craft_type.strip():
-        parts.append(artisan_facts.craft_type.strip())
-    elif category_hint and category_hint.strip():
-        parts.append(category_hint.strip())
-        
-    if artisan_facts.materials:
-        clean_mats = [m.strip() for m in artisan_facts.materials if m.strip()]
-        if clean_mats:
-            parts.append(" ".join(clean_mats))
-            
-    if artisan_facts.special_characteristics and artisan_facts.special_characteristics.strip():
-        spec_words = artisan_facts.special_characteristics.strip().split()[:5]
-        if spec_words:
-            parts.append(" ".join(spec_words))
+    base_name = (artisan_facts.product_name or title_hint or "").strip()
+    if base_name and base_name.lower() in ["handmade artisan craft product.", "handmade artisan craft product", "craft", "product"]:
+        base_name = ""
 
-    q = " ".join(parts).strip()
-    if not q or len(q) < 3 or q.lower() in ["handmade artisan craft product", "craft", "product"]:
-        if title_hint and title_hint.strip() and title_hint.strip().lower() not in ["handmade artisan craft product.", "handmade artisan craft product", "craft"]:
-            q = f"{title_hint.strip()} buy online India"
-        elif category_hint and category_hint.strip():
-            q = f"{category_hint.strip()} handicraft buy online India"
-        else:
-            q = "handicraft artisan craft buy online India"
+    craft = (artisan_facts.craft_type or category_hint or "").strip()
+    if craft and craft.lower() in ["handcrafted", "handmade", "artisan", "custom"]:
+        craft = ""
 
-    return q.strip()
+    if base_name:
+        if craft and craft.lower() not in base_name.lower():
+            return f"{craft} {base_name}".strip()
+        return base_name
+    elif craft:
+        return f"{craft} craft".strip()
+    return "handicraft artisan craft"
 
 async def research_market(
     artisan_facts: ArtisanFacts,
