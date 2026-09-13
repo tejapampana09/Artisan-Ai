@@ -167,3 +167,35 @@ def test_pricing_output_is_strictly_preserved():
     assert validated["other_cost"] == Decimal("0.00")
     assert validated["pricing_available"] is True
     assert validated["pricing_source"] == "COST_PLUS_MARGIN"
+
+def test_photo_only_upload_preserves_gemini_vision_materials():
+    facts = ArtisanFacts(materials=[])
+    generated = {
+        "title": "Terracotta Pot",
+        "category": "Pottery",
+        "materials": "Terracotta Clay, Natural Pigments"
+    }
+    validated = validate_catalog_draft(generated, facts, allow_ai_visual_inference=True)
+    assert validated["materials"] == "Terracotta Clay, Natural Pigments"
+
+def test_artisan_provided_materials_remain_strictly_locked():
+    facts = ArtisanFacts(materials=["Teak Wood"])
+    generated = {
+        "title": "Teak Wood Chair",
+        "materials": "Teak Wood, Gold Leaf, Synthetic Lacquer"
+    }
+    validated = validate_catalog_draft(generated, facts, allow_ai_visual_inference=False)
+    assert "Teak Wood" in validated["materials"]
+    assert "Gold Leaf" not in validated["materials"]
+    assert "Synthetic Lacquer" not in validated["materials"]
+
+def test_photo_only_cannot_invent_unverified_heritage_claims():
+    facts = ArtisanFacts(artisan_story="")
+    generated = {
+        "description": "Handmade ceramic vase.",
+        "craft_story": "Crafted over 5 generations of family lineage and ancestral tradition."
+    }
+    validated = validate_catalog_draft(generated, facts, allow_ai_visual_inference=True)
+    assert "5 generations" not in validated["craft_story"].lower()
+    assert "ancestral" not in validated["craft_story"].lower()
+

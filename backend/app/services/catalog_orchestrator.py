@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.schemas import ArtisanFacts, MarketResearchResponse, MarketSummary
 from backend.app.services.ai_adapter import generate_catalog_draft, extract_artisan_facts
-from backend.app.services.catalog_validator import validate_catalog_draft
+from backend.app.services.catalog_validator import validate_catalog_draft, has_verified_artisan_input
 from backend.app.services.market_research import research_market
 from backend.app.services.market_research_provider import BaseMarketResearchProvider
 from backend.app.services.pricing_engine import calculate_price_recommendation_from_inputs
@@ -70,10 +70,18 @@ async def process_full_catalog_pipeline(
         qna_answers=qna_answers
     )
 
+    has_user_input = has_verified_artisan_input(
+        artisan_facts=artisan_facts,
+        qna_answers=qna_answers,
+        voice_description=voice_description,
+        category_hint=category_hint
+    )
+
     # 3. Deterministic Catalog Validation against canonical facts
     validated_catalog = validate_catalog_draft(
         raw_draft,
-        canonical_facts
+        canonical_facts,
+        allow_ai_visual_inference=not has_user_input
     )
 
     # 4. Market Research lookup

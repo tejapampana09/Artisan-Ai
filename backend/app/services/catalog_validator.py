@@ -53,24 +53,65 @@ def _sanitize_text_awards(text: str, facts_combined: str) -> str:
     sanitized = re.sub(r'\s+', ' ', sanitized).strip()
     return sanitized
 
+def has_verified_artisan_input(
+    artisan_facts: Optional[Any] = None,
+    qna_answers: Optional[Dict[str, str]] = None,
+    voice_description: Optional[str] = "",
+    category_hint: Optional[str] = None,
+) -> bool:
+    """
+    Provenance helper determining if artisan provided explicit factual inputs
+    (Q&A, voice note, category hint, or non-empty ArtisanFacts properties).
+    Returns False for pure photo-only uploads.
+    """
+    if artisan_facts:
+        if isinstance(artisan_facts, ArtisanFacts):
+            facts = artisan_facts
+        elif isinstance(artisan_facts, dict):
+            from backend.app.services.ai_adapter import extract_artisan_facts
+            facts = extract_artisan_facts(artisan_facts=artisan_facts)
+        else:
+            facts = None
+
+        if facts:
+            has_facts = any([
+                bool((facts.product_name or "").strip()),
+                bool((facts.craft_type or "").strip()),
+                bool(facts.materials and len(facts.materials) > 0),
+                facts.handmade is not None,
+                bool((facts.making_time or "").strip()),
+                bool((facts.artisan_story or "").strip()),
+                bool((facts.special_characteristics or "").strip()),
+            ])
+            if has_facts:
+                return True
+
+    if qna_answers and isinstance(qna_answers, dict):
+        if any(bool(str(v or "").strip()) for v in qna_answers.values()):
+            return True
+
+    if bool((voice_description or "").strip() or (category_hint or "").strip()):
+        return True
+
+    return False
+
+
 def validate_catalog_draft(
     generated_catalog: Dict[str, Any],
-    artisan_facts: Optional[ArtisanFacts] = None
+    artisan_facts: Optional[ArtisanFacts] = None,
+    allow_ai_visual_inference: bool = False
 ) -> Dict[str, Any]:
     """
-    Deterministic backend validator/sanitizer for generated product catalog drafts.
+    Provenance-aware backend validator/sanitizer for generated product catalog drafts.
     
     Guarantees:
-    1. Product facts strictly conform to canonical ArtisanFacts.
-    2. Empty facts materials -> empty materials list [] / "".
-    3. Invented materials filtered; if all invalid, falls back to ArtisanFacts.materials.
-    4. Fabricated family history/heritage scrubbed if not in ArtisanFacts.artisan_story.
+    1. If user provided materials -> strictly enforced & locked 🔒.
+    2. If photo-only upload (allow_ai_visual_inference=True) -> preserves Gemini Vision materials 🤖.
+    3. If user provided facts but omitted materials & allow_ai_visual_inference=False -> clears materials.
+    4. Fabricated family history/heritage scrubbed if not in ArtisanFacts.artisan_story (even in photo-only mode).
     5. Unsupported awards/certifications/GI tags scrubbed.
-    6. Handmade status preserved (None is not converted to True).
-    7. Making time cleared if ArtisanFacts.making_time is empty.
-    8. Category prioritizes verified ArtisanFacts.craft_type when present.
-    9. Pricing fields strictly untouched.
-    10. Returns catalog intact if artisan_facts is None.
+    6. Category prioritizes verified ArtisanFacts.craft_type when present.
+    7. Adds ai_inferred_fields for UI transparency.
     """
     if not generated_catalog:
         return {}
@@ -78,6 +119,12 @@ def validate_catalog_draft(
     catalog = deepcopy(generated_catalog)
 
     if artisan_facts is None:
+        if allow_ai_visual_inference:
+            ai_inferred = []
+            for field in ["title", "category", "materials", "description"]:
+                if catalog.get(field):
+                    ai_inferred.append(field)
+            catalog["ai_inferred_fields"] = ai_inferred
         return catalog
 
     facts_materials = artisan_facts.materials or []
@@ -90,15 +137,19 @@ def validate_catalog_draft(
     facts_combined = f"{facts_story} {facts_spec}".strip()
 
     # -------------------------------------------------------------------------
-    # 1. Materials Validation
+    # 1. Materials Validation (Provenance Aware)
     # -------------------------------------------------------------------------
     raw_gen_materials = catalog.get("materials")
     if not facts_materials:
-        if isinstance(raw_gen_materials, list):
-            catalog["materials"] = []
-        else:
-            catalog["materials"] = ""
+        if not allow_ai_visual_inference:
+            # User provided facts object/Q&A but gave no materials -> clear materials!
+            if isinstance(raw_gen_materials, list):
+                catalog["materials"] = []
+            else:
+                catalog["materials"] = ""
+        # else: Photo-only mode -> preserve Gemini Vision's visually inferred materials! 🤖
     else:
+        # User provided materials 🔒 -> strictly enforce user materials & discard hallucinations
         if isinstance(raw_gen_materials, str):
             gen_list = [m.strip() for m in raw_gen_materials.split(",") if m.strip()]
         elif isinstance(raw_gen_materials, list):
