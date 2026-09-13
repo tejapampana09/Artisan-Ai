@@ -95,16 +95,25 @@ export function saveOfflineQueue(queue, userId) {
   }
 }
 
-export function addToOfflineQueue(item, userId) {
-  const queue = getOfflineQueue(userId);
+export function addToOfflineQueue(item, userIdOrPayload, userIdOverride) {
+  let targetItem = item;
+  let targetUserId = userIdOrPayload;
+  if (typeof item === 'string') {
+    targetItem = {
+      type: item,
+      payload: (userIdOrPayload && typeof userIdOrPayload === 'object') ? userIdOrPayload : {},
+    };
+    targetUserId = userIdOverride;
+  }
+  const queue = getOfflineQueue(targetUserId);
   const newItem = {
-    ...item,
-    client_temp_id: item.client_temp_id || `draft_local_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    ...targetItem,
+    client_temp_id: targetItem.client_temp_id || `draft_local_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     status: 'PENDING_SYNC',
     queued_at: new Date().toISOString()
   };
   queue.push(newItem);
-  saveOfflineQueue(queue, userId);
+  saveOfflineQueue(queue, targetUserId);
   return newItem;
 }
 

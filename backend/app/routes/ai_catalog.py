@@ -67,6 +67,7 @@ class AICatalogDraftResponse(BaseModel):
     catalog: Optional[Dict[str, Any]] = None
     artisan_facts: Optional[Dict[str, Any]] = None
     market_summary: Optional[Dict[str, Any]] = None
+    market_research: Optional[Dict[str, Any]] = None
     price_recommendation: Optional[Dict[str, Any]] = None
 
 class CatalogApproveRequest(BaseModel):

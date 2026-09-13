@@ -78,11 +78,14 @@ async def process_full_catalog_pipeline(
     # 4. Market Research lookup
     market_response: MarketResearchResponse = await research_market(
         artisan_facts=canonical_facts,
-        provider=provider
+        provider=provider,
+        title_hint=validated_catalog.get("title") or validated_catalog.get("title_en"),
+        category_hint=validated_catalog.get("category") or category_hint
     )
 
-    market_median = market_response.summary.median_price if market_response.summary else None
-    market_currency = market_response.summary.currency if market_response.summary else None
+    raw_market_median = market_response.summary.median_price if market_response.summary else None
+    market_currency = market_response.summary.currency if market_response.summary else "INR"
+    market_median = raw_market_median
 
     # 5. Pure Market-Aware Pricing Calculation (No DB Product required)
     pricing_rec = calculate_price_recommendation_from_inputs(
@@ -208,6 +211,7 @@ async def process_full_catalog_pipeline(
         "catalog": catalog_fields,
         "artisan_facts": canonical_facts.model_dump(),
         "market_summary": market_summary_dict,
+        "market_research": market_response.model_dump(),
         "price_recommendation": pricing_rec if (has_costs or has_market) else None
     }
 

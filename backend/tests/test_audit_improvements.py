@@ -307,30 +307,10 @@ def test_production_security_and_strict_demo_isolation(monkeypatch):
         assert exc_info.value.status_code == 401
 
         # 4. In production, missing or predictable JWT_SECRET_KEY raises RuntimeError
-        import os
-        old_env = os.environ.get("ENVIRONMENT")
-        old_secret = os.environ.get("JWT_SECRET_KEY")
-        try:
-            os.environ["ENVIRONMENT"] = "production"
-            os.environ["JWT_SECRET_KEY"] = "artisan_ai_dev_secret_key_marginalized_artisans_safety_first"
-            # reloading config or testing logic
-            import importlib
-            import backend.app.config
-            with pytest.raises(RuntimeError) as exc_config:
-                importlib.reload(backend.app.config)
-            assert "CRITICAL SECURITY CONFIGURATION ERROR" in str(exc_config.value)
-        finally:
-            if old_env:
-                os.environ["ENVIRONMENT"] = old_env
-            else:
-                os.environ.pop("ENVIRONMENT", None)
-            if old_secret:
-                os.environ["JWT_SECRET_KEY"] = old_secret
-            else:
-                os.environ.pop("JWT_SECRET_KEY", None)
-            import importlib
-            import backend.app.config
-            importlib.reload(backend.app.config)
+        from backend.app.config import validate_production_config
+        with pytest.raises(RuntimeError) as exc_config:
+            validate_production_config("production", False, "sqlite:///prod.db", "artisan_ai_dev_secret_key_marginalized_artisans_safety_first")
+        assert "CRITICAL SECURITY CONFIGURATION ERROR" in str(exc_config.value)
     finally:
         db.close()
 

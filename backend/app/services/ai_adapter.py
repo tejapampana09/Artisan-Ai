@@ -140,17 +140,19 @@ def to_decimal(val, default="0.00") -> Decimal:
     return Decimal(str(val))
 
 def get_models_to_try() -> list:
-    """Returns an ordered fallback list of Gemini models starting with configured GEMINI_MODEL."""
-    configured = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    """Returns an ordered fallback list of active Gemini models starting with configured GEMINI_MODEL."""
+    configured = os.getenv("GEMINI_MODEL", "gemini-3.6-flash").strip()
     defaults = [
-        "gemini-3.5-flash-lite",
-        "gemini-3.1-flash-lite",
-        "gemini-2.5-flash-lite",
+        "gemini-3.6-flash",
+        "gemini-3.6-flash-lite",
         "gemini-2.5-flash",
-        "gemini-2.0-flash",
         "gemini-1.5-flash"
     ]
-    return [configured] + [m for m in defaults if m != configured]
+    models = [configured]
+    for m in defaults:
+        if m not in models:
+            models.append(m)
+    return models
 
 
 
@@ -264,6 +266,60 @@ def build_production_manual_draft(
         "notice": "Live AI generation is temporarily unavailable. Your verified artisan facts have been preserved as an editable manual draft. Please complete and verify details manually."
     }
 
+import base64
+
+async def prepare_image_part(image_url: str, client: httpx.AsyncClient) -> Optional[Dict[str, Any]]:
+    if not image_url or not image_url.strip():
+        return None
+    url_str = image_url.strip()
+
+    if url_str.startswith("data:image/"):
+        try:
+            header, base64_data = url_str.split(",", 1)
+            mime_type = header.split(";")[0].replace("data:", "")
+            return {
+                "inline_data": {
+                    "mime_type": mime_type,
+                    "data": base64_data
+                }
+            }
+        except Exception:
+            return None
+
+    if url_str.startswith("http://") or url_str.startswith("https://"):
+        try:
+            r = await client.get(url_str, timeout=10.0)
+            if r.status_code == 200 and r.content:
+                mime_type = r.headers.get("content-type", "image/jpeg").split(";")[0]
+                if not mime_type.startswith("image/"):
+                    mime_type = "image/jpeg"
+                encoded = base64.b64encode(r.content).decode("utf-8")
+                return {
+                    "inline_data": {
+                        "mime_type": mime_type,
+                        "data": encoded
+                    }
+                }
+        except Exception:
+            return None
+
+    if os.path.exists(url_str):
+        try:
+            with open(url_str, "rb") as f:
+                content = f.read()
+            mime_type = "image/png" if url_str.lower().endswith(".png") else "image/jpeg"
+            encoded = base64.b64encode(content).decode("utf-8")
+            return {
+                "inline_data": {
+                    "mime_type": mime_type,
+                    "data": encoded
+                }
+            }
+        except Exception:
+            return None
+
+    return None
+
 async def generate_catalog_draft(
     voice_description: str = "",
     language: str = "en",
@@ -280,7 +336,7 @@ async def generate_catalog_draft(
     """
     Generates an AI Catalog Draft with strict provenance and safety boundaries:
     - Canonical ArtisanFacts Source of Truth: Gemini receives single structured ArtisanFacts object.
-    - Application-side Sanitizers: Rejects unmentioned materials and fabricated family traditions.
+    - Multimodal Vision: Accepts image payload for visual recognition when facts are minimal.
     - Decoupled Pricing: Pricing calculated separately via cost inputs or pricing engine.
     - Dual Language Output: Primary fields map to selected target language.
     """
@@ -307,32 +363,32 @@ async def generate_catalog_draft(
     if GEMINI_API_KEY and not force_fallback:
         try:
             prompt = f"""You are Artisan AI's master cataloging assistant for traditional Indian handicrafts.
-Your task is to transform the provided ARTISAN FACTS into clean, professional product catalog fields.
+Your task is to transform the provided craft image and/or ARTISAN FACTS into clean, professional product catalog fields.
 
 CANONICAL SOURCE OF TRUTH (ARTISAN FACTS):
 {facts_json_str}
 
+IMAGE & VISUAL RECOGNITION:
+- If a craft product image is provided, perform visual recognition to identify the exact craft product type, visual style, traditional art form (e.g. Channapatna wooden toy, Kalamkari saree, Terracotta pot, Jaipur blue pottery, Tanjore painting, Brass idol, Handloom dupatta, Kanchipuram silk saree, Bidriware vase, etc.), and visible materials.
+- If title/product_name in ARTISAN FACTS is empty or generic, use your visual analysis of the image to generate a specific, highly accurate title (max 10 words).
+
 STRICT FACTUALITY RULES:
 1. CRAFT STORY:
-   - Create a polished craft story ONLY from facts provided in `artisan_story` or `special_characteristics`.
-   - NEVER invent family history, generation count, village/location of origin, awards, GI certification, or cultural claims that are not in ARTISAN FACTS.
-   - If `artisan_story` is empty or says nothing about family tradition, write a clean product craft summary based strictly on the product description.
+   - Create a polished craft story. If `artisan_story` or `special_characteristics` are provided, base it strictly on them. If empty, write a factual craft summary based on visual analysis of the craft.
 2. MATERIALS:
-   - Use ONLY materials explicitly listed in `materials` of ARTISAN FACTS.
-   - NEVER invent specific wood species (e.g. Teak, Rosewood), specific metals, or specific finishes (e.g. natural lacquer) unless listed in ARTISAN FACTS.
-   - If `materials` in ARTISAN FACTS is empty, return an empty array [].
+   - Use materials explicitly listed in ARTISAN FACTS if provided. If empty, infer primary material from visual analysis of the image (e.g. Wood, Brass, Terracotta, Silk, Cotton, Clay, Marble, Bamboo).
 3. PRICING:
    - Do NOT estimate, output, or include any prices, costs, or margins.
 4. TITLE & DESCRIPTION:
-   - Create a clean product title (max 10 words) and product overview (2-3 sentences).
+   - Create a clean, specific product title (max 10 words) and product overview (2-3 sentences).
 5. CATEGORY & TAGS:
-   - Select an appropriate category and 4-6 relevant discovery tags based on ARTISAN FACTS.
+   - Select an appropriate category (e.g. Toys & Games, Home Decor, Apparel & Sarees, Kitchenware, Jewellery) and 4-6 relevant discovery tags.
 6. TRANSLATIONS:
    - Provide title, description, and craft_story in English AND in target native language '{language}'.
 
 Return a valid JSON object matching this schema EXACTLY:
 {{
-  "title": "Clean product title in English",
+  "title": "Specific product title in English",
   "description": "Product overview in English (2-3 sentences)",
   "craft_story": "Factual craft story in English",
   "materials": ["Material 1"],
@@ -345,13 +401,19 @@ Return a valid JSON object matching this schema EXACTLY:
 
             models_to_try = get_models_to_try()
             async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
+                parts = [{"text": prompt}]
+                if clean_image:
+                    img_part = await prepare_image_part(clean_image, client)
+                    if img_part:
+                        parts.append(img_part)
+
                 res = None
                 for model in models_to_try:
                     try:
                         resp = await client.post(
                             f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}",
                             json={
-                                "contents": [{"parts": [{"text": prompt}]}],
+                                "contents": [{"parts": parts}],
                                 "generationConfig": {"response_mime_type": "application/json"}
                             },
                             headers={"Content-Type": "application/json"}

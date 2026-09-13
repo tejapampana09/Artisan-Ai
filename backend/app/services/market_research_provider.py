@@ -33,118 +33,296 @@ class NoOpMarketResearchProvider(BaseMarketResearchProvider):
     async def search_comparable_products(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
         return []
 
+class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
+    """
+    Gemini + Google Search Grounding Market Research Provider.
+    Leverages Gemini API with google_search grounding tools to query live Google search results,
+    normalizing product titles, prices in INR, source marketplace platforms, and citations.
+    """
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or os.getenv("GEMINI_API_KEY", "").strip()
+
+    async def search_comparable_products(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        if not query or not query.strip() or not self.api_key:
+            return []
+
+        clean_q = query.strip()
+        results: List[Dict[str, Any]] = []
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={self.api_key}"
+        prompt = f"""Search live Google Search for current e-commerce product listings in India for: "{clean_q}".
+Find real comparable product listings available for sale online in India (e.g. on Myntra, Meesho, Amazon, Craftsvilla, iTokri, Ajio, FlipKart, etc.).
+Extract real product listings and their prices in Indian Rupees (INR).
+
+Return ONLY a JSON array of product listing objects with this schema:
+[
+  {{
+    "title": "Exact product title from marketplace",
+    "price": 1299.0,
+    "currency": "INR",
+    "source": "Marketplace/Store Name (e.g. Myntra)",
+    "url": "Product page URL if available, else empty string",
+    "description": "Short description or snippet"
+  }}
+]
+Do NOT include markdown formatting outside the JSON array."""
+
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "tools": [{"google_search": {}}],
+            "generationConfig": {"temperature": 0.1}
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                resp = await client.post(url, json=payload, headers={"Content-Type": "application/json"})
+                if resp.status_code == 200:
+                    res_json = resp.json()
+                    candidates = res_json.get("candidates", [])
+                    if candidates:
+                        cand = candidates[0]
+                        parts = cand.get("content", {}).get("parts", [])
+                        if parts:
+                            text_raw = parts[0].get("text", "").strip()
+                            if text_raw.startswith("```"):
+                                lines = text_raw.split("\n")
+                                if lines[0].startswith("```"):
+                                    lines = lines[1:]
+                                if lines and lines[-1].strip() == "```":
+                                    lines = lines[:-1]
+                                text_raw = "\n".join(lines).strip()
+
+                            parsed_array = json.loads(text_raw)
+                            if isinstance(parsed_array, list):
+                                for item in parsed_array:
+                                    if not isinstance(item, dict):
+                                        continue
+                                    title = str(item.get("title") or "").strip()
+                                    if not title:
+                                        continue
+                                    raw_p = item.get("price")
+                                    parsed_price = None
+                                    if raw_p is not None:
+                                        try:
+                                            p_val = float(raw_p)
+                                            if 50 <= p_val <= 500000:
+                                                parsed_price = p_val
+                                        except (ValueError, TypeError):
+                                            pass
+
+                                    url_val = str(item.get("url") or "")
+                                    domain = urlparse(url_val).netloc.replace("www.", "").capitalize() if url_val else "CraftMarketplace"
+                                    source = str(item.get("source") or domain or "CraftMarketplace")
+
+                                    results.append({
+                                        "title": title,
+                                        "price": parsed_price,
+                                        "currency": "INR",
+                                        "source": source,
+                                        "url": url_val,
+                                        "description": str(item.get("description") or ""),
+                                        "category": clean_q,
+                                        "materials": [],
+                                        "observed_at": datetime.now(timezone.utc)
+                                    })
+        except Exception as err:
+            logger.warning("Gemini Search Grounding request failed for query '%s': %s", clean_q, err)
+
+        return results[:limit]
+
 class WebSearchMarketResearchProvider(BaseMarketResearchProvider):
     """
     Real Web Search Market Research Provider.
-    Queries live search APIs / web search indexes for real e-commerce & handicraft marketplace listings,
-    extracting titles, prices, source platforms, and product URLs for market median computation.
+    Queries live search APIs / web search indexes (Gemini Search Grounding, Serper API, Bing Web Search)
+    for real e-commerce & handicraft marketplace listings, extracting titles, prices in INR, source platforms,
+    and product URLs for market median computation.
     """
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("MARKET_RESEARCH_API_KEY", "").strip()
+        self.gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+        self.gemini_grounding_provider = GeminiGroundingMarketResearchProvider(self.gemini_key)
 
     async def search_comparable_products(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
         if not query or not query.strip():
             return []
 
         clean_q = query.strip()
-        search_terms = [
-            f"{clean_q} price INR buy online",
-            f"{clean_q} handicraft price rupees",
-            f"buy {clean_q} online"
-        ]
-
         results: List[Dict[str, Any]] = []
         seen_urls = set()
 
+        # 1. Primary: Gemini + Google Search Grounding (if GEMINI_API_KEY is available)
+        if self.gemini_key:
+            try:
+                g_items = await self.gemini_grounding_provider.search_comparable_products(clean_q, limit=limit)
+                for item in g_items:
+                    url_key = (item.get("url") or item.get("title", "")).lower()
+                    if url_key and url_key not in seen_urls:
+                        seen_urls.add(url_key)
+                        results.append(item)
+            except Exception as err:
+                logger.warning("Gemini grounding market search failed for query '%s': %s", clean_q, err)
+
+        # 2. Secondary: Serper API live search (if Serper API key available and results < limit)
+        if len(results) < limit and self.api_key:
+            try:
+                serper_items = await self._search_serper(clean_q, limit=limit - len(results))
+                for item in serper_items:
+                    url_key = (item.get("url") or item.get("title", "")).lower()
+                    if url_key and url_key not in seen_urls:
+                        seen_urls.add(url_key)
+                        results.append(item)
+            except Exception as err:
+                logger.warning("Serper market search request failed for query '%s': %s", clean_q, err)
+
+        # 3. Fallback: Live Bing HTML search (if API keys missing or results < limit)
+        if len(results) < limit:
+            try:
+                bing_items = await self._search_bing_html(clean_q, limit=limit - len(results))
+                for item in bing_items:
+                    url_key = (item.get("url") or item.get("title", "")).lower()
+                    if url_key and url_key not in seen_urls:
+                        seen_urls.add(url_key)
+                        results.append(item)
+            except Exception as err:
+                logger.warning("Bing HTML market search request failed for query '%s': %s", clean_q, err)
+
+        return results[:limit]
+
+    async def _search_serper(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        search_terms = [
+            f"{query} price INR buy online",
+            f"buy {query} online India",
+            f"{query} handicraft price rupees"
+        ]
+        results = []
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Content-Type": "application/x-www-form-urlencoded"
+            "X-API-KEY": self.api_key,
+            "Content-Type": "application/json"
         }
 
-        try:
-            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-                for term in search_terms:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            for term in search_terms:
+                if len(results) >= limit:
+                    break
+                payload = {"q": term, "gl": "in", "hl": "en"}
+                resp = await client.post("https://google.serper.dev/search", json=payload, headers=headers)
+                if resp.status_code != 200:
+                    continue
+
+                res_json = resp.json()
+                raw_candidates = res_json.get("shopping", []) + res_json.get("organic", [])
+
+                for cand in raw_candidates:
                     if len(results) >= limit:
                         break
 
-                    try:
-                        resp = await client.post("https://lite.duckduckgo.com/lite/", data={"q": term}, headers=headers)
-                        if resp.status_code != 200:
-                            continue
+                    title = (cand.get("title") or "").strip()
+                    url = cand.get("link") or cand.get("url") or ""
+                    snippet = cand.get("snippet") or cand.get("description") or ""
 
-                        html = resp.text
-                        matches = re.findall(r'<a[^>]*href=["\']([^"\']+)["\'][^>]*class=["\']result-link["\'][^>]*>(.*?)</a>', html, re.DOTALL)
-                        snippets = re.findall(r'<td[^>]*class=["\']result-snippet["\'][^>]*>(.*?)</td>', html, re.DOTALL)
-
-                        for i, (raw_url, raw_title) in enumerate(matches):
-                            if len(results) >= limit:
-                                break
-
-                            clean_title = re.sub(r'<[^>]+>', '', raw_title).strip()
-                            clean_snippet = re.sub(r'<[^>]+>', '', snippets[i]).strip() if i < len(snippets) else ""
-
-                            if not clean_title or "duckduckgo.com" in raw_url:
-                                continue
-
-                            actual_url = raw_url
-                            if 'uddg=' in raw_url:
-                                m = re.search(r'uddg=([^&]+)', raw_url)
-                                if m:
-                                    actual_url = unquote(m.group(1))
-
-                            url_key = actual_url.lower()
-                            if url_key in seen_urls:
-                                continue
-                            seen_urls.add(url_key)
-
-                            domain = urlparse(actual_url).netloc.replace('www.', '').capitalize()
-                            source = domain if domain else "CraftMarketplace"
-
-                            combined_text = f"{clean_title} {clean_snippet}"
-
-                            # Multi-pattern price extraction in INR
-                            patterns = [
-                                r'(?:₹|Rs\.?|INR|\$)\s?([0-9]{1,3}(?:,[0-9]{3})*|[0-9]+)',
-                                r'([0-9]{1,3}(?:,[0-9]{3})*|[0-9]+)\s?(?:/-|Rs|rupees|INR)',
-                                r'(?:price|cost|at|starts at|from)\s+(?:₹|Rs\.?|INR)?\s?([0-9]{1,3}(?:,[0-9]{3})*|[0-9]+)'
-                            ]
-
-                            parsed_price: Optional[float] = None
-                            for pat in patterns:
-                                price_matches = re.findall(pat, combined_text, re.IGNORECASE)
-                                if price_matches:
-                                    for p_str in price_matches:
-                                        clean_p = p_str.replace(',', '')
-                                        try:
-                                            p_val = float(clean_p)
-                                            if 50 <= p_val <= 500000:
-                                                parsed_price = p_val
-                                                break
-                                        except ValueError:
-                                            continue
-                                if parsed_price is not None:
-                                    break
-
-                            results.append({
-                                "title": clean_title,
-                                "price": parsed_price,
-                                "currency": "INR",
-                                "source": source,
-                                "url": actual_url,
-                                "description": clean_snippet,
-                                "category": query,
-                                "materials": [],
-                                "observed_at": datetime.now(timezone.utc)
-                            })
-                    except Exception as err:
-                        logger.warning("Web search provider request failed for term '%s': %s", term, err)
+                    if not title or "google.com" in url:
                         continue
-        except Exception as err:
-            logger.warning("Web search provider client initialization failed: %s", err)
-            return []
 
-        return results[:limit]
+                    domain = urlparse(url).netloc.replace("www.", "").capitalize() if url else "CraftMarketplace"
+                    source = cand.get("source") or domain or "CraftMarketplace"
+
+                    # Parse price
+                    parsed_price = self._extract_price(cand.get("price"), title, snippet)
+
+                    results.append({
+                        "title": title,
+                        "price": parsed_price,
+                        "currency": "INR",
+                        "source": source,
+                        "url": url,
+                        "description": snippet,
+                        "category": query,
+                        "materials": [],
+                        "observed_at": datetime.now(timezone.utc)
+                    })
+
+        return results
+
+    async def _search_bing_html(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        search_url = f"https://www.bing.com/search?q={query.replace(' ', '+')}+price+INR+buy+online"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9"
+        }
+        results = []
+
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            resp = await client.get(search_url, headers=headers)
+            if resp.status_code != 200:
+                return []
+
+            html = resp.text
+            blocks = re.findall(r'<li class="b_algo".*?>.*?<h2[^>]*><a href="([^"]+)".*?>(.*?)</a></h2>(.*?)</li>', html, re.DOTALL)
+
+            for raw_url, raw_title, rest_html in blocks:
+                if len(results) >= limit:
+                    break
+
+                clean_title = re.sub(r'<[^>]+>', '', raw_title).strip()
+                clean_snippet = re.sub(r'<[^>]+>', '', rest_html).strip()
+                clean_snippet = " ".join(clean_snippet.split())
+
+                if not clean_title or "bing.com" in raw_url:
+                    continue
+
+                domain = urlparse(raw_url).netloc.replace("www.", "").capitalize() if raw_url else "CraftMarketplace"
+                source = domain if domain else "CraftMarketplace"
+
+                parsed_price = self._extract_price(None, clean_title, clean_snippet)
+
+                results.append({
+                    "title": clean_title,
+                    "price": parsed_price,
+                    "currency": "INR",
+                    "source": source,
+                    "url": raw_url,
+                    "description": clean_snippet,
+                    "category": query,
+                    "materials": [],
+                    "observed_at": datetime.now(timezone.utc)
+                })
+
+        return results
+
+    def _extract_price(self, direct_price: Any, title: str, snippet: str) -> Optional[float]:
+        if direct_price is not None:
+            if isinstance(direct_price, (int, float)) and direct_price > 0:
+                return float(direct_price)
+            if isinstance(direct_price, str):
+                clean = re.sub(r'[^\d.]', '', direct_price)
+                try:
+                    val = float(clean)
+                    if 50 <= val <= 500000:
+                        return val
+                except ValueError:
+                    pass
+
+        combined_text = f"{title} {snippet}"
+        patterns = [
+            r'(?:₹|Rs\.?|INR|\$)\s?([0-9]{1,3}(?:,[0-9]{3})*|[0-9]+)',
+            r'([0-9]{1,3}(?:,[0-9]{3})*|[0-9]+)\s?(?:/-|Rs|rupees|INR)',
+            r'(?:price|cost|at|starts at|from)\s+(?:₹|Rs\.?|INR)?\s?([0-9]{1,3}(?:,[0-9]{3})*|[0-9]+)'
+        ]
+
+        for pat in patterns:
+            price_matches = re.findall(pat, combined_text, re.IGNORECASE)
+            if price_matches:
+                for p_str in price_matches:
+                    clean_p = p_str.replace(',', '')
+                    try:
+                        p_val = float(clean_p)
+                        if 50 <= p_val <= 500000:
+                            return p_val
+                    except ValueError:
+                        continue
+        return None
 
 class MockMarketResearchProvider(BaseMarketResearchProvider):
     """

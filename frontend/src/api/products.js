@@ -35,6 +35,7 @@ export async function processAICatalog(data) {
   return await apiRequest('/ai/process-catalog', {
     method: 'POST',
     body: JSON.stringify(data),
+    timeoutMs: 90000,
   });
 }
 
@@ -42,6 +43,7 @@ export async function approveAndPublishAICatalog(data) {
   return await apiRequest('/ai/approve-and-publish', {
     method: 'POST',
     body: JSON.stringify(data),
+    timeoutMs: 45000,
   });
 }
 
@@ -60,6 +62,7 @@ export async function sendBuyerCopilotMessage(payload) {
   return await apiRequest('/buyer/copilot-chat', {
     method: 'POST',
     body: JSON.stringify(payload),
+    timeoutMs: 45000,
   });
 }
 
@@ -67,6 +70,7 @@ export async function translateProduct(payload) {
   return await apiRequest('/ai/translate-product', {
     method: 'POST',
     body: JSON.stringify(payload),
+    timeoutMs: 45000,
   });
 }
 
@@ -74,6 +78,7 @@ export async function estimateFairPrice(payload) {
   return await apiRequest('/ai/estimate-price', {
     method: 'POST',
     body: JSON.stringify(payload),
+    timeoutMs: 45000,
   });
 }
 

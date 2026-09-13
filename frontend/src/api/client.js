@@ -73,7 +73,7 @@ export function formatApiErrorMessage(errData, fallbackMsg = 'Request failed') {
   return fallbackMsg;
 }
 
-const DEFAULT_TIMEOUT_MS = 15000;
+const DEFAULT_TIMEOUT_MS = 30000;
 
 export async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -88,7 +88,8 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_TI
   } catch (err) {
     clearTimeout(id);
     if (err.name === 'AbortError') {
-      throw new ApiError('Request timed out after 15 seconds. Please check your connection and try again.', 408, 'TIMEOUT', null, true);
+      const timeoutSec = Math.round(timeoutMs / 1000);
+      throw new ApiError(`Request timed out after ${timeoutSec} seconds. Please check your connection and try again.`, 408, 'TIMEOUT', null, true);
     }
     if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
       throw new ApiError('Unable to connect to the server. Please check your network connection.', 0, 'NETWORK_ERROR', null, true);

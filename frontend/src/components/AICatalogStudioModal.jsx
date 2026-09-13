@@ -627,8 +627,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       : [];
 
     const artisanFacts = {
-      product_name: qnaAnswers.q1_title?.trim() || '',
-      craft_type: '',
+      product_name: qnaAnswers.q1_title?.trim() || (selectedPhoto ? selectedPhoto.name : ''),
+      craft_type: effectiveCat || '',
       materials: parsedMaterials,
       handmade: null,
       making_time: '',
@@ -1666,7 +1666,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
               </div>
 
               {/* Pricing Breakdown & Approval */}
-              {aiDraft.pricing_available && aiDraft.suggested_price != null ? (
+              {(aiDraft.pricing_available && aiDraft.suggested_price != null) || (aiDraft.market_summary?.median_price != null) || (Array.isArray(aiDraft.market_research?.results) && aiDraft.market_research.results.length > 0) ? (
                 <div className="bg-gradient-to-br from-emerald-50/90 via-emerald-50/40 to-teal-50/60 border-2 border-emerald-300 rounded-2xl p-4 space-y-3 shadow-xs">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-emerald-200/80 pb-2.5">
                     <div className="flex items-center space-x-2">
@@ -1676,13 +1676,17 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       </span>
                       {(aiDraft.market_summary?.median_price || aiDraft.price_recommendation?.market_median) && (
                         <span className="text-[10px] font-bold text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-md border border-indigo-200">
-                          📊 30% Market Signal Applied
+                          📊 Live Web Market Signal Applied
                         </span>
                       )}
                     </div>
-                    {aiDraft.min_fair_price && (
+                    {aiDraft.min_fair_price ? (
                       <span className="text-[11px] font-extrabold text-emerald-900 bg-white px-2.5 py-0.5 rounded-lg border border-emerald-300 shadow-2xs">
                         🛡️ Protected 20% Floor: ₹{aiDraft.min_fair_price}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-extrabold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-lg border border-amber-300">
+                        🏷️ Market Estimated (Cost Inputs Omitted)
                       </span>
                     )}
                   </div>
@@ -1692,7 +1696,9 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     <div>
                       <h5 className="text-xs font-bold text-slate-800">Final Recommended Selling Price</h5>
                       <p className="text-[11px] text-emerald-800 font-medium leading-tight mt-0.5">
-                        Combines artisan cost basis + 20% floor + 30% market median signal + safety caps.
+                        {aiDraft.min_fair_price 
+                          ? 'Combines artisan cost basis + 20% floor + live market median signal.'
+                          : 'Estimated directly from live online market research (no cost breakdown provided).'}
                       </p>
                     </div>
                     <div className="flex items-center space-x-2 shrink-0">
@@ -1701,10 +1707,10 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         <span className="text-base font-black text-[#4A2E1B] mr-1">₹</span>
                         <input
                           type="number"
-                          value={aiDraft.suggested_price ?? ''}
+                          value={aiDraft.suggested_price ?? (aiDraft.market_summary?.median_price || '')}
                           onChange={(e) => handleDraftChange('suggested_price', e.target.value === '' ? '' : parseFloat(e.target.value))}
                           className={`w-32 text-base font-black border-2 rounded-xl px-3 py-1 text-slate-900 bg-white text-right shadow-xs focus:ring-2 focus:ring-emerald-500 ${
-                            Number(aiDraft.suggested_price) < Number(aiDraft.min_fair_price || 0)
+                            aiDraft.min_fair_price && Number(aiDraft.suggested_price || aiDraft.market_summary?.median_price) < Number(aiDraft.min_fair_price || 0)
                               ? 'border-rose-500 text-rose-700 bg-rose-50'
                               : 'border-emerald-400'
                           }`}
@@ -1714,7 +1720,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   </div>
 
                   {/* Floor Protection Warning Banner if Price is Below Minimum */}
-                  {Number(aiDraft.suggested_price) < Number(aiDraft.min_fair_price || 0) && (
+                  {aiDraft.min_fair_price && Number(aiDraft.suggested_price) < Number(aiDraft.min_fair_price || 0) && (
                     <div className="p-2.5 bg-rose-50 border border-rose-300 rounded-xl flex items-center space-x-2 text-xs text-rose-900">
                       <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
                       <span className="font-bold">
@@ -1731,20 +1737,22 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       <div className="flex justify-between items-baseline mt-1">
                         <span className="text-xs font-semibold text-slate-700">Cost Basis:</span>
                         <span className="text-xs font-bold text-slate-900">
-                          ₹{((Number(aiDraft.material_cost)||0) + (Number(aiDraft.labour_cost)||0) + (Number(aiDraft.packaging_cost)||0) + (Number(aiDraft.other_cost)||0))}
+                          {aiDraft.min_fair_price 
+                            ? `₹${((Number(aiDraft.material_cost)||0) + (Number(aiDraft.labour_cost)||0) + (Number(aiDraft.packaging_cost)||0) + (Number(aiDraft.other_cost)||0))}`
+                            : 'Omitted by artisan'}
                         </span>
                       </div>
                       <div className="flex justify-between items-baseline mt-0.5">
                         <span className="text-xs font-semibold text-emerald-800">20% Fair Price Floor:</span>
                         <span className="text-xs font-black text-emerald-700">
-                          ₹{aiDraft.min_fair_price || 'N/A'}
+                          {aiDraft.min_fair_price ? `₹${aiDraft.min_fair_price}` : 'Optional (Enter costs to enable)'}
                         </span>
                       </div>
                     </div>
 
                     {/* Market Research Signal Card */}
                     <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-200">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Phase 5 Market Research Signal</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Live Market Research Signal</span>
                       <div className="flex justify-between items-baseline mt-1">
                         <span className="text-xs font-semibold text-slate-700">Comparable Market Median:</span>
                         <span className="text-xs font-bold text-indigo-900">
@@ -1758,11 +1766,57 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         <span className="text-xs font-bold text-slate-800">
                           {aiDraft.market_summary?.min_price != null && aiDraft.market_summary?.max_price != null
                             ? `₹${aiDraft.market_summary.min_price} – ₹${aiDraft.market_summary.max_price} (${aiDraft.market_summary.comparable_count || 0} items)`
-                            : 'Market data unavailable — recommendation is based on your costs and minimum fair-price protection.'}
+                            : 'Live market search active'}
                         </span>
                       </div>
                     </div>
                   </div>
+
+                  {/* Top 4 Comparable Similar Products Section */}
+                  {Array.isArray(aiDraft.market_research?.results) && aiDraft.market_research.results.length > 0 && (
+                    <div className="bg-white/90 p-3 rounded-xl border border-emerald-200/90 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold text-slate-800 flex items-center space-x-1">
+                          <span>🔍 Live Comparable Market Products (Top 4 Found):</span>
+                        </span>
+                        <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                          Real Web Search
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {aiDraft.market_research.results.slice(0, 4).map((item, idx) => (
+                          <div key={idx} className="p-2 rounded-lg border border-slate-200 bg-slate-50/70 flex flex-col justify-between">
+                            <div>
+                              <div className="flex justify-between items-start gap-1">
+                                <span className="text-[11px] font-bold text-slate-900 line-clamp-1">{item.title}</span>
+                                {item.similarity_score != null && (
+                                  <span className="text-[9px] font-extrabold bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded shrink-0">
+                                    {Math.round(item.similarity_score * 100)}% Match
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-slate-500 block mt-0.5">{item.source || 'Online Store'}</span>
+                            </div>
+                            <div className="flex justify-between items-center mt-1.5 pt-1 border-t border-slate-200/60">
+                              <span className="text-xs font-black text-emerald-700">
+                                {item.price ? `₹${item.price}` : 'Price unlisted'}
+                              </span>
+                              {item.url && (
+                                <a
+                                  href={item.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 underline"
+                                >
+                                  View Source →
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Explainable Pricing Reasoning Bullets */}
                   {Array.isArray(aiDraft.price_recommendation?.reasoning) && aiDraft.price_recommendation.reasoning.length > 0 && (

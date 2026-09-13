@@ -11,24 +11,25 @@ from backend.app.services.market_research_provider import (
 )
 from backend.app.services.market_similarity import calculate_market_similarity
 
-def build_market_query(artisan_facts: ArtisanFacts) -> str:
+def build_market_query(
+    artisan_facts: ArtisanFacts,
+    title_hint: Optional[str] = None,
+    category_hint: Optional[str] = None
+) -> str:
     """
-    Deterministically constructs a search query string from verified ArtisanFacts.
-    Priority:
-    1. product_name
-    2. craft_type
-    3. materials
-    4. special_characteristics
-    
-    Omits empty fields. Zero LLM calls.
+    Deterministically constructs a search query string from verified ArtisanFacts and catalog hints.
     """
     parts = []
     
     if artisan_facts.product_name and artisan_facts.product_name.strip():
         parts.append(artisan_facts.product_name.strip())
+    elif title_hint and title_hint.strip() and title_hint.strip().lower() not in ["handmade artisan craft product.", "handmade artisan craft product", "craft"]:
+        parts.append(title_hint.strip())
         
     if artisan_facts.craft_type and artisan_facts.craft_type.strip():
         parts.append(artisan_facts.craft_type.strip())
+    elif category_hint and category_hint.strip():
+        parts.append(category_hint.strip())
         
     if artisan_facts.materials:
         clean_mats = [m.strip() for m in artisan_facts.materials if m.strip()]
@@ -36,17 +37,27 @@ def build_market_query(artisan_facts: ArtisanFacts) -> str:
             parts.append(" ".join(clean_mats))
             
     if artisan_facts.special_characteristics and artisan_facts.special_characteristics.strip():
-        # Keep query concise by taking first 5 words of special characteristics
         spec_words = artisan_facts.special_characteristics.strip().split()[:5]
         if spec_words:
             parts.append(" ".join(spec_words))
 
-    return " ".join(parts).strip()
+    q = " ".join(parts).strip()
+    if not q or len(q) < 3 or q.lower() in ["handmade artisan craft product", "craft", "product"]:
+        if title_hint and title_hint.strip() and title_hint.strip().lower() not in ["handmade artisan craft product.", "handmade artisan craft product", "craft"]:
+            q = f"{title_hint.strip()} buy online India"
+        elif category_hint and category_hint.strip():
+            q = f"{category_hint.strip()} handicraft buy online India"
+        else:
+            q = "handicraft artisan craft buy online India"
+
+    return q.strip()
 
 async def research_market(
     artisan_facts: ArtisanFacts,
     provider: Optional[BaseMarketResearchProvider] = None,
-    similarity_threshold: float = 0.20
+    similarity_threshold: float = 0.20,
+    title_hint: Optional[str] = None,
+    category_hint: Optional[str] = None
 ) -> MarketResearchResponse:
     """
     Market Research Service for finding external comparable listings and calculating
@@ -54,7 +65,7 @@ async def research_market(
     """
     # Defensive immutability guarantee for artisan_facts
     facts_copy = deepcopy(artisan_facts)
-    query = build_market_query(facts_copy)
+    query = build_market_query(facts_copy, title_hint=title_hint, category_hint=category_hint)
 
     if not query:
         return MarketResearchResponse(
