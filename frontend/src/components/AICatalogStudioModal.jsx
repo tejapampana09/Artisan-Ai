@@ -60,184 +60,76 @@ const STUDIO_BACKDROPS = [
 ];
 
 const getAdaptiveQnaQuestions = (qnaAnswers, selectedPhoto, selectedLang) => {
-  const titleText = (qnaAnswers.q1_title || selectedPhoto?.name || '').toLowerCase();
-  const catText = (selectedPhoto?.category || '').toLowerCase();
-  const combo = `${titleText} ${catText}`;
-
-  const q1Obj = {
-    id: 'q1_title',
-    num: 1,
-    te: 'మీరు తయారు చేసిన ఈ వస్తువు పేరు ఏంటి? ఇది ఏ రకమైన చేతివృత్తికి సంబంధించినది?',
-    hi: 'आपने जो यह वस्तु बनाई है, उसका नाम क्या है? यह किस प्रकार की हस्तकला से जुड़ी है?',
-    en: 'What is the name of this product, and what type of craft does it belong to?',
-    ta: 'நீங்கள் தயாரித்த இந்த பொருளின் பெயர் என்ன? இது எந்த வகையான கைவினையைச் சேர்ந்தது?',
-    bn: 'আপনি তৈরি করা এই পণ্যটির নাম কী? এটি কোন ধরনের হস্তশিল্পের সঙ্গে যুক্ত?',
-    speech: {
-      te: 'మీరు తయారు చేసిన ఈ వస్తువు పేరు ఏంటి? ఇది ఏ రకమైన చేతివృత్తికి సంబంధించినది?',
-      hi: 'आपने जो यह चीज़ बनाई है, उसका नाम क्या है? यह किस तरह की हस्तकला से जुड़ी है?',
-      en: 'What do you call this product? And what kind of traditional craft is it?',
-      ta: 'நீங்கள் தயாரித்த இந்த பொருளின் பெயர் என்ன? இது எந்த வகையான பாரம்பரிய கைவினையைச் சேர்ந்தது?',
-      bn: 'আপনি যে পণ্যটি তৈরি করেছেন, সেটার নাম কী? এটি কোন ধরনের ঐতিহ্যবাহী হস্তশিল্প?'
-    },
-    placeholder: {
-      te: 'ఉదాహరణ: చేతితో నేసిన కలంకారి దుపట్టా...',
-      hi: 'उदाहरण: हाथ से बना कलमकारी दुपट्टा...',
-      en: 'e.g. Handpainted Kalamkari Silk Dupatta...',
-      ta: 'எடுத்துக்காட்டு: கைத்தறி கலம்காரி துப்பட்டா...',
-      bn: 'উদাহরণ: হাতে তৈরি কলমকারি শাড়ি...'
-    }
-  };
-
-  let q2Obj = {
-    id: 'q2_materials',
-    num: 2,
-    te: 'దీన్ని తయారు చేయడానికి ఏ పదార్థాలు వాడారు? ఇది పూర్తిగా చేతితో తయారు చేశారా?',
-    hi: 'इसे बनाने के लिए आपने किन सामग्रियों का इस्तेमाल किया? क्या यह पूरी तरह हाथ से बनाया गया है?',
-    en: 'What materials did you use to make it? Is it completely handmade?',
-    ta: 'இதை தயாரிக்க என்ன பொருட்களை பயன்படுத்தினீர்கள்? இது முழுவதும் கையால் செய்யப்பட்டதா?',
-    bn: 'এটি তৈরি করতে আপনি কী কী উপকরণ ব্যবহার করেছেন? এটি কি পুরোপুরি হাতে তৈরি?',
-    speech: {
-      te: 'దీన్ని తయారు చేయడానికి ఏ పదార్థాలు వాడారు? ఇది పూర్తిగా చేతితో తయారు చేశారా?',
-      hi: 'इसे बनाने में आपने कौन-कौन सी चीज़ें इस्तेमाल कीं? क्या यह पूरी तरह हाथ से बनाया गया है?',
-      en: 'What materials did you use to make it? And is it completely handmade?',
-      ta: 'இதை செய்ய என்னென்ன பொருட்களை பயன்படுத்தினீர்கள்? இது முழுவதும் கையால் செய்யப்பட்டதா?',
-      bn: 'এটি তৈরি করতে কী কী উপকরণ ব্যবহার করেছেন? এটি কি পুরোপুরি হাতে তৈরি?'
-    },
-    placeholder: {
-      te: 'ఉదాహరణ: పట్టు నూలు, సహజ రంగులు, చెక్క...',
-      hi: 'उदाहरण: रेशम, प्राकृतिक रंग, लकड़ी...',
-      en: 'e.g. Pure silk, natural dyes, wood...',
-      ta: 'எடுத்துக்காட்டு: பட்டு, இயற்கை சாயங்கள், மரம்...',
-      bn: 'উদাহরণ: খাঁটি রেশম, प्राकृतिक রং, কাঠ...'
-    }
-  };
-
-  if (combo.includes('kalamkari') || combo.includes('dupatta') || combo.includes('saree') || combo.includes('ikat') || combo.includes('handloom') || combo.includes('silk') || combo.includes('cotton')) {
-    q2Obj = {
-      id: 'q2_materials',
-      num: 2,
-      te: 'ఏ రకమైన దారం, మగ్గం, మరియు రంగులు (సహజ లేదా ఆర్గానిక్) వాడారు?',
-      hi: 'किस प्रकार का धागा, हथकरघा और रंग (प्राकृतिक या जैविक) उपयोग किया?',
-      en: 'What yarn count, loom type, and natural/organic dyes were used?',
-      ta: 'என்ன நூல், தறி மற்றும் இயற்கை சாயங்கள் பயன்படுத்தப்பட்டன?',
-      bn: 'কি ধরনের সুতা এবং প্রাকৃতিক রঙ ব্যবহার করা হয়েছে?',
-      speech: {
-        te: 'చేనేత నేతలో ఏ రకమైన దారం, మగ్గం, మరియు సహజ రంగులు వాడారు?',
-        hi: 'बुनना में किस प्रकार का धागा, हथकरघा और प्राकृतिक रंग उपयोग किया?',
-        en: 'What yarn count, loom type, and natural organic dyes were used?',
-        ta: 'என்ன நூல், தறி மற்றும் இயற்கை சாயங்கள் பயன்படுத்தப்பட்டன?',
-        bn: 'কি ধরনের সুতা এবং প্রাকৃতিক রঙ ব্যবহার করা হয়েছে?'
-      },
-      placeholder: {
-        te: 'ఉదాహరణ: 100% మల్బరీ పట్టు, కరక్కాయ మరియు సహజ రంగులు, మచిలీపట్నం అచ్చు ప్రింటింగ్...',
-        hi: 'उदाहरण: 100% शहतूत रेशम, मयरोबलन एवं प्राकृतिक वनस्पति रंग...',
-        en: 'e.g. 100% Mulberry Silk, Myrobalan & Alum Natural Dyes, Traditional Hand Block Print...',
-        ta: 'எடுத்துக்காட்டு: 100% பட்டு, இயற்கை சாயங்கள்...',
-        bn: 'উদাহরণ: খাঁটি রেশম, প্রাকৃতিক রঙ...'
-      }
-    };
-  } else if (combo.includes('toy') || combo.includes('wood') || combo.includes('carving') || combo.includes('channapatna')) {
-    q2Obj = {
-      id: 'q2_materials',
-      num: 2,
-      te: 'ఏ రకం చెక్క వాడారు? రంగులు పిల్లలకు సురక్షితమేనా?',
-      hi: 'किस प्रकार की लकड़ी और सुरक्षित लाख रंगों का उपयोग किया गया?',
-      en: 'What wood species (Teak/Ivorywood) and non-toxic lacquers were used?',
-      ta: 'என்ன மரவகை மற்றும் விஷமற்ற வண்ணங்கள் பயன்படுத்தப்பட்டன?',
-      bn: 'কি ধরণের কাঠ এবং বিষাক্ত নয় এমন রঙ ব্যবহার করা হয়েছে?',
-      speech: {
-        te: 'చెక్క పనికి ఏ రకం చెక్క వాడారు? రంగులు పిల్లలకు సురక్షితమేనా?',
-        hi: 'काष्ठ कला में किस प्रकार की लकड़ी और सुरक्षित रंगों का उपयोग किया गया?',
-        en: 'What wood species and non-toxic lacquers were used?',
-        ta: 'என்ன மரவகை மற்றும் விஷமற்ற வண்ணங்கள் பயன்படுத்தப்பட்டன?',
-        bn: 'কি ধরণের কাঠ এবং নিরাপদ রঙ ব্যবহার করা হয়েছে?'
-      },
-      placeholder: {
-        te: 'ఉదాహరణ: అంకుడు చెక్క, పిల్లలకు సురక్షితమైన కూరగాయల జిగురు రంగులు...',
-        hi: 'उदाहरण: अले की लकड़ी, प्राकृतिक लाख रंग...',
-        en: 'e.g. Soft Ivory Wood, Non-toxic Vegetable Lacquer finish...',
-        ta: 'எடுத்துக்காட்டு: இயற்கை மரம், பாதுகாப்பான சாயங்கள்...',
-        bn: 'উদাহরণ: প্রাকৃতিক কাঠ, নিরাপদ রঙ...'
-      }
-    };
-  } else if (combo.includes('pottery') || combo.includes('ceramic') || combo.includes('clay') || combo.includes('terracotta') || combo.includes('blue pottery')) {
-    q2Obj = {
-      id: 'q2_materials',
-      num: 2,
-      te: 'ఏ రకం మట్టి, క్వార్ట్జ్ రాయితో తయారుచేసి ఏ నీలి రంగు గ్లేజింగ్ అద్దారు?',
-      hi: 'किस मिट्टी/क्वार्ट्ज पाउडर और कोबाल्ट चमक का उपयोग किया गया?',
-      en: 'What clay composition and cobalt metal glazes were used?',
-      ta: 'என்ன களிமண் மற்றும் இயற்கை பூச்சுகள் பயன்படுத்தப்பட்டன?',
-      bn: 'কি ধরণের মাটি এবং প্রাকৃতিক রঙের লেপ ব্যবহার করা হয়েছে?',
-      speech: {
-        te: 'మట్టి పనికి ఏ రకం మట్టి, క్వార్ట్జ్ రాయితో తయారుచేసి ఏ గ్లేజింగ్ అద్దారు?',
-        hi: 'मृदा कला में किस मिट्टी और कोबाल्ट चमक का उपयोग किया गया?',
-        en: 'What clay composition and cobalt metal glazes were used?',
-        ta: 'என்ன களிமண் மற்றும் இயற்கை பூச்சுகள் பயன்படுத்தப்பட்டன?',
-        bn: 'কি ধরণের মাটি এবং প্রাকৃতিক রঙের লেপ ব্যবহার করা হয়েছে?'
-      },
-      placeholder: {
-        te: 'ఉదాహరణ: క్వార్ట్జ్ మట్టి, కోబాల్ట్ నీలి రంగు గ్లేజింగ్, సాంప్రదాయ కొలిమిలో కాల్చినది...',
-        hi: 'उदाहरण: क्वार्ट्ज मिट्टी, कोबाल्ट नीला रंग, पारंपरिक भट्टी...',
-        en: 'e.g. Natural Quartz Clay Dough, Oxide Cobalt Blue Glaze, Kiln-fired...',
-        ta: 'எடுத்துக்காட்டு: களிமண், இயற்கை பூச்சு...',
-        bn: 'উদাহরণ: প্রাকৃতিক কাদা মাটি, প্রাকৃতিক লেপ...'
-      }
-    };
-  } else if (combo.includes('bidriware') || combo.includes('metal') || combo.includes('silver') || combo.includes('brass')) {
-    q2Obj = {
-      id: 'q2_materials',
-      num: 2,
-      te: 'ఏ లోహం మరియు స్వచ్ఛమైన వెండి అచ్చులు వాడారు?',
-      hi: 'किस धातु मिश्र धातु और शुद्ध चांदी के तारों का उपयोग किया गया?',
-      en: 'What base alloy and pure silver wire/sheet inlays were used?',
-      ta: 'என்ன உலோகக் கலவை மற்றும் வெள்ளி கம்பிகள் பயன்படுத்தப்பட்டன?',
-      bn: 'কি ধাতু এবং খাঁটি রূপার তার ব্যবহার করা হয়েছে?',
-      speech: {
-        te: 'బిద్రి లోహ చెక్కడంలో ఏ లోహం మరియు స్వచ్ఛమైన వెండి అచ్చులు వాడారు?',
-        hi: 'धातु कला में किस मिश्र धातु और शुद्ध चांदी के तारों का उपयोग किया गया?',
-        en: 'What base alloy and pure silver wire inlays were used?',
-        ta: 'என்ன உலோகக் கலவை மற்றும் வெள்ளி கம்பிகள் பயன்படுத்தப்பட்டன?',
-        bn: 'কি ধাতু এবং খাঁটি রূপার তার ব্যবহার করা হয়েছে?'
-      },
-      placeholder: {
-        te: 'ఉదాహరణ: జింక్-రాగి అల్లాయ్, 99.9% స్వచ్ఛమైన వెండి వైర్ అచ్చు, బిదర్ మట్టి నలుపు గ్లేజ్...',
-        hi: 'उदाहरण: जस्ता-तांबा मिश्र धातु, 99.9% शुद्ध चांदी का तार...',
-        en: 'e.g. Zinc-Copper Alloy Base, 99.9% Pure Silver Wire Inlay, Bidar Soil Oxidation...',
-        ta: 'எடுத்துக்காட்டு: வெள்ளி கம்பி, பித்தளை...',
-        bn: 'উদাহরণ: খাঁটি রূপার তার, তামা...'
-      }
-    };
-  }
-
-  let q3Obj = {
-    id: 'q3_story',
-    num: 3,
-    te: 'ఒక్క వస్తువును తయారు చేయడానికి సాధారణంగా ఎంత సమయం పడుతుంది? ఈ కళకు సంబంధించిన ప్రత్యేకత లేదా మీ కుటుంబ కథ ఏదైనా ఉందా?',
-    hi: 'एक वस्तु बनाने में आमतौर पर कितना समय लगता है? इस कला की कोई खासियत या आपके परिवार से जुड़ी कोई कहानी है?',
-    en: 'How much time does it usually take to make one piece? Is there anything special about this craft or a story from your family?',
-    ta: 'ஒரு பொருளை தயாரிக்க பொதுவாக எவ்வளவு நேரம் ஆகும்? இந்த கைவினையின் சிறப்பு அல்லது உங்கள் குடும்பத்துடன் தொடர்புடைய கதை ஏதேனும் உள்ளதா?',
-    bn: 'একটি পণ্য তৈরি করতে সাধারণত কত সময় লাগে? এর বিশেষত্ব বা உங்கள் পরিবারের সঙ্গে জড়িত কোনো গল্প আছে কি?',
-    speech: {
-      te: 'ఒక్క వస్తువును తయారు చేయడానికి సాధారణంగా ఎంత సమయం పడుతుంది? ఈ కళకు సంబంధించిన ప్రత్యేకత లేదా మీ కుటుంబ కథ ఏదైనా ఉందా?',
-      hi: 'एक चीज़ बनाने में आमतौर पर कितना समय लगता है? इस कला की कोई खास बात या आपके परिवार से जुड़ी कहानी है?',
-      en: 'How long does it usually take to make one piece? And is there anything special about this craft, or a story passed down in your family?',
-      ta: 'ஒரு பொருளை செய்ய பொதுவாக எவ்வளவு நேரம் ஆகும்? இந்த கைவினையின் சிறப்பு அல்லது உங்கள் குடும்பத்தில் சொல்லப்பட்டு வரும் கதை ஏதேனும் உள்ளதா?',
-      bn: 'একটি পণ্য তৈরি করতে সাধারণত কত সময় লাগে? এই শিল্পের বিশেষত্ব বা உங்கள் পরিবারে চলে আসা কোনো গল্প আছে কি?'
-    },
-    placeholder: {
-      te: 'ఉదాహరణ: 10 రోజులు పడుతుంది, మా కుటుంబంలో మూడు తరాలుగా ఈ కళను చేస్తున్నాం...',
-      hi: 'उदाहरण: इसे बनाने में 10 दिन लगते हैं और हमारे परिवार में यह कला तीन पीढ़ियों से चली आ रही है...',
-      en: 'e.g. It takes 10 days, and our family has practiced this craft for three generations...',
-      ta: 'எடுத்துக்காட்டு: 10 நாட்கள் ஆகும், எங்கள் குடும்பத்தில் மூன்று தலைமுறைகளாக இந்தக் கலையை செய்து வருகிறோம்...',
-      bn: 'উদাহরণ: ১০ দিন সময় লাগে, আমাদের পরিবার তিন প্রজন্ম ধরে এই শিল্প করে আসছে...'
-    }
-  };
-
   return [
-    q1Obj,
-    q2Obj,
-    q3Obj
+    {
+      id: 'q1_title',
+      num: 1,
+      te: 'మీరు తయారు చేసిన ఈ వస్తువు పేరు ఏంటి? ఇది ఏ రకమైన చేతివృత్తికి సంబంధించినది?',
+      hi: 'आपने जो यह वस्तु बनाई है, उसका नाम क्या है? यह किस प्रकार की हस्तकला से जुड़ी है?',
+      en: 'What is the name of this product, and what type of craft does it belong to?',
+      ta: 'நீங்கள் தயாரித்த இந்த பொருளின் பெயர் என்ன? இது எந்த வகையான கைவினையைச் சேர்ந்தது?',
+      bn: 'আপনি তৈরি করা এই পণ্যটির নাম কী? এটি কোন ধরনের হস্তশিল্পের সঙ্গে যুক্ত?',
+      speech: {
+        te: 'మీరు తయారు చేసిన ఈ వస్తువు పేరు ఏంటి? ఇది ఏ రకమైన చేతివృత్తికి సంబంధించినది?',
+        hi: 'आपने जो यह चीज़ बनाई है, उसका नाम क्या है? यह किस तरह की हस्तकला से जुड़ी है?',
+        en: 'What do you call this product? And what kind of traditional craft is it?',
+        ta: 'நீங்கள் தயாரித்த இந்த பொருளின் பெயர் என்ன? இது எந்த வகையான பாரம்பரிய கைவினையைச் சேர்ந்தது?',
+        bn: 'আপনি যে পণ্যটি তৈরি করেছেন, সেটার নাম কী? এটি কোন ধরনের ঐতিহ্যবাহী হস্তশিল্প?'
+      },
+      placeholder: {
+        te: 'ఉదాహరణ: చేతితో నేసిన కలంకారి దుపట్టా...',
+        hi: 'उदाहरण: हाथ से बना कलमकारी दुपट्टा...',
+        en: 'e.g. Handpainted Kalamkari Silk Dupatta...',
+        ta: 'எடுத்துக்காட்டு: கைத்தறி கலம்காரி துப்பட்டா...',
+        bn: 'উদাহরণ: হাতে তৈরি কলমকারি শাড়ি...'
+      }
+    },
+    {
+      id: 'q2_materials',
+      num: 2,
+      te: 'దీన్ని తయారు చేయడానికి ఏ పదార్థాలు వాడారు? ఇది పూర్తిగా చేతితో తయారు చేశారా?',
+      hi: 'इसे बनाने के लिए आपने किन सामग्रियों का इस्तेमाल किया? क्या यह पूरी तरह हाथ से बनाया गया है?',
+      en: 'What materials did you use to make it? Is it completely handmade?',
+      ta: 'இதை தயாரிக்க என்ன பொருட்களை பயன்படுத்தினீர்கள்? இது முழுவதும் கையால் செய்யப்பட்டதா?',
+      bn: 'এটি তৈরি করতে আপনি কী কী উপকরণ ব্যবহার করেছেন? এটি কি পুরোপুরি হাতে তৈরি?',
+      speech: {
+        te: 'దీన్ని తయారు చేయడానికి ఏ పదార్థాలు వాడారు? ఇది పూర్తిగా చేతితో తయారు చేశారా?',
+        hi: 'इसे बनाने में आपने कौन-कौन सी चीज़ें इस्तेमाल कीं? क्या यह पूरी तरह हाथ से बनाया गया है?',
+        en: 'What materials did you use to make it? And is it completely handmade?',
+        ta: 'இதை செய்ய என்னென்ன பொருட்களை பயன்படுத்தினீர்கள்? இது முழுவதும் கையால் செய்யப்பட்டதா?',
+        bn: 'এটি তৈরি করতে কী কী উপকরণ ব্যবহার করেছেন? এটি কি পুরোপুরি হাতে তৈরি?'
+      },
+      placeholder: {
+        te: 'ఉదాహరణ: పట్టు నూలు, సహజ రంగులు, చెక్క...',
+        hi: 'उदाहरण: रेशम, प्राकृतिक रंग, लकड़ी...',
+        en: 'e.g. Pure silk, natural dyes, wood...',
+        ta: 'எடுத்துக்காட்டு: பட்டு, இயற்கை சாயங்கள், மரம்...',
+        bn: 'উদাহরণ: খাঁটি রেশম, প্রাকৃতিক রং, কাঠ...'
+      }
+    },
+    {
+      id: 'q3_story',
+      num: 3,
+      te: 'ఒక్క వస్తువును తయారు చేయడానికి సాధారణంగా ఎంత సమయం పడుతుంది? ఈ కళకు సంబంధించిన ప్రత్యేకత లేదా మీ కుటుంబ కథ ఏదైనా ఉందా?',
+      hi: 'एक वस्तु बनाने में आमतौर पर कितना समय लगता है? इस कला की कोई खासियत या आपके परिवार से जुड़ी कोई कहानी है?',
+      en: 'How much time does it usually take to make one piece? Is there anything special about this craft or a story from your family?',
+      ta: 'ஒரு பொருளை தயாரிக்க பொதுவாக எவ்வளவு நேரம் ஆகும்? இந்த கைவினையின் சிறப்பு அல்லது உங்கள் குடும்பத்துடன் தொடர்புடைய கதை ஏதேனும் உள்ளதா?',
+      bn: 'একটি পণ্য তৈরি করতে সাধারণত কত সময় লাগে? এর বিশেষত্ব বা আপনার পরিবারের সঙ্গে জড়িত কোনো গল্প আছে কি?',
+      speech: {
+        te: 'ఒక్క వస్తువును తయారు చేయడానికి సాధారణంగా ఎంత సమయం పడుతుంది? ఈ కళకు సంబంధించిన ప్రత్యేకత లేదా మీ కుటుంబ కథ ఏదైనా ఉందా?',
+        hi: 'एक चीज़ बनाने में आमतौर पर कितना समय लगता है? इस कला की कोई खास बात या आपके परिवार से जुड़ी कहानी है?',
+        en: 'How long does it usually take to make one piece? And is there anything special about this craft, or a story passed down in your family?',
+        ta: 'ஒரு பொருளை செய்ய பொதுவாக எவ்வளவு நேரம் ஆகும்? இந்த கைவினையின் சிறப்பு அல்லது உங்கள் குடும்பத்தில் சொல்லப்பட்டு வரும் கதை ஏதேனும் உள்ளதா?',
+        bn: 'একটি পণ্য তৈরি করতে সাধারণত কত সময় লাগে? এই শিল্পের বিশেষত্ব বা আপনার পরিবারে চলে আসা কোনো গল্প আছে কি?'
+      },
+      placeholder: {
+        te: 'ఉదాహరణ: 10 రోజులు పడుతుంది, మా కుటుంబంలో మూడు తరాలుగా ఈ కళను చేస్తున్నాం...',
+        hi: 'उदाहरण: इसे बनाने में 10 दिन लगते हैं और हमारे परिवार में यह कला तीन पीढ़ियों से चली आ रही है...',
+        en: 'e.g. It takes 10 days, and our family has practiced this craft for three generations...',
+        ta: 'எடுத்துக்காட்டு: 10 நாட்கள் ஆகும், எங்கள் குடும்பத்தில் மூன்று தலைமுறைகளாக இந்தக் கலையை செய்து வருகிறோம்...',
+        bn: 'উদাহরণ: ১০ দিন সময় লাগে, আমাদের পরিবার তিন প্রজন্ম ধরে এই শিল্প করে আসছে...'
+      }
+    }
   ];
 };
 
@@ -627,9 +519,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       // Concurrent Speech Recognition if available
       if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         try {
-          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-          const recognition = new SpeechRecognition();
-          recognition.lang = selectedLang === 'te' ? 'te-IN' : selectedLang === 'hi' ? 'hi-IN' : 'en-IN';
+          const langMap = { te: 'te-IN', hi: 'hi-IN', en: 'en-IN', ta: 'ta-IN', bn: 'bn-IN' };
+          recognition.lang = langMap[selectedLang] || 'en-IN';
           recognition.interimResults = true;
           recognition.onresult = (event) => {
             const transcript = Array.from(event.results)
@@ -1855,7 +1746,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         <span className="text-xs font-bold text-indigo-900">
                           {aiDraft.market_summary?.median_price != null || aiDraft.price_recommendation?.market_median != null
                             ? `₹${aiDraft.market_summary?.median_price || aiDraft.price_recommendation?.market_median}`
-                            : 'Initial Category Listing'}
+                            : 'Market data unavailable'}
                         </span>
                       </div>
                       <div className="flex justify-between items-baseline mt-0.5">
@@ -1863,7 +1754,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         <span className="text-xs font-bold text-slate-800">
                           {aiDraft.market_summary?.min_price != null && aiDraft.market_summary?.max_price != null
                             ? `₹${aiDraft.market_summary.min_price} – ₹${aiDraft.market_summary.max_price} (${aiDraft.market_summary.comparable_count || 0} items)`
-                            : 'N/A'}
+                            : 'Market data unavailable — recommendation is based on your costs and minimum fair-price protection.'}
                         </span>
                       </div>
                     </div>
@@ -1895,7 +1786,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       <span>Pricing Not Calculated (Cost Inputs Omitted)</span>
                     </div>
                     <p className="text-[11px] text-amber-700">
-                      Please enter your selling price manually to complete this listing.
+                      Add material, labour, packaging or other costs to generate a protected price recommendation.
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
