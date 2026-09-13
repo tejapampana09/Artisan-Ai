@@ -139,7 +139,7 @@ async def process_full_catalog_pipeline(
 
     min_fair = Decimal(str(pricing_rec["minimum_fair_price"])) if (pricing_rec.get("minimum_fair_price") and pricing_rec["minimum_fair_price"] > 0) else None
     rec_price = Decimal(str(pricing_rec["recommended_price"])) if (pricing_rec.get("recommended_price") is not None and pricing_rec["recommended_price"] > 0) else None
-    pricing_available = rec_price is not None and float(rec_price) > 0
+    pricing_available = (rec_price is not None and float(rec_price) > 0) or (raw_market_median is not None and float(raw_market_median) > 0)
     pricing_source = pricing_rec.get("safety_constraints", {}).get("pricing_case", "MARKET_BASED_RECOMMENDATION")
     notice_text = None
 
