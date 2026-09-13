@@ -355,5 +355,40 @@ class BuyerCopilotResponse(BaseModel):
     match_count: int = 0
     is_fallback: bool = False
 
+# Market Research Schemas (Phase 5)
+class MarketListing(BaseModel):
+    title: str
+    price: Optional[float] = None
+    currency: str = "INR"
+    source: str = ""
+    url: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    materials: List[str] = Field(default_factory=list)
+
+    matched_product: bool = False
+    matched_material: bool = False
+    matched_craft: bool = False
+    similarity_score: float = 0.0
+    match_tier: str = "WEAK"  # STRONG (>=0.80), GOOD (>=0.50), WEAK (>=0.20)
+    observed_at: Optional[datetime] = None
+
+class MarketSummary(BaseModel):
+    comparable_count: int = 0
+    min_price: Optional[float] = None
+    median_price: Optional[float] = None
+    max_price: Optional[float] = None
+    currency: str = "INR"
+
+class MarketResearchRequest(BaseModel):
+    artisan_facts: ArtisanFacts
+
+class MarketResearchResponse(BaseModel):
+    query: str
+    results: List[MarketListing] = Field(default_factory=list)
+    summary: MarketSummary
+    notice: Optional[str] = None
+
+
 
 

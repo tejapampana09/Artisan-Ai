@@ -6,7 +6,8 @@ from backend.app.database import get_db
 from backend.app.models import User, Product, Order, Enquiry, Event
 from backend.app.schemas import (
     SellerDashboardResponse, DeliveryStatusBreakdown, ProductPerformance,
-    BuyerCopilotRequest, BuyerCopilotResponse, ProductResponse
+    BuyerCopilotRequest, BuyerCopilotResponse, ProductResponse,
+    MarketResearchRequest, MarketResearchResponse
 )
 from backend.app.services.auth import get_current_user, get_optional_current_user
 from backend.app.services.demand_engine import calculate_category_demand, generate_seller_opportunities
@@ -317,5 +318,16 @@ async def buyer_copilot_chat(
         match_count=0 if is_fallback else match_count,
         is_fallback=is_fallback
     )
+
+@router.post("/market/research", response_model=MarketResearchResponse)
+async def perform_market_research(req: MarketResearchRequest):
+    """
+    Market Research & External Comparable Products endpoint.
+    Performs provider-agnostic market lookup, deterministic similarity scoring,
+    and returns min/median/max price statistics without modifying ArtisanFacts.
+    """
+    from backend.app.services.market_research import research_market
+    return await research_market(artisan_facts=req.artisan_facts)
+
 
 
