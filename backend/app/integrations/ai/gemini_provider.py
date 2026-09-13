@@ -6,6 +6,8 @@ from decimal import Decimal, ROUND_HALF_UP
 from backend.app.integrations.ai.base import BaseAIProvider
 from backend.app.config import GEMINI_API_KEY, AI_REQUEST_TIMEOUT_SECONDS
 
+from backend.app.services.ai_adapter import extract_artisan_facts, sanitize_materials, sanitize_craft_story
+
 def calculate_pricing(mat, lab, pkg):
     has_costs = any(c is not None and Decimal(str(c)) > 0 for c in [mat, lab, pkg])
     if not has_costs:
@@ -34,15 +36,20 @@ class GeminiAIProvider(BaseAIProvider):
         material_cost: Optional[float] = None,
         labour_cost: Optional[float] = None,
         packaging_cost: Optional[float] = None,
-        qna_answers: Optional[Dict[str, str]] = None
+        qna_answers: Optional[Dict[str, str]] = None,
+        artisan_facts: Optional[Any] = None
     ) -> Dict[str, Any]:
         clean_desc = (voice_description or "").strip()
         clean_image = (image_url or "").strip()
         clean_cat = (category_hint or "").strip() or None
 
-        q1_val = (qna_answers.get('q1_title') or qna_answers.get('q1_product') or '').strip() if qna_answers else ''
-        q2_val = (qna_answers.get('q2_materials') or '').strip() if qna_answers else ''
-        q3_val = (qna_answers.get('q3_story') or '').strip() if qna_answers else ''
+        artisan_facts_obj = extract_artisan_facts(
+            artisan_facts=artisan_facts,
+            qna_answers=qna_answers,
+            voice_description=clean_desc,
+            category_hint=clean_cat
+        )
+        facts_json_str = json.dumps(artisan_facts_obj.model_dump(), ensure_ascii=False, indent=2)
 
         min_fair, suggested, pricing_avail, pricing_src = calculate_pricing(
             material_cost, labour_cost, packaging_cost
