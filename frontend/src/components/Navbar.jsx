@@ -43,7 +43,7 @@ export default function Navbar({ activeMode, onToggleMode, user, readyStatus, on
   useEffect(() => {
     if (user) {
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 4000);
+      const interval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(interval);
     }
   }, [user]);
