@@ -45,8 +45,8 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
 
   const isArtisan = user?.role === 'ARTISAN';
 
-  const loadAccountData = useCallback(async () => {
-    setLoading(true);
+  const loadAccountData = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
       if (isArtisan) {
         const [myPurchases, mySales, mySentEnqs, myRecvEnqs, allProds] = await Promise.all([
@@ -87,8 +87,8 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
   }, [isArtisan, user?.id]);
 
   useEffect(() => {
-    loadAccountData();
-    const interval = setInterval(loadAccountData, 5000);
+    loadAccountData(true);
+    const interval = setInterval(() => loadAccountData(false), 20000);
     return () => clearInterval(interval);
   }, [loadAccountData]);
 
@@ -238,7 +238,7 @@ export default function AccountPortal({ user, onClose, onAuthChange, onNavigateM
 
         {/* Tab Contents */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
-          {loading ? (
+          {loading && activeTab !== 'PROFILE' && !buyerOrders.length && !sellerOrders.length && !buyerEnquiries.length && !sellerEnquiries.length ? (
             <div className="flex flex-col items-center justify-center py-12 text-slate-400 space-y-2">
               <RefreshCw className="w-6 h-6 animate-spin text-amber-600" />
               <span className="text-xs">Loading account data...</span>

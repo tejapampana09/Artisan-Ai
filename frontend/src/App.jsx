@@ -21,23 +21,32 @@ function AppContent() {
   const [user, setUser] = useState(null);
   const [readyStatus, setReadyStatus] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    try {
+      return !sessionStorage.getItem('artisan_splash_seen');
+    } catch {
+      return false;
+    }
+  });
   const [splashFading, setSplashFading] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isDownloadAppOpen, setIsDownloadAppOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
-    // Show Download App popup once per session after 5 seconds if not dismissed recently
-    const hasSeen = sessionStorage.getItem('artisan_download_app_popup_seen');
-    if (!hasSeen) {
+    if (showSplash) {
+      try {
+        sessionStorage.setItem('artisan_splash_seen', 'true');
+      } catch {}
+      // Hard safety timer: dismiss splash screen quickly (max 800ms)
       const timer = setTimeout(() => {
-        setIsDownloadAppOpen(true);
-        sessionStorage.setItem('artisan_download_app_popup_seen', 'true');
-      }, 4000);
+        setSplashFading(true);
+        const hide = setTimeout(() => setShowSplash(false), 400);
+        return () => clearTimeout(hide);
+      }, 800);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [showSplash]);
 
   const { isOffline } = useOffline();
   const { t } = useLanguage();
@@ -85,19 +94,6 @@ function AppContent() {
   useEffect(() => {
     loadInitialData();
   }, [refreshTrigger]);
-
-  useEffect(() => {
-    if (!loading) {
-      const fadeTimer = setTimeout(() => {
-        setSplashFading(true);
-        const hideTimer = setTimeout(() => {
-          setShowSplash(false);
-        }, 1000);
-        return () => clearTimeout(hideTimer);
-      }, 2000);
-      return () => clearTimeout(fadeTimer);
-    }
-  }, [loading]);
 
   const handleToggleMode = async (newMode) => {
     let targetMode = newMode;
