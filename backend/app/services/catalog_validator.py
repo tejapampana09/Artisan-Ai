@@ -207,6 +207,153 @@ def validate_catalog_draft(
         else:
             catalog["materials"] = ", ".join(final_mat_list)
 
+def sanitize_translation_fields(
+    translations_data: Any,
+    facts_story: str,
+    facts_combined: str,
+    fallback_desc: str = "Handcrafted artisan creation."
+) -> Optional[str]:
+    """
+    Sanitizes title, description, and craft_story across all language keys
+    inside translations JSON against heritage and award/GI claims.
+    """
+    if not translations_data:
+        return None
+
+    try:
+        trans_data = json.loads(translations_data) if isinstance(translations_data, str) else translations_data
+        if not isinstance(trans_data, dict):
+            return None
+
+        for lang_code, lang_fields in trans_data.items():
+            if isinstance(lang_fields, dict):
+                lang_fallback = lang_fields.get("description") or fallback_desc
+                for tf in ["title", "description", "craft_story"]:
+                    if tf in lang_fields and lang_fields[tf]:
+                        val = str(lang_fields[tf])
+                        if tf == "craft_story":
+                            val = _sanitize_text_heritage(val, facts_story, lang_fallback)
+                        val = _sanitize_text_awards(val, facts_combined)
+                        lang_fields[tf] = val
+
+        return json.dumps(trans_data, ensure_ascii=False)
+    except Exception:
+        return str(translations_data) if isinstance(translations_data, str) else None
+
+# -------------------------------------------------------------------------
+# Main Draft & Edit Validation Functions
+# -------------------------------------------------------------------------
+def validate_catalog_draft(
+    generated_catalog: Dict[str, Any],
+    artisan_facts: Optional[ArtisanFacts] = None,
+    allow_ai_visual_inference: bool = False,
+    initial_draft: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Provenance-aware backend validator/sanitizer for generated product catalog drafts.
+    
+    Guarantees:
+    1. If user provided materials -> strictly enforced & locked 🔒.
+    2. If photo-only upload (allow_ai_visual_inference=True or no verified user input) -> preserves Gemini Vision materials 🤖.
+    3. If user provided facts but omitted materials & allow_ai_visual_inference=False -> clears materials.
+    4. Fabricated family history/heritage scrubbed if not in ArtisanFacts.artisan_story (even in photo-only mode).
+    5. Unsupported awards/certifications/GI tags scrubbed across all language fields and translations JSON.
+    6. Category prioritizes verified ArtisanFacts.craft_type when present.
+    7. Adds ai_inferred_fields for UI transparency.
+    """
+    if not generated_catalog:
+        return {}
+
+    catalog = deepcopy(generated_catalog)
+
+    if artisan_facts is None:
+        if allow_ai_visual_inference:
+            ai_inferred = []
+            for field in ["title", "category", "materials", "description"]:
+                if catalog.get(field):
+                    ai_inferred.append(field)
+            catalog["ai_inferred_fields"] = ai_inferred
+        return catalog
+
+    facts_materials = artisan_facts.materials or []
+    facts_story = (artisan_facts.artisan_story or "").strip()
+    facts_spec = (artisan_facts.special_characteristics or "").strip()
+    facts_craft_type = (artisan_facts.craft_type or "").strip()
+    facts_making_time = (artisan_facts.making_time or "").strip()
+    facts_handmade = artisan_facts.handmade
+
+    facts_combined = f"{facts_story} {facts_spec}".strip()
+
+    # -------------------------------------------------------------------------
+    # 1. Materials Validation (Provenance Aware)
+    # -------------------------------------------------------------------------
+    raw_gen_materials = catalog.get("materials")
+    
+    # Extract allowed reference materials
+    allowed_ref_materials = list(facts_materials)
+    is_photo_only = allow_ai_visual_inference or not has_verified_artisan_input(artisan_facts)
+    if not facts_materials and is_photo_only and (allow_ai_visual_inference or (initial_draft and initial_draft.get("materials"))):
+        init_mats = (initial_draft.get("materials") if initial_draft else catalog.get("materials"))
+        if isinstance(init_mats, str):
+            init_list = [m.strip() for m in init_mats.split(",") if m.strip()]
+        elif isinstance(init_mats, list):
+            init_list = [str(m).strip() for m in init_mats if str(m).strip()]
+        else:
+            init_list = []
+        allowed_ref_materials.extend(init_list)
+
+    if not facts_materials:
+        if is_photo_only and (allow_ai_visual_inference or (initial_draft and initial_draft.get("materials"))):
+            # Photo-only mode / AI visual inference -> preserve & validate visually inferred materials! 🤖
+            if isinstance(raw_gen_materials, str):
+                gen_list = [m.strip() for m in raw_gen_materials.split(",") if m.strip()]
+            elif isinstance(raw_gen_materials, list):
+                gen_list = [str(m).strip() for m in raw_gen_materials if str(m).strip()]
+            else:
+                gen_list = []
+
+            ref_lower = [f.lower().strip() for f in allowed_ref_materials if f.strip()]
+            valid_materials = []
+            for gen in gen_list:
+                gen_l = gen.lower()
+                if any(r in gen_l or gen_l in r for r in ref_lower):
+                    valid_materials.append(gen)
+
+            final_mat_list = valid_materials if valid_materials else gen_list
+
+            if isinstance(raw_gen_materials, list):
+                catalog["materials"] = final_mat_list
+            else:
+                catalog["materials"] = ", ".join(final_mat_list)
+        else:
+            # User provided facts object/Q&A but gave no materials -> clear materials!
+            if isinstance(raw_gen_materials, list):
+                catalog["materials"] = []
+            else:
+                catalog["materials"] = ""
+    else:
+        # User provided materials 🔒 -> strictly enforce user materials & discard hallucinations
+        if isinstance(raw_gen_materials, str):
+            gen_list = [m.strip() for m in raw_gen_materials.split(",") if m.strip()]
+        elif isinstance(raw_gen_materials, list):
+            gen_list = [str(m).strip() for m in raw_gen_materials if str(m).strip()]
+        else:
+            gen_list = []
+
+        facts_lower = [f.lower().strip() for f in facts_materials if f.strip()]
+        valid_materials = []
+        for gen in gen_list:
+            gen_l = gen.lower()
+            if any(f in gen_l or gen_l in f for f in facts_lower):
+                valid_materials.append(gen)
+
+        final_mat_list = valid_materials if valid_materials else facts_materials
+
+        if isinstance(raw_gen_materials, list):
+            catalog["materials"] = final_mat_list
+        else:
+            catalog["materials"] = ", ".join(final_mat_list)
+
     # -------------------------------------------------------------------------
     # 2. Craft Story & Heritage Validation
     # -------------------------------------------------------------------------
@@ -220,16 +367,12 @@ def validate_catalog_draft(
 
     # Sanitize translations JSON if present
     if catalog.get("translations"):
-        try:
-            trans_data = json.loads(catalog["translations"])
-            if isinstance(trans_data, dict):
-                for lang_code, lang_fields in trans_data.items():
-                    if isinstance(lang_fields, dict) and "craft_story" in lang_fields:
-                        lang_fallback = lang_fields.get("description") or fallback_desc
-                        lang_fields["craft_story"] = _sanitize_text_heritage(lang_fields["craft_story"], facts_story, lang_fallback)
-                catalog["translations"] = json.dumps(trans_data, ensure_ascii=False)
-        except Exception:
-            pass
+        catalog["translations"] = sanitize_translation_fields(
+            catalog["translations"],
+            facts_story=facts_story,
+            facts_combined=facts_combined,
+            fallback_desc=fallback_desc
+        )
 
     # -------------------------------------------------------------------------
     # 3. Awards / Certifications / GI Tag Validation

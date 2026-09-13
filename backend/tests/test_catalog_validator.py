@@ -232,14 +232,49 @@ def test_strict_publish_validation_rejects_completely_new_unsupported_materials(
 
 def test_user_input_without_materials_does_not_trust_ai_initial_materials():
     from backend.app.services.catalog_validator import validate_edited_catalog_strictly
-    # Artisan provided product_name in Q&A facts, but omitted materials -> NOT photo-only!
     facts = ArtisanFacts(product_name="Wooden Chair", materials=[])
     initial_draft = {"materials": "Teak Wood, Gold Leaf"}
-    
     edited_catalog = {"materials": "Teak Wood"}
     errors = validate_edited_catalog_strictly(edited_catalog, facts, initial_draft=initial_draft)
     assert len(errors) == 1
     assert "not listed in your verified artisan facts" in errors[0] or "No materials were declared" in errors[0]
+
+
+def test_translation_json_title_and_description_sanitization():
+    """Verify draft generation sanitizes forbidden award/GI tags in translations JSON, and publish validation rejects unverified claims."""
+    import json
+    from backend.app.services.catalog_validator import validate_catalog_draft, validate_edited_catalog_strictly
+    
+    facts = ArtisanFacts(materials=["Clay"], artisan_story="")
+    raw_translations = json.dumps({
+        "te": {
+            "title": "GI Tagged Traditional Craft",
+            "description": "National Award winning product",
+            "craft_story": "Passed down for generations"
+        }
+    })
+    
+    # 1. Draft generation sanitization -> forbidden award/GI tags removed
+    generated = {
+        "title": "Traditional Craft",
+        "description": "Pottery craft",
+        "translations": raw_translations
+    }
+    validated = validate_catalog_draft(generated, facts)
+    trans_out = json.loads(validated["translations"])
+    assert "gi tag" not in trans_out["te"]["title"].lower()
+    assert "national award" not in trans_out["te"]["description"].lower()
+    assert "generations" not in trans_out["te"]["craft_story"].lower()
+
+    # 2. Strict publish validation -> rejects unverified claims in translations JSON
+    edited_catalog = {
+        "title": "Traditional Craft",
+        "translations": raw_translations
+    }
+    errors = validate_edited_catalog_strictly(edited_catalog, facts)
+    assert len(errors) > 0
+    assert any("translations.te" in err for err in errors)
+
 
 
 
