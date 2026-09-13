@@ -361,17 +361,45 @@ def validate_edited_catalog_strictly(
         for kw in ["family", "generations", "generation", "years", "ancestor", "ancestors", "తరాల", "సంవత్సరాల"]
     )
 
+    check_fields = ["craft_story", "craft_story_en", "description", "description_en", "title", "title_en"]
+
     if not has_explicit_heritage:
-        for field_name in ["craft_story", "description", "title"]:
+        for field_name in check_fields:
             text_val = (edited_catalog.get(field_name) or "").lower()
             if any(term in text_val for term in FORBIDDEN_HERITAGE_TERMS):
                 errors.append(f"Unverified family heritage claim found in {field_name}. Please remove ancestral/generational claims not present in your Q&A answers.")
 
+        if edited_catalog.get("translations"):
+            try:
+                trans_data = json.loads(edited_catalog["translations"])
+                if isinstance(trans_data, dict):
+                    for lang_code, lang_fields in trans_data.items():
+                        if isinstance(lang_fields, dict):
+                            for fk, fval in lang_fields.items():
+                                text_val = str(fval or "").lower()
+                                if any(term in text_val for term in FORBIDDEN_HERITAGE_TERMS):
+                                    errors.append(f"Unverified family heritage claim found in translations.{lang_code}.{fk}. Please remove ancestral/generational claims not present in your Q&A answers.")
+            except Exception:
+                pass
+
     # 3. Strict Awards / GI Tag Check
-    for field_name in ["title", "description", "craft_story"]:
+    for field_name in check_fields:
         text_val = (edited_catalog.get(field_name) or "").lower()
         if any(term in text_val for term in FORBIDDEN_AWARD_TERMS):
             errors.append(f"Unverified award/GI tag claim found in {field_name}. Official awards or GI status must be verified.")
+
+    if edited_catalog.get("translations"):
+        try:
+            trans_data = json.loads(edited_catalog["translations"])
+            if isinstance(trans_data, dict):
+                for lang_code, lang_fields in trans_data.items():
+                    if isinstance(lang_fields, dict):
+                        for fk, fval in lang_fields.items():
+                            text_val = str(fval or "").lower()
+                            if any(term in text_val for term in FORBIDDEN_AWARD_TERMS):
+                                errors.append(f"Unverified award/GI tag claim found in translations.{lang_code}.{fk}. Official awards or GI status must be verified.")
+        except Exception:
+            pass
 
     return errors
 

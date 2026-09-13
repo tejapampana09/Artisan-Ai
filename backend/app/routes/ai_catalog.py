@@ -218,7 +218,11 @@ def approve_and_publish_product(
         "category": req.category,
         "materials": req.materials or "",
         "description": req.description or "",
-        "craft_story": req.craft_story or ""
+        "craft_story": req.craft_story or "",
+        "title_en": req.title_en,
+        "description_en": req.description_en,
+        "craft_story_en": req.craft_story_en,
+        "translations": req.translations
     }
 
     errors = validate_edited_catalog_strictly(
@@ -242,6 +246,10 @@ def approve_and_publish_product(
     final_description = validated_edited.get("description", req.description)
     final_craft_story = validated_edited.get("craft_story", req.craft_story)
     final_title = validated_edited.get("title", req.title)
+    final_title_en = validated_edited.get("title_en") or req.title_en or final_title
+    final_description_en = validated_edited.get("description_en") or req.description_en or final_description
+    final_craft_story_en = validated_edited.get("craft_story_en") or req.craft_story_en or final_craft_story
+    final_translations = validated_edited.get("translations") or req.translations
 
     product = Product(
         title=final_title,
@@ -249,10 +257,10 @@ def approve_and_publish_product(
         materials=final_materials,
         description=final_description,
         craft_story=final_craft_story,
-        title_en=req.title_en or final_title,
-        description_en=req.description_en or final_description,
-        craft_story_en=req.craft_story_en or final_craft_story,
-        translations=req.translations,
+        title_en=final_title_en,
+        description_en=final_description_en,
+        craft_story_en=final_craft_story_en,
+        translations=final_translations,
         price=req.price.quantize(Decimal("0.01")),
         stock=req.stock,
         material_cost=mat_cost.quantize(Decimal("0.01")),
@@ -263,7 +271,7 @@ def approve_and_publish_product(
         auto_smart_pricing_enabled=req.auto_smart_pricing_enabled,
         image_url=req.image_url,
         enhanced_image_url=req.enhanced_image_url,
-        status=req.status,
+        status="PUBLISHED",
         seller_id=current_user_id
     )
     draft_record.is_consumed = True

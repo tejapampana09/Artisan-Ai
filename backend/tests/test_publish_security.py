@@ -188,3 +188,63 @@ def test_draft_token_cannot_be_replayed():
     assert pub2.status_code == 400
     assert "already been consumed" in pub2.json()["detail"].lower()
 
+
+def test_publish_sanitizes_english_and_translation_fields():
+    """Verify that publish endpoint rejects unverified heritage claims in English and translation fields, and forces status = PUBLISHED."""
+    uid = uuid.uuid4().hex[:6]
+    reg = client.post("/api/auth/register", json={
+        "name": f"Lang Seller {uid}",
+        "email": f"lang.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    draft_res = client.post("/api/ai/process-catalog", json={
+        "artisan_facts": {
+            "product_name": "Terracotta Pot",
+            "craft_type": "Pottery",
+            "materials": ["Clay"],
+            "handmade": True,
+            "making_time": "1 day",
+            "artisan_story": "Local craftsman",
+            "special_characteristics": "Earthen"
+        },
+        "material_cost": 100.0,
+        "labour_cost": 100.0
+    }, headers=headers)
+    assert draft_res.status_code == 200
+    draft_token = draft_res.json()["draft_token"]
+
+    # Attempt to publish with fabricated heritage claim in craft_story_en -> 400 Bad Request
+    pub_fail = client.post("/api/ai/approve-and-publish", json={
+        "draft_token": draft_token,
+        "title": "Terracotta Pot",
+        "category": "Pottery",
+        "materials": "Clay",
+        "price": 400.0,
+        "craft_story_en": "Made by three generations of master artisans with 20 years of family tradition.",
+        "status": "DRAFT"
+    }, headers=headers)
+    assert pub_fail.status_code == 400
+    assert "unverified family heritage claim" in pub_fail.json()["detail"].lower()
+
+    # Publish with clean English text -> 201 Created with forced status = PUBLISHED
+    pub_ok = client.post("/api/ai/approve-and-publish", json={
+        "draft_token": draft_token,
+        "title": "Terracotta Pot",
+        "category": "Pottery",
+        "materials": "Clay",
+        "price": 400.0,
+        "title_en": "Terracotta Pot",
+        "description_en": "Earthen terracotta pot handmade with natural clay.",
+        "craft_story_en": "Handcrafted by local artisan.",
+        "status": "DRAFT"
+    }, headers=headers)
+    assert pub_ok.status_code == 201
+    prod = pub_ok.json()
+    assert prod["status"] == "PUBLISHED"
+    assert prod["craft_story_en"] == "Handcrafted by local artisan."
+
+
