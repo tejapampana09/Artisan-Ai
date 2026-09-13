@@ -358,7 +358,8 @@ def calculate_price_recommendation(
     product: Product,
     db: Session,
     market_median: Optional[Any] = None,
-    market_currency: Optional[str] = None
+    market_currency: Optional[str] = None,
+    market_is_reliable: bool = True
 ) -> Dict[str, Any]:
     """
     Deterministic explainable dynamic pricing calculation for a Product database model.
@@ -401,6 +402,7 @@ def calculate_price_recommendation(
         min_margin_pct=getattr(product, "min_margin_pct", 0.20),
         market_median=market_median,
         market_currency=market_currency,
+        market_is_reliable=market_is_reliable,
         product_currency=getattr(product, "currency", None) or "INR",
         demand_pct=demand_pct,
         demand_factor=demand_factor,
@@ -440,7 +442,8 @@ def process_auto_smart_pricing(
     cooldown_minutes: int = 15,
     bypass_cooldown: bool = False,
     market_median: Optional[Any] = None,
-    market_currency: Optional[str] = None
+    market_currency: Optional[str] = None,
+    market_is_reliable: bool = True
 ) -> Optional[PricingDecision]:
     """
     Autonomous Dynamic Pricing Execution.
@@ -476,7 +479,7 @@ def process_auto_smart_pricing(
                 return None
 
     rec = calculate_price_recommendation(
-        product, db, market_median=market_median, market_currency=market_currency
+        product, db, market_median=market_median, market_currency=market_currency, market_is_reliable=market_is_reliable
     )
     prev_price = Decimal(str(product.price)).quantize(Decimal("0.01"))
     rec_price = Decimal(str(rec["recommended_price"])).quantize(Decimal("0.01"))
@@ -510,7 +513,8 @@ def trigger_auto_pricing(
     db: Session,
     bypass_cooldown: bool = False,
     market_median: Optional[Any] = None,
-    market_currency: Optional[str] = None
+    market_currency: Optional[str] = None,
+    market_is_reliable: bool = True
 ) -> Optional[PricingDecision]:
     """
     Centralized helper to trigger autonomous smart pricing evaluation for a product
@@ -532,5 +536,6 @@ def trigger_auto_pricing(
         db,
         bypass_cooldown=bypass_cooldown,
         market_median=market_median,
-        market_currency=market_currency
+        market_currency=market_currency,
+        market_is_reliable=market_is_reliable
     )

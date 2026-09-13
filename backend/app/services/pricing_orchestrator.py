@@ -77,12 +77,14 @@ async def get_market_aware_price_recommendation(
 
     market_median = market_response.summary.median_price if market_response.summary else None
     market_currency = market_response.summary.currency if market_response.summary else None
+    market_is_reliable = market_response.summary.is_reliable if market_response.summary else False
 
     return calculate_price_recommendation(
         product=product,
         db=db,
         market_median=market_median,
-        market_currency=market_currency
+        market_currency=market_currency,
+        market_is_reliable=market_is_reliable
     )
 
 def get_market_aware_price_recommendation_sync(
@@ -116,6 +118,7 @@ def process_market_aware_auto_pricing(
 
     market_median = market_response.summary.median_price if market_response.summary else None
     market_currency = market_response.summary.currency if market_response.summary else None
+    market_is_reliable = market_response.summary.is_reliable if market_response.summary else False
 
     return process_auto_smart_pricing(
         product=product,
@@ -123,5 +126,6 @@ def process_market_aware_auto_pricing(
         cooldown_minutes=cooldown_minutes,
         bypass_cooldown=bypass_cooldown,
         market_median=market_median,
-        market_currency=market_currency
+        market_currency=market_currency,
+        market_is_reliable=market_is_reliable
     )
