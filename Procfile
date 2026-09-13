@@ -1,1 +1,1 @@
-web: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --workers 4 --timeout-keep-alive 120
+web: gunicorn backend.app.main:app -k uvicorn.workers.UvicornWorker --workers 2 --timeout 120 --bind 0.0.0.0:8000 --keep-alive 5
