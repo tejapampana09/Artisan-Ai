@@ -244,3 +244,110 @@ def test_11_autonomous_mode_flag_and_safety_constraints(db: Session):
 
     assert rec["safety_constraints"]["autonomous_mode_enabled"] is True
     assert rec["safety_constraints"]["pricing_mode"] == "AUTONOMOUS_AUTO_APPLY"
+
+def test_12_orchestration_with_noop_provider_matches_legacy_path(db: Session):
+    from backend.app.services.market_research_provider import NoOpMarketResearchProvider
+    from backend.app.services.pricing_orchestrator import get_market_aware_price_recommendation_sync
+
+    product = Product(
+        title="Terracotta Vase",
+        category="Pottery",
+        materials="Clay, Terracotta",
+        price=Decimal("1000.00"),
+        material_cost=Decimal("300.00"),
+        labour_cost=Decimal("200.00"),
+        packaging_cost=Decimal("50.00"),
+        other_cost=Decimal("50.00"),
+        min_margin_pct=Decimal("0.20")
+    )
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+
+    rec = get_market_aware_price_recommendation_sync(product, db, provider=NoOpMarketResearchProvider())
+
+    assert rec["market_median"] is None
+    assert rec["market_signal_used"] is False
+    assert rec["recommended_price"] >= 720.0
+
+def test_13_orchestration_with_mock_provider_supplies_market_signal(db: Session):
+    from backend.app.services.market_research_provider import MockMarketResearchProvider
+    from backend.app.services.pricing_orchestrator import get_market_aware_price_recommendation_sync
+
+    product = Product(
+        title="Handcrafted Brass Bell",
+        category="Brassware",
+        materials="Brass",
+        price=Decimal("1000.00"),
+        material_cost=Decimal("300.00"),
+        labour_cost=Decimal("200.00"),
+        packaging_cost=Decimal("50.00"),
+        other_cost=Decimal("50.00"),
+        min_margin_pct=Decimal("0.20")
+    )
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+
+    mock_provider = MockMarketResearchProvider(mock_listings=[
+        {"title": "Handcrafted Brass Bell", "category": "Brassware", "materials": ["Brass"], "price": 1400.0, "currency": "INR"},
+        {"title": "Brass Temple Bell", "category": "Brassware", "materials": ["Brass"], "price": 1600.0, "currency": "INR"}
+    ])
+
+    rec = get_market_aware_price_recommendation_sync(product, db, provider=mock_provider)
+
+    assert rec["market_signal_used"] is True
+    assert rec["market_median"] == 1500.0
+    assert rec["recommended_price"] > 1000.0
+
+def test_14_extract_product_artisan_facts_handles_materials():
+    from backend.app.services.pricing_orchestrator import extract_product_artisan_facts
+
+    product = Product(
+        title="Hand Block Print Cotton Saree",
+        category="Sarees",
+        materials="Cotton, Natural Dyes, Indigo",
+        craft_story="Traditional hand block printing craft from Jaipur",
+        description="Beautiful blue indigo cotton saree"
+    )
+
+    facts = extract_product_artisan_facts(product)
+
+    assert facts.product_name == "Hand Block Print Cotton Saree"
+    assert facts.craft_type == "Sarees"
+    assert "Cotton" in facts.materials
+    assert "Natural Dyes" in facts.materials
+    assert "Indigo" in facts.materials
+    assert facts.artisan_story == "Traditional hand block printing craft from Jaipur"
+
+def test_15_process_market_aware_auto_pricing_applies_recommendation(db: Session):
+    from backend.app.services.market_research_provider import MockMarketResearchProvider
+    from backend.app.services.pricing_orchestrator import process_market_aware_auto_pricing
+
+    product = Product(
+        title="Handmade Wooden Stool",
+        category="Furniture",
+        materials="Teak Wood",
+        price=Decimal("1000.00"),
+        material_cost=Decimal("300.00"),
+        labour_cost=Decimal("200.00"),
+        packaging_cost=Decimal("50.00"),
+        other_cost=Decimal("50.00"),
+        min_margin_pct=Decimal("0.20"),
+        auto_smart_pricing_enabled=True
+    )
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+
+    mock_provider = MockMarketResearchProvider(mock_listings=[
+        {"title": "Handmade Wooden Stool", "category": "Furniture", "materials": ["Teak Wood"], "price": 1500.0, "currency": "INR"},
+        {"title": "Carved Teak Stool", "category": "Furniture", "materials": ["Teak Wood"], "price": 1700.0, "currency": "INR"}
+    ])
+
+    decision = process_market_aware_auto_pricing(product, db, bypass_cooldown=True, provider=mock_provider)
+
+    assert decision is not None
+    assert decision.decision == "AUTO_APPLIED"
+    assert float(product.price) > 1000.0
+

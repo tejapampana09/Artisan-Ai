@@ -168,11 +168,13 @@ def calculate_price_recommendation(
     # Base calculation starts from current price (or minimum fair price if current price is below safe margin)
     base_anchor = max(curr_price, minimum_fair_price)
 
+    prod_currency = str(getattr(product, "currency", None) or "INR").strip()
+
     market_anchor, market_signal_used, market_status = compute_market_median_signal(
         base_anchor=base_anchor,
         market_median=market_median,
         minimum_fair_price=minimum_fair_price,
-        product_currency="INR",
+        product_currency=prod_currency,
         market_currency=market_currency
     )
 
@@ -310,7 +312,14 @@ def calculate_price_recommendation(
         "safety_constraints": safety_constraints
     }
 
-def process_auto_smart_pricing(product: Product, db: Session, cooldown_minutes: int = 15, bypass_cooldown: bool = False) -> Optional[PricingDecision]:
+def process_auto_smart_pricing(
+    product: Product,
+    db: Session,
+    cooldown_minutes: int = 15,
+    bypass_cooldown: bool = False,
+    market_median: Optional[Any] = None,
+    market_currency: Optional[str] = None
+) -> Optional[PricingDecision]:
     """
     Autonomous Dynamic Pricing Execution.
     If product.auto_smart_pricing_enabled is True:
@@ -344,7 +353,9 @@ def process_auto_smart_pricing(product: Product, db: Session, cooldown_minutes: 
             if elapsed_minutes < cooldown_minutes:
                 return None
 
-    rec = calculate_price_recommendation(product, db)
+    rec = calculate_price_recommendation(
+        product, db, market_median=market_median, market_currency=market_currency
+    )
     prev_price = Decimal(str(product.price)).quantize(Decimal("0.01"))
     rec_price = Decimal(str(rec["recommended_price"])).quantize(Decimal("0.01"))
 
@@ -372,7 +383,13 @@ def process_auto_smart_pricing(product: Product, db: Session, cooldown_minutes: 
     db.refresh(product)
     return decision_record
 
-def trigger_auto_pricing(product_or_id: Any, db: Session, bypass_cooldown: bool = False) -> Optional[PricingDecision]:
+def trigger_auto_pricing(
+    product_or_id: Any,
+    db: Session,
+    bypass_cooldown: bool = False,
+    market_median: Optional[Any] = None,
+    market_currency: Optional[str] = None
+) -> Optional[PricingDecision]:
     """
     Centralized helper to trigger autonomous smart pricing evaluation for a product
     after any meaningful buyer demand signal (VIEW, SAVE, ENQUIRY, ORDER).
@@ -388,4 +405,10 @@ def trigger_auto_pricing(product_or_id: Any, db: Session, bypass_cooldown: bool 
     if not product or not getattr(product, "auto_smart_pricing_enabled", False):
         return None
 
-    return process_auto_smart_pricing(product, db, bypass_cooldown=bypass_cooldown)
+    return process_auto_smart_pricing(
+        product,
+        db,
+        bypass_cooldown=bypass_cooldown,
+        market_median=market_median,
+        market_currency=market_currency
+    )

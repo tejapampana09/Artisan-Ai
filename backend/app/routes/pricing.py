@@ -12,9 +12,9 @@ from backend.app.schemas import (
     PriceDecisionRequest,
     PriceDecisionResponse
 )
-from backend.app.services.pricing_engine import (
-    calculate_price_recommendation,
-    process_auto_smart_pricing
+from backend.app.services.pricing_orchestrator import (
+    get_market_aware_price_recommendation,
+    process_market_aware_auto_pricing
 )
 from backend.app.services.auth import get_current_user
 from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
@@ -22,7 +22,7 @@ from backend.app.services.rate_limiter import rate_limiter, get_client_identifie
 router = APIRouter(prefix="/api/products", tags=["Explainable Dynamic Pricing"])
 
 @router.get("/{product_id}/price-recommendation", response_model=PriceRecommendationResponse)
-def get_price_recommendation(product_id: int, db: Session = Depends(get_db)):
+async def get_price_recommendation(product_id: int, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(
@@ -31,11 +31,11 @@ def get_price_recommendation(product_id: int, db: Session = Depends(get_db)):
         )
     product = cast(Any, product)
 
-    recommendation = calculate_price_recommendation(product, db)
+    recommendation = await get_market_aware_price_recommendation(product, db)
     return recommendation
 
 @router.post("/{product_id}/price-decision", response_model=PriceDecisionResponse, status_code=status.HTTP_200_OK)
-def submit_price_decision(
+async def submit_price_decision(
     product_id: int,
     decision_req: PriceDecisionRequest,
     db: Session = Depends(get_db),
@@ -58,7 +58,7 @@ def submit_price_decision(
         )
 
     # Calculate latest recommendation
-    rec = calculate_price_recommendation(product, db)
+    rec = await get_market_aware_price_recommendation(product, db)
     prev_price = Decimal(str(product.price)).quantize(Decimal("0.01"))
     rec_price = Decimal(str(rec["recommended_price"])).quantize(Decimal("0.01"))
 
@@ -118,7 +118,7 @@ def toggle_smart_pricing(
     # Autonomous execution: if enabled, immediately run auto-pricing cycle
     decision_record = None
     if product.auto_smart_pricing_enabled:
-        decision_record = process_auto_smart_pricing(product, db, bypass_cooldown=True)
+        decision_record = process_market_aware_auto_pricing(product, db, bypass_cooldown=True)
     decision_data = cast(Any, decision_record)
 
     return {
@@ -155,7 +155,7 @@ def evaluate_auto_pricing(
             detail="You do not have permission to execute pricing evaluation for this product."
         )
 
-    decision_record = process_auto_smart_pricing(product, db, bypass_cooldown=True)
+    decision_record = process_market_aware_auto_pricing(product, db, bypass_cooldown=True)
     return {
         "product_id": product.id,
         "auto_smart_pricing_enabled": product.auto_smart_pricing_enabled,
@@ -185,7 +185,7 @@ def run_all_auto_pricing_cycles(
     records = []
     for p in products:
         p = cast(Any, p)
-        rec = process_auto_smart_pricing(p, db, bypass_cooldown=False)
+        rec = process_market_aware_auto_pricing(p, db, bypass_cooldown=False)
         if rec:
             applied_count += 1
             records.append({
