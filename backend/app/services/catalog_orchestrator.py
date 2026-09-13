@@ -123,8 +123,9 @@ async def process_full_catalog_pipeline(
         "currency": "INR"
     }
 
-    min_fair = Decimal(str(pricing_rec["minimum_fair_price"]))
-    rec_price = Decimal(str(pricing_rec["recommended_price"]))
+    has_costs = ((material_cost or 0.0) + (labour_cost or 0.0) + (packaging_cost or 0.0) + (other_cost or 0.0)) > 0
+    min_fair = Decimal(str(pricing_rec["minimum_fair_price"])) if has_costs else None
+    rec_price = Decimal(str(pricing_rec["recommended_price"])) if has_costs else None
 
     import json
     import uuid
@@ -177,19 +178,19 @@ async def process_full_catalog_pipeline(
         "packaging_cost": Decimal(str(packaging_cost)) if packaging_cost is not None else None,
         "other_cost": Decimal(str(other_cost)) if other_cost is not None else None,
         "min_margin_pct": Decimal("0.20"),
-        "pricing_available": True,
-        "pricing_source": "COST_BASED_CALCULATION",
+        "pricing_available": has_costs,
+        "pricing_source": "COST_BASED_CALCULATION" if has_costs else "AWAITING_ARTISAN_INPUT",
         "image_url": catalog_fields["image_url"],
         "enhanced_image_url": catalog_fields["enhanced_image_url"],
         "transcription": voice_description,
         "language_detected": language,
         "lifecycle_state": "AI_GENERATED",
-        "notice": validated_catalog.get("notice"),
+        "notice": validated_catalog.get("notice") or (None if has_costs else "Cost inputs omitted; please set selling price manually."),
         # Phase 7 Unified Contract
         "catalog": catalog_fields,
         "artisan_facts": canonical_facts.model_dump(),
         "market_summary": market_summary_dict,
-        "price_recommendation": pricing_rec
+        "price_recommendation": pricing_rec if has_costs else None
     }
 
 def process_full_catalog_pipeline_sync(*args, **kwargs) -> Dict[str, Any]:

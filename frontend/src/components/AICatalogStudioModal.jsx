@@ -758,26 +758,6 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         packaging_cost: pkg || null,
         other_cost: oth || null
       });
-      if (!res.suggested_price || Number(res.suggested_price) <= 0) {
-        try {
-          const est = await estimateFairPrice({
-            title: res.title || voiceText.trim(),
-            category: res.category || effectiveCat || 'Handcrafted',
-            materials: res.materials,
-            description: res.description,
-            material_cost: mat || null,
-            labour_cost: lab || null,
-            packaging_cost: pkg || null,
-            other_cost: oth || null
-          });
-          if (est?.suggested_price) {
-            res.suggested_price = est.suggested_price;
-            res.min_fair_price = est.min_fair_price || est.suggested_price;
-            res.pricing_available = true;
-            res.pricing_source = est.pricing_source || 'MARKET_AI_ESTIMATE';
-          }
-        } catch (e) {}
-      }
       setAiDraft(res);
       setStep('REVIEW');
     } catch (err) {
