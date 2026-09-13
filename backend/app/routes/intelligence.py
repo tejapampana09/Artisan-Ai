@@ -37,6 +37,34 @@ router = APIRouter(prefix="/api", tags=["Market Intelligence & Seller Copilot"])
 def get_market_demand(db: Session = Depends(get_db)):
     return calculate_category_demand(db)
 
+@router.get("/seller/readiness")
+def get_seller_readiness(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    user_id = _as_int(cast(Any, current_user.id), 0)
+    prods = db.query(Product).filter(Product.seller_id == user_id).all()
+    score = 50
+    strengths = ["Account Verified"]
+    improvements = []
+    if len(prods) > 0:
+        score += 30
+        strengths.append(f"{len(prods)} Products Listed")
+    else:
+        improvements.append("Add your first handmade product catalog")
+    if current_user.bio:
+        score += 20
+        strengths.append("Artisan Story Complete")
+    else:
+        improvements.append("Complete your artisan heritage bio")
+
+    return {
+        "score": min(100, score),
+        "strengths": strengths,
+        "improvements": improvements,
+        "next_best_action": "Use AI Catalog Studio to list your next craft item"
+    }
+
 @router.get("/seller/opportunities")
 def get_seller_opportunities(
     db: Session = Depends(get_db),

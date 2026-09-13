@@ -273,6 +273,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [customImageUrl, setCustomImageUrl] = useState('');
   const [selectedLang, setSelectedLang] = useState(activeLanguage || 'te');
+  const [speakingQId, setSpeakingQId] = useState(null);
 
   useEffect(() => {
     if (activeLanguage) {
@@ -296,10 +297,136 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerIntervalRef = useRef(null);
+  const activeAudioRef = useRef(null);
+
+  const stopCurrentAudio = () => {
+    if (activeAudioRef.current) {
+      try {
+        activeAudioRef.current.pause();
+      } catch (e) {}
+      activeAudioRef.current = null;
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setSpeakingQId(null);
+  };
+
+  // Speak question out loud in natural human flow in selected language
+  const speakQuestion = (qId, rawText, overrideLang = null) => {
+    const langToUse = overrideLang || selectedLang;
+
+    // Toggle stop if already speaking this question
+    if (speakingQId === qId && (activeAudioRef.current || ('speechSynthesis' in window && window.speechSynthesis.speaking))) {
+      stopCurrentAudio();
+      return;
+    }
+
+    stopCurrentAudio();
+
+    // Clean text to sound like a natural human spoken question
+    // (strip leading digits like "1. ", "(చేనేత/టెక్స్‌టైల్)" parentheticals, etc.)
+    const cleanText = rawText
+      .replace(/^\d+[\.\)]\s*/, '')
+      .replace(/\([^)]*\)/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!cleanText) return;
+
+    setSpeakingQId(qId);
+
+    const langMap = {
+      te: 'te-IN',
+      hi: 'hi-IN',
+      ta: 'ta-IN',
+      bn: 'bn-IN',
+      en: 'en-IN'
+    };
+    const targetLang = langMap[langToUse] || 'en-IN';
+
+    const onStart = () => setSpeakingQId(qId);
+    const onEnd = () => {
+      activeAudioRef.current = null;
+      setSpeakingQId((curr) => (curr === qId ? null : curr));
+    };
+
+    // Check if browser has native voice for requested language
+    const voices = ('speechSynthesis' in window) ? window.speechSynthesis.getVoices() : [];
+    const matchingVoice = voices.find(
+      (v) => v.lang.toLowerCase().replace('_', '-').startsWith(langToUse) ||
+             v.lang.toLowerCase().replace('_', '-').startsWith(targetLang.toLowerCase())
+    );
+
+    if ('speechSynthesis' in window && matchingVoice) {
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = targetLang;
+        utterance.voice = matchingVoice;
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        utterance.onstart = onStart;
+        utterance.onend = onEnd;
+        utterance.onerror = onEnd;
+        window.speechSynthesis.speak(utterance);
+      }, 50);
+    } else {
+      // High quality Backend TTS Audio Endpoint for Telugu, Hindi, Tamil, Bengali, English
+      try {
+        const ttsUrl = `http://127.0.0.1:8000/api/tts?text=${encodeURIComponent(cleanText)}&lang=${langToUse}`;
+        const audio = new Audio(ttsUrl);
+        activeAudioRef.current = audio;
+        audio.onplay = onStart;
+        audio.onended = onEnd;
+        audio.onerror = () => {
+          activeAudioRef.current = null;
+          if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.lang = targetLang;
+            utterance.rate = 0.9;
+            utterance.onstart = onStart;
+            utterance.onend = onEnd;
+            utterance.onerror = onEnd;
+            window.speechSynthesis.speak(utterance);
+          } else {
+            onEnd();
+          }
+        };
+        audio.play().catch(() => {
+          activeAudioRef.current = null;
+          if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.lang = targetLang;
+            utterance.rate = 0.9;
+            utterance.onstart = onStart;
+            utterance.onend = onEnd;
+            utterance.onerror = onEnd;
+            window.speechSynthesis.speak(utterance);
+          } else {
+            onEnd();
+          }
+        });
+      } catch (err) {
+        onEnd();
+      }
+    }
+  };
+
+  const handleNavQnaIndex = (newIdx) => {
+    stopCurrentAudio();
+    setActiveQnaIndex(newIdx);
+    const questions = getAdaptiveQnaQuestions(qnaAnswers, selectedPhoto, selectedLang);
+    const targetQ = questions[newIdx];
+    if (targetQ) {
+      const rawText = targetQ[selectedLang] || targetQ.en;
+      speakQuestion(targetQ.id, rawText, selectedLang);
+    }
+  };
 
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      stopCurrentAudio();
     };
   }, []);
 
@@ -367,9 +494,18 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
   const handleLangSelect = (code) => {
     setSelectedLang(code);
+    stopCurrentAudio();
     if (selectedPhoto && (!voiceText.trim() || Object.values(selectedPhoto).includes(voiceText))) {
       const sample = selectedPhoto[code] || selectedPhoto.en;
       if (sample) setVoiceText(sample);
+    }
+
+    // Auto read active question in the newly selected language
+    const questions = getAdaptiveQnaQuestions(qnaAnswers, selectedPhoto, code);
+    const activeQ = questions[activeQnaIndex] || questions[0];
+    if (activeQ) {
+      const rawText = activeQ[code] || activeQ.en;
+      speakQuestion(activeQ.id, rawText, code);
     }
   };
 
@@ -932,7 +1068,10 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 <div className="flex justify-end pt-3">
                   <button
                     type="button"
-                    onClick={() => setInputSubStep('QNA')}
+                    onClick={() => {
+                      setInputSubStep('QNA');
+                      handleNavQnaIndex(0);
+                    }}
                     className="inline-flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
                   >
                     <span>Next: AI Guided Questions</span>
@@ -948,8 +1087,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 {/* Language Picker Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-indigo-50 border border-indigo-200 rounded-2xl gap-2">
                   <div>
-                    <span className="text-xs font-extrabold text-indigo-900 block">AI Adaptive Voice & Text Questions</span>
-                    <span className="text-[11px] text-indigo-700 block">Questions automatically adapt based on your craft category & inputs:</span>
+                    <span className="text-xs font-extrabold text-indigo-900 block">AI Adaptive Voice & Text Guided Interview</span>
+                    <span className="text-[11px] text-indigo-700 block">Listen to each question out loud, then speak or type your answer:</span>
                   </div>
                   <div className="flex items-center space-x-1.5 bg-white px-2.5 py-1 rounded-xl border border-indigo-200 shrink-0">
                     <Globe className="w-3.5 h-3.5 text-indigo-600" />
@@ -985,73 +1124,109 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   </div>
                 )}
 
-                {/* 3 Dynamic Adaptive Question Cards */}
-                <div className="space-y-3">
-                  {getAdaptiveQnaQuestions(qnaAnswers, selectedPhoto, selectedLang).map((q, idx) => {
-                    const questionText = q[selectedLang] || q.en;
-                    const phText = q.placeholder?.[selectedLang] || q.placeholder?.en || 'Type or click microphone to speak answer...';
-                    const answerVal = qnaAnswers[q.id] || '';
-
-                    return (
-                      <div
-                        key={q.id}
-                        className={`p-3.5 rounded-2xl border transition-all ${
-                          activeQnaIndex === idx
-                            ? 'border-indigo-400 bg-indigo-50/30 ring-2 ring-indigo-500/10 shadow-xs'
-                            : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
-                        onClick={() => setActiveQnaIndex(idx)}
-                      >
-                        <div className="flex justify-between items-center mb-1.5">
-                          <label className="text-xs font-extrabold text-slate-800 flex items-center space-x-1.5">
-                            <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] flex items-center justify-center shrink-0">
-                              {q.num}
-                            </span>
-                            <span>{questionText}</span>
-                          </label>
-                        </div>
-
-                        <div className="relative mt-2">
-                          <textarea
-                            rows="2"
-                            value={answerVal}
-                            onChange={(e) => setQnaAnswers({ ...qnaAnswers, [q.id]: e.target.value })}
-                            placeholder={phText}
-                            className="w-full text-xs border border-slate-200 rounded-xl p-2.5 pr-22 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveQnaIndex(idx);
-                              if (isRecording) {
-                                stopRecording();
-                              } else {
-                                startRecording(q.id);
-                              }
-                            }}
-                            className={`absolute right-2 top-2 px-2.5 py-1.5 rounded-lg transition-all text-xs font-bold flex items-center space-x-1 cursor-pointer ${
-                              isRecording && activeQnaIndex === idx
-                                ? 'bg-rose-600 text-white animate-pulse'
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                            }`}
-                          >
-                            {isRecording && activeQnaIndex === idx ? (
-                              <>
-                                <MicOff className="w-3.5 h-3.5" />
-                                <span>Stop</span>
-                              </>
-                            ) : (
-                              <>
-                                <Mic className="w-3.5 h-3.5" />
-                                <span>Speak</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                {/* Question Wizard Step Indicators Bar */}
+                <div className="flex items-center justify-between bg-slate-50 border border-slate-200 p-2.5 rounded-2xl gap-2">
+                  <div className="flex items-center space-x-2 overflow-x-auto py-0.5">
+                    {getAdaptiveQnaQuestions(qnaAnswers, selectedPhoto, selectedLang).map((q, idx) => {
+                      const isDone = Boolean(qnaAnswers[q.id]?.trim());
+                      const isActive = activeQnaIndex === idx;
+                      return (
+                        <button
+                          key={q.id}
+                          type="button"
+                          onClick={() => handleNavQnaIndex(idx)}
+                          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all shrink-0 cursor-pointer ${
+                            isActive
+                              ? 'bg-indigo-600 text-white shadow-xs'
+                              : isDone
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <span>Q{q.num}</span>
+                          {isDone && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <span className="text-[11px] font-extrabold text-indigo-700 bg-indigo-100 px-2.5 py-1 rounded-xl border border-indigo-200 shrink-0">
+                    Question {activeQnaIndex + 1} of 3
+                  </span>
                 </div>
+
+                {/* Active Focused Question Card (Wizard Style) */}
+                {(() => {
+                  const questions = getAdaptiveQnaQuestions(qnaAnswers, selectedPhoto, selectedLang);
+                  const q = questions[activeQnaIndex] || questions[0];
+                  const questionText = q[selectedLang] || q.en;
+                  const phText = q.placeholder?.[selectedLang] || q.placeholder?.en || 'Type or click microphone to speak answer...';
+                  const answerVal = qnaAnswers[q.id] || '';
+
+                  return (
+                    <div className="p-4 rounded-2xl border-2 border-indigo-300 bg-white shadow-xs space-y-3">
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex items-start space-x-2">
+                          <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                            {q.num}
+                          </span>
+                          <h4 className="text-sm font-extrabold text-slate-900 leading-snug">
+                            {questionText}
+                          </h4>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => speakQuestion(q.id, questionText)}
+                          title="Listen to question spoken out loud in selected language"
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer shrink-0 ${
+                            speakingQId === q.id
+                              ? 'bg-amber-500 text-white ring-2 ring-amber-300 animate-pulse shadow-xs'
+                              : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+                          }`}
+                        >
+                          <Volume2 className={`w-4 h-4 ${speakingQId === q.id ? 'animate-bounce' : ''}`} />
+                          <span>{speakingQId === q.id ? 'Stop' : 'Listen Question'}</span>
+                        </button>
+                      </div>
+
+                      <div className="relative mt-2">
+                        <textarea
+                          rows="3"
+                          value={answerVal}
+                          onChange={(e) => setQnaAnswers({ ...qnaAnswers, [q.id]: e.target.value })}
+                          placeholder={phText}
+                          className="w-full text-xs border border-slate-300 rounded-xl p-3 pr-28 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isRecording) {
+                              stopRecording();
+                            } else {
+                              startRecording(q.id);
+                            }
+                          }}
+                          className={`absolute right-2 top-2 px-3 py-2 rounded-xl transition-all text-xs font-extrabold flex items-center space-x-1.5 cursor-pointer shadow-xs ${
+                            isRecording
+                              ? 'bg-rose-600 text-white animate-pulse'
+                              : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                          }`}
+                        >
+                          {isRecording ? (
+                            <>
+                              <MicOff className="w-4 h-4" />
+                              <span>Stop Mic</span>
+                            </>
+                          ) : (
+                            <>
+                              <Mic className="w-4 h-4" />
+                              <span>Speak Answer</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Combined Voice Text Preview / Additional Details */}
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
@@ -1063,23 +1238,45 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   </p>
                 </div>
 
-                <div className="flex justify-between pt-2">
+                {/* Wizard Navigation Controls (Previous / Next Question / Next: Cost) */}
+                <div className="flex justify-between items-center pt-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setInputSubStep('PHOTO')}
-                    className="px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800"
+                    onClick={() => {
+                      if (activeQnaIndex > 0) {
+                        handleNavQnaIndex(activeQnaIndex - 1);
+                      } else {
+                        stopCurrentAudio();
+                        setInputSubStep('PHOTO');
+                      }
+                    }}
+                    className="px-3.5 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-100 rounded-xl border border-slate-300 transition-all cursor-pointer shrink-0"
                   >
-                    ← Back to Photo
+                    {activeQnaIndex > 0 ? `← Prev Question (${activeQnaIndex} of 3)` : '← Back to Photo'}
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setInputSubStep('COSTS')}
-                    className="inline-flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
-                  >
-                    <span>Next: Cost & Margin</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                  {activeQnaIndex < 2 ? (
+                    <button
+                      type="button"
+                      onClick={() => handleNavQnaIndex(activeQnaIndex + 1)}
+                      className="inline-flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-extrabold text-xs shadow-md transition-all cursor-pointer"
+                    >
+                      <span>Next Question ({activeQnaIndex + 2} of 3)</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        stopCurrentAudio();
+                        setInputSubStep('COSTS');
+                      }}
+                      className="inline-flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-extrabold text-xs shadow-md transition-all cursor-pointer"
+                    >
+                      <span>Next: Cost & Margin</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             )}

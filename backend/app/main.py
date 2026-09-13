@@ -25,6 +25,7 @@ from backend.app.routes.reviews import router as reviews_router
 from backend.app.routes.notifications import router as notifications_router
 from backend.app.routes.artisan import router as artisan_router
 from backend.app.routes.ml_demand import router as ml_demand_router
+from backend.app.routes.tts import router as tts_router
 from backend.app.services.auth import get_current_user as auth_get_current_user
 
 # Initialize database tables directly via SQLAlchemy Base metadata
@@ -90,6 +91,7 @@ app.include_router(reviews_router)
 app.include_router(notifications_router)
 app.include_router(artisan_router)
 app.include_router(ml_demand_router)
+app.include_router(tts_router)
 
 
 @app.get("/api/health", response_model=HealthResponse)
