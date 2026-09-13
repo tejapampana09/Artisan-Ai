@@ -731,8 +731,23 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       return;
     }
 
+    const parsedMaterials = qnaAnswers.q2_materials
+      ? qnaAnswers.q2_materials.split(',').map(m => m.trim()).filter(Boolean)
+      : [];
+
+    const artisanFacts = {
+      product_name: qnaAnswers.q1_title?.trim() || '',
+      craft_type: '',
+      materials: parsedMaterials,
+      handmade: null,
+      making_time: '',
+      artisan_story: qnaAnswers.q3_story?.trim() || '',
+      special_characteristics: ''
+    };
+
     try {
       const res = await processAICatalog({
+        artisan_facts: artisanFacts,
         qna_answers: qnaAnswers,
         voice_description: voiceText.trim(),
         language: selectedLang,
