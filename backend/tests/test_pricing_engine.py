@@ -351,3 +351,30 @@ def test_15_process_market_aware_auto_pricing_applies_recommendation(db: Session
     assert decision.decision == "AUTO_APPLIED"
     assert float(product.price) > 1000.0
 
+def test_16_calculate_price_recommendation_from_inputs_is_pure_and_db_free():
+    from backend.app.services.pricing_engine import calculate_price_recommendation_from_inputs
+
+    # Pure calculation with draft costs (material 300, labour 200, pkg 50, oth 50 => cost basis 600, min fair 720)
+    rec = calculate_price_recommendation_from_inputs(
+        title="Pure Draft Pot",
+        category="Pottery",
+        current_price=0.0,
+        material_cost=300.0,
+        labour_cost=200.0,
+        packaging_cost=50.0,
+        other_cost=50.0,
+        min_margin_pct=0.20,
+        market_median=1000.0,
+        market_currency="INR"
+    )
+
+    assert rec["product_id"] is None
+    assert rec["cost_basis"] == 600.0
+    assert rec["minimum_fair_price"] == 720.0
+    assert rec["market_signal_used"] is True
+    assert rec["market_median"] == 1000.0
+    # 720 * 0.70 + 1000 * 0.30 = 504 + 300 = 804 => rounded to nearest ₹5 = ₹805.00
+    assert rec["recommended_price"] == 805.0
+    assert rec["safety_constraints"]["minimum_fair_price_protected"] is True
+
+

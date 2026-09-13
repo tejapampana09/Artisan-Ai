@@ -108,143 +108,90 @@ def compute_market_median_signal(
 
     return market_anchor.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), True, "SUCCESS"
 
-def calculate_price_recommendation(
-    product: Product,
-    db: Session,
+def calculate_price_recommendation_from_inputs(
+    title: str,
+    category: str,
+    current_price: Any = 0.0,
+    material_cost: Any = 0.0,
+    labour_cost: Any = 0.0,
+    packaging_cost: Any = 0.0,
+    other_cost: Any = 0.0,
+    min_margin_pct: Any = 0.20,
     market_median: Optional[Any] = None,
-    market_currency: Optional[str] = None
+    market_currency: Optional[str] = None,
+    product_currency: str = "INR",
+    demand_pct: float = 0.0,
+    demand_factor: float = 1.0,
+    demand_label: str = "MODERATE DEMAND",
+    benchmark_low: Optional[Any] = None,
+    benchmark_high: Optional[Any] = None,
+    save_count: int = 0,
+    enquiry_count: int = 0,
+    auto_smart_pricing_enabled: bool = False,
+    product_id: Optional[int] = None,
+    ml_info: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    Deterministic explainable dynamic pricing calculation:
-    1. Minimum Fair Price = (Material + Labour + Packaging + Other) * (1 + Min Margin %)
-    2. Demand Factor: bounded [0.95, 1.15]
-    3. Market Adjustment: bounded [0.95, 1.05]
-    4. Market Median Signal: 30% weight when provided and currency matches
-    5. Safety Rules: Recommended Price >= Minimum Fair Price floor
-    6. Capped bounds: Max +25% upward, Max -10% downward per cycle
+    Pure deterministic dynamic pricing calculation:
+    Calculates cost basis, minimum fair price, market median signal, caps, rounding,
+    and explainable reasoning. Operates purely on explicit arguments with ZERO DB dependency.
     """
-    # 1. Cost Basis & Minimum Fair Price using Decimal arithmetic
-    mat_cost = to_decimal(getattr(product, "material_cost", 0.0))
-    lab_cost = to_decimal(getattr(product, "labour_cost", 0.0))
-    pkg_cost = to_decimal(getattr(product, "packaging_cost", 0.0))
-    oth_cost = to_decimal(getattr(product, "other_cost", 0.0))
+    mat_cost = to_decimal(material_cost)
+    lab_cost = to_decimal(labour_cost)
+    pkg_cost = to_decimal(packaging_cost)
+    oth_cost = to_decimal(other_cost)
     cost_basis = (mat_cost + lab_cost + pkg_cost + oth_cost).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    
-    margin_pct = to_decimal(getattr(product, "min_margin_pct", 0.20), "0.20")
+
+    margin_pct = to_decimal(min_margin_pct, "0.20")
     minimum_fair_price = (cost_basis * (Decimal("1.0") + margin_pct)).quantize(Decimal("1.00"), rounding=ROUND_HALF_UP)
 
-    # 2. Category Demand & Benchmark Range from pure database records
-    all_demands = {d["category"]: d for d in calculate_category_demand(db)}
-    cat_demand = all_demands.get(product.category)
-    
-    if cat_demand:
-        demand_pct = float(cat_demand["demand_pct"])
-        benchmark_low = to_decimal(cat_demand["benchmark_min"]) if cat_demand["benchmark_min"] is not None else None
-        benchmark_high = to_decimal(cat_demand["benchmark_max"]) if cat_demand["benchmark_max"] is not None else None
-    else:
-        demand_pct = 0.0
-        benchmark_low = None
-        benchmark_high = None
-
-    curr_price = to_decimal(product.price)
-    demand_factor, demand_label = compute_demand_factor(demand_pct)
-
-    # ML Demand Engine Integration (Hybrid Prediction)
-    from backend.app.services.ml_demand_engine import predict_product_demand
-    ml_pred = predict_product_demand(product, db)
-    ml_multiplier = ml_pred.get("ml_demand_multiplier", 1.00)
-    ml_score = ml_pred.get("predicted_demand_score", 0.0)
-    ml_level = ml_pred.get("demand_level", "NORMAL")
-    model_src = ml_pred.get("model_source", "RULE_BASED_FALLBACK")
-
-    if model_src == "TRAINED_ML_MODEL":
-        # Combine rule-based category surge and ML predicted demand factor safely
-        demand_factor = max(demand_factor, float(ml_multiplier))
-        demand_factor = max(MIN_DEMAND_FACTOR, min(MAX_DEMAND_FACTOR, round(demand_factor, 3)))
+    curr_price = to_decimal(current_price)
 
     market_adj, market_pos = compute_market_adjustment(float(curr_price), benchmark_low, benchmark_high)
 
-    # 3. Raw Recommended Price Calculation
-    # Base calculation starts from current price (or minimum fair price if current price is below safe margin)
     base_anchor = max(curr_price, minimum_fair_price)
 
-    prod_currency = str(getattr(product, "currency", None) or "INR").strip()
+    prod_curr = str(product_currency or "INR").strip()
 
     market_anchor, market_signal_used, market_status = compute_market_median_signal(
         base_anchor=base_anchor,
         market_median=market_median,
         minimum_fair_price=minimum_fair_price,
-        product_currency=prod_currency,
+        product_currency=prod_curr,
         market_currency=market_currency
     )
 
     anchor_to_use = market_anchor if (market_signal_used and market_anchor is not None) else base_anchor
     raw_recommended = (anchor_to_use * Decimal(str(demand_factor)) * Decimal(str(market_adj))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    # 4. Apply Safety Constraints
-    # Constraint A: Maximum upward limit (+25%)
-    max_upward_allowed = (curr_price * (Decimal("1.0") + MAX_UPWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    # Constraint B: Maximum downward limit (-10%)
-    min_downward_allowed = (curr_price * (Decimal("1.0") - MAX_DOWNWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    if curr_price > 0:
+        max_upward_allowed = (curr_price * (Decimal("1.0") + MAX_UPWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        min_downward_allowed = (curr_price * (Decimal("1.0") - MAX_DOWNWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        bounded_price = min(max_upward_allowed, max(min_downward_allowed, raw_recommended))
+    else:
+        max_upward_allowed = Decimal("999999.00")
+        min_downward_allowed = Decimal("0.00")
+        bounded_price = raw_recommended
 
-    bounded_price = min(max_upward_allowed, max(min_downward_allowed, raw_recommended))
-
-    # Constraint C: STRICT SAFETY RULE: Recommended Price >= Minimum Fair Price
     final_recommended = max(bounded_price, minimum_fair_price)
 
-    # 5. Sensible Rupee Rounding (round to nearest ₹5)
     rounded_price = (Decimal(round(float(final_recommended) / 5.0) * 5)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     if rounded_price < minimum_fair_price:
         rounded_price = minimum_fair_price
 
-    price_change_amount = (rounded_price - curr_price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    price_change_pct = round((float(price_change_amount) / float(curr_price) * 100.0), 1) if curr_price > 0 else 0.0
+    if curr_price > 0:
+        price_change_amount = (rounded_price - curr_price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        price_change_pct = round((float(price_change_amount) / float(curr_price) * 100.0), 1)
+    else:
+        price_change_amount = Decimal("0.00")
+        price_change_pct = 0.0
 
-    # Equilibrium Guard: If the artisan recently accepted or auto-applied this recommendation and no new buyer events
-    # have occurred since, the price has already reached market equilibrium. Do not compound again.
-    last_applied = (
-        db.query(PricingDecision)
-        .filter(
-            PricingDecision.product_id == product.id,
-            PricingDecision.decision.in_(["ACCEPT", "AUTO_APPLIED"])
-        )
-        .order_by(PricingDecision.timestamp.desc())
-        .first()
-    )
-    if last_applied is not None and to_decimal(last_applied.applied_price) == curr_price:
-        new_prod_events = (
-            db.query(Event)
-            .filter(
-                Event.product_id == product.id,
-                Event.timestamp > last_applied.timestamp
-            )
-            .count()
-        )
-        new_cat_events = (
-            db.query(Event)
-            .filter(
-                Event.category == product.category,
-                Event.timestamp > last_applied.timestamp
-            )
-            .count()
-        )
-        # Require direct product activity or at least 5 category events to break equilibrium
-        if new_prod_events == 0 and new_cat_events < 5:
-            rounded_price = curr_price
-            price_change_amount = Decimal("0.00")
-            price_change_pct = 0.0
-
-    # 6. Event context for reasoning
-    save_count = db.query(Event).filter(Event.product_id == product.id, Event.event_type == "SAVE").count()
-    enquiry_count = db.query(Event).filter(Event.product_id == product.id, Event.event_type == "ENQUIRY").count()
-
-    # 7. Transparent Explainable Reasoning List
     cost_breakdown = f"Material: ₹{float(mat_cost):,.0f}, Labour: ₹{float(lab_cost):,.0f}, Packaging: ₹{float(pkg_cost):,.0f}"
     if oth_cost > 0:
         cost_breakdown += f", Other: ₹{float(oth_cost):,.0f}"
 
     reasoning: List[str] = [
-        f"{product.category} market demand indicates {demand_pct}% share ({demand_label}, factor {float(demand_factor):.3f}x).",
+        f"{category} market demand indicates {demand_pct}% share ({demand_label}, factor {float(demand_factor):.3f}x).",
         f"Cost basis is ₹{float(cost_basis):,.0f} ({cost_breakdown}).",
         f"Protected minimum fair price is ₹{float(minimum_fair_price):,.0f}, ensuring your configured {int(float(margin_pct) * 100)}% minimum margin.",
     ]
@@ -264,34 +211,39 @@ def calculate_price_recommendation(
     if save_count > 0 or enquiry_count > 0:
         reasoning.append(f"Recorded buyer interest velocity: {save_count} wishlist save(s) and {enquiry_count} active lead(s).")
 
-    if model_src == "TRAINED_ML_MODEL":
-        r2_score = ml_pred.get("model_info", {}).get("r2_score")
+    if ml_info and ml_info.get("model_source") == "TRAINED_ML_MODEL":
+        r2_score = ml_info.get("model_info", {}).get("r2_score")
         r2_suffix = f" (R² = {r2_score})" if r2_score is not None else ""
+        ml_score = ml_info.get("predicted_demand_score", 0.0)
+        ml_level = ml_info.get("demand_level", "NORMAL")
+        ml_multiplier = ml_info.get("ml_demand_multiplier", 1.0)
         reasoning.append(f"RandomForestRegressor ML Demand Engine predicted score {int(ml_score)}/100 ({ml_level} DEMAND, factor {ml_multiplier:.2f}x){r2_suffix} from dataset training metrics.")
 
-    if price_change_amount > 0:
-        reasoning.append(f"Suggested upward adjustment of ₹{float(price_change_amount):,.0f} (+{price_change_pct}%) captures high category demand while protecting sales conversion.")
-    elif price_change_amount < 0:
-        reasoning.append(f"Suggested downward adjustment of ₹{abs(float(price_change_amount)):,.0f} ({price_change_pct}%) improves market competitiveness while remaining safely above minimum fair price.")
+    if curr_price > 0:
+        if price_change_amount > 0:
+            reasoning.append(f"Suggested upward adjustment of ₹{float(price_change_amount):,.0f} (+{price_change_pct}%) captures high category demand while protecting sales conversion.")
+        elif price_change_amount < 0:
+            reasoning.append(f"Suggested downward adjustment of ₹{abs(float(price_change_amount)):,.0f} ({price_change_pct}%) improves market competitiveness while remaining safely above minimum fair price.")
+        else:
+            reasoning.append("Current listing price matches optimal fair market valuation.")
     else:
-        reasoning.append("Current listing price matches optimal fair market valuation.")
+        reasoning.append("Initial recommended price calculated for catalog draft.")
 
-    is_auto = bool(getattr(product, "auto_smart_pricing_enabled", False))
     safety_constraints = {
         "minimum_fair_price_protected": True,
         "min_margin_percentage": int(float(margin_pct) * 100),
         "max_upward_cap_applied": rounded_price >= max_upward_allowed,
         "max_upward_cap_pct": f"+{int(float(MAX_UPWARD_ADJUSTMENT_PCT) * 100)}%",
         "demand_factor_capped_at_max": demand_factor >= MAX_DEMAND_FACTOR,
-        "seller_approval_mandatory": not is_auto,
-        "autonomous_mode_enabled": is_auto,
-        "pricing_mode": "AUTONOMOUS_AUTO_APPLY" if is_auto else "SELLER_APPROVAL_RECOMMENDATION"
+        "seller_approval_mandatory": not auto_smart_pricing_enabled,
+        "autonomous_mode_enabled": auto_smart_pricing_enabled,
+        "pricing_mode": "AUTONOMOUS_AUTO_APPLY" if auto_smart_pricing_enabled else "SELLER_APPROVAL_RECOMMENDATION"
     }
 
     return {
-        "product_id": product.id,
-        "product_title": product.title,
-        "category": product.category,
+        "product_id": product_id,
+        "product_title": title,
+        "category": category,
         "current_price": float(curr_price),
         "cost_basis": float(cost_basis),
         "minimum_fair_price": float(minimum_fair_price),
@@ -311,6 +263,86 @@ def calculate_price_recommendation(
         "reasoning": reasoning,
         "safety_constraints": safety_constraints
     }
+
+def calculate_price_recommendation(
+    product: Product,
+    db: Session,
+    market_median: Optional[Any] = None,
+    market_currency: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Deterministic explainable dynamic pricing calculation for a Product database model.
+    Queries database for category demand & ML metrics, then delegates to pure calculate_price_recommendation_from_inputs.
+    """
+    all_demands = {d["category"]: d for d in calculate_category_demand(db)}
+    cat_demand = all_demands.get(product.category)
+    
+    if cat_demand:
+        demand_pct = float(cat_demand["demand_pct"])
+        benchmark_low = to_decimal(cat_demand["benchmark_min"]) if cat_demand["benchmark_min"] is not None else None
+        benchmark_high = to_decimal(cat_demand["benchmark_max"]) if cat_demand["benchmark_max"] is not None else None
+    else:
+        demand_pct = 0.0
+        benchmark_low = None
+        benchmark_high = None
+
+    demand_factor, demand_label = compute_demand_factor(demand_pct)
+
+    from backend.app.services.ml_demand_engine import predict_product_demand
+    ml_pred = predict_product_demand(product, db)
+    ml_multiplier = ml_pred.get("ml_demand_multiplier", 1.00)
+    model_src = ml_pred.get("model_source", "RULE_BASED_FALLBACK")
+
+    if model_src == "TRAINED_ML_MODEL":
+        demand_factor = max(demand_factor, float(ml_multiplier))
+        demand_factor = max(MIN_DEMAND_FACTOR, min(MAX_DEMAND_FACTOR, round(demand_factor, 3)))
+
+    save_count = db.query(Event).filter(Event.product_id == product.id, Event.event_type == "SAVE").count()
+    enquiry_count = db.query(Event).filter(Event.product_id == product.id, Event.event_type == "ENQUIRY").count()
+
+    rec = calculate_price_recommendation_from_inputs(
+        title=product.title,
+        category=product.category,
+        current_price=product.price,
+        material_cost=getattr(product, "material_cost", 0.0),
+        labour_cost=getattr(product, "labour_cost", 0.0),
+        packaging_cost=getattr(product, "packaging_cost", 0.0),
+        other_cost=getattr(product, "other_cost", 0.0),
+        min_margin_pct=getattr(product, "min_margin_pct", 0.20),
+        market_median=market_median,
+        market_currency=market_currency,
+        product_currency=getattr(product, "currency", None) or "INR",
+        demand_pct=demand_pct,
+        demand_factor=demand_factor,
+        demand_label=demand_label,
+        benchmark_low=benchmark_low,
+        benchmark_high=benchmark_high,
+        save_count=save_count,
+        enquiry_count=enquiry_count,
+        auto_smart_pricing_enabled=bool(getattr(product, "auto_smart_pricing_enabled", False)),
+        product_id=product.id,
+        ml_info=ml_pred
+    )
+
+    curr_price = to_decimal(product.price)
+    last_applied = (
+        db.query(PricingDecision)
+        .filter(
+            PricingDecision.product_id == product.id,
+            PricingDecision.decision.in_(["ACCEPT", "AUTO_APPLIED"])
+        )
+        .order_by(PricingDecision.timestamp.desc())
+        .first()
+    )
+    if last_applied is not None and to_decimal(last_applied.applied_price) == curr_price:
+        new_prod_events = db.query(Event).filter(Event.product_id == product.id, Event.timestamp > last_applied.timestamp).count()
+        new_cat_events = db.query(Event).filter(Event.category == product.category, Event.timestamp > last_applied.timestamp).count()
+        if new_prod_events == 0 and new_cat_events < 5:
+            rec["recommended_price"] = float(curr_price)
+            rec["price_change_amount"] = 0.0
+            rec["price_change_percentage"] = 0.0
+
+    return rec
 
 def process_auto_smart_pricing(
     product: Product,
