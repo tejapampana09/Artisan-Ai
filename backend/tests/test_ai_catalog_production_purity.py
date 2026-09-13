@@ -41,6 +41,7 @@ def test_1_live_gemini_success():
          patch("httpx.AsyncClient.post", return_value=mock_gemini_response):
         draft = asyncio.run(generate_catalog_draft(
             voice_description="Handwoven cotton sari with natural dye",
+            qna_answers={"q1_title": "Cotton Sari", "q2_materials": "Cotton"},
             language="te",
             image_url="https://example.com/artisan_photo.jpg",
             material_cost=Decimal("400.00"),
