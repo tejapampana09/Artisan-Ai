@@ -208,12 +208,20 @@ def calculate_price_recommendation_from_inputs(
         is_above = False
         is_inside = False
 
-        # Determine classification boundaries (Explicit market low/high take precedence over derived ±15% median)
-        mkt_low = low_dec
-        mkt_high = high_dec
-        if (mkt_low is None or mkt_high is None) and (med_dec is not None and med_dec > 0):
+        # Determine classification boundaries (Explicit low/high take precedence unless live median contradicts static category bounds)
+        if low_dec is not None and high_dec is not None:
+            if med_dec is not None and med_dec > 0 and (med_dec < low_dec or med_dec > high_dec):
+                mkt_low = med_dec * Decimal("0.85")
+                mkt_high = med_dec * Decimal("1.15")
+            else:
+                mkt_low = low_dec
+                mkt_high = high_dec
+        elif med_dec is not None and med_dec > 0:
             mkt_low = med_dec * Decimal("0.85")
             mkt_high = med_dec * Decimal("1.15")
+        else:
+            mkt_low = None
+            mkt_high = None
 
         if mkt_low is not None and mkt_high is not None:
             if curr_price < mkt_low:
