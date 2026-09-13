@@ -152,18 +152,18 @@ def test_scenario_6_e2e_selling_price_pipeline_reaches_pricing_engine(
 
     mock_mkt_resp = MarketResearchResponse(
         query="Handcrafted Silk Shawl Textiles",
-        provider="MockMarketProvider",
-        listings=[],
+        results=[],
         summary=MarketSummary(
-            sample_size=5,
+            comparable_count=5,
+            priced_comparable_count=5,
+            is_reliable=True,
+            market_confidence="HIGH",
             min_price=600.0,
             max_price=800.0,
             median_price=700.0,
-            average_price=700.0,
-            currency="INR",
-            price_range_str="₹600 - ₹800"
+            currency="INR"
         ),
-        notes="Mock research"
+        notice=None
     )
     mock_research.return_value = mock_mkt_resp
 
@@ -189,3 +189,37 @@ def test_scenario_6_e2e_selling_price_pipeline_reaches_pricing_engine(
 def test_scenario_7_config_median_weight_imported_from_config():
     """Verify config constants are properly imported and synchronized."""
     assert CONFIG_MARKET_MEDIAN_WEIGHT == MARKET_MEDIAN_WEIGHT
+
+
+def test_unreliable_market_with_artisan_price_preserves_artisan_price():
+    """Unreliable market data + artisan price provided -> preserve artisan price exactly."""
+    rec = calculate_price_recommendation_from_inputs(
+        title="Artisan Stool",
+        category="Furniture",
+        current_price=850.0,
+        market_median=1200.0,
+        market_is_reliable=False
+    )
+    assert rec["market_signal_used"] is False
+    assert rec["recommended_price"] == 850.0
+    assert rec["safety_constraints"]["pricing_case"] == "CASE_3_INSIDE_MARKET"
+
+
+def test_unreliable_market_without_artisan_price_uses_cost_floor_fallback():
+    """Unreliable market data + no artisan price + costs provided -> recommendation falls back to cost floor."""
+    # Material 300 + Labour 200 -> Cost basis 500 -> Min fair price 600
+    rec = calculate_price_recommendation_from_inputs(
+        title="Artisan Stool",
+        category="Furniture",
+        current_price=0.0,
+        material_cost=300.0,
+        labour_cost=200.0,
+        market_median=1200.0,
+        market_is_reliable=False
+    )
+    assert rec["market_signal_used"] is False
+    assert rec["cost_basis"] == 500.0
+    assert rec["minimum_fair_price"] == 600.0
+    assert rec["recommended_price"] == 600.0
+    assert rec["safety_constraints"]["pricing_case"] == "CASE_1_PRICE_NOT_PROVIDED"
+
