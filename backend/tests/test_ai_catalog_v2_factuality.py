@@ -109,7 +109,7 @@ def test_2_missing_materials_handling():
             language="en"
         ))
 
-        assert draft["materials"] == "Not specified"
+        assert draft["materials"] == "" or draft["materials"] == []
         assert "ceramic" not in draft["materials"].lower()
         assert "clay" not in draft["materials"].lower()
         assert "wood" not in draft["materials"].lower()

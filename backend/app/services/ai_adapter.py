@@ -13,6 +13,7 @@ from backend.app.config import (
 )
 
 from backend.app.schemas import ArtisanFacts
+from backend.app.services.catalog_validator import validate_catalog_draft
 
 def extract_artisan_facts(
     artisan_facts: Optional[Any] = None,
@@ -432,7 +433,7 @@ Return a valid JSON object matching this schema EXACTLY:
                         primary_desc = desc_native if language != "en" else desc_en
                         primary_story = story_native if language != "en" else story_en
 
-                        return {
+                        raw_draft = {
                             "source": "LIVE_AI",
                             "is_live_ai": True,
                             "is_demo_data": False,
@@ -463,13 +464,14 @@ Return a valid JSON object matching this schema EXACTLY:
                             "lifecycle_state": "AI_GENERATED",
                             "notice": "AI-generated draft. Factual heritage and materials claims must be verified by the artisan before publishing."
                         }
+                        return validate_catalog_draft(raw_draft, artisan_facts_obj)
         except Exception as e:
             logging.getLogger("artisan_ai").warning("[AI Adapter] Live Gemini call unavailable or timed out: %s", str(e))
 
     # -------------------------------------------------------------------------
     # 2. PRODUCTION MANUAL DRAFT (100% Honest Draft — Zero Fabrications)
     # -------------------------------------------------------------------------
-    return build_production_manual_draft(
+    raw_manual_draft = build_production_manual_draft(
         voice_description=clean_desc,
         language=language,
         image_url=clean_image,
@@ -481,6 +483,7 @@ Return a valid JSON object matching this schema EXACTLY:
         qna_answers=qna_answers,
         artisan_facts=artisan_facts_obj
     )
+    return validate_catalog_draft(raw_manual_draft, artisan_facts_obj)
 
 
 async def extract_buyer_intent(
