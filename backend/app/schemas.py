@@ -380,6 +380,8 @@ class MarketSummary(BaseModel):
     median_price: Optional[float] = None
     max_price: Optional[float] = None
     currency: str = "INR"
+    market_confidence: str = "LOW"
+    is_reliable: bool = False
 
 class MarketResearchRequest(BaseModel):
     artisan_facts: ArtisanFacts

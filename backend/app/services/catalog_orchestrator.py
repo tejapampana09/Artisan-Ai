@@ -94,7 +94,7 @@ async def process_full_catalog_pipeline(
 
     raw_market_median = market_response.summary.median_price if market_response.summary else None
     market_currency = market_response.summary.currency if market_response.summary else "INR"
-    market_median = raw_market_median
+    market_is_reliable = market_response.summary.is_reliable if market_response.summary else False
 
     # 5. Pure Market-Aware Pricing Calculation (No DB Product required)
     pricing_rec = calculate_price_recommendation_from_inputs(
@@ -106,8 +106,9 @@ async def process_full_catalog_pipeline(
         packaging_cost=packaging_cost or 0.0,
         other_cost=other_cost or 0.0,
         min_margin_pct=0.20,
-        market_median=market_median,
+        market_median=raw_market_median,
         market_currency=market_currency,
+        market_is_reliable=market_is_reliable,
         product_currency="INR"
     )
 

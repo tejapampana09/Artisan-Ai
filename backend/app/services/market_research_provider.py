@@ -275,7 +275,13 @@ class MockMarketResearchProvider(BaseMarketResearchProvider):
 
     async def search_comparable_products(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
         if self._mock_listings is not None:
-            return self._mock_listings[:limit]
+            results = []
+            for idx, item in enumerate(self._mock_listings[:limit]):
+                item_copy = dict(item)
+                if "url" not in item_copy:
+                    item_copy["url"] = f"https://example.com/mock/{idx+1}"
+                results.append(item_copy)
+            return results
 
         now = datetime.now(timezone.utc)
         all_candidates = [

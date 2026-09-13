@@ -87,13 +87,17 @@ def compute_market_median_signal(
     market_median: Optional[Any] = None,
     minimum_fair_price: Optional[Decimal] = None,
     product_currency: str = "INR",
-    market_currency: Optional[str] = None
+    market_currency: Optional[str] = None,
+    market_is_reliable: bool = True
 ) -> Tuple[Optional[Decimal], bool, Optional[str]]:
     """
-    Computes a market-aware pricing anchor (70% base_anchor + 30% market_median)
-    while enforcing currency matching and protected minimum fair price floor.
+    Computes a market-aware pricing anchor while enforcing validity gate,
+    currency matching, and protected minimum fair price floor.
     Returns (market_anchor, signal_used, status_code).
     """
+    if not market_is_reliable:
+        return None, False, "UNRELIABLE_MARKET_DATA"
+
     if market_median is None:
         return None, False, "NO_MARKET_DATA"
 
@@ -127,6 +131,7 @@ def calculate_price_recommendation_from_inputs(
     min_margin_pct: Any = 0.20,
     market_median: Optional[Any] = None,
     market_currency: Optional[str] = None,
+    market_is_reliable: bool = True,
     product_currency: str = "INR",
     demand_pct: float = 0.0,
     demand_factor: float = 1.0,
@@ -173,7 +178,8 @@ def calculate_price_recommendation_from_inputs(
         market_median=market_median,
         minimum_fair_price=minimum_fair_price if has_costs else None,
         product_currency=prod_curr,
-        market_currency=market_currency
+        market_currency=market_currency,
+        market_is_reliable=market_is_reliable
     )
 
     med_dec = to_decimal(market_median) if (market_signal_used and market_median is not None) else None
@@ -308,6 +314,8 @@ def calculate_price_recommendation_from_inputs(
 
     if market_signal_used and med_dec is not None:
         reasoning.append(f"Comparable market median is ₹{float(med_dec):,.0f} based on live market research.")
+    elif market_status == "UNRELIABLE_MARKET_DATA":
+        reasoning.append("Market research dataset has insufficient or unverified comparables; ignoring market signal.")
     elif market_status == "CURRENCY_MISMATCH":
         reasoning.append("Market research currency does not match product currency; ignoring market signal.")
 

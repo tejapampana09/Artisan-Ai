@@ -138,9 +138,19 @@ async def research_market(
         )
         retained_listings.append(listing_model)
 
-    # Calculate Market Summary statistics on valid positive prices ONLY
+    # Calculate Market Summary statistics on valid positive prices with verified source URLs ONLY
     total_comparable_count = len(retained_listings)
-    priced_listings = [l for l in retained_listings if l.price is not None and l.price > 0]
+    
+    def _is_valid_url(url_val: Optional[str]) -> bool:
+        if not url_val or not isinstance(url_val, str):
+            return False
+        u = url_val.strip().lower()
+        return u.startswith("http://") or u.startswith("https://")
+
+    priced_listings = [
+        l for l in retained_listings 
+        if l.price is not None and l.price > 0 and _is_valid_url(l.url)
+    ]
     valid_prices = [l.price for l in priced_listings if l.price is not None]
 
     summary_currency = priced_listings[0].currency if priced_listings else (retained_listings[0].currency if retained_listings else "INR")
@@ -156,13 +166,25 @@ async def research_market(
         max_p = None
         priced_count = 0
 
+    if priced_count >= 3:
+        market_conf = "HIGH"
+        is_rel = True
+    elif priced_count == 2:
+        market_conf = "MODERATE"
+        is_rel = True
+    else:
+        market_conf = "LOW"
+        is_rel = False
+
     summary = MarketSummary(
         comparable_count=total_comparable_count,
         priced_comparable_count=priced_count,
         min_price=min_p,
         median_price=med_p,
         max_price=max_p,
-        currency=summary_currency
+        currency=summary_currency,
+        market_confidence=market_conf,
+        is_reliable=is_rel
     )
 
     notice = None
