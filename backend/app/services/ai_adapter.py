@@ -298,16 +298,20 @@ Return a valid JSON object matching this schema EXACTLY:
                             except Exception as e:
                                 logging.getLogger("artisan_ai").warning("[ImageEnhancement] Studio enhancement pipeline skipped: %s", str(e))
 
+                        primary_title = title_native if language != "en" else title_en
+                        primary_desc = desc_native if language != "en" else desc_en
+                        primary_story = story_native if language != "en" else story_en
+
                         return {
                             "source": "LIVE_AI",
                             "is_live_ai": True,
                             "is_demo_data": False,
                             "requires_artisan_verification": True,
-                            "title": title_en,
+                            "title": primary_title,
                             "category": parsed.get("category", clean_category_hint or "Handcrafted"),
                             "materials": materials_str,
-                            "description": desc_en,
-                            "craft_story": story_en,
+                            "description": primary_desc,
+                            "craft_story": primary_story,
                             "title_en": title_en,
                             "description_en": desc_en,
                             "craft_story_en": story_en,
