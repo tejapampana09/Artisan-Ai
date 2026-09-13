@@ -111,23 +111,19 @@ def remove_cluttered_background(img: Image.Image) -> Image.Image:
     return remove_cluttered_background_fallback(img_rgba)
 
 def create_radial_gradient_background(width: int, height: int, color1: Tuple[int, int, int], color2: Tuple[int, int, int]) -> Image.Image:
-    """Creates a smooth radial studio backdrop canvas with center spotlight effect."""
+    """Creates a smooth radial studio backdrop canvas with center spotlight effect (vectorized with NumPy)."""
     base = Image.new("RGBA", (width, height), (*color2, 255))
     spotlight = Image.new("RGBA", (width, height), (*color1, 255))
-    mask = Image.new("L", (width, height), 0)
     
     cx, cy = width / 2.0, height / 2.0
     max_dist = math.sqrt(cx * cx + cy * cy)
     
-    mask_pixels = bytearray(width * height)
-    for y in range(height):
-        for x in range(width):
-            dist = math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
-            ratio = max(0.0, min(1.0, 1.0 - (dist / max_dist)))
-            val = int((ratio ** 1.5) * 255)
-            mask_pixels[y * width + x] = val
-            
-    mask.frombytes(bytes(mask_pixels))
+    y, x = np.ogrid[:height, :width]
+    dist_np = np.sqrt((x - cx)**2 + (y - cy)**2)
+    ratio_np = np.clip(1.0 - (dist_np / max_dist), 0.0, 1.0)
+    val_np = (ratio_np ** 1.5 * 255.0).astype(np.uint8)
+    mask = Image.fromarray(val_np, mode="L")
+    
     composite = Image.composite(spotlight, base, mask)
     return composite
 
@@ -139,6 +135,8 @@ def enhance_image_bytes(image_bytes: bytes, backdrop_id: str = "royal_silk") -> 
     Returns enhanced JPEG image bytes.
     """
     with Image.open(io.BytesIO(image_bytes)) as raw_img:
+        if raw_img.width > 1024 or raw_img.height > 1024:
+            raw_img.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
         # 1. Automatic Background Removal & Product Segmentation
         product_rgba = remove_cluttered_background(raw_img)
         

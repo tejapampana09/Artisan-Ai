@@ -139,6 +139,27 @@ def to_decimal(val, default="0.00") -> Decimal:
         return Decimal(default)
     return Decimal(str(val))
 
+def extract_json_payload(content: str) -> Dict[str, Any]:
+    """Safely extracts and parses JSON payload from LLM response text, handling surrounding prose/markdown."""
+    clean_text = content.strip()
+    if clean_text.startswith("```"):
+        lines = clean_text.split("\n")
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        clean_text = "\n".join(lines).strip()
+    
+    try:
+        return json.loads(clean_text)
+    except json.JSONDecodeError:
+        start_idx = clean_text.find("{")
+        end_idx = clean_text.rfind("}")
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            json_snippet = clean_text[start_idx:end_idx + 1]
+            return json.loads(json_snippet)
+        raise
+
 def get_models_to_try() -> list:
     """Returns an ordered fallback list of active Gemini models starting with configured GEMINI_MODEL."""
     from backend.app.config import GEMINI_MODEL, GEMINI_FALLBACK_MODELS
@@ -421,14 +442,7 @@ Return a valid JSON object matching this schema EXACTLY:
                 if res and res.status_code == 200:
                     data = res.json()
                     content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    if content.startswith("```"):
-                        lines = content.split("\n")
-                        if lines[0].startswith("```"):
-                            lines = lines[1:]
-                        if lines and lines[-1].strip() == "```":
-                            lines = lines[:-1]
-                        content = "\n".join(lines).strip()
-                    parsed = json.loads(content)
+                    parsed = extract_json_payload(content)
 
                     # Validate required core fields from AI
                     if "title" in parsed or "native_title" in parsed:
@@ -652,14 +666,7 @@ async def extract_buyer_intent(
                 if res and res.status_code == 200:
                     data = res.json()
                     content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    if content.startswith("```"):
-                        lines = content.split("\n")
-                        if lines[0].startswith("```"):
-                            lines = lines[1:]
-                        if lines and lines[-1].strip() == "```":
-                            lines = lines[:-1]
-                        content = "\n".join(lines).strip()
-                    parsed = json.loads(content)
+                    parsed = extract_json_payload(content)
 
                     return {
                         "category": category_hint or parsed.get("category") or rule_cat,
@@ -799,14 +806,7 @@ async def translate_craft_text(
                         if resp.status_code == 200:
                             data = resp.json()
                             content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                            if content.startswith("```"):
-                                lines = content.split("\n")
-                                if lines[0].startswith("```"):
-                                    lines = lines[1:]
-                                if lines and lines[-1].strip() == "```":
-                                    lines = lines[:-1]
-                                content = "\n".join(lines).strip()
-                            parsed = json.loads(content)
+                            parsed = extract_json_payload(content)
                             return {
                                 "title": parsed.get("title") or title,
                                 "description": parsed.get("description") or description,
@@ -899,14 +899,7 @@ async def estimate_fair_price(
                         if resp.status_code == 200:
                             data = resp.json()
                             content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                            if content.startswith("```"):
-                                lines = content.split("\n")
-                                if lines[0].startswith("```"):
-                                    lines = lines[1:]
-                                if lines and lines[-1].strip() == "```":
-                                    lines = lines[:-1]
-                                content = "\n".join(lines).strip()
-                            parsed = json.loads(content)
+                            parsed = extract_json_payload(content)
                             raw_sugg = parsed.get("suggested_price")
                             raw_min = parsed.get("min_fair_price")
                             if raw_sugg:

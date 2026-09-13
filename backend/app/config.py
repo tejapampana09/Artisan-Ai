@@ -83,8 +83,8 @@ def get_cors_origins() -> List[str]:
 
 # AI API configuration
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
-GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.6-flash").strip()
-_raw_fallback_models = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.6-flash-lite,gemini-2.5-flash,gemini-1.5-flash")
+GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.5-flash").strip()
+_raw_fallback_models = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite,gemini-3.6-flash")
 GEMINI_FALLBACK_MODELS: List[str] = [m.strip() for m in _raw_fallback_models.split(",") if m.strip()]
 AI_REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "25.0"))
 
