@@ -163,6 +163,7 @@ def approve_and_publish_product(
             DraftCatalog.draft_token == req.draft_token,
             DraftCatalog.user_id == current_user_id
         )
+        .with_for_update()
         .first()
     )
 
@@ -170,6 +171,12 @@ def approve_and_publish_product(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid draft token or draft does not belong to current user."
+        )
+
+    if draft_record.is_consumed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This draft catalog token has already been consumed and published."
         )
 
     try:
@@ -259,6 +266,7 @@ def approve_and_publish_product(
         status=req.status,
         seller_id=current_user_id
     )
+    draft_record.is_consumed = True
     db.add(product)
     db.commit()
     db.refresh(product)

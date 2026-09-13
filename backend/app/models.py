@@ -249,6 +249,7 @@ class DraftCatalog(Base):
     packaging_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
     other_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
     min_margin_pct = Column(Numeric(5, 4), default=Decimal("0.2000"), nullable=False)
+    is_consumed = Column(Boolean, default=False, nullable=False)
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

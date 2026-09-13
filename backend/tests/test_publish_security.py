@@ -136,3 +136,55 @@ def test_seller_cannot_review_own_product():
     }, headers=headers)
     assert rev_res.status_code == 403
     assert "cannot review their own" in rev_res.json()["detail"].lower()
+
+
+def test_draft_token_cannot_be_replayed():
+    """Verify that a draft catalog token cannot be published twice (one-time consumption enforced)."""
+    uid = uuid.uuid4().hex[:6]
+    reg = client.post("/api/auth/register", json={
+        "name": f"Replay Seller {uid}",
+        "email": f"replay.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Generate draft catalog
+    draft_res = client.post("/api/ai/process-catalog", json={
+        "artisan_facts": {
+            "product_name": "Teak Wood Chair",
+            "craft_type": "Woodwork",
+            "materials": ["Teak Wood"],
+            "handmade": True,
+            "making_time": "3 days",
+            "artisan_story": "Handcarved wood",
+            "special_characteristics": "Polished"
+        },
+        "material_cost": 500.0,
+        "labour_cost": 300.0
+    }, headers=headers)
+    assert draft_res.status_code == 200
+    draft_token = draft_res.json()["draft_token"]
+
+    # First publish attempt -> 201 Created
+    pub1 = client.post("/api/ai/approve-and-publish", json={
+        "draft_token": draft_token,
+        "title": "Teak Wood Chair",
+        "category": "Woodwork",
+        "materials": "Teak Wood",
+        "price": 1000.0
+    }, headers=headers)
+    assert pub1.status_code == 201
+
+    # Second publish attempt using same draft token -> 400 Bad Request
+    pub2 = client.post("/api/ai/approve-and-publish", json={
+        "draft_token": draft_token,
+        "title": "Teak Wood Chair",
+        "category": "Woodwork",
+        "materials": "Teak Wood",
+        "price": 1000.0
+    }, headers=headers)
+    assert pub2.status_code == 400
+    assert "already been consumed" in pub2.json()["detail"].lower()
+

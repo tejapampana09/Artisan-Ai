@@ -107,6 +107,13 @@ def ensure_sqlite_schema(eng):
             if "tracking_history" not in ord_cols:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN tracking_history TEXT"))
 
+        # Check draft_catalogs table columns
+        res_draft = conn.execute(text("PRAGMA table_info(draft_catalogs)")).fetchall()
+        draft_cols = [row[1] for row in res_draft]
+        if draft_cols:
+            if "is_consumed" not in draft_cols:
+                conn.execute(text("ALTER TABLE draft_catalogs ADD COLUMN is_consumed BOOLEAN DEFAULT 0 NOT NULL"))
+
         conn.commit()
 
 def get_db():
