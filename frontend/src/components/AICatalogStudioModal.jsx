@@ -854,8 +854,15 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
   const handleApproveAndPublish = async () => {
     const finalPrice = Number(aiDraft.suggested_price);
+    const minFair = Number(aiDraft.min_fair_price || 0);
+
     if (!finalPrice || finalPrice <= 0) {
       notify.warning('Please enter a valid selling price before publishing.');
+      return;
+    }
+
+    if (minFair > 0 && finalPrice < minFair) {
+      notify.error(`Selling price (₹${finalPrice}) cannot be lower than your protected minimum fair price floor of ₹${minFair}.`);
       return;
     }
 
@@ -867,6 +874,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     setPublishing(true);
     if (isOffline) {
       queueProductDraft({
+        draft_token: aiDraft.draft_token,
         title: pubTitle,
         category: aiDraft.category,
         materials: aiDraft.materials,
@@ -897,6 +905,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
     try {
       await approveAndPublishAICatalog({
+        draft_token: aiDraft.draft_token,
         title: pubTitle,
         category: aiDraft.category,
         materials: aiDraft.materials,
@@ -922,7 +931,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       resetForm();
       onClose();
     } catch (err) {
-      notify.error('Approval failed: ' + err.message);
+      notify.error(err.message || 'Approval failed. Please review your edits.');
     } finally {
       setPublishing(false);
     }
@@ -1783,37 +1792,120 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
               {/* Pricing Breakdown & Approval */}
               {aiDraft.pricing_available && aiDraft.suggested_price != null ? (
-                <div className="bg-emerald-50/90 border-2 border-emerald-300 rounded-2xl p-3.5 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center space-x-1">
-                      <Sparkles className="w-3 h-3 text-emerald-700" />
-                      <span>AI Market Price Recommendation (Based on Similar Crafts)</span>
-                    </span>
+                <div className="bg-gradient-to-br from-emerald-50/90 via-emerald-50/40 to-teal-50/60 border-2 border-emerald-300 rounded-2xl p-4 space-y-3 shadow-xs">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-emerald-200/80 pb-2.5">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center space-x-1">
+                        <Sparkles className="w-3 h-3 text-emerald-700" />
+                        <span>Phase 7 Deterministic Market-Aware Pricing Engine</span>
+                      </span>
+                      {(aiDraft.market_summary?.median_price || aiDraft.price_recommendation?.market_median) && (
+                        <span className="text-[10px] font-bold text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-md border border-indigo-200">
+                          📊 30% Market Signal Applied
+                        </span>
+                      )}
+                    </div>
                     {aiDraft.min_fair_price && (
-                      <span className="text-[11px] font-bold text-emerald-800">
-                        Min Fair Margin: ₹{aiDraft.min_fair_price}
+                      <span className="text-[11px] font-extrabold text-emerald-900 bg-white px-2.5 py-0.5 rounded-lg border border-emerald-300 shadow-2xs">
+                        🛡️ Protected 20% Floor: ₹{aiDraft.min_fair_price}
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-1">
+
+                  {/* Main Price Action Row */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-0.5">
                     <div>
-                      <p className="text-[11px] text-emerald-800 font-medium leading-tight">
-                        AI analyzed similar market products in <strong>{aiDraft.category || 'this category'}</strong> to recommend optimal market value.
+                      <h5 className="text-xs font-bold text-slate-800">Final Recommended Selling Price</h5>
+                      <p className="text-[11px] text-emerald-800 font-medium leading-tight mt-0.5">
+                        Combines artisan cost basis + 20% floor + 30% market median signal + safety caps.
                       </p>
                     </div>
                     <div className="flex items-center space-x-2 shrink-0">
-                      <span className="text-xs font-bold text-slate-800">Recommended Selling Price:</span>
+                      <span className="text-xs font-extrabold text-slate-800">Selling Price:</span>
                       <div className="flex items-center">
-                        <span className="text-sm font-extrabold text-[#4A2E1B] mr-1">₹</span>
+                        <span className="text-base font-black text-[#4A2E1B] mr-1">₹</span>
                         <input
                           type="number"
                           value={aiDraft.suggested_price ?? ''}
                           onChange={(e) => handleDraftChange('suggested_price', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                          className="w-28 text-sm font-black border-2 border-emerald-400 rounded-xl px-2.5 py-1 text-slate-900 bg-white text-right shadow-xs"
+                          className={`w-32 text-base font-black border-2 rounded-xl px-3 py-1 text-slate-900 bg-white text-right shadow-xs focus:ring-2 focus:ring-emerald-500 ${
+                            Number(aiDraft.suggested_price) < Number(aiDraft.min_fair_price || 0)
+                              ? 'border-rose-500 text-rose-700 bg-rose-50'
+                              : 'border-emerald-400'
+                          }`}
                         />
                       </div>
                     </div>
                   </div>
+
+                  {/* Floor Protection Warning Banner if Price is Below Minimum */}
+                  {Number(aiDraft.suggested_price) < Number(aiDraft.min_fair_price || 0) && (
+                    <div className="p-2.5 bg-rose-50 border border-rose-300 rounded-xl flex items-center space-x-2 text-xs text-rose-900">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span className="font-bold">
+                        Warning: Selling price ₹{aiDraft.suggested_price} is below your protected minimum fair floor of ₹{aiDraft.min_fair_price}. Publishing will be rejected.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Market & Cost Signals Breakdown Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {/* Cost Basis & Floor Card */}
+                    <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-200">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Artisan Cost & Profit Floor</span>
+                      <div className="flex justify-between items-baseline mt-1">
+                        <span className="text-xs font-semibold text-slate-700">Cost Basis:</span>
+                        <span className="text-xs font-bold text-slate-900">
+                          ₹{((Number(aiDraft.material_cost)||0) + (Number(aiDraft.labour_cost)||0) + (Number(aiDraft.packaging_cost)||0) + (Number(aiDraft.other_cost)||0))}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-baseline mt-0.5">
+                        <span className="text-xs font-semibold text-emerald-800">20% Fair Price Floor:</span>
+                        <span className="text-xs font-black text-emerald-700">
+                          ₹{aiDraft.min_fair_price || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Market Research Signal Card */}
+                    <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-200">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Phase 5 Market Research Signal</span>
+                      <div className="flex justify-between items-baseline mt-1">
+                        <span className="text-xs font-semibold text-slate-700">Comparable Market Median:</span>
+                        <span className="text-xs font-bold text-indigo-900">
+                          {aiDraft.market_summary?.median_price != null || aiDraft.price_recommendation?.market_median != null
+                            ? `₹${aiDraft.market_summary?.median_price || aiDraft.price_recommendation?.market_median}`
+                            : 'Initial Category Listing'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-baseline mt-0.5">
+                        <span className="text-xs font-semibold text-slate-600">Retained Benchmark Range:</span>
+                        <span className="text-xs font-bold text-slate-800">
+                          {aiDraft.market_summary?.min_price != null && aiDraft.market_summary?.max_price != null
+                            ? `₹${aiDraft.market_summary.min_price} – ₹${aiDraft.market_summary.max_price} (${aiDraft.market_summary.comparable_count || 0} items)`
+                            : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Explainable Pricing Reasoning Bullets */}
+                  {Array.isArray(aiDraft.price_recommendation?.reasoning) && aiDraft.price_recommendation.reasoning.length > 0 && (
+                    <div className="bg-white/90 p-3 rounded-xl border border-emerald-200/90 space-y-1.5">
+                      <span className="text-[11px] font-extrabold text-slate-800 block flex items-center space-x-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Explainable Pricing Decision Reasoning:</span>
+                      </span>
+                      <ul className="space-y-1 pl-1">
+                        {aiDraft.price_recommendation.reasoning.map((r, i) => (
+                          <li key={i} className="text-[11px] text-slate-700 flex items-start space-x-1.5 leading-snug">
+                            <span className="text-emerald-600 font-bold shrink-0 mt-0.5">•</span>
+                            <span>{r}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">

@@ -6,6 +6,8 @@ from backend.app.main import app
 from backend.app.schemas import ArtisanFacts
 from backend.app.services.catalog_orchestrator import process_full_catalog_pipeline_sync
 from backend.app.services.market_research_provider import MockMarketResearchProvider
+from backend.app.routes.ai_catalog import approve_and_publish_product, CatalogApproveRequest
+from fastapi import HTTPException
 
 client = TestClient(app)
 
@@ -30,10 +32,13 @@ def test_phase7_1_catalog_orchestrator_pipeline_with_mock_market(db):
         packaging_cost=50.0,
         other_cost=50.0,
         provider=mock_provider,
-        db=db
+        db=db,
+        user_id=1
     )
 
     # 1. Unified Contract fields check
+    assert "draft_token" in res
+    assert res["draft_token"].startswith("draft_")
     assert "catalog" in res
     assert "artisan_facts" in res
     assert "market_summary" in res
@@ -56,78 +61,7 @@ def test_phase7_1_catalog_orchestrator_pipeline_with_mock_market(db):
     assert price_rec["recommended_price"] > 720.0
     assert len(price_rec["reasoning"]) > 0
 
-def test_phase7_2_publish_price_safety_floor_rejection(db):
-    # Minimum fair price for cost basis 600 is ₹720
-    approve_payload = {
-        "title": "Kondapalli Wooden Horse",
-        "category": "Toys",
-        "materials": "Teak Wood, Vegetable Dyes",
-        "description": "Handcrafted wooden toy",
-        "craft_story": "Heritage Kondapalli craft",
-        "price": 500.0, # Below minimum fair price floor of ₹720
-        "material_cost": 300.0,
-        "labour_cost": 200.0,
-        "packaging_cost": 50.0,
-        "other_cost": 50.0,
-        "min_margin_pct": 0.20
-    }
-
-    # Simulate request with test client or direct endpoint logic
-    from backend.app.routes.ai_catalog import approve_and_publish_product, CatalogApproveRequest
-    from fastapi import HTTPException
-
-    req = CatalogApproveRequest(**approve_payload)
-    mock_user = type("User", (), {"id": 1})()
-
-    with pytest.raises(HTTPException) as exc_info:
-        approve_and_publish_product(req, db=db, current_user=mock_user)
-
-    assert exc_info.value.status_code == 400
-    assert "below minimum fair price floor" in exc_info.value.detail
-
-def test_phase7_3_publish_final_validation_strips_unverified_materials(db):
-    # Original canonical facts only include Teak Wood and Vegetable Dyes
-    original_facts = ArtisanFacts(
-        product_name="Kondapalli Wooden Horse",
-        craft_type="Toys",
-        materials=["Teak Wood", "Vegetable Dyes"],
-        handmade=True
-    )
-
-    # Artisan attempts to add "24K Gold Leaf, Diamond Dust" in review UI before publishing
-    approve_payload = {
-        "artisan_facts": original_facts.model_dump(),
-        "title": "Kondapalli Wooden Horse",
-        "category": "Toys",
-        "materials": "Teak Wood, Vegetable Dyes, 24K Gold Leaf, Diamond Dust",
-        "description": "Handcrafted wooden toy",
-        "craft_story": "Heritage Kondapalli craft",
-        "price": 850.0, # Above minimum fair price floor ₹720
-        "material_cost": 300.0,
-        "labour_cost": 200.0,
-        "packaging_cost": 50.0,
-        "other_cost": 50.0,
-        "min_margin_pct": 0.20
-    }
-
-    from backend.app.routes.ai_catalog import approve_and_publish_product, CatalogApproveRequest
-    from fastapi import HTTPException
-
-    req = CatalogApproveRequest(**approve_payload)
-    mock_user = type("User", (), {"id": 1})()
-
-    # Strict validation rejects unverified 24K Gold Leaf and Diamond Dust with 400 Bad Request
-    with pytest.raises(HTTPException) as exc_info:
-        approve_and_publish_product(req, db=db, current_user=mock_user)
-
-    assert exc_info.value.status_code == 400
-    assert "Material(s)" in exc_info.value.detail
-
 def test_phase7_trust_boundary_1_server_owned_draft_token_and_cost_floor(db):
-    from backend.app.services.catalog_orchestrator import process_full_catalog_pipeline_sync
-    from backend.app.routes.ai_catalog import approve_and_publish_product, CatalogApproveRequest
-    from fastapi import HTTPException
-
     original_facts = ArtisanFacts(
         product_name="Terracotta Water Jug",
         craft_type="Pottery",
@@ -203,4 +137,38 @@ def test_phase7_trust_boundary_1_server_owned_draft_token_and_cost_floor(db):
     published = approve_and_publish_product(CatalogApproveRequest(**valid_publish_payload), db=db, current_user=mock_user)
     assert published.id is not None
     assert published.price == Decimal("850.00")
+    # Verify server_min_margin_pct (20%) is stored in Product
+    assert published.min_margin_pct == Decimal("0.2000")
 
+def test_phase7_draft_ownership_check_prevents_unauthorized_publish(db):
+    user_a_facts = ArtisanFacts(
+        product_name="User A Brass Plate",
+        craft_type="Brassware",
+        materials=["Brass"],
+        handmade=True
+    )
+
+    # 1. User 1 creates draft catalog
+    draft_res = process_full_catalog_pipeline_sync(
+        artisan_facts=user_a_facts,
+        material_cost=400.0,
+        db=db,
+        user_id=1
+    )
+    draft_token = draft_res["draft_token"]
+
+    # 2. User 2 (attacker) attempts to publish User 1's draft_token
+    user_b = type("User", (), {"id": 2})()
+    user_b_payload = {
+        "draft_token": draft_token,
+        "title": "User B Stolen Draft",
+        "category": "Brassware",
+        "materials": "Brass",
+        "price": 1000.0
+    }
+
+    with pytest.raises(HTTPException) as exc_info:
+        approve_and_publish_product(CatalogApproveRequest(**user_b_payload), db=db, current_user=user_b)
+
+    assert exc_info.value.status_code == 403
+    assert "belong to current user" in exc_info.value.detail

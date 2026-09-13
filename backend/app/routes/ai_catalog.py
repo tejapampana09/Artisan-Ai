@@ -70,8 +70,7 @@ class AICatalogDraftResponse(BaseModel):
     price_recommendation: Optional[Dict[str, Any]] = None
 
 class CatalogApproveRequest(BaseModel):
-    draft_token: Optional[str] = Field(None, description="Server-owned draft token from process-catalog")
-    artisan_facts: Optional[ArtisanFacts] = Field(default=None, description="Original canonical verified artisan facts object for fallback validation")
+    draft_token: str = Field(..., description="Server-owned draft token from process-catalog")
     title: str = Field(..., min_length=2, max_length=255)
     category: str = Field(..., min_length=2, max_length=100)
     materials: Optional[str] = Field(None, max_length=500)
@@ -146,37 +145,50 @@ def approve_and_publish_product(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # 0. Retrieve Server-Owned Draft Catalog if draft_token is supplied
-    draft_record = None
-    if req.draft_token:
-        draft_record = db.query(DraftCatalog).filter(DraftCatalog.draft_token == req.draft_token).first()
+    current_user_id = cast(int, current_user.id)
 
-    server_artisan_facts = None
-    if draft_record is not None:
-        try:
-            facts_dict = json.loads(draft_record.artisan_facts_json)
-            server_artisan_facts = ArtisanFacts(**facts_dict)
-        except Exception:
-            server_artisan_facts = None
-        
-        # Server-owned cost basis & minimum fair price floor
-        mat_cost = draft_record.material_cost
-        lab_cost = draft_record.labour_cost
-        pkg_cost = draft_record.packaging_cost
-        oth_cost = draft_record.other_cost
-        min_margin_pct = max(Decimal("0.20"), draft_record.min_margin_pct)
-    else:
-        server_artisan_facts = req.artisan_facts
-        mat_cost = req.material_cost if req.material_cost is not None else Decimal("0.00")
-        lab_cost = req.labour_cost if req.labour_cost is not None else Decimal("0.00")
-        pkg_cost = req.packaging_cost if req.packaging_cost is not None else Decimal("0.00")
-        oth_cost = req.other_cost if req.other_cost is not None else Decimal("0.00")
-        min_margin_pct = req.min_margin_pct if req.min_margin_pct is not None else Decimal("0.20")
+    # 0. Retrieve Server-Owned Draft Catalog & enforce user_id ownership (P0 #1 & P0 #2)
+    if not req.draft_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="draft_token is required. Every catalog publish request must be anchored to a server-owned draft token."
+        )
+
+    draft_record = (
+        db.query(DraftCatalog)
+        .filter(
+            DraftCatalog.draft_token == req.draft_token,
+            DraftCatalog.user_id == current_user_id
+        )
+        .first()
+    )
+
+    if draft_record is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid draft token or draft does not belong to current user."
+        )
+
+    try:
+        facts_dict = json.loads(draft_record.artisan_facts_json)
+        server_artisan_facts = ArtisanFacts(**facts_dict)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Corrupted server draft state."
+        )
+    
+    # Server-owned cost basis & minimum fair price floor (P0 #3)
+    mat_cost = draft_record.material_cost
+    lab_cost = draft_record.labour_cost
+    pkg_cost = draft_record.packaging_cost
+    oth_cost = draft_record.other_cost
+    server_min_margin_pct = max(Decimal("0.20"), draft_record.min_margin_pct)
 
     # 1. Price Safety Check against Server-Owned Minimum Fair Price floor
     cost_basis = mat_cost + lab_cost + pkg_cost + oth_cost
     if cost_basis > 0:
-        minimum_fair_price = (cost_basis * (Decimal("1.0") + min_margin_pct)).quantize(Decimal("0.01"))
+        minimum_fair_price = (cost_basis * (Decimal("1.0") + server_min_margin_pct)).quantize(Decimal("0.01"))
         if req.price < minimum_fair_price:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -192,16 +204,15 @@ def approve_and_publish_product(
         "craft_story": req.craft_story or ""
     }
 
-    if server_artisan_facts is not None:
-        errors = validate_edited_catalog_strictly(raw_edited, server_artisan_facts)
-        if errors:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="; ".join(errors)
-            )
+    errors = validate_edited_catalog_strictly(raw_edited, server_artisan_facts)
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="; ".join(errors)
+        )
 
-    # 3. Sanitize and Publish
-    validated_edited = validate_catalog_draft(raw_edited, server_artisan_facts) if server_artisan_facts else raw_edited
+    # 3. Sanitize and Publish using server-owned min_margin_pct
+    validated_edited = validate_catalog_draft(raw_edited, server_artisan_facts)
     final_materials = validated_edited.get("materials", req.materials)
     final_description = validated_edited.get("description", req.description)
     final_craft_story = validated_edited.get("craft_story", req.craft_story)
@@ -223,12 +234,12 @@ def approve_and_publish_product(
         labour_cost=lab_cost.quantize(Decimal("0.01")),
         packaging_cost=pkg_cost.quantize(Decimal("0.01")),
         other_cost=oth_cost.quantize(Decimal("0.01")),
-        min_margin_pct=req.min_margin_pct.quantize(Decimal("0.0001")),
+        min_margin_pct=server_min_margin_pct.quantize(Decimal("0.0001")),
         auto_smart_pricing_enabled=req.auto_smart_pricing_enabled,
         image_url=req.image_url,
         enhanced_image_url=req.enhanced_image_url,
         status=req.status,
-        seller_id=current_user.id
+        seller_id=current_user_id
     )
     db.add(product)
     db.commit()

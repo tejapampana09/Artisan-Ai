@@ -150,7 +150,8 @@ async def process_full_catalog_pipeline(
             db.add(draft_rec)
             db.commit()
         except Exception:
-            pass
+            db.rollback()
+            raise
 
     return {
         "draft_token": draft_token,

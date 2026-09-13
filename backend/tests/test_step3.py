@@ -48,6 +48,11 @@ def test_ai_catalog_pipeline_and_approval():
 
     # 1. Process Voice & Image into AI Catalog Draft (mocked to avoid live Gemini call)
     req_payload = {
+        "qna_answers": {
+            "q1_title": "మచిలీపట్నం కలంకారి చీర",
+            "q2_materials": "Pure Cotton, Natural Vegetable Dyes",
+            "q3_story": "ఈ చీర మచిలీపట్నం సంప్రదాయ కళాకారుడు చేతితో వేసిన అందమైన కలంకారి చిత్రాలతో అలంకరించబడింది."
+        },
         "voice_description": "ఇది మచిలీపట్నం కలంకారి చేతితో వేసిన చీర, సహజ కూరగాయల రంగులు వాడాము",
         "language": "te",
         "image_url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
@@ -90,6 +95,7 @@ def test_ai_catalog_pipeline_and_approval():
 
     # 2. Artisan Review & Human Approval Flow
     approved_payload = {
+        "draft_token": draft["draft_token"],
         "title": draft["title"] + " (Artisan Verified)",
         "category": draft["category"],
         "materials": draft["materials"],
