@@ -47,6 +47,8 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
         if not query or not query.strip() or not self.api_key:
             return []
 
+        clean_q = query.strip()
+        results: List[Dict[str, Any]] = []
         from backend.app.config import GEMINI_MODEL
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={self.api_key}"
         prompt = f"""Search live Google Search for current e-commerce product listings in India for: "{clean_q}".

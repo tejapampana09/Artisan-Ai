@@ -33,6 +33,7 @@ async def process_full_catalog_pipeline(
     labour_cost: Optional[float] = None,
     packaging_cost: Optional[float] = None,
     other_cost: Optional[float] = None,
+    selling_price: Optional[float] = None,
     qna_answers: Optional[Dict[str, str]] = None,
     provider: Optional[BaseMarketResearchProvider] = None,
     db: Optional[Session] = None,
@@ -91,7 +92,7 @@ async def process_full_catalog_pipeline(
     pricing_rec = calculate_price_recommendation_from_inputs(
         title=validated_catalog.get("title", ""),
         category=validated_catalog.get("category", "Handcrafted"),
-        current_price=0.0,
+        current_price=selling_price or 0.0,
         material_cost=material_cost or 0.0,
         labour_cost=labour_cost or 0.0,
         packaging_cost=packaging_cost or 0.0,

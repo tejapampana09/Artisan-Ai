@@ -30,6 +30,7 @@ class AICatalogRequest(BaseModel):
     labour_cost: Optional[float] = Field(None, ge=0, description="Artisan actual labour value in INR")
     packaging_cost: Optional[float] = Field(None, ge=0, description="Artisan actual packaging cost in INR")
     other_cost: Optional[float] = Field(None, ge=0, description="Artisan actual other expenses in INR")
+    selling_price: Optional[float] = Field(None, ge=0, description="Artisan target or current selling price in INR")
 
 class AICatalogDraftResponse(BaseModel):
     draft_token: Optional[str] = Field(None, description="Server-owned draft token for verified provenance publishing")
@@ -134,6 +135,7 @@ async def process_voice_and_image(
         labour_cost=req.labour_cost,
         packaging_cost=req.packaging_cost,
         other_cost=req.other_cost,
+        selling_price=req.selling_price,
         qna_answers=req.qna_answers,
         db=db,
         user_id=user_id

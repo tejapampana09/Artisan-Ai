@@ -190,24 +190,17 @@ def calculate_price_recommendation_from_inputs(
         # Case 1 — Price NOT provided by Artisan
         pricing_case = "CASE_1_PRICE_NOT_PROVIDED"
         if med_dec is not None and med_dec > 0:
-            if has_costs and minimum_fair_price > 0:
-                base_anchor = minimum_fair_price
-                target_price = (base_anchor * Decimal("0.70")) + (med_dec * Decimal("0.30"))
-            else:
-                target_price = med_dec
-            target_price = (target_price * Decimal(str(demand_factor)) * Decimal(str(market_adj))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            raw_recommended = med_dec
             reasoning.append(f"Selling price not provided. Recommended fair market price based on comparable market median (₹{float(med_dec):,.0f}).")
         elif low_dec is not None and high_dec is not None:
-            target_price = (low_dec + high_dec) / Decimal("2.0")
-            reasoning.append(f"Selling price not provided. Recommended mid-range price based on craft benchmarks (₹{float(target_price):,.0f}).")
-        elif minimum_fair_price > 0:
-            target_price = minimum_fair_price
+            raw_recommended = (low_dec + high_dec) / Decimal("2.0")
+            reasoning.append(f"Selling price not provided. Recommended mid-range price based on craft benchmarks (₹{float(raw_recommended):,.0f}).")
+        elif has_costs and minimum_fair_price > 0:
+            raw_recommended = minimum_fair_price
             reasoning.append(f"Selling price not provided. Recommendation set to minimum fair price (₹{float(minimum_fair_price):,.0f}) based on cost basis.")
         else:
-            target_price = Decimal("500.00")
-            reasoning.append("Selling price not provided. Default market entry price applied.")
-
-        raw_recommended = target_price
+            raw_recommended = None
+            reasoning.append("Selling price not provided and no market research or cost inputs available.")
 
     else:
         # Artisan provided a price (curr_price > 0)
@@ -215,17 +208,17 @@ def calculate_price_recommendation_from_inputs(
         is_above = False
         is_inside = False
 
-        if low_dec is not None and high_dec is not None:
-            if curr_price < low_dec:
-                is_below = True
-            elif curr_price > high_dec:
-                is_above = True
-            else:
-                is_inside = True
-        elif med_dec is not None and med_dec > 0:
+        if med_dec is not None and med_dec > 0:
             if curr_price < (med_dec * Decimal("0.85")):
                 is_below = True
             elif curr_price > (med_dec * Decimal("1.15")):
+                is_above = True
+            else:
+                is_inside = True
+        elif low_dec is not None and high_dec is not None:
+            if curr_price < low_dec:
+                is_below = True
+            elif curr_price > high_dec:
                 is_above = True
             else:
                 is_inside = True
@@ -233,68 +226,51 @@ def calculate_price_recommendation_from_inputs(
             is_inside = True
 
         if is_below:
-            # Case 2 — Artisan price below market range
+            # Case 2 — Artisan price below market range -> move to market median!
             pricing_case = "CASE_2_BELOW_MARKET"
-            mkt_target = med_dec or low_dec or curr_price
-            if market_anchor is not None:
-                suggested_anchor = market_anchor
-            else:
-                suggested_anchor = (curr_price * Decimal("0.70")) + (mkt_target * Decimal("0.30"))
-
-            raw_recommended = (suggested_anchor * Decimal(str(demand_factor)) * Decimal(str(market_adj))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            
-            max_upward_allowed = (curr_price * (Decimal("1.0") + MAX_UPWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            raw_recommended = min(raw_recommended, max_upward_allowed)
-
-            reasoning.append(f"Your price (₹{float(curr_price):,.0f}) is below the observed market range. We suggest adjusting toward market fair value.")
+            target_mkt = med_dec or low_dec or curr_price
+            raw_recommended = target_mkt
+            reasoning.append(f"Your price (₹{float(curr_price):,.0f}) is below observed market range (median ₹{float(target_mkt):,.0f}). We suggest adjusting toward market fair value.")
 
         elif is_above:
-            # Case 4 — Artisan price above market range
+            # Case 4 — Artisan price above market range -> preserve artisan price & flag premium!
             pricing_case = "CASE_4_ABOVE_MARKET"
             raw_recommended = curr_price
             mkt_ref_str = f"₹{float(med_dec):,.0f}" if med_dec else f"₹{float(high_dec):,.0f}"
             reasoning.append(f"Your price (₹{float(curr_price):,.0f}) is above the observed market range (median {mkt_ref_str}). Premium handcrafted positioning flagged.")
 
         else:
-            # Case 3 — Artisan price inside market range
+            # Case 3 — Artisan price inside market range -> preserve artisan price exactly!
             pricing_case = "CASE_3_INSIDE_MARKET"
-            if market_signal_used and med_dec is not None:
-                market_anchor_val = (curr_price * Decimal("0.70")) + (med_dec * Decimal("0.30"))
-                raw_recommended = (market_anchor_val * Decimal(str(demand_factor)) * Decimal(str(market_adj))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                
-                if med_dec < curr_price:
-                    # When market median is lower than current price, cap at current price
-                    raw_recommended = min(curr_price, raw_recommended)
-                else:
-                    max_upward_allowed = (curr_price * (Decimal("1.0") + MAX_UPWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                    min_downward_allowed = (curr_price * (Decimal("1.0") - MAX_DOWNWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                    raw_recommended = min(max_upward_allowed, max(min_downward_allowed, raw_recommended))
-            else:
-                raw_recommended = curr_price
-
-            reasoning.append(f"Your price (₹{float(curr_price):,.0f}) is inside the competitive market range.")
-
-    if market_status == "CURRENCY_MISMATCH":
-        reasoning.append("Market median excluded because currency does not match the product pricing currency.")
+            raw_recommended = curr_price
+            reasoning.append(f"Your price (₹{float(curr_price):,.0f}) is inside the competitive market range. Preserving your price.")
 
     # -------------------------------------------------------------------------
-    # COST FLOOR ENFORCEMENT
+    # COST FLOOR ENFORCEMENT & FINAL PRICE CALCULATION
     # -------------------------------------------------------------------------
-    if has_costs:
-        if raw_recommended < minimum_fair_price:
-            final_recommended = minimum_fair_price
-            reasoning.append(f"Protected minimum fair price floor applied (₹{float(minimum_fair_price):,.0f}) to guarantee your configured {int(float(margin_pct) * 100)}% profit margin above cost basis.")
+    if raw_recommended is not None:
+        if has_costs and minimum_fair_price > 0:
+            final_recommended = max(raw_recommended, minimum_fair_price)
+            if final_recommended > raw_recommended:
+                reasoning.append(f"Protected minimum fair price floor applied (₹{float(minimum_fair_price):,.0f}) to guarantee your configured {int(float(margin_pct) * 100)}% profit margin above cost basis.")
         else:
             final_recommended = raw_recommended
+
+        rounded_price = (Decimal(round(float(final_recommended) / 5.0) * 5)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if has_costs and rounded_price < minimum_fair_price:
+            rounded_price = minimum_fair_price
+        pricing_available = True
     else:
-        final_recommended = raw_recommended
+        if has_costs and minimum_fair_price > 0:
+            final_recommended = minimum_fair_price
+            rounded_price = (Decimal(round(float(final_recommended) / 5.0) * 5)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            pricing_available = True
+        else:
+            final_recommended = None
+            rounded_price = None
+            pricing_available = False
 
-    # Round final price to nearest ₹5
-    rounded_price = (Decimal(round(float(final_recommended) / 5.0) * 5)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    if has_costs and rounded_price < minimum_fair_price:
-        rounded_price = minimum_fair_price
-
-    if curr_price > 0:
+    if curr_price > 0 and rounded_price is not None:
         price_change_amount = (rounded_price - curr_price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         price_change_pct = round((float(price_change_amount) / float(curr_price) * 100.0), 1)
     else:
@@ -320,6 +296,8 @@ def calculate_price_recommendation_from_inputs(
 
     if market_signal_used and med_dec is not None:
         reasoning.append(f"Comparable market median is ₹{float(med_dec):,.0f} based on live market research.")
+    elif market_status == "CURRENCY_MISMATCH":
+        reasoning.append("Market research currency does not match product currency; ignoring market signal.")
 
     safety_constraints = {
         "minimum_fair_price_protected": has_costs,
@@ -340,9 +318,10 @@ def calculate_price_recommendation_from_inputs(
         "minimum_fair_price": float(minimum_fair_price),
         "demand_factor": float(demand_factor),
         "market_adjustment": float(market_adj),
-        "recommended_price": float(rounded_price),
+        "recommended_price": float(rounded_price) if rounded_price is not None else None,
+        "pricing_available": pricing_available,
         "market_median": float(med_dec) if med_dec is not None else None,
-        "market_weight": 0.30 if market_signal_used else 0.0,
+        "market_weight": float(CONFIG_MARKET_MEDIAN_WEIGHT) if market_signal_used else 0.0,
         "market_signal_used": market_signal_used,
         "market_range": {
             "low": float(low_dec) if low_dec is not None else 0.0,
