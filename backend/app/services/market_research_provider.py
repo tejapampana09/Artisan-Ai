@@ -179,11 +179,6 @@ class WebSearchMarketResearchProvider(BaseMarketResearchProvider):
         return results[:limit]
 
     async def _search_serper(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
-        search_terms = [
-            f"{query} price INR buy online",
-            f"buy {query} online India",
-            f"{query} handicraft price rupees"
-        ]
         results = []
         headers = {
             "X-API-KEY": self.api_key,
@@ -191,44 +186,75 @@ class WebSearchMarketResearchProvider(BaseMarketResearchProvider):
         }
 
         async with httpx.AsyncClient(timeout=10.0) as client:
-            for term in search_terms:
-                if len(results) >= limit:
-                    break
-                payload = {"q": term, "gl": "in", "hl": "en"}
-                resp = await client.post("https://google.serper.dev/search", json=payload, headers=headers)
-                if resp.status_code != 200:
-                    continue
+            # Primary: /shopping endpoint — has real prices
+            try:
+                shop_payload = {"q": query, "gl": "in", "num": min(limit, 20)}
+                resp = await client.post("https://google.serper.dev/shopping", json=shop_payload, headers=headers)
+                if resp.status_code == 200:
+                    for item in resp.json().get("shopping", []):
+                        if len(results) >= limit:
+                            break
+                        title = (item.get("title") or "").strip()
+                        if not title:
+                            continue
+                        raw_price_str = item.get("price") or ""
+                        parsed_price = None
+                        if raw_price_str:
+                            clean = re.sub(r"[^\d.]", "", str(raw_price_str))
+                            try:
+                                v = float(clean)
+                                if 50 <= v <= 500000:
+                                    parsed_price = v
+                            except (ValueError, TypeError):
+                                pass
+                        url = item.get("link") or ""
+                        source = item.get("source") or urlparse(url).netloc.replace("www.", "").capitalize() or "CraftMarketplace"
+                        results.append({
+                            "title": title,
+                            "price": parsed_price,
+                            "currency": "INR",
+                            "source": source,
+                            "url": url,
+                            "description": item.get("snippet") or "",
+                            "category": query,
+                            "materials": [],
+                            "observed_at": datetime.now(timezone.utc)
+                        })
+            except Exception as err:
+                logger.warning("Serper /shopping failed for '%s': %s", query, err)
 
-                res_json = resp.json()
-                raw_candidates = res_json.get("shopping", []) + res_json.get("organic", [])
-
-                for cand in raw_candidates:
-                    if len(results) >= limit:
-                        break
-
-                    title = (cand.get("title") or "").strip()
-                    url = cand.get("link") or cand.get("url") or ""
-                    snippet = cand.get("snippet") or cand.get("description") or ""
-
-                    if not title or "google.com" in url:
-                        continue
-
-                    domain = urlparse(url).netloc.replace("www.", "").capitalize() if url else "CraftMarketplace"
-                    source = cand.get("source") or domain or "CraftMarketplace"
-
-                    parsed_price = self._extract_price(cand.get("price"), title, snippet)
-
-                    results.append({
-                        "title": title,
-                        "price": parsed_price,
-                        "currency": "INR",
-                        "source": source,
-                        "url": url,
-                        "description": snippet,
-                        "category": query,
-                        "materials": [],
-                        "observed_at": datetime.now(timezone.utc)
-                    })
+            # Fallback: /search organic results if shopping didn't fill limit
+            if len(results) < limit:
+                try:
+                    search_payload = {"q": f"{query} buy online India price INR", "gl": "in", "hl": "en"}
+                    resp = await client.post("https://google.serper.dev/search", json=search_payload, headers=headers)
+                    if resp.status_code == 200:
+                        res_json = resp.json()
+                        raw_candidates = res_json.get("shopping", []) + res_json.get("organic", [])
+                        for cand in raw_candidates:
+                            if len(results) >= limit:
+                                break
+                            title = (cand.get("title") or "").strip()
+                            url = cand.get("link") or cand.get("url") or ""
+                            snippet = cand.get("snippet") or cand.get("description") or ""
+                            if not title or "google.com" in url:
+                                continue
+                            domain = urlparse(url).netloc.replace("www.", "").capitalize() if url else "CraftMarketplace"
+                            source = cand.get("source") or domain or "CraftMarketplace"
+                            parsed_price = self._extract_price(cand.get("price"), title, snippet)
+                            results.append({
+                                "title": title,
+                                "price": parsed_price,
+                                "currency": "INR",
+                                "source": source,
+                                "url": url,
+                                "description": snippet,
+                                "category": query,
+                                "materials": [],
+                                "observed_at": datetime.now(timezone.utc)
+                            })
+                except Exception as err:
+                    logger.warning("Serper /search fallback failed for '%s': %s", query, err)
 
         return results
 
