@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Mic, MicOff, Sparkles, Image as ImageIcon, CheckCircle2, 
   Layers, Volume2, Globe, ShieldCheck, ArrowRight, RefreshCw, Wand2,
-  Camera, Upload, Trash2, AlertTriangle
+  Camera, Upload, Trash2, AlertTriangle, Zap
 } from 'lucide-react';
 import { processAICatalog, approveAndPublishAICatalog, estimateFairPrice } from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
@@ -256,7 +256,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [audioUrl, setAudioUrl] = useState(null);
   const [selectedBackdrop, setSelectedBackdrop] = useState('royal_silk');
-  const [costs, setCosts] = useState({ material: '', labour: '', packaging: '' });
+  const [costs, setCosts] = useState({ material: '', labour: '', packaging: '', other: '', selling_price: '' });
   const [aiDraft, setAiDraft] = useState(null);
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -572,7 +572,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
   const handleGenerateAI = async () => {
     if (!voiceText.trim() && !selectedPhoto && !customImageUrl.trim()) {
-      notify.warning('Please speak or type a craft description, or select an inspiration craft.');
+      notify.warning('Please speak or type a craft description, or upload/select a photo.');
       return;
     }
     setStep('PROCESSING');
@@ -584,6 +584,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     const lab = Number(costs.labour) || 0;
     const pkg = Number(costs.packaging) || 0;
     const oth = Number(costs.other) || 0;
+    const targetSellingPrice = Number(costs.selling_price) || null;
     const effectiveImg = customImageUrl.trim() || selectedPhoto?.url || '';
     const effectiveCat = selectedPhoto?.category || null;
 
@@ -599,11 +600,11 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
           materials: '',
           description: voiceText.trim() || '',
           craft_story: '',
-          suggested_price: costBasis > 0 ? Math.round(costBasis * 1.40) : null,
+          suggested_price: targetSellingPrice || (costBasis > 0 ? Math.round(costBasis * 1.40) : null),
           min_fair_price: minFair,
-          pricing_available: costBasis > 0,
-          pricing_source: costBasis > 0 ? 'COST_PLUS_MARGIN' : 'AWAITING_ARTISAN_INPUT',
-          notice: costBasis > 0 ? 'Saved locally in rural offline mode.' : 'Saved locally in rural offline mode. Cost inputs omitted; please set selling price manually.',
+          pricing_available: costBasis > 0 || !!targetSellingPrice,
+          pricing_source: targetSellingPrice ? 'ARTISAN_INPUT' : (costBasis > 0 ? 'COST_PLUS_MARGIN' : 'AWAITING_ARTISAN_INPUT'),
+          notice: costBasis > 0 ? 'Saved locally in rural offline mode.' : 'Saved locally in rural offline mode.',
           material_cost: mat || null,
           labour_cost: lab || null,
           packaging_cost: pkg || null,
@@ -647,7 +648,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         material_cost: mat || null,
         labour_cost: lab || null,
         packaging_cost: pkg || null,
-        other_cost: oth || null
+        other_cost: oth || null,
+        selling_price: targetSellingPrice
       });
       setAiDraft(res);
       setStep('REVIEW');
@@ -1050,7 +1052,17 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-3">
+                <div className="flex items-center justify-between pt-3">
+                  {(customImageUrl || selectedPhoto) ? (
+                    <button
+                      type="button"
+                      onClick={handleGenerateAI}
+                      className="inline-flex items-center space-x-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
+                    >
+                      <Zap className="w-4 h-4 text-yellow-300 fill-yellow-300 animate-pulse" />
+                      <span>⚡ Instant Photo Catalog (Skip Q&A)</span>
+                    </button>
+                  ) : <div />}
                   <button
                     type="button"
                     onClick={() => {
@@ -1290,7 +1302,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-3.5 border border-slate-200 rounded-2xl">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-white p-3.5 border border-slate-200 rounded-2xl">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">Material Cost (₹)</label>
                     <input
@@ -1328,6 +1340,16 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       value={costs.other || ''}
                       placeholder="e.g. 40"
                       onChange={(e) => setCosts({ ...costs, other: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                      className="w-full text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Selling Price (₹)</label>
+                    <input
+                      type="number"
+                      value={costs.selling_price || ''}
+                      placeholder="e.g. 1200"
+                      onChange={(e) => setCosts({ ...costs, selling_price: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                       className="w-full text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
