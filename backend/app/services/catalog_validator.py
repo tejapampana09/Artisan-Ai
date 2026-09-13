@@ -144,7 +144,8 @@ def validate_catalog_draft(
     
     # Extract allowed reference materials
     allowed_ref_materials = list(facts_materials)
-    if not facts_materials and (allow_ai_visual_inference or (initial_draft and initial_draft.get("materials"))):
+    is_photo_only = allow_ai_visual_inference or not has_verified_artisan_input(artisan_facts)
+    if not facts_materials and is_photo_only and (allow_ai_visual_inference or (initial_draft and initial_draft.get("materials"))):
         init_mats = (initial_draft.get("materials") if initial_draft else catalog.get("materials"))
         if isinstance(init_mats, str):
             init_list = [m.strip() for m in init_mats.split(",") if m.strip()]
@@ -155,7 +156,7 @@ def validate_catalog_draft(
         allowed_ref_materials.extend(init_list)
 
     if not facts_materials:
-        if allow_ai_visual_inference or (initial_draft and initial_draft.get("materials")):
+        if is_photo_only and (allow_ai_visual_inference or (initial_draft and initial_draft.get("materials"))):
             # Photo-only mode / AI visual inference -> preserve & validate visually inferred materials! 🤖
             if isinstance(raw_gen_materials, str):
                 gen_list = [m.strip() for m in raw_gen_materials.split(",") if m.strip()]
@@ -316,9 +317,9 @@ def validate_edited_catalog_strictly(
 
     allowed_materials = list(facts_materials)
 
-    # If artisan provided NO materials in facts, but initial AI draft inferred materials (photo-only mode),
-    # allow the AI-inferred materials from the initial draft!
-    if not facts_materials and initial_draft:
+    # Allow initial AI draft materials ONLY IF the request was genuinely photo-only (no verified artisan facts)
+    is_photo_only = not has_verified_artisan_input(artisan_facts)
+    if not facts_materials and is_photo_only and initial_draft:
         raw_init_mats = initial_draft.get("materials")
         if isinstance(raw_init_mats, str):
             init_list = [m.strip() for m in raw_init_mats.split(",") if m.strip()]

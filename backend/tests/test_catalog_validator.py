@@ -230,4 +230,16 @@ def test_strict_publish_validation_rejects_completely_new_unsupported_materials(
     assert len(errors) == 1
     assert "Gold Leaf" in errors[0]
 
+def test_user_input_without_materials_does_not_trust_ai_initial_materials():
+    from backend.app.services.catalog_validator import validate_edited_catalog_strictly
+    # Artisan provided product_name in Q&A facts, but omitted materials -> NOT photo-only!
+    facts = ArtisanFacts(product_name="Wooden Chair", materials=[])
+    initial_draft = {"materials": "Teak Wood, Gold Leaf"}
+    
+    edited_catalog = {"materials": "Teak Wood"}
+    errors = validate_edited_catalog_strictly(edited_catalog, facts, initial_draft=initial_draft)
+    assert len(errors) == 1
+    assert "not listed in your verified artisan facts" in errors[0] or "No materials were declared" in errors[0]
+
+
 
