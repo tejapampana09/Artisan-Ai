@@ -124,7 +124,8 @@ async def process_full_catalog_pipeline(
         "translations": validated_catalog.get("translations"),
         "tags": validated_catalog.get("tags", []),
         "image_url": validated_catalog.get("image_url", ""),
-        "enhanced_image_url": validated_catalog.get("enhanced_image_url", "")
+        "enhanced_image_url": validated_catalog.get("enhanced_image_url", ""),
+        "ai_inferred_fields": validated_catalog.get("ai_inferred_fields", [])
     }
 
     market_summary_dict = market_response.summary.model_dump() if market_response.summary else {
@@ -199,6 +200,7 @@ async def process_full_catalog_pipeline(
         "transcription": voice_description,
         "language_detected": language,
         "lifecycle_state": "AI_GENERATED",
+        "ai_inferred_fields": catalog_fields["ai_inferred_fields"],
         "notice": validated_catalog.get("notice") or notice_text,
         # Phase 7 Unified Contract
         "catalog": catalog_fields,

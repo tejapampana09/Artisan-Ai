@@ -180,6 +180,13 @@ def approve_and_publish_product(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Corrupted server draft state."
         )
+
+    initial_draft = {}
+    if draft_record.catalog_draft_json:
+        try:
+            initial_draft = json.loads(draft_record.catalog_draft_json)
+        except Exception:
+            initial_draft = {}
     
     # Server-owned cost basis & minimum fair price floor (P0 #3)
     mat_cost = draft_record.material_cost
@@ -207,7 +214,11 @@ def approve_and_publish_product(
         "craft_story": req.craft_story or ""
     }
 
-    errors = validate_edited_catalog_strictly(raw_edited, server_artisan_facts)
+    errors = validate_edited_catalog_strictly(
+        raw_edited,
+        server_artisan_facts,
+        initial_draft=initial_draft
+    )
     if errors:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -215,7 +226,11 @@ def approve_and_publish_product(
         )
 
     # 3. Sanitize and Publish using server-owned min_margin_pct
-    validated_edited = validate_catalog_draft(raw_edited, server_artisan_facts)
+    validated_edited = validate_catalog_draft(
+        raw_edited,
+        server_artisan_facts,
+        initial_draft=initial_draft
+    )
     final_materials = validated_edited.get("materials", req.materials)
     final_description = validated_edited.get("description", req.description)
     final_craft_story = validated_edited.get("craft_story", req.craft_story)

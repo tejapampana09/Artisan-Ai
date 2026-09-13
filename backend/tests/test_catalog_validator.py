@@ -199,3 +199,35 @@ def test_photo_only_cannot_invent_unverified_heritage_claims():
     assert "5 generations" not in validated["craft_story"].lower()
     assert "ancestral" not in validated["craft_story"].lower()
 
+def test_ai_inferred_fields_tagged_for_empty_artisan_facts_object():
+    facts = ArtisanFacts()
+    generated = {
+        "title": "Terracotta Pot",
+        "category": "Pottery",
+        "materials": "Terracotta Clay",
+        "description": "Beautiful handmade clay pot."
+    }
+    validated = validate_catalog_draft(generated, facts, allow_ai_visual_inference=True)
+    assert "ai_inferred_fields" in validated
+    assert set(validated["ai_inferred_fields"]) == {"title", "category", "materials", "description"}
+
+def test_strict_publish_validation_accepts_photo_only_ai_materials_from_initial_draft():
+    from backend.app.services.catalog_validator import validate_edited_catalog_strictly
+    facts = ArtisanFacts(materials=[])
+    initial_draft = {"materials": "Terracotta Clay, Natural Pigments"}
+    
+    edited_catalog = {"materials": "Terracotta Clay"}
+    errors = validate_edited_catalog_strictly(edited_catalog, facts, initial_draft=initial_draft)
+    assert errors == []
+
+def test_strict_publish_validation_rejects_completely_new_unsupported_materials():
+    from backend.app.services.catalog_validator import validate_edited_catalog_strictly
+    facts = ArtisanFacts(materials=[])
+    initial_draft = {"materials": "Terracotta Clay"}
+    
+    edited_catalog = {"materials": "Terracotta Clay, Gold Leaf"}
+    errors = validate_edited_catalog_strictly(edited_catalog, facts, initial_draft=initial_draft)
+    assert len(errors) == 1
+    assert "Gold Leaf" in errors[0]
+
+

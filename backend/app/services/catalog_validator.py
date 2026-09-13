@@ -99,14 +99,15 @@ def has_verified_artisan_input(
 def validate_catalog_draft(
     generated_catalog: Dict[str, Any],
     artisan_facts: Optional[ArtisanFacts] = None,
-    allow_ai_visual_inference: bool = False
+    allow_ai_visual_inference: bool = False,
+    initial_draft: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Provenance-aware backend validator/sanitizer for generated product catalog drafts.
     
     Guarantees:
     1. If user provided materials -> strictly enforced & locked 🔒.
-    2. If photo-only upload (allow_ai_visual_inference=True) -> preserves Gemini Vision materials 🤖.
+    2. If photo-only upload (allow_ai_visual_inference=True or no verified user input) -> preserves Gemini Vision materials 🤖.
     3. If user provided facts but omitted materials & allow_ai_visual_inference=False -> clears materials.
     4. Fabricated family history/heritage scrubbed if not in ArtisanFacts.artisan_story (even in photo-only mode).
     5. Unsupported awards/certifications/GI tags scrubbed.
@@ -140,14 +141,48 @@ def validate_catalog_draft(
     # 1. Materials Validation (Provenance Aware)
     # -------------------------------------------------------------------------
     raw_gen_materials = catalog.get("materials")
+    
+    # Extract allowed reference materials
+    allowed_ref_materials = list(facts_materials)
+    if not facts_materials and (allow_ai_visual_inference or (initial_draft and initial_draft.get("materials"))):
+        init_mats = (initial_draft.get("materials") if initial_draft else catalog.get("materials"))
+        if isinstance(init_mats, str):
+            init_list = [m.strip() for m in init_mats.split(",") if m.strip()]
+        elif isinstance(init_mats, list):
+            init_list = [str(m).strip() for m in init_mats if str(m).strip()]
+        else:
+            init_list = []
+        allowed_ref_materials.extend(init_list)
+
     if not facts_materials:
-        if not allow_ai_visual_inference:
+        if allow_ai_visual_inference or (initial_draft and initial_draft.get("materials")):
+            # Photo-only mode / AI visual inference -> preserve & validate visually inferred materials! 🤖
+            if isinstance(raw_gen_materials, str):
+                gen_list = [m.strip() for m in raw_gen_materials.split(",") if m.strip()]
+            elif isinstance(raw_gen_materials, list):
+                gen_list = [str(m).strip() for m in raw_gen_materials if str(m).strip()]
+            else:
+                gen_list = []
+
+            ref_lower = [f.lower().strip() for f in allowed_ref_materials if f.strip()]
+            valid_materials = []
+            for gen in gen_list:
+                gen_l = gen.lower()
+                if any(r in gen_l or gen_l in r for r in ref_lower):
+                    valid_materials.append(gen)
+
+            final_mat_list = valid_materials if valid_materials else gen_list
+
+            if isinstance(raw_gen_materials, list):
+                catalog["materials"] = final_mat_list
+            else:
+                catalog["materials"] = ", ".join(final_mat_list)
+        else:
             # User provided facts object/Q&A but gave no materials -> clear materials!
             if isinstance(raw_gen_materials, list):
                 catalog["materials"] = []
             else:
                 catalog["materials"] = ""
-        # else: Photo-only mode -> preserve Gemini Vision's visually inferred materials! 🤖
     else:
         # User provided materials 🔒 -> strictly enforce user materials & discard hallucinations
         if isinstance(raw_gen_materials, str):
@@ -233,27 +268,67 @@ def validate_catalog_draft(
     if facts_craft_type:
         catalog["category"] = facts_craft_type
 
+    # -------------------------------------------------------------------------
+    # 7. AI Inferred Fields Tagging
+    # -------------------------------------------------------------------------
+    if allow_ai_visual_inference:
+        ai_inferred = []
+        user_has_name = bool(artisan_facts and (artisan_facts.product_name or "").strip())
+        user_has_craft = bool(artisan_facts and (artisan_facts.craft_type or "").strip())
+        user_has_mat = bool(artisan_facts and artisan_facts.materials and len(artisan_facts.materials) > 0)
+        user_has_story = bool(artisan_facts and (artisan_facts.artisan_story or "").strip())
+
+        if not user_has_name and catalog.get("title"):
+            ai_inferred.append("title")
+        if not user_has_craft and catalog.get("category"):
+            ai_inferred.append("category")
+        if not user_has_mat and catalog.get("materials"):
+            ai_inferred.append("materials")
+        if not user_has_story and (catalog.get("description") or catalog.get("craft_story")):
+            ai_inferred.append("description")
+
+        catalog["ai_inferred_fields"] = ai_inferred
+
     return catalog
 
 def validate_edited_catalog_strictly(
     edited_catalog: Dict[str, Any],
-    artisan_facts: Optional[ArtisanFacts] = None
+    artisan_facts: Optional[ArtisanFacts] = None,
+    initial_draft: Optional[Dict[str, Any]] = None
 ) -> List[str]:
     """
-    Strictly validates human edits against canonical ArtisanFacts during the publish phase (Behavior B).
-    Returns a list of violation error messages if the edited catalog contains unverified materials,
-    unsupported family heritage claims, or unverified award/certification/GI tags.
-    Returns an empty list [] if validation succeeds.
+    Strictly validates human edits against canonical ArtisanFacts and initial AI draft during publish phase (Behavior B).
+    
+    Guarantees:
+    - User-provided materials 🔒: strictly required. Unverified materials rejected.
+    - Photo-only AI materials 🤖: AI-inferred materials from initial draft are accepted if artisan approves/edits them.
+    - Manually added completely new unsupported materials are rejected.
+    - Fabricated family heritage and unverified awards/GI tags are strictly rejected.
     """
-    if artisan_facts is None:
+    if artisan_facts is None and initial_draft is None:
         return []
 
     errors: List[str] = []
 
-    facts_materials = artisan_facts.materials or []
-    facts_story = (artisan_facts.artisan_story or "").strip()
-    facts_spec = (artisan_facts.special_characteristics or "").strip()
-    facts_lower = [f.lower().strip() for f in facts_materials if f.strip()]
+    facts_materials = (artisan_facts.materials or []) if artisan_facts else []
+    facts_story = (artisan_facts.artisan_story or "").strip() if artisan_facts else ""
+    facts_spec = (artisan_facts.special_characteristics or "").strip() if artisan_facts else ""
+
+    allowed_materials = list(facts_materials)
+
+    # If artisan provided NO materials in facts, but initial AI draft inferred materials (photo-only mode),
+    # allow the AI-inferred materials from the initial draft!
+    if not facts_materials and initial_draft:
+        raw_init_mats = initial_draft.get("materials")
+        if isinstance(raw_init_mats, str):
+            init_list = [m.strip() for m in raw_init_mats.split(",") if m.strip()]
+        elif isinstance(raw_init_mats, list):
+            init_list = [str(m).strip() for m in raw_init_mats if str(m).strip()]
+        else:
+            init_list = []
+        allowed_materials.extend(init_list)
+
+    facts_lower = [f.lower().strip() for f in allowed_materials if f.strip()]
 
     # 1. Strict Materials Check
     raw_materials = edited_catalog.get("materials")
@@ -265,8 +340,8 @@ def validate_edited_catalog_strictly(
         else:
             edited_list = []
 
-        if not facts_materials and edited_list:
-            errors.append("No materials were declared in your verified Q&A facts, but materials were specified in publish request.")
+        if not allowed_materials and edited_list:
+            errors.append("No materials were declared in your verified Q&A facts or initial AI draft, but materials were specified in publish request.")
         else:
             unverified = []
             for mat in edited_list:
@@ -274,7 +349,7 @@ def validate_edited_catalog_strictly(
                 if not any(f in mat_l or mat_l in f for f in facts_lower):
                     unverified.append(mat)
             if unverified:
-                errors.append(f"Material(s) '{', '.join(unverified)}' are not listed in your verified artisan facts ({', '.join(facts_materials)}).")
+                errors.append(f"Material(s) '{', '.join(unverified)}' are not listed in your verified artisan facts or initial AI draft ({', '.join(allowed_materials)}).")
 
     # 2. Strict Heritage Claims Check
     fs_lower = facts_story.lower()
@@ -298,4 +373,5 @@ def validate_edited_catalog_strictly(
             errors.append(f"Unverified award/GI tag claim found in {field_name}. Official awards or GI status must be verified.")
 
     return errors
+
 
