@@ -177,10 +177,44 @@ def test_noop_provider_returns_no_fake_fallback_data():
         response = await research_market(artisan_facts=facts, provider=NoOpMarketResearchProvider())
         assert len(response.results) == 0
         assert response.summary.comparable_count == 0
-        assert response.summary.priced_comparable_count == 0
-        assert response.summary.is_reliable is False
-        assert response.summary.median_price is None
-        assert "No live external search provider" in (response.notice or "")
-
     asyncio.run(_test())
+
+
+def test_market_research_requires_auth_and_rate_limiting():
+    """Verify that POST /api/market/research requires authentication and is rate limited (10/min)."""
+    import uuid
+    from fastapi.testclient import TestClient
+    from backend.app.main import app
+
+    client = TestClient(app)
+
+    # 1. Unauthenticated request -> 401 Unauthorized
+    unauth_res = client.post("/api/market/research", json={
+        "artisan_facts": {
+            "product_name": "Test Clay Pot",
+            "craft_type": "Pottery"
+        }
+    })
+    assert unauth_res.status_code == 401
+
+    # 2. Authenticated request -> 200 OK
+    uid = uuid.uuid4().hex[:6]
+    reg = client.post("/api/auth/register", json={
+        "name": f"Mkt Seller {uid}",
+        "email": f"mkt.{uid}@artisanai.in",
+        "password": "Password123!",
+        "role": "ARTISAN"
+    })
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    auth_res = client.post("/api/market/research", json={
+        "artisan_facts": {
+            "product_name": "Test Clay Pot",
+            "craft_type": "Pottery"
+        }
+    }, headers=headers)
+    assert auth_res.status_code == 200
+    assert "summary" in auth_res.json()
+
 

@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional, cast
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
@@ -11,6 +11,7 @@ from backend.app.schemas import (
 )
 from backend.app.services.auth import get_current_user, get_optional_current_user
 from backend.app.services.demand_engine import calculate_category_demand, generate_seller_opportunities
+from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
 
 def _as_int(value: Any, default: int = 0) -> int:
     try:
@@ -320,12 +321,23 @@ async def buyer_copilot_chat(
     )
 
 @router.post("/market/research", response_model=MarketResearchResponse)
-async def perform_market_research(req: MarketResearchRequest):
+async def perform_market_research(
+    req: MarketResearchRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
     """
     Market Research & External Comparable Products endpoint.
+    Requires authentication & rate limiting (10 requests / 60 seconds).
     Performs provider-agnostic market lookup, deterministic similarity scoring,
     and returns min/median/max price statistics without modifying ArtisanFacts.
     """
+    user_id = cast(Optional[int], current_user.id)
+    rate_limiter.check_rate_limit(
+        f"mkt_research:{get_client_identifier(request, user_id)}",
+        max_requests=10,
+        window_seconds=60,
+    )
     from backend.app.services.market_research import research_market
     return await research_market(artisan_facts=req.artisan_facts)
 

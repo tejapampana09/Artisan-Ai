@@ -4,7 +4,7 @@ import {
   Layers, Volume2, Globe, ShieldCheck, ArrowRight, RefreshCw, Wand2,
   Camera, Upload, Trash2, AlertTriangle, Zap
 } from 'lucide-react';
-import { processAICatalog, approveAndPublishAICatalog, estimateFairPrice } from '../api/index.js';
+import { processAICatalog, approveAndPublishAICatalog, estimateFairPrice, getApiBase } from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
 import { useNotification } from '../context/NotificationContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -344,7 +344,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     } else {
       // High quality Backend TTS Audio Endpoint for Telugu, Hindi, Tamil, Bengali, English
       try {
-        const ttsUrl = `http://127.0.0.1:8000/api/tts?text=${encodeURIComponent(cleanText)}&lang=${langToUse}`;
+        const apiBase = getApiBase();
+        const ttsUrl = `${apiBase}/tts?text=${encodeURIComponent(cleanText)}&lang=${langToUse}`;
         const audio = new Audio(ttsUrl);
         activeAudioRef.current = audio;
         audio.onplay = onStart;

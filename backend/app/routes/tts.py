@@ -1,14 +1,20 @@
 import logging
 import httpx
-from fastapi import APIRouter, Query, Response, HTTPException
+from fastapi import APIRouter, Query, Response, HTTPException, Request
+from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
 
 router = APIRouter(prefix="/api/tts", tags=["Text to Speech Proxy"])
 
 logger = logging.getLogger("artisan_ai")
 
 @router.get("")
-async def text_to_speech(text: str = Query(...), lang: str = Query("te")):
+async def text_to_speech(request: Request, text: str = Query(...), lang: str = Query("te")):
     """Streams high-quality text-to-speech audio in Telugu, Hindi, Tamil, Bengali, English."""
+    rate_limiter.check_rate_limit(
+        f"tts:{get_client_identifier(request)}",
+        max_requests=30,
+        window_seconds=60,
+    )
     clean_text = text.strip()[:300]
     if not clean_text:
         raise HTTPException(status_code=400, detail="Text parameter is required")
