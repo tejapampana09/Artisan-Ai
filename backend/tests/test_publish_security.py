@@ -248,3 +248,19 @@ def test_publish_sanitizes_english_and_translation_fields():
     assert prod["craft_story_en"] == "Handcrafted by local artisan."
 
 
+def test_postgresql_schema_migration_sql_compatibility():
+    """Verify that ensure_schema_migrations runs cleanly and SQL migration file contains valid PostgreSQL statement."""
+    import os
+    from backend.app.database import engine, ensure_schema_migrations
+    ensure_schema_migrations(engine)
+
+    migration_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "migrations", "001_add_is_consumed_to_draft_catalogs.sql")
+    assert os.path.exists(migration_file)
+    with open(migration_file, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert "ALTER TABLE draft_catalogs" in content
+    assert "ADD COLUMN IF NOT EXISTS is_consumed" in content
+    assert "DEFAULT FALSE" in content
+
+
+
