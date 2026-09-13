@@ -733,6 +733,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
     try {
       const res = await processAICatalog({
+        qna_answers: qnaAnswers,
         voice_description: voiceText.trim(),
         language: selectedLang,
         image_url: effectiveImg,

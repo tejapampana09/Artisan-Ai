@@ -15,6 +15,7 @@ from backend.app.services.rate_limiter import rate_limiter, get_client_identifie
 router = APIRouter(prefix="/api/ai", tags=["AI Cataloging"])
 
 class AICatalogRequest(BaseModel):
+    qna_answers: Optional[Dict[str, str]] = Field(default=None, description="Structured Q&A answers object (q1_product, q2_materials, q3_story)")
     voice_description: Optional[str] = Field(default="", description="Artisan voice note or text description")
     language: str = Field("en", max_length=10, description="Language code e.g. en, te, hi")
     image_url: Optional[str] = Field(None, description="User-provided photo URL or Base64 data URI")
@@ -115,6 +116,7 @@ async def process_voice_and_image(
         labour_cost=req.labour_cost,
         packaging_cost=req.packaging_cost,
         other_cost=req.other_cost,
+        qna_answers=req.qna_answers,
     )
     return AICatalogDraftResponse(**draft)
 
