@@ -56,20 +56,6 @@ async def process_full_catalog_pipeline(
         category_hint=category_hint
     )
 
-    # 2. Gemini catalog draft generation
-    raw_draft = await generate_catalog_draft(
-        artisan_facts=canonical_facts,
-        voice_description=voice_description,
-        language=language,
-        image_url=image_url,
-        category_hint=category_hint,
-        material_cost=material_cost,
-        labour_cost=labour_cost,
-        packaging_cost=packaging_cost,
-        other_cost=other_cost,
-        qna_answers=qna_answers
-    )
-
     has_user_input = has_verified_artisan_input(
         artisan_facts=artisan_facts,
         qna_answers=qna_answers,
@@ -77,20 +63,57 @@ async def process_full_catalog_pipeline(
         category_hint=category_hint
     )
 
-    # 3. Deterministic Catalog Validation against canonical facts
-    validated_catalog = validate_catalog_draft(
-        raw_draft,
-        canonical_facts,
-        allow_ai_visual_inference=not has_user_input
-    )
-
-    # 4. Market Research lookup
-    market_response: MarketResearchResponse = await research_market(
-        artisan_facts=canonical_facts,
-        provider=provider,
-        title_hint=validated_catalog.get("title") or validated_catalog.get("title_en"),
-        category_hint=validated_catalog.get("category") or category_hint
-    )
+    # 2 & 3. Concurrently generate Gemini catalog draft AND market research when artisan input is present
+    if has_user_input:
+        draft_coro = generate_catalog_draft(
+            artisan_facts=canonical_facts,
+            voice_description=voice_description,
+            language=language,
+            image_url=image_url,
+            category_hint=category_hint,
+            material_cost=material_cost,
+            labour_cost=labour_cost,
+            packaging_cost=packaging_cost,
+            other_cost=other_cost,
+            qna_answers=qna_answers
+        )
+        market_coro = research_market(
+            artisan_facts=canonical_facts,
+            provider=provider,
+            title_hint=canonical_facts.product_name or category_hint,
+            category_hint=canonical_facts.craft_type or category_hint
+        )
+        raw_draft, market_response = await asyncio.gather(draft_coro, market_coro)
+        validated_catalog = validate_catalog_draft(
+            raw_draft,
+            canonical_facts,
+            allow_ai_visual_inference=False
+        )
+    else:
+        # Sequential: visual inference needed to derive product title for market research
+        raw_draft = await generate_catalog_draft(
+            artisan_facts=canonical_facts,
+            voice_description=voice_description,
+            language=language,
+            image_url=image_url,
+            category_hint=category_hint,
+            material_cost=material_cost,
+            labour_cost=labour_cost,
+            packaging_cost=packaging_cost,
+            other_cost=other_cost,
+            qna_answers=qna_answers
+        )
+        validated_catalog = validate_catalog_draft(
+            raw_draft,
+            canonical_facts,
+            allow_ai_visual_inference=True
+        )
+        market_response = await research_market(
+            artisan_facts=canonical_facts,
+            provider=provider,
+            title_hint=validated_catalog.get("title") or validated_catalog.get("title_en"),
+            category_hint=validated_catalog.get("category") or category_hint
+        )
 
     raw_market_median = market_response.summary.median_price if market_response.summary else None
     market_currency = market_response.summary.currency if market_response.summary else "INR"
