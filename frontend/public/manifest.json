@@ -16,16 +16,10 @@
       "purpose": "any"
     },
     {
-      "src": "/icon-192-maskable.png",
-      "sizes": "192x192",
+      "src": "/artisan-logo.png",
+      "sizes": "1024x1024",
       "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icon-512-maskable.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ],
   "start_url": "/",
