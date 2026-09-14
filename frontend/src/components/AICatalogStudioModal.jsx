@@ -708,13 +708,13 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       : [];
 
     const artisanFacts = {
-      product_name: qnaAnswers.q1_title?.trim() || (selectedPhoto ? selectedPhoto.name : ''),
+      product_name: qnaAnswers.q1_title?.trim() || voiceText.trim().split('\n')[0].slice(0, 60) || (selectedPhoto ? selectedPhoto.name : ''),
       craft_type: effectiveCat || '',
       materials: parsedMaterials,
       handmade: null,
       making_time: '',
       artisan_story: qnaAnswers.q3_story?.trim() || '',
-      special_characteristics: ''
+      special_characteristics: voiceText.trim()
     };
 
     try {

@@ -45,9 +45,12 @@ def extract_artisan_facts(
         else:
             clean_m = []
 
+        v_first_line = (voice_description or "").strip().split("\n")[0][:60].strip()
+        p_name = (af_dict.get("product_name") or "").strip() or v_first_line
+
         return ArtisanFacts(
-            product_name=(af_dict.get("product_name") or "").strip(),
-            craft_type=(af_dict.get("craft_type") or "").strip(),
+            product_name=p_name,
+            craft_type=(af_dict.get("craft_type") or category_hint or "").strip(),
             materials=clean_m,
             handmade=af_dict.get("handmade"),
             making_time=(af_dict.get("making_time") or "").strip(),
@@ -55,8 +58,11 @@ def extract_artisan_facts(
             special_characteristics=(af_dict.get("special_characteristics") or "").strip(),
         )
 
+    v_clean = (voice_description or "").strip()
+    v_first_line = v_clean.split("\n")[0][:60].strip() if v_clean else ""
+
     if qna_answers:
-        q1 = (qna_answers.get('q1_title') or qna_answers.get('q1_product') or '').strip()
+        q1 = (qna_answers.get('q1_title') or qna_answers.get('q1_product') or '').strip() or v_first_line
         q2 = (qna_answers.get('q2_materials') or '').strip()
         q3 = (qna_answers.get('q3_story') or '').strip()
 
@@ -71,12 +77,11 @@ def extract_artisan_facts(
             handmade=None,
             making_time="",
             artisan_story=q3,
-            special_characteristics=""
+            special_characteristics=v_clean
         )
 
-    v_clean = (voice_description or "").strip()
     return ArtisanFacts(
-        product_name="",
+        product_name=v_first_line,
         craft_type=(category_hint or "").strip(),
         materials=[],
         handmade=None,
