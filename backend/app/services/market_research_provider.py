@@ -144,7 +144,7 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
             f"Only include products whose price and source URL are supported by the grounded search results. "
             f"Never invent prices or fabricate URLs.\n"
             f"Example:\n"
-            f"[{{\"title\":\"Handcrafted {clean_q}\",\"price\":499.0,\"currency\":\"INR\",\"source\":\"Amazon India\",\"url\":\"https://www.example.com/item\",\"description\":\"Handmade item\",\"category\":\"{clean_q}\",\"materials\":[\"Handcraft\"]}}]"
+            f"[{{\"title\":\"Handcrafted {clean_q}\",\"price\":499.0,\"currency\":\"INR\",\"source\":\"Amazon India\",\"url\":\"https://www.amazon.in/dp/B08EXAMPLE\",\"description\":\"Handmade item\",\"category\":\"{clean_q}\",\"materials\":[\"Handcraft\"]}}]"
         )
 
         payload = {
