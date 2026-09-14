@@ -124,8 +124,8 @@ def test_5_extreme_high_market_median_cannot_breach_25_percent_upward_cap(db: Se
     # Extreme high market median ₹10,000 (current price is ₹1,500)
     rec = calculate_price_recommendation(product, db, market_median=10000.0, market_currency="INR")
 
-    # Case 2: Artisan price (₹1,500) below market median (₹10,000) -> elevates recommendation to market median
-    assert rec["recommended_price"] == 10000.0
+    # Case 2: Artisan price (₹1,500) below market median (₹10,000) -> capped at +25% max upward adjustment (₹1,875.00)
+    assert rec["recommended_price"] == 1875.0
 
 def test_6_currency_mismatch_ignores_market_median(db: Session):
     product = Product(

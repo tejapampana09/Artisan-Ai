@@ -169,7 +169,7 @@ Return ONLY valid JSON matching this schema:
             "category": cat or "Handcrafted",
             "materials": "Needs artisan confirmation",
             "description": desc or "Authentic handmade creation.",
-            "craft_story": "Generational traditional technique.",
+            "craft_story": "Handcrafted artisan item.",
             "region_of_origin": "Needs artisan confirmation",
             "tags": ["handcrafted", "artisan"],
             "suggested_price": suggested,

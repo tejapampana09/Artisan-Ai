@@ -275,6 +275,18 @@ def calculate_price_recommendation_from_inputs(
         else:
             rounded_price = (Decimal(round(float(final_recommended) / 5.0) * 5)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             
+        if has_artisan_price:
+            max_price = (curr_price * (Decimal("1.0") + MAX_UPWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            min_price = (curr_price * (Decimal("1.0") - MAX_DOWNWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if rounded_price > max_price:
+                rounded_price = max_price
+                reasoning.append(f"Recommended price capped to +{int(MAX_UPWARD_ADJUSTMENT_PCT * 100)}% maximum upward adjustment ceiling (₹{float(max_price):,.0f}).")
+            elif rounded_price < min_price:
+                effective_min = max(min_price, minimum_fair_price) if (has_costs and minimum_fair_price > 0) else min_price
+                if rounded_price < effective_min:
+                    rounded_price = effective_min
+                    reasoning.append(f"Recommended price bounded by -{int(MAX_DOWNWARD_ADJUSTMENT_PCT * 100)}% maximum downward adjustment floor (₹{float(effective_min):,.0f}).")
+
         if has_costs and rounded_price < minimum_fair_price:
             rounded_price = minimum_fair_price
         pricing_available = True

@@ -157,6 +157,13 @@ def delete_product(
     return None
 
 VALID_LIFECYCLE_STATES = ["DRAFT", "AI_PROCESSING", "AI_GENERATED", "APPROVED", "PUBLISHED"]
+VALID_TRANSITIONS = {
+    "DRAFT": ["AI_PROCESSING", "APPROVED", "PUBLISHED"],
+    "AI_PROCESSING": ["AI_GENERATED", "DRAFT"],
+    "AI_GENERATED": ["APPROVED", "DRAFT", "AI_PROCESSING"],
+    "APPROVED": ["PUBLISHED", "DRAFT"],
+    "PUBLISHED": ["APPROVED", "DRAFT"]
+}
 
 @router.patch("/{product_id}/status", response_model=ProductResponse)
 def transition_product_status(
@@ -192,6 +199,14 @@ def transition_product_status(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid status '{new_status}'. Must be one of: {', '.join(VALID_LIFECYCLE_STATES)}"
+        )
+
+    current_status = (product.status or "DRAFT").upper()
+    valid_next_states = VALID_TRANSITIONS.get(current_status, VALID_LIFECYCLE_STATES)
+    if new_status != current_status and new_status not in valid_next_states and user_role != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid lifecycle state transition from '{current_status}' to '{new_status}'. Allowed transitions: {', '.join(valid_next_states)}"
         )
 
     product.status = new_status

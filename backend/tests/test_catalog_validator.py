@@ -135,7 +135,7 @@ def test_legacy_flow_without_artisan_facts_passes_intact():
     generated = {
         "title": "Legacy Item",
         "materials": "Brass",
-        "craft_story": "Generational traditional technique."
+        "craft_story": "Handcrafted artisan item."
     }
     validated = validate_catalog_draft(generated, None)
     assert validated == generated

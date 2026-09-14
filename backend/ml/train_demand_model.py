@@ -116,25 +116,94 @@ def generate_domain_informed_dataset(n_samples: int = 1500, random_state: int = 
     ]
     return X, y, feature_names
 
-def train_and_save_model(output_dir: str = None):
+def extract_db_dataset(db):
+    """
+    Extracts feature matrix X and target y directly from database products and events.
+    Returns (X, y, feature_names, sample_count).
+    """
+    from backend.app.models import Product, Event
+    products = db.query(Product).all()
+    if not products:
+        return None, None, None, 0
+
+    X_list = []
+    y_list = []
+    
+    cat_map = {cat.lower(): idx for idx, cat in enumerate(STANDARD_CATEGORIES)}
+    
+    for p in products:
+        mat = float(p.material_cost or 0.0)
+        lab = float(p.labour_cost or 0.0)
+        pkg = float(p.packaging_cost or 0.0)
+        oth = float(p.other_cost or 0.0)
+        tot = mat + lab + pkg + oth
+        price = float(p.price or 0.0)
+        p_ratio = round(price / max(tot, 1.0), 3)
+        stock = int(p.stock or 0)
+        
+        cat_idx = cat_map.get((p.category or "").lower(), len(STANDARD_CATEGORIES) - 1)
+        
+        views = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "VIEW").count()
+        saves = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "SAVE").count()
+        enquiries = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "ENQUIRY").count()
+        orders = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "ORDER").count()
+        
+        eng_score = (
+            math.log1p(views) * 2.2 +
+            saves * 3.0 +
+            enquiries * 5.5 +
+            orders * 9.0
+        )
+        p_factor = 1.15 if 1.2 <= p_ratio <= 1.6 else (0.85 if p_ratio > 2.0 else 1.0)
+        scarcity = 1.10 if (0 < stock <= 5 and eng_score > 20) else 1.0
+        raw_demand = eng_score * p_factor * scarcity
+        target_score = float(max(0.0, min(100.0, round(100.0 * (1.0 - math.exp(-raw_demand / 75.0)), 2))))
+        
+        X_list.append([mat, lab, pkg, oth, tot, p_ratio, stock, cat_idx, views, saves, enquiries, orders])
+        y_list.append(target_score)
+        
+    feature_names = [
+        "material_cost", "labour_cost", "packaging_cost", "other_cost",
+        "total_cost", "price_to_cost_ratio", "stock", "category_encoded",
+        "views", "saves", "enquiries", "orders"
+    ]
+    return np.array(X_list), np.array(y_list), feature_names, len(X_list)
+
+def train_and_save_model(output_dir: str = None, db: Any = None):
     if output_dir is None:
         output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ml")
     os.makedirs(output_dir, exist_ok=True)
     
-    X, y, feature_names = generate_domain_informed_dataset(n_samples=1500, random_state=42)
+    training_mode = "DOMAIN_INFORMED_BOOTSTRAP"
+    X, y, feature_names = None, None, None
+    
+    if db is not None:
+        X_db, y_db, f_names, n_db = extract_db_dataset(db)
+        if n_db >= 5:
+            X, y, feature_names = X_db, y_db, f_names
+            training_mode = "PRODUCTION_REAL_EVENTS"
+
+    if X is None or len(X) < 5:
+        X, y, feature_names = generate_domain_informed_dataset(n_samples=1500, random_state=42)
+        training_mode = "DOMAIN_INFORMED_BOOTSTRAP"
+
+    if len(X) < 10:
+        # Augment small dataset if needed for test split
+        X_boot, y_boot, _ = generate_domain_informed_dataset(n_samples=100, random_state=42)
+        X = np.vstack([X, X_boot])
+        y = np.concatenate([y, y_boot])
+
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    # Train RandomForestRegressor (Tree splits do not require feature scaling)
     rf = RandomForestRegressor(
         n_estimators=100,
         max_depth=12,
-        min_samples_split=4,
-        min_samples_leaf=2,
+        min_samples_split=2 if training_mode == "PRODUCTION_REAL_EVENTS" else 4,
+        min_samples_leaf=1 if training_mode == "PRODUCTION_REAL_EVENTS" else 2,
         random_state=42
     )
     rf.fit(X_train, y_train)
     
-    # Predictions & dynamic metrics
     y_pred = rf.predict(X_test)
     r2 = float(r2_score(y_test, y_pred))
     mae = float(mean_absolute_error(y_test, y_pred))
@@ -142,7 +211,6 @@ def train_and_save_model(output_dir: str = None):
     
     importances = dict(zip(feature_names, [round(float(imp), 4) for imp in rf.feature_importances_]))
     
-    # Model file paths
     model_path = os.path.join(output_dir, "demand_model.joblib")
     meta_path = os.path.join(output_dir, "model_meta.json")
     
@@ -160,7 +228,7 @@ def train_and_save_model(output_dir: str = None):
         "categories": STANDARD_CATEGORIES,
         "feature_names": feature_names,
         "feature_importances": importances,
-        "training_mode": "DOMAIN_INFORMED_BOOTSTRAP"
+        "training_mode": training_mode
     }
     
     with open(meta_path, "w", encoding="utf-8") as f:
@@ -170,8 +238,9 @@ def train_and_save_model(output_dir: str = None):
     print(f"  Model File: {model_path}")
     print(f"  Metadata File: {meta_path}")
     print(f"  Dynamic R² Score: {metadata['r2_score']}")
-    print(f"  MAE: {metadata['mae']}")
+    print(f"  Training Mode: {training_mode}")
     return metadata
 
 if __name__ == "__main__":
     train_and_save_model()
+

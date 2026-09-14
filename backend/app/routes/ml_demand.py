@@ -87,7 +87,7 @@ def retrain_model(
 
     try:
         from backend.ml.train_demand_model import train_and_save_model
-        new_metadata = train_and_save_model()
+        new_metadata = train_and_save_model(db=db)
         engine = MLDemandEngine()
         engine.load_model()
         return {

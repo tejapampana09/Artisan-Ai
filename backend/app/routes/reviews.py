@@ -55,21 +55,44 @@ def create_product_review(
         )
 
     # Enforce Verified Buyer requirement: Must have a completed DELIVERED order for this product
-    verified_order = db.query(Order).filter(
-        Order.product_id == product_id,
-        Order.user_id == current_user.id,
-        Order.status == "DELIVERED"
-    ).first()
+    if req.order_id:
+        target_order = db.query(Order).filter(
+            Order.id == req.order_id,
+            Order.product_id == product_id,
+            Order.user_id == current_user.id,
+            Order.status == "DELIVERED"
+        ).first()
+        if not target_order:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Provided order ID is not a verified delivered order for this product."
+            )
+        verified_order = target_order
+    else:
+        verified_order = db.query(Order).filter(
+            Order.product_id == product_id,
+            Order.user_id == current_user.id,
+            Order.status == "DELIVERED"
+        ).first()
+        if not verified_order:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only verified buyers who have received delivery of this product can submit reviews."
+            )
 
-    if not verified_order:
+    # Check for existing duplicate review on this specific delivered order
+    existing_review = db.query(Review).filter(
+        Review.order_id == verified_order.id
+    ).first()
+    if existing_review:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only verified buyers who have received delivery of this product can submit reviews."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A verified review has already been submitted for this order."
         )
 
     review = Review(
         product_id=product_id,
-        order_id=req.order_id or verified_order.id,
+        order_id=verified_order.id,
         buyer_id=current_user.id,
         buyer_name=current_user.name,
         rating=req.rating,
