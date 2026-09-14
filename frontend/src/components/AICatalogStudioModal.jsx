@@ -1903,16 +1903,36 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                               <span className="text-xs font-black text-emerald-700">
                                 {item.price ? `₹${item.price}` : 'Price unlisted'}
                               </span>
-                              {item.url && (
-                                <a
-                                  href={item.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-[10px] font-bold text-[#933D1E] hover:text-[#933D1E] underline"
-                                >
-                                  View Source →
-                                </a>
-                              )}
+                              {(() => {
+                                const rawUrl = (item.url || '').trim();
+                                const isDummy = !rawUrl || rawUrl.includes('example.com') || rawUrl.includes('placeholder') || rawUrl.includes('B08EXAMPLE') || rawUrl.includes('fake-unsupported') || rawUrl === 'http://' || rawUrl === 'https://';
+                                let validUrl = rawUrl;
+                                if (isDummy || (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://'))) {
+                                  const q = encodeURIComponent(item.title || 'handmade product');
+                                  const src = (item.source || '').toLowerCase();
+                                  if (src.includes('amazon')) {
+                                    validUrl = `https://www.amazon.in/s?k=${q}`;
+                                  } else if (src.includes('flipkart')) {
+                                    validUrl = `https://www.flipkart.com/search?q=${q}`;
+                                  } else if (src.includes('meesho')) {
+                                    validUrl = `https://www.meesho.com/search?q=${q}`;
+                                  } else if (src.includes('etsy')) {
+                                    validUrl = `https://www.etsy.com/in-en/search?q=${q}`;
+                                  } else {
+                                    validUrl = `https://www.google.com/search?q=${q}+buy+online+India`;
+                                  }
+                                }
+                                return (
+                                  <a
+                                    href={validUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] font-bold text-[#933D1E] hover:text-[#7E3216] underline"
+                                  >
+                                    View Source →
+                                  </a>
+                                );
+                              })()}
                             </div>
                           </div>
                         ))}

@@ -73,6 +73,25 @@ def _extract_json_array(text: str) -> Optional[list]:
     return None
 
 
+def _clean_or_build_url(url_val: str, title: str, source: str) -> str:
+    url_clean = (url_val or "").strip()
+    is_dummy = not url_clean or any(dummy in url_clean.lower() for dummy in ["example.com", "placeholder", "b08example", "fake-unsupported", "test"])
+    if not is_dummy and (url_clean.startswith("http://") or url_clean.startswith("https://")):
+        return url_clean
+    
+    import urllib.parse
+    q = urllib.parse.quote_plus(title or "handmade product")
+    src = (source or "").lower()
+    if "amazon" in src:
+        return f"https://www.amazon.in/s?k={q}"
+    elif "flipkart" in src:
+        return f"https://www.flipkart.com/search?q={q}"
+    elif "meesho" in src:
+        return f"https://www.meesho.com/search?q={q}"
+    elif "etsy" in src:
+        return f"https://www.etsy.com/in-en/search?q={q}"
+    return f"https://www.google.com/search?q={q}+buy+online+India"
+
 def _is_url_in_grounding(url: str, grounded_uris: set) -> bool:
     """Verifies that a product URL matches or derives from a grounded web search URI in groundingMetadata."""
     if not url or not isinstance(url, str):
@@ -231,12 +250,6 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                     if not title:
                         continue
 
-                    url_val = str(item.get("url") or "").strip()
-                    # Mandatory URL provenance verification against groundingMetadata
-                    if not _is_url_in_grounding(url_val, grounded_uris):
-                        logger.info("[Market] Rejecting listing '%s' - URL '%s' not present in groundingMetadata", title, url_val)
-                        continue
-
                     raw_p = item.get("price")
                     parsed_price = None
                     if raw_p is not None:
@@ -248,13 +261,19 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                             pass
 
                     source = str(item.get("source") or "Web Search").strip()
+                    url_val = str(item.get("url") or "").strip()
+                    if not _is_url_in_grounding(url_val, grounded_uris):
+                        logger.info("[Market] Rejecting listing '%s' - URL '%s' not present in groundingMetadata", title, url_val)
+                        continue
+
+                    final_url = _clean_or_build_url(url_val, title, source)
 
                     results.append({
                         "title": title,
                         "price": parsed_price,
                         "currency": "INR",
                         "source": source,
-                        "url": url_val,
+                        "url": final_url,
                         "description": str(item.get("description") or ""),
                         "category": str(item.get("category") or clean_q),
                         "materials": item.get("materials") or [],
