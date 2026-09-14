@@ -1,4 +1,5 @@
 {
+  "id": "/?v=5",
   "short_name": "Artisan AI",
   "name": "Artisan AI — Smart Rural Commerce & Cataloging",
   "description": "Voice-First AI Business Platform & Market Linkage for Marginalized Artisans",
@@ -28,7 +29,7 @@
       "purpose": "maskable"
     }
   ],
-  "start_url": "/",
+  "start_url": "/?v=5",
   "display": "standalone",
   "theme_color": "#FBF8F3",
   "background_color": "#FBF8F3",
