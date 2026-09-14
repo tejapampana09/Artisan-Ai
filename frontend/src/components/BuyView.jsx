@@ -183,70 +183,26 @@ export default function BuyView({ user, onOpenAuth }) {
           )}
         </div>
 
-        {/* Hero Spotlight Banner */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#3D2314] via-[#4A2E1B] to-[#5C3A21] text-white p-6 sm:p-8 shadow-xl border border-amber-900/40">
-          {/* Ambient Glows */}
-          <div className="w-48 h-48 rounded-full bg-amber-500/10 absolute -right-10 -bottom-10 blur-2xl pointer-events-none" />
-          <div className="w-32 h-32 rounded-full bg-orange-500/10 absolute top-0 right-1/3 blur-xl pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            {/* Left Content */}
-            <div className="space-y-3 max-w-lg">
-              <div className="inline-flex items-center space-x-2 bg-amber-400/15 border border-amber-400/30 px-3 py-1 rounded-full text-[11px] font-bold text-amber-300 backdrop-blur-md">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>Direct Artisan Marketplace • ONDC Integrated</span>
-              </div>
-              
-              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
-                Authentic Crafts, Brighter Lives
-              </h2>
-
-              <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-normal">
-                Connecting traditional Indian artisans directly with conscious buyers. Every purchase guarantees fair wages and preserves timeless cultural heritage.
-              </p>
-
-              <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] font-bold text-amber-200">
-                <span className="bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">✨ GI Tagged Art</span>
-                <span className="bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">🛡️ ≥ 20% Fair Profit</span>
-                <span className="bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">🤝 Zero Middleman</span>
-              </div>
-
-              <div className="pt-2 flex items-center space-x-3">
-                <button 
-                  onClick={() => handleCategorySelect('All Crafts')}
-                  className="inline-flex items-center space-x-2 bg-white text-[#933D1E] hover:bg-[#F4EBE1] active:scale-95 px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-md transition-all cursor-pointer"
-                >
-                  <ShoppingBag className="w-4 h-4 text-[#933D1E]" />
-                  <span>Shop Heritage Collection →</span>
-                </button>
-              </div>
+        {/* Marketplace Banner */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#933D1E] via-[#B84D26] to-[#7E3216] text-white p-6 sm:p-8 shadow-xl border border-amber-900/40">
+          <div className="relative z-10 space-y-2">
+            <div className="inline-flex items-center space-x-2 bg-white/15 border border-white/25 px-3 py-1 rounded-full text-[11px] font-bold text-amber-200 backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Verified Direct-to-Artisan Marketplace</span>
             </div>
+            
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Live Artisan Marketplace Catalog
+            </h2>
 
-            {/* Right Visual Card Preview */}
-            <div className="hidden sm:flex items-center space-x-3 shrink-0 self-center">
-              <div className="w-40 h-44 rounded-2xl overflow-hidden relative shadow-2xl border-2 border-white/20 transform rotate-2 hover:rotate-0 transition-transform">
-                <img 
-                  src="https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=400&q=80" 
-                  alt="Kalamkari Saree" 
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-2.5 text-white">
-                  <span className="text-[10px] font-bold text-amber-300">Kalamkari Craft</span>
-                  <span className="text-xs font-black">₹1,499</span>
-                </div>
-              </div>
+            <p className="text-xs sm:text-sm text-amber-100/90 max-w-xl font-normal">
+              Browse authentic GI-tagged crafts direct from master artisans. 100% fair margin protected with zero middleman commissions.
+            </p>
 
-              <div className="w-36 h-40 rounded-2xl overflow-hidden relative shadow-2xl border-2 border-white/20 transform -rotate-3 hover:rotate-0 transition-transform hidden md:block">
-                <img 
-                  src="https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=400&q=80" 
-                  alt="Jaipur Blue Pottery" 
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-2.5 text-white">
-                  <span className="text-[10px] font-bold text-amber-300">Blue Pottery</span>
-                  <span className="text-xs font-black">₹699</span>
-                </div>
-              </div>
+            <div className="flex flex-wrap items-center gap-2 pt-2 text-[11px] font-bold text-amber-100">
+              <span className="bg-white/10 px-2.5 py-1 rounded-lg border border-white/15">✨ GI Tagged Heritage</span>
+              <span className="bg-white/10 px-2.5 py-1 rounded-lg border border-white/15">🛡️ ≥20% Fair Profit Floor</span>
+              <span className="bg-white/10 px-2.5 py-1 rounded-lg border border-white/15">🤝 1-Click WhatsApp & Direct Call</span>
             </div>
           </div>
         </div>
