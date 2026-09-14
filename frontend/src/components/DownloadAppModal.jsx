@@ -81,7 +81,7 @@ export default function DownloadAppModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pb-20 sm:pb-6 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] my-auto">
+      <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-[#EADFCF]/60 flex flex-col max-h-[85vh] my-auto">
         {/* Header Banner */}
         <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 p-6 text-white relative">
           <button
@@ -103,7 +103,7 @@ export default function DownloadAppModal({ isOpen, onClose }) {
         </div>
 
         {/* Modal Content */}
-        <div className="p-6 space-y-5 overflow-y-auto flex-1 text-slate-800">
+        <div className="p-6 space-y-5 overflow-y-auto flex-1 text-[#2A1E17]">
           {/* Main Action: Instant Install */}
           {isInstalled ? (
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center space-x-3 text-emerald-800">
@@ -114,14 +114,14 @@ export default function DownloadAppModal({ isOpen, onClose }) {
               </div>
             </div>
           ) : (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+            <div className="bg-amber-50 border border-[#933D1E]/30 rounded-2xl p-4 space-y-3">
               <div className="flex items-start space-x-3">
-                <Sparkles className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                <Sparkles className="w-5 h-5 text-[#933D1E] shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold text-sm text-amber-900">
                     {isIos ? '📱 iPhone / iOS Installation Guide' : t('instantInstallTitle', 'Instant 1-Click Installation')}
                   </h4>
-                  <p className="text-xs text-amber-800 mt-0.5">
+                  <p className="text-xs text-[#933D1E] mt-0.5">
                     {isIos 
                       ? 'iPhone లో అప్లికేషన్ ఇన్స్టాల్ చేయడానికి 3 చిన్న స్టెప్స్ పాటించండి:' 
                       : t('instantInstallSub', 'No App Store login required. Works natively on Android, iOS, & Desktop.')}
@@ -130,9 +130,9 @@ export default function DownloadAppModal({ isOpen, onClose }) {
               </div>
 
               {isIos ? (
-                <div className="bg-white p-3.5 rounded-xl border border-amber-200 space-y-2 text-xs text-amber-950 font-medium">
+                <div className="bg-white p-3.5 rounded-xl border border-[#933D1E]/30 space-y-2 text-xs text-amber-950 font-medium">
                   <div className="flex items-center space-x-2">
-                    <Share className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <Share className="w-4 h-4 text-[#933D1E] shrink-0" />
                     <span><strong>1. Share:</strong> Safari కింద ఉన్న Share (📤) ఐకాన్ నొక్కండి.</span>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -140,7 +140,7 @@ export default function DownloadAppModal({ isOpen, onClose }) {
                     <span><strong>2. Add to Home Screen:</strong> 'Add to Home Screen' (➕) ఎంచుకోండి.</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <CheckCircle className="w-4 h-4 text-[#933D1E] shrink-0" />
                     <span><strong>3. Add:</strong> పైన కుడివైపున ఉన్న 'Add' బటన్ నొక్కండి!</span>
                   </div>
                 </div>
@@ -148,7 +148,7 @@ export default function DownloadAppModal({ isOpen, onClose }) {
 
               <button
                 onClick={handleInstallClick}
-                className="w-full py-3 px-4 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-xl shadow-lg shadow-orange-500/25 flex items-center justify-center space-x-2 transition-all cursor-pointer transform active:scale-98"
+                className="w-full py-3 px-4 bg-gradient-to-r from-[#933D1E] to-[#A84320] hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-xl shadow-lg shadow-orange-500/25 flex items-center justify-center space-x-2 transition-all cursor-pointer transform active:scale-98"
               >
                 <Download className="w-5 h-5" />
                 <span>{isIos ? 'Show iPhone Steps / స్టెప్స్ చూడండి' : t('installAppNowBtn', 'Install App Now / ఆప్‌ని ఇన్స్టాల్ చేయండి')}</span>
@@ -158,27 +158,27 @@ export default function DownloadAppModal({ isOpen, onClose }) {
 
           {/* Features Highlights */}
           <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center space-x-2">
+            <div className="p-3 bg-[#FAF7F2] border border-[#EADFCF]/60 rounded-xl flex items-center space-x-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="font-medium text-slate-700">{t('featureOfflineMode', 'Rural Offline Mode')}</span>
+              <span className="font-medium text-[#2A1E17]">{t('featureOfflineMode', 'Rural Offline Mode')}</span>
             </div>
-            <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center space-x-2">
-              <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-              <span className="font-medium text-slate-700">{t('featureVoiceAi', 'Voice AI Guide')}</span>
+            <div className="p-3 bg-[#FAF7F2] border border-[#EADFCF]/60 rounded-xl flex items-center space-x-2">
+              <Sparkles className="w-4 h-4 text-[#933D1E] shrink-0" />
+              <span className="font-medium text-[#2A1E17]">{t('featureVoiceAi', 'Voice AI Guide')}</span>
             </div>
           </div>
 
           {/* How to add to home screen manually */}
-          <div className="border-t border-slate-100 pt-4">
-            <h4 className="font-bold text-xs text-slate-600 uppercase tracking-wider mb-2">
+          <div className="border-t border-[#EADFCF]/60 pt-4">
+            <h4 className="font-bold text-xs text-[#6B5B51] uppercase tracking-wider mb-2">
               {t('manualInstallHeader', 'Manual Setup Instructions')}
             </h4>
-            <div className="space-y-2 text-xs text-slate-600">
-              <div className="flex items-center space-x-2 bg-slate-50 p-2.5 rounded-lg">
-                <Share className="w-4 h-4 text-indigo-600 shrink-0" />
+            <div className="space-y-2 text-xs text-[#6B5B51]">
+              <div className="flex items-center space-x-2 bg-[#FAF7F2] p-2.5 rounded-lg">
+                <Share className="w-4 h-4 text-[#933D1E] shrink-0" />
                 <span><strong>iOS / Safari:</strong> {t('iosInstallGuide', 'Tap Share button -> Add to Home Screen')}</span>
               </div>
-              <div className="flex items-center space-x-2 bg-slate-50 p-2.5 rounded-lg">
+              <div className="flex items-center space-x-2 bg-[#FAF7F2] p-2.5 rounded-lg">
                 <PlusSquare className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span><strong>Android / Chrome:</strong> {t('androidInstallGuide', 'Tap 3 dots menu -> Install app or Add to Home screen')}</span>
               </div>
@@ -187,10 +187,10 @@ export default function DownloadAppModal({ isOpen, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+        <div className="p-4 bg-[#FAF7F2] border-t border-[#EADFCF]/60 flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition-colors cursor-pointer"
+            className="px-5 py-2 rounded-xl bg-[#EADFCF] hover:bg-slate-300 text-[#2A1E17] text-xs font-bold transition-colors cursor-pointer"
           >
             {t('closeBtn', 'Close')}
           </button>

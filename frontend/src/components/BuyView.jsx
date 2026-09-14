@@ -148,14 +148,14 @@ export default function BuyView({ user, onOpenAuth }) {
     <div className="space-y-6 pb-28 md:pb-12">
       {/* Toast Notification */}
       {notification && (
-        <div className="p-3 bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-xl text-xs font-semibold flex items-center justify-between shadow-xs transition-all">
+        <div className="p-3 bg-indigo-50 border border-[#933D1E]/30 text-indigo-900 rounded-xl text-xs font-semibold flex items-center justify-between shadow-xs transition-all">
           <span>{notification}</span>
-          <button onClick={() => setNotification('')} className="text-indigo-600 hover:text-indigo-900 ml-2">✕</button>
+          <button onClick={() => setNotification('')} className="text-[#933D1E] hover:text-indigo-900 ml-2">✕</button>
         </div>
       )}
 
       {/* Header Banner (Screen 6 Design) */}
-      <div className="bg-[#FAF7F2] rounded-3xl p-6 border border-stone-200/80 space-y-4">
+      <div className="bg-[#FAF7F2] rounded-3xl p-6 border border-[#EADFCF]/80 space-y-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#2C1A0E] tracking-tight">
             Discover Handmade Treasures
@@ -166,7 +166,7 @@ export default function BuyView({ user, onOpenAuth }) {
         </div>
 
         {/* Search Bar */}
-        <div className="flex items-center bg-white rounded-2xl p-2.5 px-3.5 border border-stone-200 shadow-xs">
+        <div className="flex items-center bg-white rounded-2xl p-2.5 px-3.5 border border-[#EADFCF] shadow-xs">
           <Search className="w-4 h-4 text-stone-400 mr-2 shrink-0" />
           <input
             id="marketplace-search-input"
@@ -214,9 +214,9 @@ export default function BuyView({ user, onOpenAuth }) {
               <div className="pt-2 flex items-center space-x-3">
                 <button 
                   onClick={() => handleCategorySelect('All Crafts')}
-                  className="inline-flex items-center space-x-2 bg-white text-[#4A2E1B] hover:bg-stone-100 active:scale-95 px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-md transition-all cursor-pointer"
+                  className="inline-flex items-center space-x-2 bg-white text-[#933D1E] hover:bg-[#F4EBE1] active:scale-95 px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-md transition-all cursor-pointer"
                 >
-                  <ShoppingBag className="w-4 h-4 text-[#4A2E1B]" />
+                  <ShoppingBag className="w-4 h-4 text-[#933D1E]" />
                   <span>Shop Heritage Collection →</span>
                 </button>
               </div>
@@ -262,8 +262,8 @@ export default function BuyView({ user, onOpenAuth }) {
               onClick={() => handleCategorySelect(cat)}
               className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
                 selectedCategory === cat
-                  ? 'bg-[#4A2E1B] text-white border-[#4A2E1B] shadow-sm'
-                  : 'bg-white text-stone-700 border-stone-200 hover:border-amber-700/40'
+                  ? 'bg-[#933D1E] text-white border-[#933D1E] shadow-sm'
+                  : 'bg-white text-stone-700 border-[#EADFCF] hover:border-amber-700/40'
               }`}
             >
               {getCategoryTranslation(cat)}
@@ -276,11 +276,11 @@ export default function BuyView({ user, onOpenAuth }) {
       {trending.length > 0 && selectedCategory === 'All Crafts' && !searchQuery && !minPrice && !maxPrice && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5">
+            <h3 className="text-sm font-bold text-[#2A1E17] flex items-center space-x-1.5">
               <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
               <span>{t('trendingHeritageCrafts', 'Trending Heritage Crafts')}</span>
             </h3>
-            <span className="text-[11px] text-slate-500">{t('rankedByInterest', 'Ranked by buyer interest velocity')}</span>
+            <span className="text-[11px] text-[#6B5B51]">{t('rankedByInterest', 'Ranked by buyer interest velocity')}</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -292,18 +292,18 @@ export default function BuyView({ user, onOpenAuth }) {
                   setIsDetailOpen(true);
                   triggerEventRefresh();
                 }}
-                className="bg-white p-3 rounded-2xl border border-orange-200/80 hover:border-orange-400 transition-all cursor-pointer shadow-xs group"
+                className="bg-[#FBF8F3] p-3 rounded-2xl border border-[#EADFCF] hover:border-[#933D1E] hover:border-orange-400 transition-all cursor-pointer shadow-xs group"
               >
-                <div className="relative rounded-xl overflow-hidden h-28 bg-slate-100">
+                <div className="relative rounded-xl overflow-hidden h-28 bg-[#F4EBE1]">
                   <img src={p.image_url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                   <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                     {t('highDemand', 'High Demand')}
                   </span>
                 </div>
-                <h4 className="text-xs font-bold text-slate-900 mt-2 truncate">{getLocalizedProductField(p, 'title', language)}</h4>
+                <h4 className="text-xs font-bold text-[#2A1E17] mt-2 truncate">{getLocalizedProductField(p, 'title', language)}</h4>
                 <div className="flex justify-between items-center mt-1">
-                  <span className="text-xs font-extrabold text-indigo-700">₹{p.price.toLocaleString('en-IN')}</span>
-                  <span className="text-[10px] text-slate-500">{getCategoryTranslation(p.category)}</span>
+                  <span className="text-xs font-extrabold text-[#933D1E]">₹{p.price.toLocaleString('en-IN')}</span>
+                  <span className="text-[10px] text-[#6B5B51]">{getCategoryTranslation(p.category)}</span>
                 </div>
               </div>
             ))}
@@ -314,22 +314,22 @@ export default function BuyView({ user, onOpenAuth }) {
       {/* Main Marketplace Grid */}
       <div className="space-y-3">
         <div className="flex justify-between items-center">
-          <h3 className="text-sm font-bold text-slate-900">
+          <h3 className="text-sm font-bold text-[#2A1E17]">
             {selectedCategory === 'All Crafts' ? t('allArtisanCollections', 'All Artisan Collections') : `${getCategoryTranslation(selectedCategory)} Collection`}
           </h3>
-          <span className="text-xs text-slate-500">{products.length} {t('craftsAvailable', 'crafts available')}</span>
+          <span className="text-xs text-[#6B5B51]">{products.length} {t('craftsAvailable', 'crafts available')}</span>
         </div>
 
         {loading ? (
-          <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center">
-            <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-            <p className="text-xs text-slate-500">Loading marketplace crafts...</p>
+          <div className="bg-white p-12 rounded-2xl border border-[#EADFCF] text-center">
+            <div className="w-6 h-6 border-2 border-[#933D1E] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <p className="text-xs text-[#6B5B51]">Loading marketplace crafts...</p>
           </div>
         ) : products.length === 0 ? (
-          <div className="bg-white p-12 rounded-2xl border border-dashed border-slate-300 text-center space-y-2">
+          <div className="bg-white p-12 rounded-2xl border border-dashed border-[#EADFCF] text-center space-y-2">
             <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto" />
-            <p className="text-sm font-medium text-slate-700">No crafts matched your filter or search.</p>
-            <p className="text-xs text-slate-400">Try adjusting price range, clearing search query, or selecting "All Crafts".</p>
+            <p className="text-sm font-medium text-[#2A1E17]">No crafts matched your filter or search.</p>
+            <p className="text-xs text-[#9E8E83]">Try adjusting price range, clearing search query, or selecting "All Crafts".</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -340,11 +340,11 @@ export default function BuyView({ user, onOpenAuth }) {
               return (
                 <div
                   key={p.id}
-                  className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
+                  className="bg-white rounded-2xl border border-[#EADFCF] overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
                 >
                   <div>
                     {/* Image with quick-save */}
-                    <div className="relative h-48 bg-slate-100 overflow-hidden">
+                    <div className="relative h-48 bg-[#F4EBE1] overflow-hidden">
                       <img
                         src={p.image_url}
                         alt={cardTitle}
@@ -363,7 +363,7 @@ export default function BuyView({ user, onOpenAuth }) {
                         className={`absolute top-2.5 right-2.5 p-2 rounded-full backdrop-blur-md transition-all cursor-pointer ${
                           isSaved
                             ? 'bg-rose-600 text-white shadow-md'
-                            : 'bg-white/80 text-slate-600 hover:text-rose-600 hover:bg-white'
+                            : 'bg-white/80 text-[#6B5B51] hover:text-rose-600 hover:bg-white'
                         }`}
                         title="Save Craft (SAVE event)"
                       >
@@ -377,7 +377,7 @@ export default function BuyView({ user, onOpenAuth }) {
                     {/* Metadata */}
                     <div className="p-4 space-y-1.5">
                       <h4
-                        className="font-bold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer line-clamp-1"
+                        className="font-bold text-[#2A1E17] text-sm hover:text-[#933D1E] cursor-pointer line-clamp-1"
                         onClick={() => {
                           setSelectedProduct(p);
                           setIsDetailOpen(true);
@@ -386,18 +386,18 @@ export default function BuyView({ user, onOpenAuth }) {
                       >
                         {cardTitle}
                       </h4>
-                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-[#6B5B51] line-clamp-2 leading-relaxed">
                         {cardDesc}
                       </p>
                     </div>
                   </div>
 
                   {/* Price & Actions */}
-                  <div className="p-4 pt-0 border-t border-slate-100 mt-2 space-y-2.5">
+                  <div className="p-4 pt-0 border-t border-[#EADFCF]/60 mt-2 space-y-2.5">
                     <div className="flex justify-between items-baseline pt-2">
                       <div>
-                        <span className="text-[10px] text-slate-400 block">{t('directFairPrice', 'Direct Fair Price')}</span>
-                        <span className="text-base font-extrabold text-slate-900">₹{p.price.toLocaleString('en-IN')}</span>
+                        <span className="text-[10px] text-[#9E8E83] block">{t('directFairPrice', 'Direct Fair Price')}</span>
+                        <span className="text-base font-extrabold text-[#2A1E17]">₹{p.price.toLocaleString('en-IN')}</span>
                       </div>
                       {p.stock > 0 ? (
                         <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
@@ -417,7 +417,7 @@ export default function BuyView({ user, onOpenAuth }) {
                           setIsDetailOpen(true);
                           triggerEventRefresh();
                         }}
-                        className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+                        className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-semibold text-[#2A1E17] bg-[#F4EBE1] hover:bg-[#EADFCF] rounded-xl transition-colors cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>{t('viewDetails', 'View')}</span>
@@ -425,10 +425,10 @@ export default function BuyView({ user, onOpenAuth }) {
 
                       {user && p.seller_id === user.id ? (
                         <span 
-                          className="inline-flex items-center justify-center space-x-1 py-2 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl cursor-default"
+                          className="inline-flex items-center justify-center space-x-1 py-2 text-[11px] font-bold text-[#933D1E] bg-amber-50 border border-[#933D1E]/30 rounded-xl cursor-default"
                           title="This is your own listed craft. Self-purchase is disabled."
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#933D1E]" />
                           <span>{t('yourCraft', 'Your Craft')}</span>
                         </span>
                       ) : p.stock <= 0 ? (
@@ -440,10 +440,10 @@ export default function BuyView({ user, onOpenAuth }) {
                             }
                             setOrderModal({ isOpen: true, product: p, mode: 'ENQUIRY' });
                           }}
-                          className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-colors cursor-pointer"
+                          className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-bold text-[#933D1E] bg-amber-50 hover:bg-amber-100 border border-[#933D1E]/30 rounded-xl transition-colors cursor-pointer"
                           title="Out of stock for direct checkout. Click to request a custom batch or pre-order."
                         >
-                          <Send className="w-3.5 h-3.5 text-amber-600" />
+                          <Send className="w-3.5 h-3.5 text-[#933D1E]" />
                           <span>{t('preOrder', 'Pre-Order')}</span>
                         </button>
                       ) : (
@@ -455,7 +455,7 @@ export default function BuyView({ user, onOpenAuth }) {
                             }
                             setOrderModal({ isOpen: true, product: p, mode: 'ORDER' });
                           }}
-                          className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors cursor-pointer"
+                          className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-bold text-white bg-[#933D1E] hover:bg-[#7E3216] rounded-xl shadow-xs transition-colors cursor-pointer"
                         >
                           <ShoppingBag className="w-3.5 h-3.5" />
                           <span>{t('buyNow', 'Buy Now')}</span>
@@ -519,7 +519,7 @@ export default function BuyView({ user, onOpenAuth }) {
           className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-40 bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 hover:from-indigo-950 hover:to-purple-950 text-white font-bold px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full shadow-2xl border-2 border-amber-400/80 flex items-center space-x-2 transition-all hover:scale-105 active:scale-95 cursor-pointer group backdrop-blur-md"
           title="Open Native AI Shopping Assistant"
         >
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-500 flex items-center justify-center text-slate-900 font-extrabold shadow-md group-hover:rotate-12 transition-transform shrink-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-500 flex items-center justify-center text-[#2A1E17] font-extrabold shadow-md group-hover:rotate-12 transition-transform shrink-0">
             🤖
           </div>
           <div className="text-left">

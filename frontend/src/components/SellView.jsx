@@ -315,20 +315,20 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
 
   if (!user) {
     return (
-      <div className="max-w-xl mx-auto my-14 bg-white rounded-3xl p-8 sm:p-12 border border-slate-200 shadow-xl text-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-600 to-orange-500 text-white flex items-center justify-center mx-auto shadow-md">
+      <div className="max-w-xl mx-auto my-14 bg-white rounded-3xl p-8 sm:p-12 border border-[#EADFCF] shadow-xl text-center space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#933D1E] to-[#A84320] text-white flex items-center justify-center mx-auto shadow-md">
           <Store className="w-8 h-8" />
         </div>
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Artisan Studio Login Required</h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-2 leading-relaxed max-w-md mx-auto">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#2A1E17]">Artisan Studio Login Required</h2>
+          <p className="text-xs sm:text-sm text-[#6B5B51] mt-2 leading-relaxed max-w-md mx-auto">
             You are currently signed out. Please sign in to access your private artisan studio, manage your craft catalog, review customer orders, and answer wholesale buyer enquiries.
           </p>
         </div>
         <div className="pt-3 flex justify-center">
           <button
             onClick={onOpenAuth}
-            className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+            className="bg-gradient-to-r from-[#933D1E] to-[#A84320] hover:from-[#7E3216] hover:to-[#933D1E] text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
           >
             Sign In to Artisan Studio
           </button>
@@ -339,23 +339,23 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
 
   if (user?.role === 'BUYER') {
     return (
-      <div className="max-w-xl mx-auto my-14 bg-white rounded-3xl p-8 sm:p-12 border border-slate-200 shadow-xl text-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-500 text-white flex items-center justify-center mx-auto shadow-md">
+      <div className="max-w-xl mx-auto my-14 bg-white rounded-3xl p-8 sm:p-12 border border-[#EADFCF] shadow-xl text-center space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#933D1E] to-[#782E14] text-white flex items-center justify-center mx-auto shadow-md">
           <ShoppingCart className="w-8 h-8" />
         </div>
         <div>
-          <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200 mb-2">
+          <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-[#933D1E] bg-indigo-50 px-3 py-1 rounded-full border border-[#933D1E]/30 mb-2">
             Buyer Account (కొనుగోలుదారు)
           </span>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">You are logged in as a Buyer</h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-2 leading-relaxed max-w-md mx-auto">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#2A1E17]">You are logged in as a Buyer</h2>
+          <p className="text-xs sm:text-sm text-[#6B5B51] mt-2 leading-relaxed max-w-md mx-auto">
             Namaste <strong>{user.name}</strong>! Your account is registered as a <strong>Connoisseur / Buyer</strong>. Artisan Studio is reserved for master craft creators to list crafts, configure pricing, and manage inventory.
           </p>
         </div>
         <div className="pt-3 flex justify-center">
           <button
             onClick={() => onSwitchMode?.('BUY')}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+            className="bg-[#933D1E] hover:bg-[#7E3216] text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
           >
             Explore Buyer Marketplace (హస్తకళలు కొనండి)
           </button>
@@ -380,30 +380,31 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
       )}
 
       {/* Welcome Banner (Screen 5 Design) */}
-      <div className="bg-[#FAF7F2] rounded-3xl p-6 border border-stone-200/80 space-y-4">
+      <div className="bg-[#FBF8F3] rounded-3xl p-6 sm:p-8 border border-[#EADFCF] shadow-xs space-y-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-[#2C1A0E]">
+          <span className="font-script text-[#933D1E] text-lg block">Artisan Studio</span>
+          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#2A1E17]">
             Good morning, {user?.name || 'Lakshmi'} 👋
           </h1>
-          <p className="text-xs text-stone-500 font-medium mt-0.5">
-            Your craft can change lives! • Craft: <span className="font-bold text-stone-800">{user?.craft || 'Handicrafts'}</span>
+          <p className="text-xs text-[#6B5B51] font-medium mt-0.5">
+            Your craft can change lives! • Craft: <span className="font-bold text-[#2A1E17]">{user?.craft || 'Handicrafts'}</span>
           </p>
         </div>
 
         {/* Hero Card: Create Your Product with AI */}
         <div 
           onClick={() => setIsAIOpen(true)}
-          className="bg-[#4A2E1B] text-white p-5 rounded-2xl shadow-lg flex items-center justify-between cursor-pointer group hover:bg-[#3D2314] transition-all"
+          className="bg-[#933D1E] text-white p-5 rounded-2xl shadow-md flex items-center justify-between cursor-pointer group hover:bg-[#7E3216] transition-all"
         >
           <div className="space-y-1.5 max-w-md">
-            <div className="inline-flex items-center space-x-1.5 bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-amber-400/30">
+            <div className="inline-flex items-center space-x-1.5 bg-white/20 text-amber-200 px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-white/20">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               <span>Voice & Camera AI</span>
             </div>
-            <h3 className="text-lg font-extrabold text-white group-hover:translate-x-0.5 transition-transform">
+            <h3 className="font-serif text-lg font-bold text-white group-hover:translate-x-0.5 transition-transform">
               Create Your Product with AI →
             </h3>
-            <p className="text-xs text-stone-300">
+            <p className="text-xs text-amber-100">
               Take a photo or speak in Telugu/Hindi to create your catalog instantly.
             </p>
           </div>
@@ -412,24 +413,63 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
           </div>
         </div>
 
-        {/* Quick Actions Bar */}
-        <div className="grid grid-cols-4 gap-2 pt-1">
-          <button onClick={() => setActiveTab('DASHBOARD')} className="p-3 rounded-2xl bg-white border border-stone-200 text-center space-y-1 hover:border-[#4A2E1B] transition-all shadow-2xs">
-            <Package className="w-5 h-5 text-[#4A2E1B] mx-auto" />
-            <span className="text-[11px] font-bold text-[#2C1A0E] block">My Products</span>
-          </button>
-          <button onClick={() => setActiveTab('ORDERS')} className="p-3 rounded-2xl bg-white border border-stone-200 text-center space-y-1 hover:border-[#4A2E1B] transition-all shadow-2xs">
-            <ShoppingCart className="w-5 h-5 text-[#4A2E1B] mx-auto" />
-            <span className="text-[11px] font-bold text-[#2C1A0E] block">Orders</span>
-          </button>
-          <button onClick={() => setActiveTab('INSIGHTS')} className="p-3 rounded-2xl bg-white border border-stone-200 text-center space-y-1 hover:border-[#4A2E1B] transition-all shadow-2xs">
-            <TrendingUp className="w-5 h-5 text-[#4A2E1B] mx-auto" />
-            <span className="text-[11px] font-bold text-[#2C1A0E] block">Earnings</span>
-          </button>
-          <button onClick={() => setActiveTab('DASHBOARD')} className="p-3 rounded-2xl bg-white border border-stone-200 text-center space-y-1 hover:border-[#4A2E1B] transition-all shadow-2xs">
-            <MessageSquare className="w-5 h-5 text-[#4A2E1B] mx-auto" />
-            <span className="text-[11px] font-bold text-[#2C1A0E] block">Reviews</span>
-          </button>
+        {/* 4 Pastel Studio Action Cards (Screen 3 Reference Design) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+          {/* Card 1: Create Catalog (Mint) */}
+          <div 
+            onClick={() => setIsAIOpen(true)}
+            className="bg-[#E6F4EA] border border-[#CEEAD6] p-4 rounded-2xl cursor-pointer hover:shadow-md transition-all space-y-2 group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[#137333] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+              <Wand2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-serif font-bold text-sm text-[#0D652D]">Create Catalog</h4>
+              <p className="text-[11px] text-[#137333]/80 leading-tight mt-0.5">Use AI to generate product details</p>
+            </div>
+          </div>
+
+          {/* Card 2: Market Research (Peach) */}
+          <div 
+            onClick={() => setActiveTab('INSIGHTS')}
+            className="bg-[#FCE8E6] border border-[#FAD2CF] p-4 rounded-2xl cursor-pointer hover:shadow-md transition-all space-y-2 group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[#C5221F] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+              <BarChart3 className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-serif font-bold text-sm text-[#B31412]">Market Research</h4>
+              <p className="text-[11px] text-[#C5221F]/80 leading-tight mt-0.5">Check market trends & competitors</p>
+            </div>
+          </div>
+
+          {/* Card 3: Smart Pricing (Gold) */}
+          <div 
+            onClick={() => setActiveTab('PRICING')}
+            className="bg-[#FEF7E0] border border-[#FCE8B2] p-4 rounded-2xl cursor-pointer hover:shadow-md transition-all space-y-2 group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[#B06000] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+              <Tag className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-serif font-bold text-sm text-[#8C4A00]">Smart Pricing</h4>
+              <p className="text-[11px] text-[#B06000]/80 leading-tight mt-0.5">Get AI price recommendations</p>
+            </div>
+          </div>
+
+          {/* Card 4: Demand Insights (Lavender) */}
+          <div 
+            onClick={() => setActiveTab('DASHBOARD')}
+            className="bg-[#F3E8FD] border border-[#E9D5FF] p-4 rounded-2xl cursor-pointer hover:shadow-md transition-all space-y-2 group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[#7E22CE] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-serif font-bold text-sm text-[#6B21A8]">Demand Insights</h4>
+              <p className="text-[11px] text-[#7E22CE]/80 leading-tight mt-0.5">See what's trending in market</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -440,19 +480,19 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         </h3>
         <div className="grid grid-cols-3 gap-3">
           {/* Metric 1 */}
-          <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs space-y-1 text-center">
+          <div className="bg-white p-4 rounded-2xl border border-[#EADFCF]/80 shadow-xs space-y-1 text-center">
             <span className="text-[11px] font-semibold text-stone-400 block">New Views</span>
             <span className="text-xl font-extrabold text-[#2C1A0E]">{dashboardData?.total_views ?? myProducts.reduce((sum, p) => sum + (p.views_count || 0), 0)}</span>
           </div>
 
           {/* Metric 2 */}
-          <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs space-y-1 text-center">
+          <div className="bg-white p-4 rounded-2xl border border-[#EADFCF]/80 shadow-xs space-y-1 text-center">
             <span className="text-[11px] font-semibold text-stone-400 block">Enquiries</span>
             <span className="text-xl font-extrabold text-[#2C1A0E]">{dashboardData?.total_enquiries ?? enquiries.length}</span>
           </div>
 
           {/* Metric 3 */}
-          <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs space-y-1 text-center">
+          <div className="bg-white p-4 rounded-2xl border border-[#EADFCF]/80 shadow-xs space-y-1 text-center">
             <span className="text-[11px] font-semibold text-stone-400 block">Potential Earnings</span>
             <span className="text-xl font-extrabold text-[#4A2E1B]">₹{totalCatalogValue.toLocaleString('en-IN')}</span>
           </div>
@@ -463,13 +503,13 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
       <MarketDemandWidget demands={demands} />
 
       {/* 9-Section Unified Artisan Workspace Navigation Tabs */}
-      <div className="flex items-center space-x-1.5 border-b border-slate-200 pb-3 flex-wrap gap-y-2">
+      <div className="flex items-center space-x-1.5 border-b border-[#EADFCF] pb-3 flex-wrap gap-y-2">
         <button
           onClick={() => setActiveTab('DASHBOARD')}
           className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'DASHBOARD'
-              ? 'bg-amber-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              ? 'bg-[#933D1E] text-white shadow-sm font-bold'
+              : 'bg-white text-[#6B5B51] hover:bg-[#F4EBE1] border border-[#EADFCF]'
           }`}
         >
           <Sparkles className="w-3.5 h-3.5" />
@@ -480,8 +520,8 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
           onClick={() => setActiveTab('PRODUCTS')}
           className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'PRODUCTS'
-              ? 'bg-amber-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              ? 'bg-[#933D1E] text-white shadow-sm font-bold'
+              : 'bg-white text-[#6B5B51] hover:bg-[#F4EBE1] border border-[#EADFCF]'
           }`}
         >
           <Package className="w-3.5 h-3.5" />
@@ -493,7 +533,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
           className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
             activeTab === 'ORDERS'
               ? 'bg-emerald-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              : 'bg-white text-[#6B5B51] hover:bg-[#F4EBE1] border border-[#EADFCF]'
           }`}
         >
           <ShoppingCart className="w-3.5 h-3.5" />
@@ -527,9 +567,9 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
       {/* SECTION 2: PRODUCTS LIST */}
       {activeTab === 'PRODUCTS' && (
         loading ? (
-          <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center">
-            <div className="w-6 h-6 border-2 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-            <p className="text-xs text-slate-500">Loading catalog...</p>
+          <div className="bg-white p-12 rounded-2xl border border-[#EADFCF] text-center">
+            <div className="w-6 h-6 border-2 border-[#933D1E] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <p className="text-xs text-[#6B5B51]">Loading catalog...</p>
           </div>
         ) : (
           <ProductList
@@ -545,14 +585,14 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
 
       {/* SECTION 3: PRICING & COSTS */}
       {activeTab === 'PRICING' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
-          <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+        <div className="bg-white rounded-2xl border border-[#EADFCF] p-6 shadow-xs space-y-6">
+          <div className="flex justify-between items-center pb-4 border-b border-[#EADFCF]/60">
             <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-                <Tag className="w-5 h-5 text-amber-600" />
+              <h3 className="text-base font-bold text-[#2A1E17] flex items-center space-x-2">
+                <Tag className="w-5 h-5 text-[#933D1E]" />
                 <span>Explainable Artisan Cost-Plus Pricing System</span>
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-[#6B5B51] mt-0.5">
                 Every price recommendation is transparently calculated from your actual material, labour, and packaging costs with a guaranteed 20% protected profit margin.
               </p>
             </div>
@@ -569,33 +609,33 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
               const basis = mat + lab + pkg;
               const minFair = basis > 0 ? Math.round(basis * 1.2) : Math.round(Number(p.price) * 0.8);
               return (
-                <div key={p.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                <div key={p.id} className="p-4 rounded-xl border border-[#EADFCF] bg-[#FBF8F3]/60 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <img src={p.image_url} alt={p.title} className="w-10 h-10 rounded-lg object-cover border border-slate-200" />
+                      <img src={p.image_url} alt={p.title} className="w-10 h-10 rounded-lg object-cover border border-[#EADFCF]" />
                       <div>
-                        <h4 className="font-bold text-slate-900 text-xs">{p.title}</h4>
-                        <span className="text-[10px] text-slate-500">{p.category}</span>
+                        <h4 className="font-bold text-[#2A1E17] text-xs">{p.title}</h4>
+                        <span className="text-[10px] text-[#6B5B51]">{p.category}</span>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-xs font-bold text-slate-900 block">₹{Number(p.price).toLocaleString('en-IN')}</span>
+                      <span className="text-xs font-bold text-[#2A1E17] block">₹{Number(p.price).toLocaleString('en-IN')}</span>
                       <span className="text-[10px] font-semibold text-emerald-700">Listing Price</span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 p-2 bg-white rounded-lg border border-slate-200 text-[11px]">
+                  <div className="grid grid-cols-3 gap-2 p-2 bg-white rounded-lg border border-[#EADFCF] text-[11px]">
                     <div>
-                      <span className="text-slate-400 block text-[10px]">Material:</span>
-                      <span className="font-bold text-slate-800">₹{mat}</span>
+                      <span className="text-[#9E8E83] block text-[10px]">Material:</span>
+                      <span className="font-bold text-[#2A1E17]">₹{mat}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[10px]">Labour:</span>
-                      <span className="font-bold text-slate-800">₹{lab}</span>
+                      <span className="text-[#9E8E83] block text-[10px]">Labour:</span>
+                      <span className="font-bold text-[#2A1E17]">₹{lab}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[10px]">Packaging:</span>
-                      <span className="font-bold text-slate-800">₹{pkg}</span>
+                      <span className="text-[#9E8E83] block text-[10px]">Packaging:</span>
+                      <span className="font-bold text-[#2A1E17]">₹{pkg}</span>
                     </div>
                   </div>
 
@@ -612,14 +652,14 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
 
       {/* SECTION 4: CRAFT PASSPORT */}
       {activeTab === 'PASSPORT' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
-          <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+        <div className="bg-white rounded-2xl border border-[#EADFCF] p-6 shadow-xs space-y-6">
+          <div className="flex justify-between items-center pb-4 border-b border-[#EADFCF]/60">
             <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-                <ShieldCheck className="w-5 h-5 text-indigo-600" />
+              <h3 className="text-base font-bold text-[#2A1E17] flex items-center space-x-2">
+                <ShieldCheck className="w-5 h-5 text-[#933D1E]" />
                 <span>Digital Craft Passport & Heritage Provenance</span>
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-[#6B5B51] mt-0.5">
                 Cryptographically verifiable digital craft identity preserving handmade heritage, origin, and fair-wage compliance.
               </p>
             </div>
@@ -627,12 +667,12 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {myProducts.map((p) => (
-              <div key={p.id} className="bg-amber-50/40 p-4 rounded-2xl border border-amber-200 space-y-3">
+              <div key={p.id} className="bg-amber-50/40 p-4 rounded-2xl border border-[#933D1E]/30 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 bg-amber-200/60 px-2 py-0.5 rounded-full">
                     {p.category} GI Provenance
                   </span>
-                  <span className="font-mono text-[10px] font-bold text-amber-800 bg-white px-2 py-0.5 rounded border border-amber-300">
+                  <span className="font-mono text-[10px] font-bold text-[#933D1E] bg-white px-2 py-0.5 rounded border border-amber-300">
                     ART-GI-2026-{p.id}
                   </span>
                 </div>
@@ -640,19 +680,19 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                 <div className="flex items-center space-x-3">
                   <img src={p.image_url} alt={p.title} className="w-14 h-14 rounded-xl object-cover border border-amber-300 shadow-2xs" />
                   <div>
-                    <h4 className="font-bold text-slate-900 text-xs">{p.title}</h4>
-                    <p className="text-[11px] text-slate-600 italic mt-0.5">"{p.craft_story || 'Generational traditional craft technique.'}"</p>
+                    <h4 className="font-bold text-[#2A1E17] text-xs">{p.title}</h4>
+                    <p className="text-[11px] text-[#6B5B51] italic mt-0.5">"{p.craft_story || 'Generational traditional craft technique.'}"</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-amber-200/60">
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-[#933D1E]/30/60">
                   <div>
-                    <span className="text-slate-500 block text-[10px]">Handmade Percentage:</span>
+                    <span className="text-[#6B5B51] block text-[10px]">Handmade Percentage:</span>
                     <span className="font-bold text-emerald-800">100% Handcrafted</span>
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[10px]">Verification Status:</span>
-                    <span className="font-bold text-indigo-800">Artisan Verified</span>
+                    <span className="text-[#6B5B51] block text-[10px]">Verification Status:</span>
+                    <span className="font-bold text-[#933D1E]">Artisan Verified</span>
                   </div>
                 </div>
               </div>
@@ -664,13 +704,13 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
       {/* SECTION 6: MARKET INSIGHTS */}
       {activeTab === 'INSIGHTS' && (
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-            <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+          <div className="bg-white p-6 rounded-2xl border border-[#EADFCF] shadow-xs space-y-4">
+            <h3 className="text-base font-bold text-[#2A1E17] flex items-center space-x-2">
               <BarChart3 className="w-5 h-5 text-purple-600" />
               <span>Actionable Market Intelligence & Trend Signals</span>
             </h3>
-            <p className="text-xs text-slate-500">
-              Data-backed market insights following <strong className="text-slate-700">DATA → INSIGHT → EXPLANATION → RECOMMENDED ACTION</strong> with explicit source attribution.
+            <p className="text-xs text-[#6B5B51]">
+              Data-backed market insights following <strong className="text-[#2A1E17]">DATA → INSIGHT → EXPLANATION → RECOMMENDED ACTION</strong> with explicit source attribution.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
@@ -682,10 +722,10 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                       [Internal Buyer Activity]
                     </span>
                   </div>
-                  <p className="text-slate-700 leading-relaxed">
+                  <p className="text-[#2A1E17] leading-relaxed">
                     <strong className="text-purple-900">Insight:</strong> High search interest detected ({d.search_count} searches in past 30 days).
                   </p>
-                  <p className="text-slate-600 bg-white p-2 rounded-lg border border-purple-100 italic">
+                  <p className="text-[#6B5B51] bg-white p-2 rounded-lg border border-purple-100 italic">
                     <strong>Recommended Action:</strong> List 2 additional items in {d.category} to capture active buyer orders.
                   </p>
                 </div>
@@ -697,14 +737,14 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
 
       {/* SECTION 7: OFFLINE SYNC STATUS */}
       {activeTab === 'SYNC_STATUS' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-          <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+        <div className="bg-white rounded-2xl border border-[#EADFCF] p-6 shadow-xs space-y-4">
+          <div className="flex justify-between items-center pb-3 border-b border-[#EADFCF]/60">
             <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <h3 className="text-base font-bold text-[#2A1E17] flex items-center space-x-2">
                 <RefreshCw className="w-5 h-5 text-sky-600" />
                 <span>Atomic Offline Queue & Client Operation Sync Monitor</span>
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-[#6B5B51] mt-0.5">
                 Guarantees zero data loss in rural areas with unreliable internet. Operations assign a unique <code className="text-sky-700 bg-sky-50 px-1 rounded">client_operation_id</code> for idempotent processing.
               </p>
             </div>
@@ -714,9 +754,9 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
           </div>
 
           <div className="space-y-3 text-xs">
-            <h4 className="font-bold text-slate-800">Pending Device Queue Items ({offlineQueue.length}):</h4>
+            <h4 className="font-bold text-[#2A1E17]">Pending Device Queue Items ({offlineQueue.length}):</h4>
             {offlineQueue.length === 0 ? (
-              <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200 text-slate-500">
+              <div className="p-8 text-center bg-[#FAF7F2] rounded-xl border border-[#EADFCF] text-[#6B5B51]">
                 <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
                 <span>All local operations are 100% synchronized with the cloud!</span>
               </div>
@@ -741,14 +781,14 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
 
       {/* SECTION 8: SALES CHANNELS */}
       {activeTab === 'CHANNELS' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
-          <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+        <div className="bg-white rounded-2xl border border-[#EADFCF] p-6 shadow-xs space-y-6">
+          <div className="flex justify-between items-center pb-4 border-b border-[#EADFCF]/60">
             <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-                <ExternalLink className="w-5 h-5 text-slate-900" />
+              <h3 className="text-base font-bold text-[#2A1E17] flex items-center space-x-2">
+                <ExternalLink className="w-5 h-5 text-[#2A1E17]" />
                 <span>Sales Channel Adapters & Marketplace Network</span>
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-[#6B5B51] mt-0.5">
                 Decoupled channel adapters for direct buyer marketplace and external sandbox channels.
               </p>
             </div>
@@ -756,14 +796,14 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
             {channels.map((chan) => (
-              <div key={chan.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+              <div key={chan.id} className="p-4 rounded-xl border border-[#EADFCF] bg-[#FAF7F2] space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900">{chan.name}</span>
+                  <span className="font-bold text-[#2A1E17]">{chan.name}</span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${chan.is_real_integration ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'}`}>
                     {chan.status}
                   </span>
                 </div>
-                <p className="text-slate-600 text-[11px]">{chan.description}</p>
+                <p className="text-[#6B5B51] text-[11px]">{chan.description}</p>
                 <div className="pt-2">
                   <button
                     type="button"
@@ -784,13 +824,13 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
       {activeTab === 'ORDERS' && (
         <div className="space-y-6">
           {/* Section A: Direct Buyer Wholesale Enquiries */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50/40">
+          <div className="bg-white rounded-2xl border border-[#EADFCF] shadow-xs overflow-hidden">
+            <div className="px-6 py-4 border-b border-[#EADFCF]/60 flex justify-between items-center bg-indigo-50/40">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Direct Buyer Wholesale Enquiries</h3>
-                <p className="text-xs text-slate-500">Inquiries and custom bulk requests received directly from buyers</p>
+                <h3 className="text-base font-bold text-[#2A1E17]">Direct Buyer Wholesale Enquiries</h3>
+                <p className="text-xs text-[#6B5B51]">Inquiries and custom bulk requests received directly from buyers</p>
               </div>
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-[#933D1E] border border-[#933D1E]/30">
                 {enquiries.length} {enquiries.length === 1 ? 'Enquiry' : 'Enquiries'}
               </span>
             </div>
@@ -798,50 +838,50 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
             {enquiries.length === 0 ? (
               <div className="p-10 text-center">
                 <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <h4 className="text-sm font-semibold text-slate-700">No buyer enquiries yet</h4>
-                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                <h4 className="text-sm font-semibold text-[#2A1E17]">No buyer enquiries yet</h4>
+                <p className="text-xs text-[#6B5B51] mt-1 max-w-sm mx-auto">
                   When buyers or retail partners request bulk crafts or custom work, their contact leads will appear here.
                 </p>
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {enquiries.map((enq) => (
-                  <div key={enq.id} className="p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div key={enq.id} className="p-5 hover:bg-[#FAF7F2]/80 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-start space-x-3.5">
                       {enq.product_image ? (
-                        <img src={enq.product_image} alt={enq.product_title || 'Craft'} className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs" />
+                        <img src={enq.product_image} alt={enq.product_title || 'Craft'} className="w-14 h-14 rounded-xl object-cover border border-[#EADFCF] shrink-0 shadow-2xs" />
                       ) : (
-                        <div className="w-14 h-14 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 text-amber-700 font-bold text-xs">
+                        <div className="w-14 h-14 rounded-xl bg-amber-50 border border-[#933D1E]/30 flex items-center justify-center shrink-0 text-[#933D1E] font-bold text-xs">
                           <Package className="w-6 h-6" />
                         </div>
                       )}
                       <div>
                         <div className="flex items-center space-x-2 flex-wrap">
-                          <h4 className="font-bold text-slate-900 text-sm">{enq.buyer_name}</h4>
+                          <h4 className="font-bold text-[#2A1E17] text-sm">{enq.buyer_name}</h4>
                           <span className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full text-[10px] border border-amber-300">
                             Bulk Request: {enq.quantity} unit(s)
                           </span>
                         </div>
-                        <p className="text-xs font-medium text-slate-600 mt-0.5">
-                          Craft: <span className="font-semibold text-slate-800">{enq.product_title || `Product #${enq.product_id}`}</span>
+                        <p className="text-xs font-medium text-[#6B5B51] mt-0.5">
+                          Craft: <span className="font-semibold text-[#2A1E17]">{enq.product_title || `Product #${enq.product_id}`}</span>
                         </p>
                         {enq.message && (
-                          <p className="text-xs text-slate-700 mt-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200 italic max-w-lg">
+                          <p className="text-xs text-[#2A1E17] mt-1.5 bg-[#FAF7F2] p-2.5 rounded-lg border border-[#EADFCF] italic max-w-lg">
                             "{enq.message}"
                           </p>
                         )}
 
                         {/* Artisan Response Section */}
                         {enq.artisan_reply && !editingReply[enq.id] ? (
-                          <div className="mt-2.5 p-2.5 bg-indigo-50/90 border border-indigo-200 rounded-xl max-w-lg">
+                          <div className="mt-2.5 p-2.5 bg-indigo-50/90 border border-[#933D1E]/30 rounded-xl max-w-lg">
                             <div className="flex items-center justify-between">
                               <span className="text-[11px] font-bold text-indigo-900 flex items-center">
-                                <MessageSquare className="w-3 h-3 text-indigo-600 inline mr-1" />
+                                <MessageSquare className="w-3 h-3 text-[#933D1E] inline mr-1" />
                                 Your Response / మీ స్పందన:
                               </span>
                               <button 
                                 onClick={() => setEditingReply(prev => ({ ...prev, [enq.id]: true }))}
-                                className="text-[10px] font-bold text-indigo-700 hover:underline cursor-pointer"
+                                className="text-[10px] font-bold text-[#933D1E] hover:underline cursor-pointer"
                               >
                                 Edit Response
                               </button>
@@ -860,12 +900,12 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                               placeholder="Type response to buyer (e.g. Yes, ready in 10 days / ధర వివరాలు)..."
                               value={replyTexts[enq.id] !== undefined ? replyTexts[enq.id] : (enq.artisan_reply || '')}
                               onChange={(e) => setReplyTexts(prev => ({ ...prev, [enq.id]: e.target.value }))}
-                              className="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white shadow-2xs"
+                              className="flex-1 px-3 py-1.5 text-xs border border-[#EADFCF] rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white shadow-2xs"
                             />
                             <button
                               onClick={() => handleSendReply(enq.id)}
                               disabled={replyingEnquiryId === enq.id || !(replyTexts[enq.id] !== undefined ? replyTexts[enq.id] : (enq.artisan_reply || '')).trim()}
-                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center space-x-1 shrink-0"
+                              className="px-3 py-1.5 bg-[#933D1E] hover:bg-[#7E3216] disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center space-x-1 shrink-0"
                             >
                               <Send className="w-3 h-3" />
                               <span>{replyingEnquiryId === enq.id ? 'Sending...' : 'Send Reply'}</span>
@@ -873,7 +913,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                           </div>
                         )}
 
-                        <p className="text-[11px] text-slate-400 mt-2">
+                        <p className="text-[11px] text-[#9E8E83] mt-2">
                           Received: {new Date(enq.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
                         </p>
                       </div>
@@ -883,7 +923,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                       <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
                         <a
                           href={`tel:${enq.buyer_phone}`}
-                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold transition-colors"
+                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-[#933D1E] border border-[#933D1E]/30 rounded-lg text-xs font-semibold transition-colors"
                         >
                           <Phone className="w-3.5 h-3.5" />
                           <span>Call {enq.buyer_phone}</span>
@@ -906,11 +946,11 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
           </div>
 
           {/* Section B: Direct Customer Orders List */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="bg-white rounded-2xl border border-[#EADFCF] shadow-xs overflow-hidden">
+            <div className="px-6 py-4 border-b border-[#EADFCF]/60 flex justify-between items-center bg-[#FBF8F3]/60">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Direct Customer Orders</h3>
-                <p className="text-xs text-slate-500">Confirmed orders placed by marketplace customers</p>
+                <h3 className="text-base font-bold text-[#2A1E17]">Direct Customer Orders</h3>
+                <p className="text-xs text-[#6B5B51]">Confirmed orders placed by marketplace customers</p>
               </div>
               <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                 {orders.length} {orders.length === 1 ? 'Order' : 'Orders'}
@@ -921,8 +961,8 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
           {orders.length === 0 ? (
             <div className="p-12 text-center">
               <ShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <h4 className="text-sm font-semibold text-slate-700">No customer orders yet</h4>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+              <h4 className="text-sm font-semibold text-[#2A1E17]">No customer orders yet</h4>
+              <p className="text-xs text-[#6B5B51] mt-1 max-w-sm mx-auto">
                 Orders placed by buyers will appear here with delivery addresses and order totals.
               </p>
             </div>
@@ -931,11 +971,11 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
               {orders.map((ord) => {
                 const currentIdx = getStepIndex(ord.status);
                 return (
-                  <div key={ord.id} className="p-5 hover:bg-slate-50/80 transition-colors flex flex-col gap-4">
+                  <div key={ord.id} className="p-5 hover:bg-[#FAF7F2]/80 transition-colors flex flex-col gap-4">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div className="flex items-start space-x-3.5">
                         {ord.product_image ? (
-                          <img src={ord.product_image} alt={ord.product_title || 'Craft'} className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs" />
+                          <img src={ord.product_image} alt={ord.product_title || 'Craft'} className="w-14 h-14 rounded-xl object-cover border border-[#EADFCF] shrink-0 shadow-2xs" />
                         ) : (
                           <div className="w-14 h-14 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0 text-emerald-700 font-bold text-xs">
                             <Package className="w-6 h-6" />
@@ -943,29 +983,29 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                         )}
                         <div>
                           <div className="flex items-center space-x-2 flex-wrap">
-                            <span className="font-bold text-slate-900 text-sm">Order #{ord.id}</span>
+                            <span className="font-bold text-[#2A1E17] text-sm">Order #{ord.id}</span>
                             <span className={`font-bold px-2 py-0.5 rounded-full text-[10px] border ${
                               ord.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-900 border-emerald-300' :
                               ord.status === 'SHIPPED' ? 'bg-indigo-100 text-indigo-900 border-indigo-300' :
                               ord.status === 'PROCESSING' ? 'bg-amber-100 text-amber-900 border-amber-300' :
-                              'bg-slate-100 text-slate-800 border-slate-300'
+                              'bg-[#F4EBE1] text-[#2A1E17] border-[#EADFCF]'
                             }`}>
                               {ord.status}
                             </span>
-                            <span className="text-xs font-bold text-slate-900">
+                            <span className="text-xs font-bold text-[#2A1E17]">
                               ₹{ord.total_price?.toLocaleString('en-IN')}
                             </span>
                           </div>
-                          <p className="text-xs font-medium text-slate-700 mt-0.5">
-                            Craft: <span className="font-semibold text-slate-900">{ord.product_title || `Product #${ord.product_id}`}</span> (Qty: {ord.quantity})
+                          <p className="text-xs font-medium text-[#2A1E17] mt-0.5">
+                            Craft: <span className="font-semibold text-[#2A1E17]">{ord.product_title || `Product #${ord.product_id}`}</span> (Qty: {ord.quantity})
                           </p>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            Buyer: <strong className="text-slate-700">{ord.buyer_name}</strong> {ord.buyer_phone ? `(${ord.buyer_phone})` : ''}
+                          <p className="text-xs text-[#6B5B51] mt-0.5">
+                            Buyer: <strong className="text-[#2A1E17]">{ord.buyer_name}</strong> {ord.buyer_phone ? `(${ord.buyer_phone})` : ''}
                           </p>
-                          <p className="text-xs text-slate-600 mt-1">
+                          <p className="text-xs text-[#6B5B51] mt-1">
                             Delivery Address: <span className="italic">{ord.delivery_address}</span>
                           </p>
-                          <p className="text-[11px] text-slate-400 mt-1">
+                          <p className="text-[11px] text-[#9E8E83] mt-1">
                             Ordered: {new Date(ord.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
                           </p>
                         </div>
@@ -977,7 +1017,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                           <button
                             onClick={() => handleUpdateOrderStatus(ord.id, 'PROCESSING')}
                             disabled={updatingOrderId === ord.id}
-                            className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer"
+                            className="px-3.5 py-2 bg-[#933D1E] hover:bg-[#7E3216] disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer"
                           >
                             <Package className="w-3.5 h-3.5" />
                             <span>{updatingOrderId === ord.id ? 'Updating...' : 'Mark as Packed 📦'}</span>
@@ -987,7 +1027,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                           <button
                             onClick={() => handleUpdateOrderStatus(ord.id, 'SHIPPED')}
                             disabled={updatingOrderId === ord.id}
-                            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer"
+                            className="px-3.5 py-2 bg-[#933D1E] hover:bg-[#7E3216] disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer"
                           >
                             <Truck className="w-3.5 h-3.5" />
                             <span>{updatingOrderId === ord.id ? 'Updating...' : 'Dispatch & Ship 🚚'}</span>
@@ -1013,7 +1053,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                     </div>
 
                     {/* Flipkart-Style Visual Delivery Tracker Bar */}
-                    <div className="w-full mt-2 p-3 bg-slate-50/90 rounded-2xl border border-slate-200">
+                    <div className="w-full mt-2 p-3 bg-[#FAF7F2]/90 rounded-2xl border border-[#EADFCF]">
                       <div className="flex items-center justify-between relative">
                         {TRACKING_STEPS.map((step, idx) => {
                           const isDone = currentIdx > idx || ord.status === 'DELIVERED';
@@ -1025,16 +1065,16 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                                   ? 'bg-emerald-600 text-white' 
                                   : isCurrent 
                                     ? 'bg-amber-500 text-white ring-4 ring-amber-100 animate-pulse' 
-                                    : 'bg-slate-200 text-slate-500'
+                                    : 'bg-[#EADFCF] text-[#6B5B51]'
                               }`}>
                                 {isDone ? <Check className="w-4 h-4" /> : (idx + 1)}
                               </div>
                               <span className={`text-[11px] font-bold mt-1 text-center ${
-                                isCurrent ? 'text-amber-700 font-extrabold' : isDone ? 'text-emerald-700' : 'text-slate-400'
+                                isCurrent ? 'text-[#933D1E] font-extrabold' : isDone ? 'text-emerald-700' : 'text-[#9E8E83]'
                               }`}>
                                 {step.label}
                               </span>
-                              <span className="text-[9px] text-slate-400 text-center">{step.labelTe}</span>
+                              <span className="text-[9px] text-[#9E8E83] text-center">{step.labelTe}</span>
                             </div>
                           );
                         })}
@@ -1056,20 +1096,20 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         <div className="space-y-6">
           {/* Key Performance Indicators Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-5 rounded-2xl border border-amber-200/80 shadow-xs">
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-5 rounded-2xl border border-[#933D1E]/30/80 shadow-xs">
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-amber-800 block">Total Sales / మొత్తం ఆదాయం</span>
-                  <span className="text-[11px] text-amber-600">Earnings from sales</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#933D1E] block">Total Sales / మొత్తం ఆదాయం</span>
+                  <span className="text-[11px] text-[#933D1E]">Earnings from sales</span>
                 </div>
-                <div className="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center font-bold text-sm">
+                <div className="w-8 h-8 rounded-xl bg-[#933D1E] text-white flex items-center justify-center font-bold text-sm">
                   ₹
                 </div>
               </div>
               <p className="text-3xl font-black text-amber-950 mt-2">
                 ₹{(dashboardData?.total_revenue || 0).toLocaleString('en-IN')}
               </p>
-              <p className="text-[11px] text-amber-700 mt-1 font-medium">Direct earnings to artisan</p>
+              <p className="text-[11px] text-[#933D1E] mt-1 font-medium">Direct earnings to artisan</p>
             </div>
 
             <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-5 rounded-2xl border border-emerald-200/80 shadow-xs">
@@ -1122,24 +1162,24 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
           </div>
 
           {/* Delivery Status Pipeline Breakdown */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Truck className="w-4 h-4 text-amber-600" />
+          <div className="bg-white rounded-2xl border border-[#EADFCF] p-6 shadow-xs">
+            <h3 className="text-sm font-bold text-[#2A1E17] flex items-center gap-2">
+              <Truck className="w-4 h-4 text-[#933D1E]" />
               <span>Delivery Pipeline Breakdown / డెలివరీ ప్రగతి</span>
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">Live status of your orders across fulfillment stages</p>
+            <p className="text-xs text-[#6B5B51] mt-0.5">Live status of your orders across fulfillment stages</p>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-center">
-                <span className="text-[11px] font-bold text-slate-500 uppercase block">Confirmed / ఖరారైంది</span>
-                <span className="text-xl font-black text-slate-900 mt-1 block">{dashboardData?.delivery_status?.confirmed || 0}</span>
+              <div className="p-3.5 bg-[#FAF7F2] rounded-xl border border-[#EADFCF] text-center">
+                <span className="text-[11px] font-bold text-[#6B5B51] uppercase block">Confirmed / ఖరారైంది</span>
+                <span className="text-xl font-black text-[#2A1E17] mt-1 block">{dashboardData?.delivery_status?.confirmed || 0}</span>
               </div>
-              <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-center">
-                <span className="text-[11px] font-bold text-amber-700 uppercase block">Packed / ప్యాకింగ్</span>
+              <div className="p-3.5 bg-amber-50 rounded-xl border border-[#933D1E]/30 text-center">
+                <span className="text-[11px] font-bold text-[#933D1E] uppercase block">Packed / ప్యాకింగ్</span>
                 <span className="text-xl font-black text-amber-900 mt-1 block">{dashboardData?.delivery_status?.processing || 0}</span>
               </div>
-              <div className="p-3.5 bg-indigo-50 rounded-xl border border-indigo-200 text-center">
-                <span className="text-[11px] font-bold text-indigo-700 uppercase block">In Transit / రవాణాలో</span>
+              <div className="p-3.5 bg-indigo-50 rounded-xl border border-[#933D1E]/30 text-center">
+                <span className="text-[11px] font-bold text-[#933D1E] uppercase block">In Transit / రవాణాలో</span>
                 <span className="text-xl font-black text-indigo-900 mt-1 block">{dashboardData?.delivery_status?.shipped || 0}</span>
               </div>
               <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
@@ -1150,11 +1190,11 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
           </div>
 
           {/* Per-Product Analytics Table */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="bg-white rounded-2xl border border-[#EADFCF] shadow-xs overflow-hidden">
+            <div className="px-6 py-4 border-b border-[#EADFCF]/60 flex justify-between items-center bg-[#FBF8F3]/60">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Per-Product Sales & View Metrics / ఉత్పత్తి వివరాలు</h3>
-                <p className="text-xs text-slate-500">Sales volume, total views, and revenue generated per craft listing</p>
+                <h3 className="text-sm font-bold text-[#2A1E17]">Per-Product Sales & View Metrics / ఉత్పత్తి వివరాలు</h3>
+                <p className="text-xs text-[#6B5B51]">Sales volume, total views, and revenue generated per craft listing</p>
               </div>
               <div className="flex items-center space-x-2">
                 <button
@@ -1174,12 +1214,12 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
             {!dashboardData?.product_performance || dashboardData.product_performance.length === 0 ? (
               <div className="p-10 text-center">
                 <BarChart3 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs text-slate-500">No product analytics recorded yet. Add crafts to track sales!</p>
+                <p className="text-xs text-[#6B5B51]">No product analytics recorded yet. Add crafts to track sales!</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-700">
-                  <thead className="bg-slate-100/70 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                <table className="w-full text-left text-xs text-[#2A1E17]">
+                  <thead className="bg-[#F4EBE1]/70 text-[#6B5B51] font-bold uppercase tracking-wider text-[10px]">
                     <tr>
                       <th className="py-3 px-4">Craft Item / హస్తకళ</th>
                       <th className="py-3 px-4">Price</th>
@@ -1195,19 +1235,19 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                         <td className="py-3 px-4">
                           <div className="flex items-center space-x-3">
                             {item.image_url ? (
-                              <img src={item.image_url} alt={item.title} className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0" />
+                              <img src={item.image_url} alt={item.title} className="w-10 h-10 rounded-lg object-cover border border-[#EADFCF] shrink-0" />
                             ) : (
-                              <div className="w-10 h-10 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0 font-bold text-amber-800 text-[10px]">
+                              <div className="w-10 h-10 rounded-lg bg-amber-100 border border-[#933D1E]/30 flex items-center justify-center shrink-0 font-bold text-[#933D1E] text-[10px]">
                                 Craft
                               </div>
                             )}
                             <div>
-                              <span className="font-bold text-slate-900 block">{item.title}</span>
-                              <span className="text-[10px] text-slate-400">ID: #{item.product_id}</span>
+                              <span className="font-bold text-[#2A1E17] block">{item.title}</span>
+                              <span className="text-[10px] text-[#9E8E83]">ID: #{item.product_id}</span>
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-4 font-medium text-slate-800">
+                        <td className="py-3 px-4 font-medium text-[#2A1E17]">
                           ₹{item.price?.toLocaleString('en-IN')}
                         </td>
                         <td className="py-3 px-4">
@@ -1223,7 +1263,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
                         <td className="py-3 px-4 text-center font-bold text-emerald-700">
                           📦 {item.units_sold}
                         </td>
-                        <td className="py-3 px-4 text-right font-black text-slate-900">
+                        <td className="py-3 px-4 text-right font-black text-[#2A1E17]">
                           ₹{item.revenue?.toLocaleString('en-IN')}
                         </td>
                       </tr>

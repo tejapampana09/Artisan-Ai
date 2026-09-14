@@ -895,40 +895,40 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-white rounded-3xl max-w-3xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-[#2A1E17]/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-[#FBF8F3] text-stone-900 rounded-3xl max-w-3xl w-full p-4 sm:p-6 shadow-2xl border border-[#EADFCF] max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex justify-between items-center pb-3 border-b border-slate-100 shrink-0">
+        <div className="flex justify-between items-center pb-3 border-b border-[#EADFCF]/60 shrink-0">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-600 to-orange-500 flex items-center justify-center text-white">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#933D1E] to-[#A84320] flex items-center justify-center text-white">
               <Wand2 className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">Voice-First AI Smart Cataloging Studio</h3>
-              <p className="text-xs text-slate-500">Capture photo + Speak in native language → AI Catalog Draft</p>
+              <h3 className="text-base font-bold text-[#2A1E17]">Voice-First AI Smart Cataloging Studio</h3>
+              <p className="text-xs text-[#6B5B51]">Capture photo + Speak in native language → AI Catalog Draft</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
+          <button onClick={onClose} className="p-1.5 text-[#9E8E83] hover:text-[#6B5B51] rounded-lg cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* 5-Stage Product Lifecycle State Machine */}
-        <div className="pt-2 pb-2 border-b border-slate-100 flex items-center justify-between text-[10px] font-bold text-slate-400 shrink-0 overflow-x-auto">
+        <div className="pt-2 pb-2 border-b border-[#EADFCF]/60 flex items-center justify-between text-[10px] font-bold text-[#9E8E83] shrink-0 overflow-x-auto">
           <div className="flex items-center space-x-1 sm:space-x-2">
-            <span className={`px-2 py-0.5 rounded-full ${step === 'INPUT' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-slate-100 text-slate-600'}`}>
+            <span className={`px-2 py-0.5 rounded-full ${step === 'INPUT' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-[#F4EBE1] text-[#6B5B51]'}`}>
               1. DRAFT
             </span>
             <span>→</span>
-            <span className={`px-2 py-0.5 rounded-full ${step === 'PROCESSING' ? 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse' : 'bg-slate-100 text-slate-600'}`}>
+            <span className={`px-2 py-0.5 rounded-full ${step === 'PROCESSING' ? 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse' : 'bg-[#F4EBE1] text-[#6B5B51]'}`}>
               2. AI_PROCESSING
             </span>
             <span>→</span>
-            <span className={`px-2 py-0.5 rounded-full ${step === 'REVIEW' && !publishing ? 'bg-indigo-100 text-indigo-900 border border-indigo-300' : 'bg-slate-100 text-slate-600'}`}>
+            <span className={`px-2 py-0.5 rounded-full ${step === 'REVIEW' && !publishing ? 'bg-indigo-100 text-indigo-900 border border-indigo-300' : 'bg-[#F4EBE1] text-[#6B5B51]'}`}>
               3. AI_GENERATED
             </span>
             <span>→</span>
-            <span className={`px-2 py-0.5 rounded-full ${publishing ? 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse' : 'bg-slate-100 text-slate-600'}`}>
+            <span className={`px-2 py-0.5 rounded-full ${publishing ? 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse' : 'bg-[#F4EBE1] text-[#6B5B51]'}`}>
               4. APPROVED
             </span>
             <span>→</span>
@@ -944,17 +944,17 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         {step === 'INPUT' && (
           <div className="mt-4 space-y-4">
             {/* Sub-step Progress Navigation Tabs */}
-            <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600">
+            <div className="grid grid-cols-3 gap-2 p-1.5 bg-[#F4EBE1] rounded-2xl border border-[#EADFCF] text-xs font-bold text-[#6B5B51]">
               <button
                 type="button"
                 onClick={() => setInputSubStep('PHOTO')}
                 className={`py-2 px-3 rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
                   inputSubStep === 'PHOTO'
-                    ? 'bg-white text-amber-800 shadow-xs border border-amber-200 font-extrabold'
-                    : 'hover:text-slate-900'
+                    ? 'bg-white text-[#933D1E] shadow-xs border border-[#933D1E]/30 font-extrabold'
+                    : 'hover:text-[#2A1E17]'
                 }`}
               >
-                <ImageIcon className="w-3.5 h-3.5 text-amber-600" />
+                <ImageIcon className="w-3.5 h-3.5 text-[#933D1E]" />
                 <span>1. Craft Photo</span>
               </button>
 
@@ -963,11 +963,11 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 onClick={() => setInputSubStep('QNA')}
                 className={`py-2 px-3 rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
                   inputSubStep === 'QNA'
-                    ? 'bg-white text-indigo-800 shadow-xs border border-indigo-200 font-extrabold'
-                    : 'hover:text-slate-900'
+                    ? 'bg-white text-[#933D1E] shadow-xs border border-[#933D1E]/30 font-extrabold'
+                    : 'hover:text-[#2A1E17]'
                 }`}
               >
-                <Volume2 className="w-3.5 h-3.5 text-indigo-600" />
+                <Volume2 className="w-3.5 h-3.5 text-[#933D1E]" />
                 <span>2. AI Guided Q&A</span>
               </button>
 
@@ -977,7 +977,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 className={`py-2 px-3 rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
                   inputSubStep === 'COSTS'
                     ? 'bg-white text-emerald-800 shadow-xs border border-emerald-200 font-extrabold'
-                    : 'hover:text-slate-900'
+                    : 'hover:text-[#2A1E17]'
                 }`}
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
@@ -989,8 +989,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
             {inputSubStep === 'PHOTO' && (
               <div className="space-y-4 pt-1">
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
-                    <ImageIcon className="w-4 h-4 text-amber-600" />
+                  <label className="text-xs font-bold text-[#2A1E17] flex items-center space-x-1.5">
+                    <ImageIcon className="w-4 h-4 text-[#933D1E]" />
                     <span>Upload or Take a Photo of Your Craft Creation</span>
                   </label>
                   {customImageUrl && (
@@ -1032,17 +1032,17 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       <img
                         src={customImageUrl}
                         alt="Selected Craft"
-                        className="w-20 h-20 rounded-xl object-cover border border-amber-200 shrink-0 shadow-sm"
+                        className="w-20 h-20 rounded-xl object-cover border border-[#933D1E]/30 shrink-0 shadow-sm"
                         onError={() => setImgErrorOriginal(true)}
                       />
                       <div className="truncate">
                         <div className="flex items-center space-x-1.5">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span className="text-xs font-extrabold text-slate-900">
+                          <span className="text-xs font-extrabold text-[#2A1E17]">
                             {selectedPhoto ? selectedPhoto.name : 'Photo Attached Successfully'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-600 mt-1">
+                        <p className="text-[11px] text-[#6B5B51] mt-1">
                           Ready for AI Multimodal Vision Analysis & Studio Background Lighting.
                         </p>
                       </div>
@@ -1051,17 +1051,17 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       <button
                         type="button"
                         onClick={() => cameraInputRef.current?.click()}
-                        className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
+                        className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#EADFCF] text-[#2A1E17] hover:bg-[#FAF7F2] shadow-2xs cursor-pointer"
                       >
-                        <Camera className="w-3.5 h-3.5 text-indigo-600" />
+                        <Camera className="w-3.5 h-3.5 text-[#933D1E]" />
                         <span>Camera</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
+                        className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#EADFCF] text-[#2A1E17] hover:bg-[#FAF7F2] shadow-2xs cursor-pointer"
                       >
-                        <Upload className="w-3.5 h-3.5 text-amber-600" />
+                        <Upload className="w-3.5 h-3.5 text-[#933D1E]" />
                         <span>Upload</span>
                       </button>
                     </div>
@@ -1071,41 +1071,41 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     <button
                       type="button"
                       onClick={() => cameraInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-indigo-300 hover:border-indigo-600 bg-indigo-50/40 hover:bg-indigo-50/80 transition-all cursor-pointer group"
+                      className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-indigo-300 hover:border-[#933D1E] bg-indigo-50/40 hover:bg-indigo-50/80 transition-all cursor-pointer group"
                     >
-                      <div className="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 group-hover:scale-110 flex items-center justify-center mb-2 transition-transform shadow-xs">
+                      <div className="w-12 h-12 rounded-full bg-indigo-100 text-[#933D1E] group-hover:scale-110 flex items-center justify-center mb-2 transition-transform shadow-xs">
                         <Camera className="w-6 h-6" />
                       </div>
-                      <span className="text-xs font-extrabold text-slate-900">Take Photo (Camera)</span>
-                      <span className="text-[10px] text-slate-500 mt-0.5">Capture live with phone camera</span>
+                      <span className="text-xs font-extrabold text-[#2A1E17]">Take Photo (Camera)</span>
+                      <span className="text-[10px] text-[#6B5B51] mt-0.5">Capture live with phone camera</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-amber-300 hover:border-amber-600 bg-amber-50/40 hover:bg-amber-50/80 transition-all cursor-pointer group"
+                      className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-amber-300 hover:border-[#933D1E] bg-amber-50/40 hover:bg-amber-50/80 transition-all cursor-pointer group"
                     >
-                      <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 group-hover:scale-110 flex items-center justify-center mb-2 transition-transform shadow-xs">
+                      <div className="w-12 h-12 rounded-full bg-amber-100 text-[#933D1E] group-hover:scale-110 flex items-center justify-center mb-2 transition-transform shadow-xs">
                         <Upload className="w-6 h-6" />
                       </div>
-                      <span className="text-xs font-extrabold text-slate-900">Upload Image File</span>
-                      <span className="text-[10px] text-slate-500">Choose from device photo gallery</span>
+                      <span className="text-xs font-extrabold text-[#2A1E17]">Upload Image File</span>
+                      <span className="text-[10px] text-[#6B5B51]">Choose from device photo gallery</span>
                     </button>
                   </div>
                 )}
 
                 {/* Sample Inspiration Crafts (Explicitly Separated Demo Examples) */}
-                <div className="mt-4 pt-3 border-t border-slate-200">
+                <div className="mt-4 pt-3 border-t border-[#EADFCF]">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-extrabold text-slate-700 flex items-center space-x-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span className="text-xs font-extrabold text-[#2A1E17] flex items-center space-x-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#933D1E]" />
                       <span>Or Try a Demo Inspiration Craft Example</span>
                     </span>
-                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                    <span className="text-[10px] font-bold text-[#933D1E] bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
                       🧪 Demo Examples Only
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 mb-2.5">
+                  <p className="text-[11px] text-[#6B5B51] mb-2.5">
                     Clicking a sample below loads a pre-configured craft image and story for quick testing without uploading your own photo.
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -1114,18 +1114,18 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         key={p.name}
                         onClick={() => handlePhotoSelect(p)}
                         className={`relative rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${
-                          selectedPhoto?.name === p.name ? 'border-amber-600 ring-2 ring-amber-500/20 shadow-xs' : 'border-slate-200 hover:border-slate-300'
+                          selectedPhoto?.name === p.name ? 'border-[#933D1E] ring-2 ring-amber-500/20 shadow-xs' : 'border-[#EADFCF] hover:border-[#EADFCF]'
                         }`}
                       >
                         <div className="absolute top-1 right-1 z-10">
-                          <span className="text-[9px] font-extrabold bg-amber-600 text-white px-1.5 py-0.5 rounded shadow-xs">
+                          <span className="text-[9px] font-extrabold bg-[#933D1E] text-white px-1.5 py-0.5 rounded shadow-xs">
                             DEMO
                           </span>
                         </div>
                         <img src={p.url} alt={p.name} className="w-full h-18 object-cover" />
                         <div className="p-1.5 bg-white text-center">
-                          <span className="text-[11px] font-bold text-slate-800 truncate block">{p.name}</span>
-                          <span className="text-[9px] text-amber-700 font-semibold">{p.category}</span>
+                          <span className="text-[11px] font-bold text-[#2A1E17] truncate block">{p.name}</span>
+                          <span className="text-[9px] text-[#933D1E] font-semibold">{p.category}</span>
                         </div>
                       </div>
                     ))}
@@ -1137,7 +1137,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     <button
                       type="button"
                       onClick={handleGenerateAI}
-                      className="inline-flex items-center space-x-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
+                      className="inline-flex items-center space-x-1.5 bg-gradient-to-r from-[#933D1E] to-[#A84320] hover:from-amber-700 hover:to-orange-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
                     >
                       <Zap className="w-4 h-4 text-yellow-300 fill-yellow-300 animate-pulse" />
                       <span>⚡ Instant Photo Catalog (Skip Q&A)</span>
@@ -1149,7 +1149,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       setInputSubStep('QNA');
                       handleNavQnaIndex(0);
                     }}
-                    className="inline-flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
+                    className="inline-flex items-center space-x-1.5 bg-[#933D1E] hover:bg-[#7E3216] text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
                   >
                     <span>Next: AI Guided Questions</span>
                     <ArrowRight className="w-4 h-4" />
@@ -1162,13 +1162,13 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
             {inputSubStep === 'QNA' && (
               <div className="space-y-4 pt-1">
                 {/* Language Picker Header */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-indigo-50 border border-indigo-200 rounded-2xl gap-2">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-indigo-50 border border-[#933D1E]/30 rounded-2xl gap-2">
                   <div>
                     <span className="text-xs font-extrabold text-indigo-900 block">AI Adaptive Voice & Text Guided Interview</span>
-                    <span className="text-[11px] text-indigo-700 block">Listen to each question out loud, then speak or type your answer:</span>
+                    <span className="text-[11px] text-[#933D1E] block">Listen to each question out loud, then speak or type your answer:</span>
                   </div>
-                  <div className="flex items-center space-x-1.5 bg-white px-2.5 py-1 rounded-xl border border-indigo-200 shrink-0">
-                    <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                  <div className="flex items-center space-x-1.5 bg-white px-2.5 py-1 rounded-xl border border-[#933D1E]/30 shrink-0">
+                    <Globe className="w-3.5 h-3.5 text-[#933D1E]" />
                     <select
                       value={selectedLang}
                       onChange={(e) => handleLangSelect(e.target.value)}
@@ -1185,7 +1185,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 {micError && (
                   <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900">
                     <div className="flex items-center space-x-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <AlertTriangle className="w-4 h-4 text-[#933D1E] shrink-0" />
                       <div>
                         <span className="font-bold">Microphone Access Notice: </span>
                         <span>{micError}</span>
@@ -1194,7 +1194,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     <button
                       type="button"
                       onClick={() => { setMicError(null); startRecording(); }}
-                      className="px-2.5 py-1 text-[11px] font-bold bg-white border border-amber-300 rounded-lg text-amber-800 hover:bg-amber-100 cursor-pointer shrink-0 ml-2"
+                      className="px-2.5 py-1 text-[11px] font-bold bg-white border border-amber-300 rounded-lg text-[#933D1E] hover:bg-amber-100 cursor-pointer shrink-0 ml-2"
                     >
                       Retry Mic
                     </button>
@@ -1202,7 +1202,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 )}
 
                 {/* Question Wizard Step Indicators Bar */}
-                <div className="flex items-center justify-between bg-slate-50 border border-slate-200 p-2.5 rounded-2xl gap-2">
+                <div className="flex items-center justify-between bg-[#FAF7F2] border border-[#EADFCF] p-2.5 rounded-2xl gap-2">
                   <div className="flex items-center space-x-2 overflow-x-auto py-0.5">
                     {getAdaptiveQnaQuestions(qnaAnswers, selectedPhoto, selectedLang).map((q, idx) => {
                       const isDone = Boolean(qnaAnswers[q.id]?.trim());
@@ -1214,10 +1214,10 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                           onClick={() => handleNavQnaIndex(idx)}
                           className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all shrink-0 cursor-pointer ${
                             isActive
-                              ? 'bg-indigo-600 text-white shadow-xs'
+                              ? 'bg-[#933D1E] text-white shadow-xs'
                               : isDone
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                              : 'bg-white text-[#6B5B51] border border-[#EADFCF] hover:bg-[#F4EBE1]'
                           }`}
                         >
                           <span>Q{q.num}</span>
@@ -1226,7 +1226,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       );
                     })}
                   </div>
-                  <span className="text-[11px] font-extrabold text-indigo-700 bg-indigo-100 px-2.5 py-1 rounded-xl border border-indigo-200 shrink-0">
+                  <span className="text-[11px] font-extrabold text-[#933D1E] bg-indigo-100 px-2.5 py-1 rounded-xl border border-[#933D1E]/30 shrink-0">
                     Question {activeQnaIndex + 1} of 3
                   </span>
                 </div>
@@ -1243,10 +1243,10 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     <div className="p-4 rounded-2xl border-2 border-indigo-300 bg-white shadow-xs space-y-3">
                       <div className="flex justify-between items-start gap-2">
                         <div className="flex items-start space-x-2">
-                          <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                          <span className="w-6 h-6 rounded-full bg-[#933D1E] text-white text-xs font-extrabold flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
                             {q.num}
                           </span>
-                          <h4 className="text-sm font-extrabold text-slate-900 leading-snug">
+                          <h4 className="text-sm font-extrabold text-[#2A1E17] leading-snug">
                             {questionText}
                           </h4>
                         </div>
@@ -1264,7 +1264,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer shrink-0 ${
                             speakingQId === q.id
                               ? 'bg-amber-500 text-white ring-2 ring-amber-300 animate-pulse shadow-xs'
-                              : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+                              : 'bg-indigo-50 hover:bg-indigo-100 text-[#933D1E] border border-[#933D1E]/30'
                           }`}
                         >
                           <Volume2 className={`w-4 h-4 ${speakingQId === q.id ? 'animate-bounce' : ''}`} />
@@ -1278,7 +1278,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                           value={answerVal}
                           onChange={(e) => setQnaAnswers({ ...qnaAnswers, [q.id]: e.target.value })}
                           placeholder={phText}
-                          className="w-full text-xs border border-slate-300 rounded-xl p-3 pr-28 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                          className="w-full text-xs border border-[#EADFCF] rounded-xl p-3 pr-28 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                         />
                         <button
                           type="button"
@@ -1292,7 +1292,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                           className={`absolute right-2 top-2 px-3 py-2 rounded-xl transition-all text-xs font-extrabold flex items-center space-x-1.5 cursor-pointer shadow-xs ${
                             isRecording
                               ? 'bg-rose-600 text-white animate-pulse'
-                              : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                              : 'bg-[#933D1E] hover:bg-[#7E3216] text-white'
                           }`}
                         >
                           {isRecording ? (
@@ -1313,11 +1313,11 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 })()}
 
                 {/* Combined Voice Text Preview / Additional Details */}
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-[11px] font-bold text-slate-600 block mb-1">
+                <div className="p-3 bg-[#FAF7F2] border border-[#EADFCF] rounded-xl">
+                  <span className="text-[11px] font-bold text-[#6B5B51] block mb-1">
                     Combined Craft Description for Gemini AI:
                   </span>
-                  <p className="text-xs text-slate-800 italic bg-white p-2 rounded-lg border border-slate-200 leading-snug">
+                  <p className="text-xs text-[#2A1E17] italic bg-white p-2 rounded-lg border border-[#EADFCF] leading-snug">
                     {voiceText || 'Answer the questions above or speak via microphone to build your catalog description.'}
                   </p>
                 </div>
@@ -1334,7 +1334,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         setInputSubStep('PHOTO');
                       }
                     }}
-                    className="px-3.5 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-100 rounded-xl border border-slate-300 transition-all cursor-pointer shrink-0"
+                    className="px-3.5 py-2 text-xs font-extrabold text-[#2A1E17] hover:bg-[#F4EBE1] rounded-xl border border-[#EADFCF] transition-all cursor-pointer shrink-0"
                   >
                     {activeQnaIndex > 0 ? `← Prev Question (${activeQnaIndex} of 3)` : '← Back to Photo'}
                   </button>
@@ -1343,7 +1343,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     <button
                       type="button"
                       onClick={() => handleNavQnaIndex(activeQnaIndex + 1)}
-                      className="inline-flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-extrabold text-xs shadow-md transition-all cursor-pointer"
+                      className="inline-flex items-center space-x-1.5 bg-[#933D1E] hover:bg-[#7E3216] text-white px-5 py-2.5 rounded-xl font-extrabold text-xs shadow-md transition-all cursor-pointer"
                     >
                       <span>Next Question ({activeQnaIndex + 2} of 3)</span>
                       <ArrowRight className="w-4 h-4" />
@@ -1382,55 +1382,55 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-white p-3.5 border border-slate-200 rounded-2xl">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-white p-3.5 border border-[#EADFCF] rounded-2xl">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Material Cost (₹)</label>
+                    <label className="block text-[11px] font-bold text-[#2A1E17] mb-1">Material Cost (₹)</label>
                     <input
                       type="number"
                       value={costs.material}
                       placeholder="e.g. 450"
                       onChange={(e) => setCosts({ ...costs, material: e.target.value === '' ? '' : parseFloat(e.target.value) })}
-                      className="w-full text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500"
+                      className="w-full text-xs font-semibold border border-[#EADFCF] rounded-xl px-3 py-2 bg-[#FAF7F2] focus:bg-white focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Labour Cost (₹)</label>
+                    <label className="block text-[11px] font-bold text-[#2A1E17] mb-1">Labour Cost (₹)</label>
                     <input
                       type="number"
                       value={costs.labour}
                       placeholder="e.g. 400"
                       onChange={(e) => setCosts({ ...costs, labour: e.target.value === '' ? '' : parseFloat(e.target.value) })}
-                      className="w-full text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500"
+                      className="w-full text-xs font-semibold border border-[#EADFCF] rounded-xl px-3 py-2 bg-[#FAF7F2] focus:bg-white focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Packaging Cost (₹)</label>
+                    <label className="block text-[11px] font-bold text-[#2A1E17] mb-1">Packaging Cost (₹)</label>
                     <input
                       type="number"
                       value={costs.packaging}
                       placeholder="e.g. 60"
                       onChange={(e) => setCosts({ ...costs, packaging: e.target.value === '' ? '' : parseFloat(e.target.value) })}
-                      className="w-full text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500"
+                      className="w-full text-xs font-semibold border border-[#EADFCF] rounded-xl px-3 py-2 bg-[#FAF7F2] focus:bg-white focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Other Costs (₹)</label>
+                    <label className="block text-[11px] font-bold text-[#2A1E17] mb-1">Other Costs (₹)</label>
                     <input
                       type="number"
                       value={costs.other || ''}
                       placeholder="e.g. 40"
                       onChange={(e) => setCosts({ ...costs, other: e.target.value === '' ? '' : parseFloat(e.target.value) })}
-                      className="w-full text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500"
+                      className="w-full text-xs font-semibold border border-[#EADFCF] rounded-xl px-3 py-2 bg-[#FAF7F2] focus:bg-white focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Selling Price (₹)</label>
+                    <label className="block text-[11px] font-bold text-[#2A1E17] mb-1">Selling Price (₹)</label>
                     <input
                       type="number"
                       value={costs.selling_price || ''}
                       placeholder="e.g. 1200"
                       onChange={(e) => setCosts({ ...costs, selling_price: e.target.value === '' ? '' : parseFloat(e.target.value) })}
-                      className="w-full text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500"
+                      className="w-full text-xs font-semibold border border-[#EADFCF] rounded-xl px-3 py-2 bg-[#FAF7F2] focus:bg-white focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
                 </div>
@@ -1440,7 +1440,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between">
                     <div>
                       <span className="text-[11px] font-bold text-amber-900 block">Calculated Total Cost Basis:</span>
-                      <span className="text-xs font-bold text-amber-800">
+                      <span className="text-xs font-bold text-[#933D1E]">
                         ₹{(Number(costs.material) || 0)} + ₹{(Number(costs.labour) || 0)} + ₹{(Number(costs.packaging) || 0)} + ₹{(Number(costs.other) || 0)} = ₹{((Number(costs.material) || 0) + (Number(costs.labour) || 0) + (Number(costs.packaging) || 0) + (Number(costs.other) || 0))}
                       </span>
                     </div>
@@ -1454,11 +1454,11 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 )}
 
                 {/* Final Run AI Action Footer */}
-                <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                <div className="flex justify-between items-center pt-3 border-t border-[#EADFCF]/60">
                   <button
                     type="button"
                     onClick={() => setInputSubStep('QNA')}
-                    className="px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800"
+                    className="px-3 py-2 text-xs font-semibold text-[#6B5B51] hover:text-[#2A1E17]"
                   >
                     ← Back to Questions
                   </button>
@@ -1481,12 +1481,12 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         {step === 'PROCESSING' && (
           <div className="py-16 text-center space-y-4">
             <div className="relative w-16 h-16 mx-auto">
-              <div className="w-16 h-16 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin"></div>
-              <Sparkles className="w-6 h-6 text-amber-600 absolute inset-0 m-auto animate-pulse" />
+              <div className="w-16 h-16 border-4 border-[#933D1E]/30 border-t-amber-600 rounded-full animate-spin"></div>
+              <Sparkles className="w-6 h-6 text-[#933D1E] absolute inset-0 m-auto animate-pulse" />
             </div>
             <div>
-              <h4 className="font-bold text-slate-800 text-sm">Orchestrating Multimodal AI Pipeline...</h4>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+              <h4 className="font-bold text-[#2A1E17] text-sm">Orchestrating Multimodal AI Pipeline...</h4>
+              <p className="text-xs text-[#6B5B51] mt-1 max-w-sm mx-auto">
                 Transcribing voice note, analyzing craft attributes, generating heritage story & studio image enhancement...
               </p>
             </div>
@@ -1497,23 +1497,23 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         {step === 'REVIEW' && aiDraft && (
           <div className="mt-4 space-y-4 pr-1">
             {/* AI Source Indicator Badge */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-[#FAF7F2] border border-[#EADFCF] gap-2">
               <div className="flex items-center space-x-2">
-                <span className="text-xs text-slate-500 font-medium">Pipeline Source:</span>
+                <span className="text-xs text-[#6B5B51] font-medium">Pipeline Source:</span>
                 <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
                   aiDraft.source === 'LIVE AI' || aiDraft.source === 'LIVE_AI'
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                    : 'bg-amber-50 text-amber-800 border-amber-300'
+                    : 'bg-amber-50 text-[#933D1E] border-amber-300'
                 }`}>
                   {aiDraft.source === 'LIVE_AI' || aiDraft.source === 'LIVE AI'
                     ? 'Live AI Assisted Draft'
                     : 'Manual Draft (AI Unavailable)'}
                 </span>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-[#9E8E83]">
                   (Language: {aiDraft.language_detected?.toUpperCase() || 'EN'})
                 </span>
               </div>
-              <span className="text-[11px] text-amber-700 font-semibold flex items-center space-x-1">
+              <span className="text-[11px] text-[#933D1E] font-semibold flex items-center space-x-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>Artisan Review & Approval Required</span>
               </span>
@@ -1521,8 +1521,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
             {/* Notice Banner */}
             {aiDraft.notice && (
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start space-x-2">
-                <ShieldCheck className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <div className="p-3 rounded-xl bg-amber-50 border border-[#933D1E]/30 text-xs text-[#933D1E] flex items-start space-x-2">
+                <ShieldCheck className="w-4 h-4 text-[#933D1E] mt-0.5 shrink-0" />
                 <div>
                   <span className="font-semibold">Notice: </span>
                   {aiDraft.notice}
@@ -1534,14 +1534,14 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
             {aiDraft.image_url ? (
               <div>
                 <div className="flex justify-between items-center mb-1.5">
-                  <label className="block text-xs font-bold text-slate-700">
+                  <label className="block text-xs font-bold text-[#2A1E17]">
                     Craft Image Presentation (Original vs AI Enhanced)
                   </label>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
                       onClick={() => cameraInputRef.current?.click()}
-                      className="text-[11px] text-indigo-600 hover:text-indigo-700 font-semibold flex items-center space-x-1 cursor-pointer"
+                      className="text-[11px] text-[#933D1E] hover:text-[#933D1E] font-semibold flex items-center space-x-1 cursor-pointer"
                       title="Retake photo using camera"
                     >
                       <Camera className="w-3 h-3" />
@@ -1551,7 +1551,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="text-[11px] text-amber-600 hover:text-amber-700 font-semibold flex items-center space-x-1 cursor-pointer"
+                      className="text-[11px] text-[#933D1E] hover:text-[#933D1E] font-semibold flex items-center space-x-1 cursor-pointer"
                       title="Upload different image"
                     >
                       <Upload className="w-3 h-3" />
@@ -1560,7 +1560,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="border border-slate-200 rounded-xl overflow-hidden relative bg-slate-50">
+                  <div className="border border-[#EADFCF] rounded-xl overflow-hidden relative bg-[#FAF7F2]">
                     <span className="absolute top-2 left-2 z-10 bg-slate-900/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
                       Original Capture
                     </span>
@@ -1572,10 +1572,10 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         onError={() => setImgErrorOriginal(true)}
                       />
                     ) : (
-                      <div className="w-full h-36 bg-slate-100 flex flex-col items-center justify-center text-slate-400 text-xs p-3 text-center">
+                      <div className="w-full h-36 bg-[#F4EBE1] flex flex-col items-center justify-center text-[#9E8E83] text-xs p-3 text-center">
                         <ImageIcon className="w-8 h-8 text-slate-300 mb-1" />
-                        <span className="text-[11px] font-medium text-slate-500">Image preview unavailable</span>
-                        <span className="text-[10px] text-slate-400">Click replace photo above to upload</span>
+                        <span className="text-[11px] font-medium text-[#6B5B51]">Image preview unavailable</span>
+                        <span className="text-[10px] text-[#9E8E83]">Click replace photo above to upload</span>
                       </div>
                     )}
                   </div>
@@ -1583,7 +1583,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     className="border-2 border-amber-500/50 rounded-xl overflow-hidden relative shadow-xs p-1 transition-all"
                     style={{ background: STUDIO_BACKDROPS.find(b => b.id === selectedBackdrop)?.style || STUDIO_BACKDROPS[0].style }}
                   >
-                    <span className="absolute top-2 left-2 z-10 bg-gradient-to-r from-amber-600 to-orange-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center space-x-1">
+                    <span className="absolute top-2 left-2 z-10 bg-gradient-to-r from-[#933D1E] to-[#A84320] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center space-x-1">
                       <Sparkles className="w-2.5 h-2.5" />
                       <span>Studio ({STUDIO_BACKDROPS.find(b => b.id === selectedBackdrop)?.name})</span>
                     </span>
@@ -1595,18 +1595,18 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         onError={() => setImgErrorEnhanced(true)}
                       />
                     ) : (
-                      <div className="w-full h-34 bg-amber-50/50 flex flex-col items-center justify-center text-amber-600/70 text-xs p-3 text-center">
+                      <div className="w-full h-34 bg-amber-50/50 flex flex-col items-center justify-center text-[#933D1E]/70 text-xs p-3 text-center">
                         <ImageIcon className="w-8 h-8 text-amber-300 mb-1" />
-                        <span className="text-[11px] font-medium text-slate-600">AI Studio preview pending</span>
+                        <span className="text-[11px] font-medium text-[#6B5B51]">AI Studio preview pending</span>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Studio Backdrop Filter Controls */}
-                <div className="mt-2.5 p-2 bg-amber-50/60 border border-amber-200 rounded-xl flex items-center justify-between gap-2">
+                <div className="mt-2.5 p-2 bg-amber-50/60 border border-[#933D1E]/30 rounded-xl flex items-center justify-between gap-2">
                   <span className="text-[11px] font-bold text-amber-900 shrink-0 flex items-center space-x-1">
-                    <Sparkles className="w-3 h-3 text-amber-600" />
+                    <Sparkles className="w-3 h-3 text-[#933D1E]" />
                     <span>Select Backdrop Studio Lighting:</span>
                   </span>
                   <div className="flex flex-wrap gap-1.5 justify-end">
@@ -1617,8 +1617,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         onClick={() => setSelectedBackdrop(b.id)}
                         className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
                           selectedBackdrop === b.id
-                            ? 'bg-amber-600 text-white border-amber-700 shadow-2xs scale-105'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-amber-50'
+                            ? 'bg-[#933D1E] text-white border-amber-700 shadow-2xs scale-105'
+                            : 'bg-white text-[#2A1E17] border-[#EADFCF] hover:bg-amber-50'
                         }`}
                       >
                         {b.label}
@@ -1628,29 +1628,29 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 </div>
               </div>
             ) : (
-              <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="p-4 rounded-xl border border-dashed border-[#EADFCF] bg-[#FAF7F2] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center space-x-2.5">
-                  <ImageIcon className="w-5 h-5 text-slate-400 shrink-0" />
+                  <ImageIcon className="w-5 h-5 text-[#9E8E83] shrink-0" />
                   <div>
-                    <p className="text-xs font-semibold text-slate-700">No Image Attached</p>
-                    <p className="text-[11px] text-slate-500">Take a photo with camera or choose an image file.</p>
+                    <p className="text-xs font-semibold text-[#2A1E17]">No Image Attached</p>
+                    <p className="text-[11px] text-[#6B5B51]">Take a photo with camera or choose an image file.</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => cameraInputRef.current?.click()}
-                    className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
+                    className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#EADFCF] text-[#2A1E17] hover:bg-[#FAF7F2] shadow-2xs cursor-pointer"
                   >
-                    <Camera className="w-3.5 h-3.5 text-indigo-600" />
+                    <Camera className="w-3.5 h-3.5 text-[#933D1E]" />
                     <span>Camera</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer"
+                    className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#EADFCF] text-[#2A1E17] hover:bg-[#FAF7F2] shadow-2xs cursor-pointer"
                   >
-                    <Upload className="w-3.5 h-3.5 text-amber-600" />
+                    <Upload className="w-3.5 h-3.5 text-[#933D1E]" />
                     <span>Upload</span>
                   </button>
                 </div>
@@ -1658,24 +1658,24 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
             )}
 
             {/* Language Review & Global Publishing Indicator Header */}
-            <div className="p-3 rounded-2xl bg-indigo-50/80 border border-indigo-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+            <div className="p-3 rounded-2xl bg-indigo-50/80 border border-[#933D1E]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
               <div>
                 <span className="text-xs font-extrabold text-indigo-900 flex items-center space-x-1.5">
-                  <Globe className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <Globe className="w-4 h-4 text-[#933D1E] shrink-0" />
                   <span>Marketplace Listing Language: 🇬🇧 English (Global Standard)</span>
                 </span>
-                <span className="text-[11px] text-indigo-700 block mt-0.5">
+                <span className="text-[11px] text-[#933D1E] block mt-0.5">
                   Voice input ({selectedLang.toUpperCase()}) was auto-translated into English for global buyers while preserving native translations.
                 </span>
               </div>
-              <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-indigo-200 shrink-0">
+              <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-[#933D1E]/30 shrink-0">
                 <button
                   type="button"
                   onClick={() => setReviewLang('en')}
                   className={`px-3 py-1 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
                     reviewLang === 'en'
-                      ? 'bg-indigo-600 text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-[#933D1E] text-white shadow-2xs'
+                      : 'text-[#6B5B51] hover:text-[#2A1E17]'
                   }`}
                 >
                   🇬🇧 English (Publish Default)
@@ -1685,8 +1685,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   onClick={() => setReviewLang('native')}
                   className={`px-3 py-1 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
                     reviewLang === 'native'
-                      ? 'bg-indigo-600 text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-[#933D1E] text-white shadow-2xs'
+                      : 'text-[#6B5B51] hover:text-[#2A1E17]'
                   }`}
                 >
                   🇮🇳 Native ({selectedLang.toUpperCase()})
@@ -1697,53 +1697,53 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
             {/* Editable Draft Fields */}
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-[#2A1E17] mb-1">
                   Generated Title (Editable - {reviewLang === 'en' ? 'English Standard' : `Native ${selectedLang.toUpperCase()}`})
                 </label>
                 <input
                   type="text"
                   value={reviewLang === 'en' ? (aiDraft.title_en || aiDraft.title || '') : (aiDraft.title_native || aiDraft.title || '')}
                   onChange={(e) => handleDraftChange('title', e.target.value)}
-                  className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-amber-500 bg-white"
+                  className="w-full text-xs font-semibold border border-[#EADFCF] rounded-lg px-3 py-2 focus:ring-1 focus:ring-amber-500 bg-white"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+                  <label className="block text-xs font-semibold text-[#2A1E17] mb-1">Category</label>
                   <input
                     type="text"
                     value={aiDraft.category || ''}
                     onChange={(e) => handleDraftChange('category', e.target.value)}
-                    className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-slate-50"
+                    className="w-full text-xs border border-[#EADFCF] rounded-lg px-3 py-2 bg-[#FAF7F2]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Materials</label>
+                  <label className="block text-xs font-semibold text-[#2A1E17] mb-1">Materials</label>
                   <input
                     type="text"
                     value={aiDraft.materials || ''}
                     placeholder="e.g. Mulberry Silk, Natural Indigo"
                     onChange={(e) => handleDraftChange('materials', e.target.value)}
-                    className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white"
+                    className="w-full text-xs border border-[#EADFCF] rounded-lg px-3 py-2 bg-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-[#2A1E17] mb-1">
                   Marketplace Description ({reviewLang === 'en' ? 'English' : `Native ${selectedLang.toUpperCase()}`})
                 </label>
                 <textarea
                   rows="2"
                   value={reviewLang === 'en' ? (aiDraft.description_en || aiDraft.description || '') : (aiDraft.description_native || aiDraft.description || '')}
                   onChange={(e) => handleDraftChange('description', e.target.value)}
-                  className="w-full text-xs border border-slate-200 rounded-lg p-2.5 focus:ring-1 focus:ring-amber-500 bg-white"
+                  className="w-full text-xs border border-[#EADFCF] rounded-lg p-2.5 focus:ring-1 focus:ring-amber-500 bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-[#2A1E17] mb-1">
                   Heritage & Cultural Craft Story ({reviewLang === 'en' ? 'English' : `Native ${selectedLang.toUpperCase()}`})
                 </label>
                 <textarea
@@ -1751,16 +1751,16 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   value={reviewLang === 'en' ? (aiDraft.craft_story_en || aiDraft.craft_story || '') : (aiDraft.craft_story_native || aiDraft.craft_story || '')}
                   placeholder="Craft story will appear here if generated or can be added manually..."
                   onChange={(e) => handleDraftChange('craft_story', e.target.value)}
-                  className="w-full text-xs border border-amber-200 rounded-lg p-2.5 bg-amber-50/40 text-slate-800 italic focus:ring-1 focus:ring-amber-500"
+                  className="w-full text-xs border border-[#933D1E]/30 rounded-lg p-2.5 bg-amber-50/40 text-[#2A1E17] italic focus:ring-1 focus:ring-amber-500"
                 />
               </div>
 
               {/* Tags */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Generated SEO / Discovery Tags</label>
+                <label className="block text-xs font-semibold text-[#2A1E17] mb-1">Generated SEO / Discovery Tags</label>
                 <div className="flex flex-wrap gap-1.5">
                   {aiDraft.tags?.map((t) => (
-                    <span key={t} className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full border border-slate-200">
+                    <span key={t} className="text-[11px] bg-[#F4EBE1] text-[#2A1E17] px-2 py-0.5 rounded-full border border-[#EADFCF]">
                       #{t}
                     </span>
                   ))}
@@ -1777,7 +1777,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         <span>Phase 7 Deterministic Market-Aware Pricing Engine</span>
                       </span>
                       {(aiDraft.market_summary?.median_price || aiDraft.price_recommendation?.market_median) && (
-                        <span className="text-[10px] font-bold text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-md border border-indigo-200">
+                        <span className="text-[10px] font-bold text-[#933D1E] bg-indigo-100 px-2 py-0.5 rounded-md border border-[#933D1E]/30">
                           📊 Live Web Market Signal Applied
                         </span>
                       )}
@@ -1796,7 +1796,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   {/* Main Price Action Row */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-0.5">
                     <div>
-                      <h5 className="text-xs font-bold text-slate-800">Final Recommended Selling Price</h5>
+                      <h5 className="text-xs font-bold text-[#2A1E17]">Final Recommended Selling Price</h5>
                       <p className="text-[11px] text-emerald-800 font-medium leading-tight mt-0.5">
                         {aiDraft.min_fair_price 
                           ? 'Combines artisan cost basis + 20% floor + live market median signal.'
@@ -1804,14 +1804,14 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       </p>
                     </div>
                     <div className="flex items-center space-x-2 shrink-0">
-                      <span className="text-xs font-extrabold text-slate-800">Selling Price:</span>
+                      <span className="text-xs font-extrabold text-[#2A1E17]">Selling Price:</span>
                       <div className="flex items-center">
                         <span className="text-base font-black text-[#4A2E1B] mr-1">₹</span>
                         <input
                           type="number"
                           value={aiDraft.suggested_price ?? (aiDraft.market_summary?.median_price || '')}
                           onChange={(e) => handleDraftChange('suggested_price', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                          className={`w-32 text-base font-black border-2 rounded-xl px-3 py-1 text-slate-900 bg-white text-right shadow-xs focus:ring-2 focus:ring-emerald-500 ${
+                          className={`w-32 text-base font-black border-2 rounded-xl px-3 py-1 text-[#2A1E17] bg-white text-right shadow-xs focus:ring-2 focus:ring-emerald-500 ${
                             aiDraft.min_fair_price && Number(aiDraft.suggested_price || aiDraft.market_summary?.median_price) < Number(aiDraft.min_fair_price || 0)
                               ? 'border-rose-500 text-rose-700 bg-rose-50'
                               : 'border-emerald-400'
@@ -1835,10 +1835,10 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                     {/* Cost Basis & Floor Card */}
                     <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-200">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Artisan Cost & Profit Floor</span>
+                      <span className="text-[10px] font-bold text-[#6B5B51] uppercase tracking-wider block">Artisan Cost & Profit Floor</span>
                       <div className="flex justify-between items-baseline mt-1">
-                        <span className="text-xs font-semibold text-slate-700">Cost Basis:</span>
-                        <span className="text-xs font-bold text-slate-900">
+                        <span className="text-xs font-semibold text-[#2A1E17]">Cost Basis:</span>
+                        <span className="text-xs font-bold text-[#2A1E17]">
                           {aiDraft.min_fair_price 
                             ? `₹${((Number(aiDraft.material_cost)||0) + (Number(aiDraft.labour_cost)||0) + (Number(aiDraft.packaging_cost)||0) + (Number(aiDraft.other_cost)||0))}`
                             : 'Omitted by artisan'}
@@ -1854,9 +1854,9 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
                     {/* Market Research Signal Card */}
                     <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-200">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Live Market Research Signal</span>
+                      <span className="text-[10px] font-bold text-[#6B5B51] uppercase tracking-wider block">Live Market Research Signal</span>
                       <div className="flex justify-between items-baseline mt-1">
-                        <span className="text-xs font-semibold text-slate-700">Comparable Market Median:</span>
+                        <span className="text-xs font-semibold text-[#2A1E17]">Comparable Market Median:</span>
                         <span className="text-xs font-bold text-indigo-900">
                           {aiDraft.market_summary?.median_price != null || aiDraft.price_recommendation?.market_median != null
                             ? `₹${aiDraft.market_summary?.median_price || aiDraft.price_recommendation?.market_median}`
@@ -1864,8 +1864,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         </span>
                       </div>
                       <div className="flex justify-between items-baseline mt-0.5">
-                        <span className="text-xs font-semibold text-slate-600">Retained Benchmark Range:</span>
-                        <span className="text-xs font-bold text-slate-800">
+                        <span className="text-xs font-semibold text-[#6B5B51]">Retained Benchmark Range:</span>
+                        <span className="text-xs font-bold text-[#2A1E17]">
                           {aiDraft.market_summary?.min_price != null && aiDraft.market_summary?.max_price != null
                             ? `₹${aiDraft.market_summary.min_price} – ₹${aiDraft.market_summary.max_price} (${aiDraft.market_summary.comparable_count || 0} items)`
                             : 'Live market search active'}
@@ -1878,28 +1878,28 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   {Array.isArray(aiDraft.market_research?.results) && aiDraft.market_research.results.length > 0 && (
                     <div className="bg-white/90 p-3 rounded-xl border border-emerald-200/90 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-extrabold text-slate-800 flex items-center space-x-1">
+                        <span className="text-[11px] font-extrabold text-[#2A1E17] flex items-center space-x-1">
                           <span>🔍 Live Comparable Market Products (Top 4 Found):</span>
                         </span>
-                        <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                        <span className="text-[10px] font-bold text-[#933D1E] bg-indigo-50 px-2 py-0.5 rounded-full border border-[#933D1E]/30">
                           Real Web Search
                         </span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {aiDraft.market_research.results.slice(0, 4).map((item, idx) => (
-                          <div key={idx} className="p-2 rounded-lg border border-slate-200 bg-slate-50/70 flex flex-col justify-between">
+                          <div key={idx} className="p-2 rounded-lg border border-[#EADFCF] bg-[#FAF7F2]/70 flex flex-col justify-between">
                             <div>
                               <div className="flex justify-between items-start gap-1">
-                                <span className="text-[11px] font-bold text-slate-900 line-clamp-1">{item.title}</span>
+                                <span className="text-[11px] font-bold text-[#2A1E17] line-clamp-1">{item.title}</span>
                                 {item.similarity_score != null && (
                                   <span className="text-[9px] font-extrabold bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded shrink-0">
                                     {Math.round(item.similarity_score * 100)}% Match
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[10px] text-slate-500 block mt-0.5">{item.source || 'Online Store'}</span>
+                              <span className="text-[10px] text-[#6B5B51] block mt-0.5">{item.source || 'Online Store'}</span>
                             </div>
-                            <div className="flex justify-between items-center mt-1.5 pt-1 border-t border-slate-200/60">
+                            <div className="flex justify-between items-center mt-1.5 pt-1 border-t border-[#EADFCF]/60">
                               <span className="text-xs font-black text-emerald-700">
                                 {item.price ? `₹${item.price}` : 'Price unlisted'}
                               </span>
@@ -1908,7 +1908,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                                   href={item.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 underline"
+                                  className="text-[10px] font-bold text-[#933D1E] hover:text-[#933D1E] underline"
                                 >
                                   View Source →
                                 </a>
@@ -1923,13 +1923,13 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   {/* Explainable Pricing Reasoning Bullets */}
                   {Array.isArray(aiDraft.price_recommendation?.reasoning) && aiDraft.price_recommendation.reasoning.length > 0 && (
                     <div className="bg-white/90 p-3 rounded-xl border border-emerald-200/90 space-y-1.5">
-                      <span className="text-[11px] font-extrabold text-slate-800 block flex items-center space-x-1">
+                      <span className="text-[11px] font-extrabold text-[#2A1E17] block flex items-center space-x-1">
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                         <span>Explainable Pricing Decision Reasoning:</span>
                       </span>
                       <ul className="space-y-1 pl-1">
                         {aiDraft.price_recommendation.reasoning.map((r, i) => (
-                          <li key={i} className="text-[11px] text-slate-700 flex items-start space-x-1.5 leading-snug">
+                          <li key={i} className="text-[11px] text-[#2A1E17] flex items-start space-x-1.5 leading-snug">
                             <span className="text-emerald-600 font-bold shrink-0 mt-0.5">•</span>
                             <span>{r}</span>
                           </li>
@@ -1939,26 +1939,26 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   )}
                 </div>
               ) : (
-                <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div className="bg-amber-50/70 border border-[#933D1E]/30 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                   <div>
                     <div className="flex items-center space-x-1.5 text-xs text-amber-900 font-bold">
-                      <ShieldCheck className="w-4 h-4 text-amber-600" />
+                      <ShieldCheck className="w-4 h-4 text-[#933D1E]" />
                       <span>Pricing Not Calculated (Cost Inputs Omitted)</span>
                     </div>
-                    <p className="text-[11px] text-amber-700">
+                    <p className="text-[11px] text-[#933D1E]">
                       Add material, labour, packaging or other costs to generate a protected price recommendation.
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <label className="text-xs font-semibold text-slate-700">Set Selling Price:</label>
+                    <label className="text-xs font-semibold text-[#2A1E17]">Set Selling Price:</label>
                     <div className="flex items-center">
-                      <span className="text-xs font-bold text-slate-800 mr-1">₹</span>
+                      <span className="text-xs font-bold text-[#2A1E17] mr-1">₹</span>
                       <input
                         type="number"
                         placeholder="e.g. 1200"
                         value={aiDraft.suggested_price ?? ''}
                         onChange={(e) => handleDraftChange('suggested_price', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-28 text-xs font-bold border border-amber-300 rounded-lg px-2 py-1 text-slate-900 bg-white text-right focus:ring-1 focus:ring-amber-500"
+                        className="w-28 text-xs font-bold border border-amber-300 rounded-lg px-2 py-1 text-[#2A1E17] bg-white text-right focus:ring-1 focus:ring-amber-500"
                       />
                     </div>
                   </div>
@@ -1966,10 +1966,10 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
               )}
 
               {/* Auto Smart Pricing Toggle */}
-              <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl flex items-center justify-between gap-3">
+              <div className="p-3 bg-indigo-50/70 border border-[#933D1E]/30 rounded-xl flex items-center justify-between gap-3">
                 <div>
                   <span className="text-xs font-bold text-indigo-900 block">Enable Auto Smart Pricing</span>
-                  <span className="text-[11px] text-indigo-700 block">
+                  <span className="text-[11px] text-[#933D1E] block">
                     Allow AI demand engine to rebalance price dynamically (Always ≥ 20% minimum profit floor).
                     Default is OFF for manual approval.
                   </span>
@@ -1984,10 +1984,10 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
             </div>
 
             {/* Approval Footer */}
-            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+            <div className="flex justify-between items-center pt-3 border-t border-[#EADFCF]/60">
               <button
                 onClick={() => setStep('INPUT')}
-                className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800"
+                className="px-3 py-1.5 text-xs font-medium text-[#6B5B51] hover:text-[#2A1E17]"
               >
                 ← Back to Input
               </button>

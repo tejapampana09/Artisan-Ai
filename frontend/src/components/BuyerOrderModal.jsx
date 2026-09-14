@@ -75,41 +75,41 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
   const totalPrice = product.price * formData.quantity;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
-        <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#2A1E17]/70 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#EADFCF]">
+        <div className="flex justify-between items-center pb-3 border-b border-[#EADFCF]/60">
           <div className="flex items-center space-x-2">
             {isOrder ? (
-              <ShoppingBag className="w-5 h-5 text-indigo-600" />
+              <ShoppingBag className="w-5 h-5 text-[#933D1E]" />
             ) : (
-              <Send className="w-5 h-5 text-amber-600" />
+              <Send className="w-5 h-5 text-[#933D1E]" />
             )}
-            <h3 className="font-bold text-slate-900 text-sm">
+            <h3 className="font-bold text-[#2A1E17] text-sm">
               {isOrder ? 'Place Direct Artisan Order' : 'Submit B2B Bulk Enquiry'}
             </h3>
           </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
+          <button onClick={onClose} className="p-1 text-[#9E8E83] hover:text-[#6B5B51] rounded-lg">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Product preview */}
-        <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center space-x-3">
+        <div className="mt-4 p-3 bg-[#FAF7F2] rounded-xl border border-[#EADFCF] flex items-center space-x-3">
           <img src={product.image_url} alt={product.title} className="w-12 h-12 rounded-lg object-cover" />
           <div className="flex-1 min-w-0">
-            <h4 className="text-xs font-bold text-slate-900 truncate">{product.title}</h4>
-            <p className="text-[11px] text-slate-500">₹{product.price} / unit • In Stock: {product.stock}</p>
+            <h4 className="text-xs font-bold text-[#2A1E17] truncate">{product.title}</h4>
+            <p className="text-[11px] text-[#6B5B51]">₹{product.price} / unit • In Stock: {product.stock}</p>
           </div>
         </div>
 
         {user && product.seller_id === user.id ? (
-          <div className="mt-4 p-5 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-3">
-            <div className="w-12 h-12 mx-auto rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+          <div className="mt-4 p-5 rounded-2xl bg-amber-50 border border-[#933D1E]/30 text-center space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-amber-100 flex items-center justify-center text-[#933D1E]">
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-bold text-slate-900 text-sm">Self-Purchase Disabled (మీ స్వంత ఉత్పత్తి)</h4>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              <h4 className="font-bold text-[#2A1E17] text-sm">Self-Purchase Disabled (మీ స్వంత ఉత్పత్తి)</h4>
+              <p className="text-xs text-[#6B5B51] mt-1 leading-relaxed">
                 You are registered as the artisan creator of this craft. Artisans cannot purchase or submit enquiries for their own listed crafts.
               </p>
             </div>
@@ -124,13 +124,13 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
             </div>
           </div>
         ) : !user ? (
-          <div className="mt-4 p-5 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-4">
-            <div className="w-12 h-12 mx-auto rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+          <div className="mt-4 p-5 rounded-2xl bg-amber-50 border border-[#933D1E]/30 text-center space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-amber-100 flex items-center justify-center text-[#933D1E]">
               <ShoppingBag className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-bold text-slate-900 text-sm">Sign In Required to Proceed</h4>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              <h4 className="font-bold text-[#2A1E17] text-sm">Sign In Required to Proceed</h4>
+              <p className="text-xs text-[#6B5B51] mt-1 leading-relaxed">
                 Please sign in to your account to place your direct artisan order or submit a bulk enquiry with live delivery updates.
               </p>
             </div>
@@ -138,7 +138,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2 px-3 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs hover:bg-white transition-colors cursor-pointer"
+                className="flex-1 py-2 px-3 rounded-xl border border-[#EADFCF] text-[#2A1E17] font-semibold text-xs hover:bg-white transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -148,7 +148,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
                   onClose();
                   onOpenAuth?.();
                 }}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#933D1E] to-[#A84320] hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
               >
                 Sign In / Register
               </button>
@@ -160,11 +160,11 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
               <Package className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-bold text-slate-900 text-sm">Craft Out of Stock (ప్రస్తుతం అందుబాటులో లేదు)</h4>
-              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+              <h4 className="font-bold text-[#2A1E17] text-sm">Craft Out of Stock (ప్రస్తుతం అందుబాటులో లేదు)</h4>
+              <p className="text-xs text-[#6B5B51] mt-1.5 leading-relaxed">
                 All ready units of this craft have been sold out. Direct instant checkout is temporarily unavailable.
               </p>
-              <p className="text-xs text-amber-800 font-medium mt-1">
+              <p className="text-xs text-[#933D1E] font-medium mt-1">
                 You can submit a custom pre-order enquiry to the master artisan to craft a fresh batch for you!
               </p>
             </div>
@@ -172,7 +172,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2 px-3 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs hover:bg-white transition-colors cursor-pointer"
+                className="flex-1 py-2 px-3 rounded-xl border border-[#EADFCF] text-[#2A1E17] font-semibold text-xs hover:bg-white transition-colors cursor-pointer"
               >
                 Close
               </button>
@@ -182,7 +182,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
                   setCurrentMode('ENQUIRY');
                   setFormData(prev => ({ ...prev, quantity: 5 }));
                 }}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer inline-flex items-center justify-center space-x-1.5"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#933D1E] to-[#A84320] hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer inline-flex items-center justify-center space-x-1.5"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Submit Pre-Order</span>
@@ -192,31 +192,31 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
         ) : (
           <form onSubmit={handleSubmit} className="mt-4 space-y-3 text-xs">
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Your Name</label>
+            <label className="block font-semibold text-[#2A1E17] mb-1">Your Name</label>
             <input
               type="text"
               required
               value={formData.buyer_name}
               placeholder="Enter your full name"
               onChange={(e) => setFormData({ ...formData, buyer_name: e.target.value })}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:ring-1 focus:ring-indigo-500"
+              className="w-full border border-[#EADFCF] rounded-xl px-3 py-2 focus:ring-1 focus:ring-indigo-500"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Phone Number</label>
+              <label className="block font-semibold text-[#2A1E17] mb-1">Phone Number</label>
               <input
                 type="text"
                 required
                 value={formData.buyer_phone}
                 placeholder="+91 98765 43210"
                 onChange={(e) => setFormData({ ...formData, buyer_phone: e.target.value })}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2"
+                className="w-full border border-[#EADFCF] rounded-xl px-3 py-2"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Quantity</label>
+              <label className="block font-semibold text-[#2A1E17] mb-1">Quantity</label>
               <input
                 type="number"
                 min="1"
@@ -224,32 +224,32 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
                 required
                 value={formData.quantity}
                 onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-right font-bold"
+                className="w-full border border-[#EADFCF] rounded-xl px-3 py-2 text-right font-bold"
               />
             </div>
           </div>
 
           {isOrder ? (
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Delivery Address</label>
+              <label className="block font-semibold text-[#2A1E17] mb-1">Delivery Address</label>
               <textarea
                 rows="2"
                 required
                 value={formData.delivery_address}
                 placeholder="Enter complete shipping address (street, city, pin code)..."
                 onChange={(e) => setFormData({ ...formData, delivery_address: e.target.value })}
-                className="w-full border border-slate-200 rounded-xl p-2.5"
+                className="w-full border border-[#EADFCF] rounded-xl p-2.5"
               />
             </div>
           ) : (
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Enquiry Specifications / Timeline</label>
+              <label className="block font-semibold text-[#2A1E17] mb-1">Enquiry Specifications / Timeline</label>
               <textarea
                 rows="2"
                 value={formData.message}
                 placeholder="Describe wholesale requirements, custom specifications, or expected delivery timeline..."
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                className="w-full border border-slate-200 rounded-xl p-2.5"
+                className="w-full border border-[#EADFCF] rounded-xl p-2.5"
               />
             </div>
           )}
@@ -262,14 +262,14 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
             </div>
 
             {isOrder && (
-              <div className="pt-2 border-t border-indigo-200/60 text-center space-y-2">
+              <div className="pt-2 border-t border-[#933D1E]/30/60 text-center space-y-2">
                 <span className="text-[11px] font-bold text-indigo-900 flex items-center justify-center space-x-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#933D1E]" />
                   <span>Instant Direct Artisan UPI Payment QR Code</span>
                 </span>
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3 bg-white p-3 rounded-xl border border-indigo-100 shadow-2xs">
-                  <div className="relative p-1 bg-white rounded-lg border border-slate-200 shadow-xs">
+                  <div className="relative p-1 bg-white rounded-lg border border-[#EADFCF] shadow-xs">
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
                         `upi://pay?pa=artisan@upi&pn=${encodeURIComponent('Artisan Handcraft Hub')}&am=${totalPrice}&cu=INR&tn=${encodeURIComponent('Artisan AI Order #' + product.id)}`
@@ -280,11 +280,11 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
                   </div>
 
                   <div className="text-left space-y-1.5 min-w-0">
-                    <span className="text-[10px] text-slate-500 font-medium block">Scan with any UPI App:</span>
+                    <span className="text-[10px] text-[#6B5B51] font-medium block">Scan with any UPI App:</span>
                     <div className="flex flex-wrap gap-1.5">
                       <a
                         href={`upi://pay?pa=artisan@upi&pn=${encodeURIComponent('Artisan Handcraft')}&am=${totalPrice}&cu=INR&tn=${encodeURIComponent('Artisan AI Order #' + product.id)}`}
-                        className="px-2.5 py-1 text-[10px] font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-2xs"
+                        className="px-2.5 py-1 text-[10px] font-bold bg-[#933D1E] text-white rounded-lg hover:bg-[#7E3216] transition-colors shadow-2xs"
                       >
                         ⚡ PhonePe
                       </a>
@@ -315,7 +315,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-2 font-medium text-slate-500 hover:text-slate-800"
+              className="px-3 py-2 font-medium text-[#6B5B51] hover:text-[#2A1E17]"
             >
               Cancel
             </button>
@@ -323,7 +323,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
               type="submit"
               disabled={submitting}
               className={`px-5 py-2 font-bold text-white rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer ${
-                isOrder ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-amber-600 hover:bg-amber-700'
+                isOrder ? 'bg-[#933D1E] hover:bg-[#7E3216]' : 'bg-[#933D1E] hover:bg-[#7E3216]'
               }`}
             >
               {submitting ? 'Submitting...' : isOrder ? 'Confirm & Place Order ₹' + totalPrice : 'Send B2B Enquiry'}

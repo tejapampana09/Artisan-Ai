@@ -21,7 +21,7 @@ export default function LanguageSelectorModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[100] bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200 notranslate" translate="no">
-      <div className="bg-[#FAF7F2] rounded-3xl max-w-md w-full shadow-2xl border border-stone-200 flex flex-col overflow-hidden max-h-[90vh] my-auto animate-in zoom-in-95 duration-200 notranslate" translate="no">
+      <div className="bg-[#FAF7F2] rounded-3xl max-w-md w-full shadow-2xl border border-[#EADFCF] flex flex-col overflow-hidden max-h-[90vh] my-auto animate-in zoom-in-95 duration-200 notranslate" translate="no">
         {/* Header */}
         <div className="p-6 pb-3 text-center relative shrink-0">
           <div className="flex justify-between items-center mb-2">
@@ -51,11 +51,11 @@ export default function LanguageSelectorModal({ isOpen, onClose }) {
                 className={`p-3.5 px-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between group active:scale-[0.99] ${
                   isSelected
                     ? 'bg-white border-[#4A2E1B] shadow-md'
-                    : 'bg-white border-stone-200/80 hover:border-amber-700/40'
+                    : 'bg-white border-[#EADFCF]/80 hover:border-amber-700/40'
                 }`}
               >
                 <div className="flex items-center space-x-3.5">
-                  <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-lg shadow-inner">
+                  <div className="w-9 h-9 rounded-full bg-[#F4EBE1] flex items-center justify-center text-lg shadow-inner">
                     {lang.flag}
                   </div>
                   <div>
@@ -77,7 +77,7 @@ export default function LanguageSelectorModal({ isOpen, onClose }) {
         </div>
 
         {/* Footer Button */}
-        <div className="p-5 pt-2 bg-[#FAF7F2] border-t border-stone-200/50 shrink-0 text-center">
+        <div className="p-5 pt-2 bg-[#FAF7F2] border-t border-[#EADFCF]/50 shrink-0 text-center">
           <button
             onClick={() => {
               setLanguage(language || 'te');

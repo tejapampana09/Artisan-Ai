@@ -15,10 +15,10 @@ export default function SplashScreen({ fadeOut = false }) {
 
         {/* Brand Text */}
         <div className="space-y-1">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-            Artisan <span className="text-amber-600">AI</span>
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#2A1E17]">
+            Artisan <span className="text-[#933D1E]">AI</span>
           </h1>
-          <p className="text-xs font-semibold text-slate-500 tracking-widest uppercase">
+          <p className="text-xs font-semibold text-[#6B5B51] tracking-widest uppercase">
             Rural Craft Commerce & Intelligence
           </p>
         </div>

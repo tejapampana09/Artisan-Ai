@@ -57,7 +57,7 @@ export default function ArtisanProfileModal({ artisanId, isOpen, onClose, curren
 
   return (
     <div className="fixed inset-0 z-60 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 relative overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-[#EADFCF] relative overflow-hidden max-h-[90vh] flex flex-col">
         {/* Top Decorative Banner */}
         <div className="h-24 -mx-6 -mt-6 bg-gradient-to-r from-amber-800 via-orange-700 to-amber-900 p-4 flex justify-between items-start shrink-0">
           <span className="text-[11px] font-bold uppercase tracking-widest text-amber-200 bg-amber-950/40 px-3 py-1 rounded-full border border-amber-500/40">
@@ -73,7 +73,7 @@ export default function ArtisanProfileModal({ artisanId, isOpen, onClose, curren
 
         <div className="flex-1 overflow-y-auto pr-1">
           {loading ? (
-            <div className="py-12 text-center text-slate-500 font-medium text-xs">
+            <div className="py-12 text-center text-[#6B5B51] font-medium text-xs">
               Loading Artisan Profile...
             </div>
           ) : profile ? (
@@ -88,25 +88,25 @@ export default function ArtisanProfileModal({ artisanId, isOpen, onClose, curren
                   />
                   <div className="pb-1">
                     <div className="flex items-center space-x-2">
-                      <h2 className="text-lg sm:text-xl font-bold text-slate-900">{profile.name}</h2>
+                      <h2 className="text-lg sm:text-xl font-bold text-[#2A1E17]">{profile.name}</h2>
                       {profile.verification_status === 'VERIFIED_ARTISAN' ? (
                         <span className="flex items-center text-[10px] sm:text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200" title="Verified Govt/GI Heritage Artisan">
                           <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-600" />
                           Verified Artisan
                         </span>
                       ) : profile.verification_status === 'PROFILE_COMPLETE' ? (
-                        <span className="flex items-center text-[10px] sm:text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200" title="Profile Complete">
-                          <Shield className="w-3.5 h-3.5 mr-1 text-indigo-600" />
+                        <span className="flex items-center text-[10px] sm:text-xs font-bold text-[#933D1E] bg-indigo-50 px-2 py-0.5 rounded-full border border-[#933D1E]/30" title="Profile Complete">
+                          <Shield className="w-3.5 h-3.5 mr-1 text-[#933D1E]" />
                           Profile Complete
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                        <span className="text-xs text-[#6B5B51] bg-[#F4EBE1] px-2 py-0.5 rounded-full border border-[#EADFCF]">
                           Unverified
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-600 font-medium flex items-center mt-0.5">
-                      <MapPin className="w-3.5 h-3.5 text-amber-600 mr-1" />
+                    <p className="text-xs text-[#6B5B51] font-medium flex items-center mt-0.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#933D1E] mr-1" />
                       <span>{profile.location}</span>
                     </p>
                   </div>
@@ -124,18 +124,18 @@ export default function ArtisanProfileModal({ artisanId, isOpen, onClose, curren
               </div>
 
               {/* Quick Stats Grid */}
-              <div className="grid grid-cols-3 gap-2.5 p-2.5 bg-slate-50 rounded-2xl border border-slate-200 text-center text-xs">
+              <div className="grid grid-cols-3 gap-2.5 p-2.5 bg-[#FAF7F2] rounded-2xl border border-[#EADFCF] text-center text-xs">
                 <div>
-                  <span className="text-slate-500 block text-[10px]">Craft Specialization</span>
-                  <span className="font-bold text-slate-900 truncate block">{profile.craft_specialization}</span>
+                  <span className="text-[#6B5B51] block text-[10px]">Craft Specialization</span>
+                  <span className="font-bold text-[#2A1E17] truncate block">{profile.craft_specialization}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px]">Craft Experience</span>
-                  <span className="font-bold text-amber-700 block">{profile.experience_years} Years</span>
+                  <span className="text-[#6B5B51] block text-[10px]">Craft Experience</span>
+                  <span className="font-bold text-[#933D1E] block">{profile.experience_years} Years</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px]">Artisan Rating</span>
-                  <span className="font-bold text-slate-900 flex items-center justify-center space-x-1">
+                  <span className="text-[#6B5B51] block text-[10px]">Artisan Rating</span>
+                  <span className="font-bold text-[#2A1E17] flex items-center justify-center space-x-1">
                     <Star className="w-3.5 h-3.5 text-amber-500 fill-current" />
                     <span>{profile.average_rating > 0 ? profile.average_rating : 'New'}</span>
                   </span>
@@ -146,44 +146,44 @@ export default function ArtisanProfileModal({ artisanId, isOpen, onClose, curren
               {isEditing ? (
                 <form onSubmit={handleSaveProfile} className="space-y-3 pt-1 text-xs">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Craft Specialization</label>
+                    <label className="font-bold text-[#2A1E17] block mb-1">Craft Specialization</label>
                     <input
                       type="text"
                       value={editForm.craft_specialization}
                       onChange={(e) => setEditForm({ ...editForm, craft_specialization: e.target.value })}
-                      className="w-full p-2 rounded-xl border border-slate-300 text-xs"
+                      className="w-full p-2 rounded-xl border border-[#EADFCF] text-xs"
                       required
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">Location / Cluster</label>
+                      <label className="font-bold text-[#2A1E17] block mb-1">Location / Cluster</label>
                       <input
                         type="text"
                         value={editForm.location}
                         onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-                        className="w-full p-2 rounded-xl border border-slate-300 text-xs"
+                        className="w-full p-2 rounded-xl border border-[#EADFCF] text-xs"
                         required
                       />
                     </div>
                     <div>
-                      <label className="font-bold text-slate-700 block mb-1">Years of Experience</label>
+                      <label className="font-bold text-[#2A1E17] block mb-1">Years of Experience</label>
                       <input
                         type="number"
                         value={editForm.experience_years}
                         onChange={(e) => setEditForm({ ...editForm, experience_years: parseInt(e.target.value) || 0 })}
-                        className="w-full p-2 rounded-xl border border-slate-300 text-xs"
+                        className="w-full p-2 rounded-xl border border-[#EADFCF] text-xs"
                         min="0"
                         required
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Artisan Bio & Heritage Legacy</label>
+                    <label className="font-bold text-[#2A1E17] block mb-1">Artisan Bio & Heritage Legacy</label>
                     <textarea
                       value={editForm.bio}
                       onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs h-20"
+                      className="w-full p-2.5 rounded-xl border border-[#EADFCF] text-xs h-20"
                       placeholder="Describe your craft heritage, master technique, materials used..."
                       required
                     />
@@ -192,13 +192,13 @@ export default function ArtisanProfileModal({ artisanId, isOpen, onClose, curren
                     <button
                       type="button"
                       onClick={() => setIsEditing(false)}
-                      className="flex-1 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                      className="flex-1 py-2 bg-[#F4EBE1] text-[#2A1E17] font-bold rounded-xl"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 py-2 bg-amber-600 text-white font-bold rounded-xl shadow-md"
+                      className="flex-1 py-2 bg-[#933D1E] text-white font-bold rounded-xl shadow-md"
                     >
                       Save Profile
                     </button>
@@ -208,11 +208,11 @@ export default function ArtisanProfileModal({ artisanId, isOpen, onClose, curren
                 /* View Mode */
                 <div className="space-y-3 text-xs">
                   <div>
-                    <span className="font-bold text-slate-800 flex items-center space-x-1 mb-1">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span className="font-bold text-[#2A1E17] flex items-center space-x-1 mb-1">
+                      <Sparkles className="w-3.5 h-3.5 text-[#933D1E]" />
                       <span>Heritage Story & Master Bio</span>
                     </span>
-                    <p className="text-slate-600 leading-relaxed bg-amber-50/40 p-3 rounded-2xl border border-amber-200/60">
+                    <p className="text-[#6B5B51] leading-relaxed bg-amber-50/40 p-3 rounded-2xl border border-[#933D1E]/30/60">
                       {profile.bio}
                     </p>
                   </div>

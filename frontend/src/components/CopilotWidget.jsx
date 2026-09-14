@@ -65,7 +65,7 @@ export default function CopilotWidget({ copilotInsight, opportunities = [], onAc
               <Layers className="w-3.5 h-3.5 text-amber-400" />
               <span>Select Craft ({oppList.length} products available):</span>
             </span>
-            <span className="text-[11px] text-slate-400 hidden sm:inline">
+            <span className="text-[11px] text-[#9E8E83] hidden sm:inline">
               Switch craft to view specific AI pricing & demand signals
             </span>
           </div>
@@ -119,7 +119,7 @@ export default function CopilotWidget({ copilotInsight, opportunities = [], onAc
         {/* Signals Metrics Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
           <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-            <span className="text-[11px] text-slate-400 block">Market Demand</span>
+            <span className="text-[11px] text-[#9E8E83] block">Market Demand</span>
             <div className="flex items-center space-x-1 mt-1">
               <TrendingUp className="w-4 h-4 text-emerald-400" />
               <span className="text-base font-bold text-emerald-400">{activeInsight.demand_label}</span>
@@ -127,7 +127,7 @@ export default function CopilotWidget({ copilotInsight, opportunities = [], onAc
           </div>
 
           <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-            <span className="text-[11px] text-slate-400 block">Current Stock</span>
+            <span className="text-[11px] text-[#9E8E83] block">Current Stock</span>
             <div className="flex items-center space-x-1 mt-1">
               <Package className="w-4 h-4 text-amber-400" />
               <span className={`text-base font-bold ${activeInsight.stock <= 0 ? 'text-rose-400' : 'text-white'}`}>
@@ -141,7 +141,7 @@ export default function CopilotWidget({ copilotInsight, opportunities = [], onAc
             className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 cursor-pointer transition-colors"
             title="Click to view buyer enquiries"
           >
-            <span className="text-[11px] text-slate-400 block">Buyer Enquiries</span>
+            <span className="text-[11px] text-[#9E8E83] block">Buyer Enquiries</span>
             <div className="flex items-center space-x-1 mt-1">
               <MessageSquare className="w-4 h-4 text-indigo-400" />
               <span className="text-base font-bold text-white">{activeInsight.buyer_enquiries} leads</span>
@@ -149,7 +149,7 @@ export default function CopilotWidget({ copilotInsight, opportunities = [], onAc
           </div>
 
           <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-            <span className="text-[11px] text-slate-400 block">Comparable Range</span>
+            <span className="text-[11px] text-[#9E8E83] block">Comparable Range</span>
             <span className="text-xs font-bold text-amber-300 mt-1 block">
               {activeInsight.benchmark_range}
             </span>

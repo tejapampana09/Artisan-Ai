@@ -124,17 +124,18 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
   const hasToken = !!getAuthToken();
 
   return (
-    <div className="fixed inset-0 z-[100] bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-4 pb-20 sm:pb-4">
-      <div className="bg-[#FAF7F2] rounded-3xl max-w-md w-full shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in duration-150">
+    <div className="fixed inset-0 z-[100] bg-[#2A1E17]/60 backdrop-blur-sm flex items-center justify-center p-4 pb-20 sm:pb-4">
+      <div className="bg-[#FBF8F3] rounded-3xl max-w-md w-full shadow-2xl border border-[#EADFCF] overflow-hidden animate-in fade-in zoom-in duration-150">
         {/* Header */}
         <div className="p-6 pb-2 relative">
           <button onClick={onClose} className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg absolute right-4 top-4 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
-          <h3 className="font-extrabold text-2xl text-[#2C1A0E]">
+          <span className="font-script text-[#933D1E] text-base block">Artisan Portal</span>
+          <h3 className="font-serif font-bold text-2xl text-[#2A1E17] mt-0.5">
             {tab === 'register' ? 'Welcome, Create Your Account' : 'Welcome Back'}
           </h3>
-          <p className="text-xs text-stone-500 mt-1">
+          <p className="text-xs text-[#6B5B51] mt-1">
             Join thousands of artisans and buyers building a brighter tomorrow
           </p>
         </div>
@@ -143,15 +144,15 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
         <div className="p-6 pt-2 space-y-4">
           {/* Active User Card if logged in */}
           {user && (
-            <div className="bg-amber-50/70 border border-amber-200 p-3.5 rounded-2xl flex items-center justify-between">
+            <div className="bg-[#F4EBE1] border border-[#EADFCF] p-3.5 rounded-2xl flex items-center justify-between">
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs font-bold text-slate-900">{user.name}</span>
-                  <span className="text-[10px] uppercase font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold text-[#2A1E17]">{user.name}</span>
+                  <span className="text-[10px] uppercase font-bold bg-[#933D1E] text-white px-2 py-0.5 rounded-full">
                     {user.role || 'ARTISAN'}
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 mt-0.5">{user.email || user.phone} • {user.craft}</p>
+                <p className="text-xs text-[#6B5B51] mt-0.5">{user.email || user.phone} • {user.craft}</p>
               </div>
               <button
                 onClick={handleLogout}
@@ -177,16 +178,16 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
           )}
 
           {/* Tabs */}
-          <div className="flex border-b border-stone-200 text-xs font-bold text-stone-400 mb-2">
+          <div className="flex border-b border-[#EADFCF] text-xs font-bold text-stone-400 mb-2">
             <button
               onClick={() => { setTab('register'); setError(''); }}
-              className={`pb-2.5 px-4 font-bold border-b-2 transition-all cursor-pointer ${tab === 'register' ? 'border-[#4A2E1B] text-[#4A2E1B]' : 'border-transparent text-stone-400 hover:text-stone-700'}`}
+              className={`pb-2.5 px-4 font-bold border-b-2 transition-all cursor-pointer ${tab === 'register' ? 'border-[#933D1E] text-[#933D1E]' : 'border-transparent text-stone-400 hover:text-stone-700'}`}
             >
               Register
             </button>
             <button
               onClick={() => { setTab('login'); setError(''); }}
-              className={`pb-2.5 px-4 font-bold border-b-2 transition-all cursor-pointer ${tab === 'login' ? 'border-[#4A2E1B] text-[#4A2E1B]' : 'border-transparent text-stone-400 hover:text-stone-700'}`}
+              className={`pb-2.5 px-4 font-bold border-b-2 transition-all cursor-pointer ${tab === 'login' ? 'border-[#933D1E] text-[#933D1E]' : 'border-transparent text-stone-400 hover:text-stone-700'}`}
             >
               Login
             </button>
@@ -196,7 +197,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
           {tab === 'login' && (
             <form onSubmit={handleLogin} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">Email or Phone Number</label>
+                <label className="block font-semibold text-[#2A1E17] mb-1">Email or Phone Number</label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
                   <input
@@ -205,14 +206,14 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                     onChange={(e) => setLoginIdentifier(e.target.value)}
                     required
                     placeholder="artisan@domain.com or phone"
-                    className="w-full pl-9 pr-3 py-2.5 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
+                    className="w-full pl-9 pr-3 py-2.5 bg-white border border-[#EADFCF] rounded-2xl focus:ring-2 focus:ring-[#933D1E] outline-hidden text-[#2A1E17]"
                   />
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block font-semibold text-stone-700">Password</label>
+                  <label className="block font-semibold text-[#2A1E17]">Password</label>
                 </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
@@ -222,7 +223,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2.5 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
+                    className="w-full pl-9 pr-3 py-2.5 bg-white border border-[#EADFCF] rounded-2xl focus:ring-2 focus:ring-[#933D1E] outline-hidden text-[#2A1E17]"
                   />
                 </div>
               </div>
@@ -230,7 +231,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 bg-[#4A2E1B] hover:bg-[#3D2314] text-white font-bold rounded-2xl shadow-lg transition-all cursor-pointer flex items-center justify-center space-x-2"
+                className="w-full py-3.5 bg-[#933D1E] hover:bg-[#7E3216] text-white font-bold rounded-2xl shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2 text-sm mt-2"
               >
                 <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
               </button>
@@ -248,7 +249,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                   onChange={(e) => setRegName(e.target.value)}
                   required
                   placeholder="e.g. Ramesh Kumar"
-                  className="w-full px-3.5 py-2.5 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#EADFCF] rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
                 />
               </div>
 
@@ -260,7 +261,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
                     placeholder="artisan@domain.com"
-                    className="w-full px-3.5 py-2.5 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#EADFCF] rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
                   />
                 </div>
                 <div>
@@ -270,7 +271,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                     value={regPhone}
                     onChange={(e) => setRegPhone(e.target.value)}
                     placeholder="+91 98765 00000"
-                    className="w-full px-3.5 py-2.5 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#EADFCF] rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
                   />
                 </div>
               </div>
@@ -281,7 +282,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                   <select
                     value={regRole}
                     onChange={(e) => setRegRole(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white border border-stone-200 rounded-2xl text-stone-800"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#EADFCF] rounded-2xl text-stone-800"
                   >
                     <option value="ARTISAN">Artisan (Seller)</option>
                     <option value="BUYER">Connoisseur (Buyer)</option>
@@ -294,7 +295,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                     value={regCraft}
                     onChange={(e) => setRegCraft(e.target.value)}
                     placeholder="e.g. Dokra Casting"
-                    className="w-full px-3.5 py-2.5 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#EADFCF] rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
                   />
                 </div>
               </div>
@@ -308,7 +309,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                   required
                   minLength={6}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#EADFCF] rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
                 />
               </div>
 

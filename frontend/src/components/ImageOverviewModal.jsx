@@ -49,7 +49,7 @@ export default function ImageOverviewModal({ isOpen, onClose, product, onBuyNow,
             </button>
           </div>
 
-          <span className="px-3 py-1.5 rounded-full bg-amber-600 text-white font-extrabold text-[11px] backdrop-blur-md shadow-md border border-amber-300/40 uppercase tracking-wider hidden sm:inline-block">
+          <span className="px-3 py-1.5 rounded-full bg-[#933D1E] text-white font-extrabold text-[11px] backdrop-blur-md shadow-md border border-amber-300/40 uppercase tracking-wider hidden sm:inline-block">
             HD View
           </span>
         </div>
@@ -99,7 +99,7 @@ export default function ImageOverviewModal({ isOpen, onClose, product, onBuyNow,
                   )}
                   {product.region_of_origin && (
                     <span className="text-[10px] font-semibold text-stone-600 flex items-center">
-                      <MapPin className="w-3 h-3 text-amber-600 mr-0.5" />
+                      <MapPin className="w-3 h-3 text-[#933D1E] mr-0.5" />
                       {product.region_of_origin}
                     </span>
                   )}
@@ -118,7 +118,7 @@ export default function ImageOverviewModal({ isOpen, onClose, product, onBuyNow,
                 <button
                   type="button"
                   onClick={() => setShowFullDetails(!showFullDetails)}
-                  className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline decoration-amber-500/50 cursor-pointer"
+                  className="text-[11px] font-bold text-[#933D1E] hover:text-amber-950 underline decoration-amber-500/50 cursor-pointer"
                 >
                   {showFullDetails ? 'Hide Overview ▲' : 'Craft Overview ▼'}
                 </button>
@@ -128,9 +128,9 @@ export default function ImageOverviewModal({ isOpen, onClose, product, onBuyNow,
 
           {/* Expandable Real Craft Details Accordion */}
           {showFullDetails && hasOverviewData && (
-            <div className="pt-2 border-t border-stone-200/60 space-y-2.5 animate-in slide-in-from-bottom-2 duration-200 text-xs">
+            <div className="pt-2 border-t border-[#EADFCF]/60 space-y-2.5 animate-in slide-in-from-bottom-2 duration-200 text-xs">
               {(product.craft_story || product.description) && (
-                <div className="bg-stone-100/80 p-3 rounded-2xl border border-stone-200/60 space-y-1">
+                <div className="bg-[#F4EBE1]/80 p-3 rounded-2xl border border-[#EADFCF]/60 space-y-1">
                   <span className="font-bold text-stone-900 block text-[11px] uppercase tracking-wider">
                     {product.craft_story ? 'Heritage Story & Craft Process' : 'Craft Description'}
                   </span>
@@ -142,7 +142,7 @@ export default function ImageOverviewModal({ isOpen, onClose, product, onBuyNow,
 
               <div className="grid grid-cols-2 gap-2 text-[11px]">
                 {product.materials && (
-                  <div className="bg-amber-50/80 p-2.5 rounded-xl border border-amber-200/60">
+                  <div className="bg-amber-50/80 p-2.5 rounded-xl border border-[#933D1E]/30/60">
                     <span className="text-amber-900 font-semibold block text-[10px]">Materials Used</span>
                     <span className="font-bold text-amber-950">{product.materials}</span>
                   </div>

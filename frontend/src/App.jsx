@@ -171,15 +171,15 @@ function AppContent() {
       />
 
       {/* Enterprise Platform Status Bar */}
-      <footer className="bg-white border-t border-slate-200 py-3 text-xs text-slate-500">
+      <footer className="bg-[#FBF8F3] border-t border-[#EADFCF] py-3 text-xs text-[#6B5B51]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-2">
           <div>
-            <span>© 2026 <strong>Artisan AI Technologies</strong>. Enterprise SaaS Platform for Rural Craft Communities.</span>
+            <span>© 2026 <strong className="text-[#2A1E17]">Artisan AI Technologies</strong>. Enterprise SaaS Platform for Rural Craft Communities.</span>
           </div>
           <div className="flex items-center space-x-4">
-            <span>{t('workspaceLabel', 'Workspace')}: <strong className="text-slate-800">{activeMode === 'HOME' ? t('homeShowcase', 'Home Showcase') : activeMode === 'SELL' ? t('artisanStudio', 'Artisan Studio') : t('buyerMarketplace', 'Buyer Marketplace')}</strong></span>
+            <span>{t('workspaceLabel', 'Workspace')}: <strong className="text-[#2A1E17]">{activeMode === 'HOME' ? t('homeShowcase', 'Home Showcase') : activeMode === 'SELL' ? t('artisanStudio', 'Artisan Studio') : t('buyerMarketplace', 'Buyer Marketplace')}</strong></span>
             <span>{t('syncLabel', 'Sync')}: <strong className={isOffline ? 'text-orange-600' : 'text-emerald-600'}>{isOffline ? t('offlineLocalCache', 'Offline (Local Cache)') : t('liveCloudDb', 'Live (Cloud DB)')}</strong></span>
-            <span>{t('databaseLabel', 'Database')}: <strong className={readyStatus?.status === 'ready' ? 'text-emerald-600' : 'text-amber-600'}>{readyStatus?.database || t('connectedStatus', 'Connected')}</strong></span>
+            <span>{t('databaseLabel', 'Database')}: <strong className={readyStatus?.status === 'ready' ? 'text-emerald-600' : 'text-[#933D1E]'}>{readyStatus?.database || t('connectedStatus', 'Connected')}</strong></span>
           </div>
         </div>
       </footer>

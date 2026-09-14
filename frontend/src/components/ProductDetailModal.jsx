@@ -148,28 +148,28 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#FAF7F2] overflow-y-auto min-h-screen w-full flex flex-col p-4 sm:p-6 animate-in slide-in-from-bottom duration-300">
-      <div className="bg-white rounded-3xl max-w-4xl w-full mx-auto p-4 sm:p-6 shadow-2xl border border-stone-200 flex flex-col overflow-hidden my-auto">
+      <div className="bg-white rounded-3xl max-w-4xl w-full mx-auto p-4 sm:p-6 shadow-2xl border border-[#EADFCF] flex flex-col overflow-hidden my-auto">
         {/* Modal Header */}
-        <div className="flex justify-between items-start pb-3 border-b border-slate-100 shrink-0">
+        <div className="flex justify-between items-start pb-3 border-b border-[#EADFCF]/60 shrink-0">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[#933D1E] bg-amber-50 px-2 py-0.5 rounded-full border border-[#933D1E]/30">
                 {product.category}
               </span>
-              <span className="text-[11px] text-slate-500">ID #{product.id}</span>
+              <span className="text-[11px] text-[#6B5B51]">ID #{product.id}</span>
             </div>
-            <h3 className="text-lg font-bold text-slate-900 mt-1">{product.title}</h3>
+            <h3 className="text-lg font-bold text-[#2A1E17] mt-1">{product.title}</h3>
           </div>
           <div className="flex items-center space-x-2">
             {!isOwner ? (
-              <span className="inline-flex items-center space-x-1 text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-                <Lock className="w-3 h-3 text-slate-400" />
+              <span className="inline-flex items-center space-x-1 text-xs font-medium text-[#6B5B51] bg-[#F4EBE1] px-2.5 py-1 rounded-lg border border-[#EADFCF]">
+                <Lock className="w-3 h-3 text-[#9E8E83]" />
                 <span>View-only (Other Seller)</span>
               </span>
             ) : !isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
-                className="inline-flex items-center space-x-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                className="inline-flex items-center space-x-1.5 text-xs font-semibold bg-[#F4EBE1] hover:bg-[#EADFCF] text-[#2A1E17] px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 <span>Edit Fields</span>
@@ -178,7 +178,7 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="inline-flex items-center space-x-1.5 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                className="inline-flex items-center space-x-1.5 text-xs font-semibold bg-[#933D1E] hover:bg-[#7E3216] text-white px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>{saving ? 'Saving...' : 'Save Changes'}</span>
@@ -198,7 +198,7 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                 <Trash2 className="w-4 h-4" />
               </button>
             )}
-            <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
+            <button onClick={onClose} className="p-1.5 text-[#9E8E83] hover:text-[#6B5B51] rounded-lg cursor-pointer">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -218,35 +218,35 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
         )}
 
         {/* STEP 6: EXPLAINABLE DYNAMIC PRICING PANEL */}
-        <div className="mt-5 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-slate-50 border border-amber-200/80 rounded-2xl p-5 space-y-4 shadow-xs">
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 pb-3 border-b border-amber-200/50">
+        <div className="mt-5 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-slate-50 border border-[#933D1E]/30/80 rounded-2xl p-5 space-y-4 shadow-xs">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 pb-3 border-b border-[#933D1E]/30/50">
             <div className="flex items-center space-x-2">
-              <div className="w-7 h-7 rounded-lg bg-amber-600 flex items-center justify-center text-white">
+              <div className="w-7 h-7 rounded-lg bg-[#933D1E] flex items-center justify-center text-white">
                 <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="font-extrabold text-slate-900 text-sm">Explainable Dynamic Pricing Recommendation</h4>
-                <p className="text-[11px] text-slate-500">Continuous market-aware guidance with guaranteed margin protection</p>
+                <h4 className="font-extrabold text-[#2A1E17] text-sm">Explainable Dynamic Pricing Recommendation</h4>
+                <p className="text-[11px] text-[#6B5B51]">Continuous market-aware guidance with guaranteed margin protection</p>
               </div>
             </div>
-            <span className="text-[10px] font-bold text-amber-800 bg-amber-100/80 border border-amber-300 px-2.5 py-1 rounded-full self-start sm:self-auto flex items-center space-x-1">
+            <span className="text-[10px] font-bold text-[#933D1E] bg-amber-100/80 border border-amber-300 px-2.5 py-1 rounded-full self-start sm:self-auto flex items-center space-x-1">
               <Lock className="w-3 h-3" />
               <span>Artisan Controlled</span>
             </span>
           </div>
 
           {pricingLoading ? (
-            <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center space-x-2">
-              <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="py-6 text-center text-xs text-[#9E8E83] flex items-center justify-center space-x-2">
+              <div className="w-4 h-4 border-2 border-[#933D1E] border-t-transparent rounded-full animate-spin"></div>
               <span>Computing price recommendation...</span>
             </div>
           ) : pricingRec?.unavailable_offline ? (
             <div className="bg-white rounded-xl p-4 border border-amber-300 shadow-xs space-y-2.5">
               <div className="flex items-center space-x-2 text-amber-900 font-bold text-xs">
-                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                <AlertCircle className="w-4 h-4 text-[#933D1E] shrink-0" />
                 <span>Pricing recommendation unavailable offline. Cloud sync required.</span>
               </div>
-              <ul className="space-y-1 pl-6 list-disc text-[11px] text-slate-600">
+              <ul className="space-y-1 pl-6 list-disc text-[11px] text-[#6B5B51]">
                 {pricingRec.reasoning.map((r, i) => (
                   <li key={i}>{r}</li>
                 ))}
@@ -255,19 +255,19 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
           ) : pricingRec ? (
             <div className="space-y-4">
               {/* CURRENT vs RECOMMENDED PRICE HERO */}
-              <div className="bg-white rounded-xl p-4 border border-amber-200/80 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="bg-white rounded-xl p-4 border border-[#933D1E]/30/80 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center space-x-4">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Current Price</span>
-                    <span className="text-xl font-extrabold text-slate-700">₹{pricingRec.current_price.toLocaleString('en-IN')}</span>
+                    <span className="text-[10px] uppercase font-bold text-[#9E8E83] block">Current Price</span>
+                    <span className="text-xl font-extrabold text-[#2A1E17]">₹{pricingRec.current_price.toLocaleString('en-IN')}</span>
                   </div>
                   <ArrowRight className="w-5 h-5 text-amber-500 shrink-0" />
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-amber-700 block flex items-center space-x-1">
+                    <span className="text-[10px] uppercase font-bold text-[#933D1E] block flex items-center space-x-1">
                       <Sparkles className="w-3 h-3" />
                       <span>AI Recommended</span>
                     </span>
-                    <span className="text-2xl font-black text-amber-700">₹{pricingRec.recommended_price.toLocaleString('en-IN')}</span>
+                    <span className="text-2xl font-black text-[#933D1E]">₹{pricingRec.recommended_price.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
 
@@ -277,33 +277,33 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                     pricingRec.price_change_amount > 0
                       ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                       : pricingRec.price_change_amount < 0
-                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                      : 'bg-slate-100 text-slate-700'
+                      ? 'bg-amber-100 text-[#933D1E] border border-amber-300'
+                      : 'bg-[#F4EBE1] text-[#2A1E17]'
                   }`}>
                     {pricingRec.price_change_amount > 0 ? `+₹${pricingRec.price_change_amount} (+${pricingRec.price_change_percentage}%)` : `₹0 (Optimized)`}
                   </span>
-                  <span className="text-[10px] text-slate-400 block mt-1">Based on Demand + Cost Guard</span>
+                  <span className="text-[10px] text-[#9E8E83] block mt-1">Based on Demand + Cost Guard</span>
                 </div>
               </div>
 
               {/* WHY THIS PRICE? (EXPLANATION BREAKDOWN) */}
-              <div className="bg-white/80 rounded-xl p-4 border border-slate-200 text-xs space-y-3">
+              <div className="bg-white/80 rounded-xl p-4 border border-[#EADFCF] text-xs space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-slate-900 text-xs uppercase tracking-wide flex items-center space-x-1.5">
-                    <Info className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="font-extrabold text-[#2A1E17] text-xs uppercase tracking-wide flex items-center space-x-1.5">
+                    <Info className="w-3.5 h-3.5 text-[#933D1E]" />
                     <span>Why this price? (Data Breakdown)</span>
                   </span>
-                  <span className="text-[11px] font-semibold text-indigo-700">
+                  <span className="text-[11px] font-semibold text-[#933D1E]">
                     Position: {pricingRec.current_market_position}
                   </span>
                 </div>
 
                 {/* Cost Basis vs Minimum Fair Price Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                  <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    <span className="text-[10px] text-slate-500 block font-semibold">Total Cost Basis</span>
-                    <strong className="text-xs text-slate-900">₹{pricingRec.cost_basis}</strong>
-                    <span className="text-[9px] text-slate-500 block truncate" title={`Mat: ₹${product.material_cost || 0} | Lab: ₹${product.labour_cost || 0} | Pkg: ₹${product.packaging_cost || 0} | Oth: ₹${product.other_cost || 0}`}>
+                  <div className="bg-[#FAF7F2] p-2.5 rounded-lg border border-[#EADFCF]">
+                    <span className="text-[10px] text-[#6B5B51] block font-semibold">Total Cost Basis</span>
+                    <strong className="text-xs text-[#2A1E17]">₹{pricingRec.cost_basis}</strong>
+                    <span className="text-[9px] text-[#6B5B51] block truncate" title={`Mat: ₹${product.material_cost || 0} | Lab: ₹${product.labour_cost || 0} | Pkg: ₹${product.packaging_cost || 0} | Oth: ₹${product.other_cost || 0}`}>
                       Mat: ₹{product.material_cost || 0} | Lab: ₹{product.labour_cost || 0} | Pkg: ₹{product.packaging_cost || 0} | Oth: ₹{product.other_cost || 0}
                     </span>
                   </div>
@@ -315,24 +315,24 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                     <strong className="text-xs text-emerald-900">₹{pricingRec.minimum_fair_price}</strong>
                     <span className="text-[9px] text-emerald-700 block">Guarantees ≥ {pricingRec.safety_constraints.min_margin_percentage}% margin</span>
                   </div>
-                  <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    <span className="text-[10px] text-slate-500 block">Demand Factor</span>
-                    <strong className="text-xs text-slate-900">{pricingRec.demand_factor}x</strong>
-                    <span className="text-[9px] text-slate-400 block">Bounded [0.95, 1.15]</span>
+                  <div className="bg-[#FAF7F2] p-2.5 rounded-lg border border-[#EADFCF]">
+                    <span className="text-[10px] text-[#6B5B51] block">Demand Factor</span>
+                    <strong className="text-xs text-[#2A1E17]">{pricingRec.demand_factor}x</strong>
+                    <span className="text-[9px] text-[#9E8E83] block">Bounded [0.95, 1.15]</span>
                   </div>
-                  <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    <span className="text-[10px] text-slate-500 block">Market Benchmark</span>
-                    <strong className="text-xs text-slate-900">₹{pricingRec.market_range.low}–₹{pricingRec.market_range.high}</strong>
-                    <span className="text-[9px] text-slate-400 block">Adj: {pricingRec.market_adjustment}x</span>
+                  <div className="bg-[#FAF7F2] p-2.5 rounded-lg border border-[#EADFCF]">
+                    <span className="text-[10px] text-[#6B5B51] block">Market Benchmark</span>
+                    <strong className="text-xs text-[#2A1E17]">₹{pricingRec.market_range.low}–₹{pricingRec.market_range.high}</strong>
+                    <span className="text-[9px] text-[#9E8E83] block">Adj: {pricingRec.market_adjustment}x</span>
                   </div>
                 </div>
 
                 {/* Reasoning Bullet Points */}
-                <div className="pt-2 border-t border-slate-100 space-y-1.5">
-                  <span className="text-[11px] font-bold text-slate-700 block">Key Observations:</span>
+                <div className="pt-2 border-t border-[#EADFCF]/60 space-y-1.5">
+                  <span className="text-[11px] font-bold text-[#2A1E17] block">Key Observations:</span>
                   <ul className="space-y-1">
                     {pricingRec.reasoning.map((r, i) => (
-                      <li key={i} className="text-[11px] text-slate-600 flex items-start space-x-1.5">
+                      <li key={i} className="text-[11px] text-[#6B5B51] flex items-start space-x-1.5">
                         <span className="text-amber-500 font-bold">•</span>
                         <span>{r}</span>
                       </li>
@@ -342,15 +342,15 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
 
                 {/* EXPLICIT SMART PRICING TOGGLE CONTROL */}
                 {isOwner && (
-                  <div className="bg-white rounded-xl p-3 border border-amber-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="bg-white rounded-xl p-3 border border-[#933D1E]/30/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="space-y-0.5">
                       <div className="flex items-center space-x-2">
-                        <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-                        <span className="text-xs font-extrabold text-slate-900">
-                          Smart Pricing Mode: <strong className={formData.auto_smart_pricing_enabled ? "text-emerald-700 font-black" : "text-amber-800 font-bold"}>{formData.auto_smart_pricing_enabled ? "AUTONOMOUS (ON)" : "SELLER APPROVAL (OFF)"}</strong>
+                        <Sparkles className="w-4 h-4 text-[#933D1E] shrink-0" />
+                        <span className="text-xs font-extrabold text-[#2A1E17]">
+                          Smart Pricing Mode: <strong className={formData.auto_smart_pricing_enabled ? "text-emerald-700 font-black" : "text-[#933D1E] font-bold"}>{formData.auto_smart_pricing_enabled ? "AUTONOMOUS (ON)" : "SELLER APPROVAL (OFF)"}</strong>
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 leading-snug">
+                      <p className="text-[11px] text-[#6B5B51] leading-snug">
                         Allow Artisan AI to automatically adjust your price within safety limits (+15% demand surge / ≥20% profit margin floor).
                       </p>
                     </div>
@@ -369,8 +369,8 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                       }}
                       className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-xs flex items-center space-x-1.5 shrink-0 ${
                         formData.auto_smart_pricing_enabled
-                          ? 'bg-amber-600 text-white hover:bg-amber-700'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'
+                          ? 'bg-[#933D1E] text-white hover:bg-[#7E3216]'
+                          : 'bg-[#F4EBE1] text-[#2A1E17] hover:bg-[#EADFCF] border border-[#EADFCF]'
                       }`}
                     >
                       <span>{formData.auto_smart_pricing_enabled ? 'Smart Pricing: ON' : 'Smart Pricing: OFF'}</span>
@@ -381,8 +381,8 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
 
               {/* SELLER CONTROL BUTTONS & MANDATORY NOTICE */}
               <div className="pt-1 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <p className="text-[11px] text-slate-500 italic flex items-center space-x-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <p className="text-[11px] text-[#6B5B51] italic flex items-center space-x-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#933D1E] shrink-0" />
                   <span>{formData.auto_smart_pricing_enabled ? 'Autonomous smart pricing is ACTIVE on demand events.' : 'Your price will not change automatically. The artisan always makes the final decision.'}</span>
                 </p>
 
@@ -391,7 +391,7 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                     <button
                       onClick={() => handleDecision('REJECT')}
                       disabled={decisionSubmitting}
-                      className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl border border-[#EADFCF] text-xs font-semibold text-[#2A1E17] hover:bg-[#F4EBE1] transition-all cursor-pointer"
                     >
                       Keep Current Price
                     </button>
@@ -405,8 +405,8 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                     </button>
                   </div>
                 ) : (
-                  <div className="text-[11px] font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 flex items-center space-x-1.5">
-                    <Lock className="w-3.5 h-3.5 text-slate-400" />
+                  <div className="text-[11px] font-medium text-[#6B5B51] bg-[#F4EBE1] px-3 py-1.5 rounded-xl border border-[#EADFCF] flex items-center space-x-1.5">
+                    <Lock className="w-3.5 h-3.5 text-[#9E8E83]" />
                     <span>Price decisions can only be approved by the owning artisan</span>
                   </div>
                 )}
@@ -416,16 +416,16 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
         </div>
 
         {/* Existing Product Media & Story Section */}
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-[#EADFCF]/60">
           <div>
             <img
               src={product.enhanced_image_url || product.image_url}
               alt={product.title}
-              className="w-full h-48 rounded-xl object-cover border border-slate-200 shadow-xs"
+              className="w-full h-48 rounded-xl object-cover border border-[#EADFCF] shadow-xs"
             />
-            <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-xs">
+            <div className="mt-3 p-3 bg-[#FAF7F2] border border-[#EADFCF] rounded-xl space-y-1 text-xs">
               <div className="flex justify-between">
-                <span className="text-slate-500">Stock Inventory:</span>
+                <span className="text-[#6B5B51]">Stock Inventory:</span>
                 {isEditing ? (
                   <input
                     type="number"
@@ -435,19 +435,19 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                     className="w-20 border rounded px-1 text-right text-xs"
                   />
                 ) : (
-                  <strong className="text-slate-800">{product.stock} units</strong>
+                  <strong className="text-[#2A1E17]">{product.stock} units</strong>
                 )}
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Active Listing Price:</span>
-                <strong className="text-slate-900 font-bold">₹{product.price.toLocaleString('en-IN')}</strong>
+                <span className="text-[#6B5B51]">Active Listing Price:</span>
+                <strong className="text-[#2A1E17] font-bold">₹{product.price.toLocaleString('en-IN')}</strong>
               </div>
             </div>
           </div>
 
           <div className="space-y-3 text-xs">
             <div>
-              <span className="font-semibold text-slate-700 block mb-1">Description</span>
+              <span className="font-semibold text-[#2A1E17] block mb-1">Description</span>
               {isEditing ? (
                 <textarea
                   name="description"
@@ -457,14 +457,14 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                   className="w-full border rounded-lg p-2 text-xs"
                 />
               ) : (
-                <p className="text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <p className="text-[#6B5B51] bg-[#FAF7F2] p-2.5 rounded-lg border border-[#EADFCF]/60">
                   {product.description || 'No description entered.'}
                 </p>
               )}
             </div>
 
             <div>
-              <span className="font-semibold text-slate-700 block mb-1">Heritage & Craft Story</span>
+              <span className="font-semibold text-[#2A1E17] block mb-1">Heritage & Craft Story</span>
               {isEditing ? (
                 <textarea
                   name="craft_story"
@@ -474,14 +474,14 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                   className="w-full border rounded-lg p-2 text-xs"
                 />
               ) : (
-                <p className="text-slate-600 bg-amber-50/50 p-2.5 rounded-lg border border-amber-100 leading-relaxed italic">
+                <p className="text-[#6B5B51] bg-amber-50/50 p-2.5 rounded-lg border border-amber-100 leading-relaxed italic">
                   "{product.craft_story || 'No craft story attached.'}"
                 </p>
               )}
             </div>
 
             <div>
-              <span className="font-semibold text-slate-700 block mb-1">Materials</span>
+              <span className="font-semibold text-[#2A1E17] block mb-1">Materials</span>
               {isEditing ? (
                 <input
                   type="text"
@@ -491,58 +491,58 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                   className="w-full border rounded-lg p-2 text-xs"
                 />
               ) : (
-                <p className="text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                <p className="text-[#6B5B51] bg-[#FAF7F2] p-2 rounded-lg border border-[#EADFCF]/60">
                   {product.materials || 'Traditional artisan materials'}
                 </p>
               )}
             </div>
 
             {isEditing && (
-              <div className="bg-amber-50/70 p-3 rounded-xl border border-amber-200 space-y-2 mt-3">
+              <div className="bg-amber-50/70 p-3 rounded-xl border border-[#933D1E]/30 space-y-2 mt-3">
                 <span className="font-bold text-amber-900 block text-xs">Itemized Production Costs & Protected Basis</span>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div>
-                    <label className="block text-[10px] text-slate-600 font-medium">Material (₹)</label>
+                    <label className="block text-[10px] text-[#6B5B51] font-medium">Material (₹)</label>
                     <input
                       type="number"
                       name="material_cost"
                       min="0"
                       value={formData.material_cost}
                       onChange={handleChange}
-                      className="w-full border border-amber-200 rounded px-2 py-1 text-xs bg-white font-semibold"
+                      className="w-full border border-[#933D1E]/30 rounded px-2 py-1 text-xs bg-white font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-600 font-medium">Labour (₹)</label>
+                    <label className="block text-[10px] text-[#6B5B51] font-medium">Labour (₹)</label>
                     <input
                       type="number"
                       name="labour_cost"
                       min="0"
                       value={formData.labour_cost}
                       onChange={handleChange}
-                      className="w-full border border-amber-200 rounded px-2 py-1 text-xs bg-white font-semibold"
+                      className="w-full border border-[#933D1E]/30 rounded px-2 py-1 text-xs bg-white font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-600 font-medium">Packaging (₹)</label>
+                    <label className="block text-[10px] text-[#6B5B51] font-medium">Packaging (₹)</label>
                     <input
                       type="number"
                       name="packaging_cost"
                       min="0"
                       value={formData.packaging_cost}
                       onChange={handleChange}
-                      className="w-full border border-amber-200 rounded px-2 py-1 text-xs bg-white font-semibold"
+                      className="w-full border border-[#933D1E]/30 rounded px-2 py-1 text-xs bg-white font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-600 font-medium">Other Costs (₹)</label>
+                    <label className="block text-[10px] text-[#6B5B51] font-medium">Other Costs (₹)</label>
                     <input
                       type="number"
                       name="other_cost"
                       min="0"
                       value={formData.other_cost}
                       onChange={handleChange}
-                      className="w-full border border-amber-200 rounded px-2 py-1 text-xs bg-white font-semibold"
+                      className="w-full border border-[#933D1E]/30 rounded px-2 py-1 text-xs bg-white font-semibold"
                     />
                   </div>
                 </div>

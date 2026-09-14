@@ -1,16 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --bg-sand: #FBF8F3;
+  --bg-card: #FFFFFF;
+  --terracotta: #933D1E;
+  --terracotta-hover: #7E3216;
+  --terracotta-light: #FBF0EB;
+  --sand-border: #EADFCF;
+  --text-primary: #2A1E17;
+  --text-secondary: #6B5B51;
+}
+
+.font-serif {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-sans {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.font-script {
+  font-family: 'Caveat', 'Alex Brush', cursive;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: #FAF7F2;
-  color: #2C1A0E;
+  background-color: var(--bg-sand);
+  color: var(--text-primary);
   min-height: 100vh;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -21,6 +41,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: var(--bg-sand);
 }
 
 /* Mobile Native Touch Targets & Bottom Sheet Utilities */

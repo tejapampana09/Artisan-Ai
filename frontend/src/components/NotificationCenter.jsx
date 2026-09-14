@@ -40,7 +40,7 @@ export default function NotificationCenter() {
             </div>
             <button
               onClick={() => removeNotification(n.id)}
-              className="text-slate-400 hover:text-white p-0.5 rounded-lg transition-colors cursor-pointer"
+              className="text-[#9E8E83] hover:text-white p-0.5 rounded-lg transition-colors cursor-pointer"
               title="Dismiss"
             >
               <X className="w-4 h-4" />

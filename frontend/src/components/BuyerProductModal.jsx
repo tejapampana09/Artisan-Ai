@@ -132,9 +132,9 @@ export default function BuyerProductModal({
                 className="px-3.5 py-2.5 rounded-full bg-white/70 hover:bg-white text-stone-900 shadow-[0_8px_24px_rgba(0,0,0,0.18)] backdrop-blur-2xl border border-white/60 transition-all cursor-pointer font-bold flex items-center space-x-1.5 text-xs active:scale-95 ring-1 ring-black/5"
               >
                 {isTranslating ? (
-                  <RefreshCw className="w-4 h-4 animate-spin text-amber-700" />
+                  <RefreshCw className="w-4 h-4 animate-spin text-[#933D1E]" />
                 ) : (
-                  <Globe className="w-4 h-4 text-amber-700" />
+                  <Globe className="w-4 h-4 text-[#933D1E]" />
                 )}
                 <span>{isTranslating ? 'Translating...' : `Translate (${language.toUpperCase()})`}</span>
               </button>
@@ -167,7 +167,7 @@ export default function BuyerProductModal({
             </div>
 
             <span className="text-[11px] font-bold text-stone-900 bg-white/80 backdrop-blur-xl px-3 py-1 rounded-full flex items-center space-x-1 shadow-lg border border-white/60 group-hover:bg-white transition-colors">
-              <Maximize2 className="w-3.5 h-3.5 text-amber-700" />
+              <Maximize2 className="w-3.5 h-3.5 text-[#933D1E]" />
               <span className="hidden sm:inline">Tap for Overview</span>
             </span>
           </div>
@@ -176,10 +176,10 @@ export default function BuyerProductModal({
         {/* Main Content Body */}
         <div className="max-w-3xl w-full mx-auto px-4 sm:px-6 py-6 pb-28 space-y-6 flex-1">
           {/* Title & Price Section */}
-          <div className="space-y-2 border-b border-stone-200/80 pb-4">
+          <div className="space-y-2 border-b border-[#EADFCF]/80 pb-4">
             {translatedData && (
               <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-bold">
-                <Globe className="w-3.5 h-3.5 text-amber-700" />
+                <Globe className="w-3.5 h-3.5 text-[#933D1E]" />
                 <span>🌐 AI Translated to {language.toUpperCase()} (మీ భాషలోకి అనువాదం చేయబడింది)</span>
               </div>
             )}
@@ -210,15 +210,15 @@ export default function BuyerProductModal({
 
           {/* Feature Badges */}
           <div className="grid grid-cols-3 gap-2.5 text-center">
-            <div className="bg-white p-3 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1">
+            <div className="bg-white p-3 rounded-2xl border border-[#EADFCF]/80 shadow-2xs space-y-1">
               <span className="text-base block">✨</span>
               <span className="text-[11px] font-bold text-stone-800 block">Handcrafted</span>
             </div>
-            <div className="bg-white p-3 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1">
+            <div className="bg-white p-3 rounded-2xl border border-[#EADFCF]/80 shadow-2xs space-y-1">
               <span className="text-base block">🌿</span>
               <span className="text-[11px] font-bold text-stone-800 block">Authentic</span>
             </div>
-            <div className="bg-white p-3 rounded-2xl border border-stone-200/80 shadow-2xs space-y-1">
+            <div className="bg-white p-3 rounded-2xl border border-[#EADFCF]/80 shadow-2xs space-y-1">
               <span className="text-base block">🤝</span>
               <span className="text-[11px] font-bold text-stone-800 block">Direct Seller</span>
             </div>
@@ -230,7 +230,7 @@ export default function BuyerProductModal({
               <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest">
                 Craft Description
               </h3>
-              <p className="text-sm text-stone-700 leading-relaxed bg-white p-4 rounded-2xl border border-stone-200/80">
+              <p className="text-sm text-stone-700 leading-relaxed bg-white p-4 rounded-2xl border border-[#EADFCF]/80">
                 {displayDesc}
               </p>
             </div>
@@ -240,20 +240,20 @@ export default function BuyerProductModal({
           {displayStory && (
             <div className="space-y-2">
               <h3 className="text-xs font-bold text-amber-900 uppercase tracking-widest flex items-center space-x-1">
-                <Sparkles className="w-4 h-4 text-amber-600" />
+                <Sparkles className="w-4 h-4 text-[#933D1E]" />
                 <span>Heritage Craft Story</span>
               </h3>
-              <p className="text-sm text-stone-800 italic leading-relaxed bg-amber-50/70 p-4 rounded-2xl border border-amber-200/80">
+              <p className="text-sm text-stone-800 italic leading-relaxed bg-amber-50/70 p-4 rounded-2xl border border-[#933D1E]/30/80">
                 "{displayStory}"
               </p>
             </div>
           )}
 
           {/* Craft Passport & Provenance */}
-          <div className="p-4 bg-white rounded-2xl border border-stone-200/80 space-y-3">
+          <div className="p-4 bg-white rounded-2xl border border-[#EADFCF]/80 space-y-3">
             <div className="flex items-center justify-between border-b border-stone-100 pb-2">
               <span className="font-extrabold text-[#2C1A0E] text-xs flex items-center space-x-1.5">
-                <Award className="w-4 h-4 text-amber-700" />
+                <Award className="w-4 h-4 text-[#933D1E]" />
                 <span>🧾 Digital Craft Passport</span>
               </span>
               <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full">
@@ -280,7 +280,7 @@ export default function BuyerProductModal({
           </div>
 
           {/* Meet Master Artisan Card */}
-          <div className="p-4 bg-white rounded-2xl border border-stone-200/80 flex items-center justify-between">
+          <div className="p-4 bg-white rounded-2xl border border-[#EADFCF]/80 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 rounded-2xl bg-amber-100 text-xl flex items-center justify-center font-bold text-amber-900 shrink-0">
                 🎨
@@ -305,10 +305,10 @@ export default function BuyerProductModal({
 
           {/* Similar Heritage Crafts Section (Market Benchmark Comparison) */}
           {displaySimilar.length > 0 && (
-            <div className="space-y-3 pt-4 border-t border-stone-200/80">
+            <div className="space-y-3 pt-4 border-t border-[#EADFCF]/80">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-extrabold text-[#2C1A0E] flex items-center space-x-1.5">
-                  <Sparkles className="w-4 h-4 text-amber-700" />
+                  <Sparkles className="w-4 h-4 text-[#933D1E]" />
                   <span>Similar Heritage Crafts ({product.category})</span>
                 </h3>
                 <span className="text-[10px] font-bold text-amber-900 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300">
@@ -325,9 +325,9 @@ export default function BuyerProductModal({
                         onSelectProduct(simProd);
                       }
                     }}
-                    className="bg-white rounded-2xl p-2.5 border border-stone-200/80 shadow-2xs hover:shadow-md transition-all cursor-pointer group space-y-2 flex flex-col justify-between"
+                    className="bg-white rounded-2xl p-2.5 border border-[#EADFCF]/80 shadow-2xs hover:shadow-md transition-all cursor-pointer group space-y-2 flex flex-col justify-between"
                   >
-                    <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-stone-100">
+                    <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-[#F4EBE1]">
                       <img
                         src={simProd.enhanced_image_url || simProd.image_url || 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=400'}
                         alt={simProd.title}
@@ -339,7 +339,7 @@ export default function BuyerProductModal({
                     </div>
 
                     <div>
-                      <h4 className="font-extrabold text-xs text-[#2C1A0E] line-clamp-1 group-hover:text-amber-800 transition-colors">
+                      <h4 className="font-extrabold text-xs text-[#2C1A0E] line-clamp-1 group-hover:text-[#933D1E] transition-colors">
                         {simProd.title}
                       </h4>
                       <p className="text-[10px] text-stone-500 truncate mt-0.5">
@@ -354,10 +354,10 @@ export default function BuyerProductModal({
         </div>
 
         {/* Sticky Bottom Action Bar (Screen 7 Design) */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-stone-200 p-3.5 px-4 shadow-2xl">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-[#EADFCF] p-3.5 px-4 shadow-2xl">
           <div className="max-w-3xl mx-auto flex items-center space-x-3">
             {user && product.seller_id === user.id ? (
-              <div className="w-full text-center text-xs font-bold text-amber-900 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+              <div className="w-full text-center text-xs font-bold text-amber-900 bg-amber-50 p-2.5 rounded-xl border border-[#933D1E]/30">
                 Your Listed Craft (Artisan Owner)
               </div>
             ) : (
@@ -404,31 +404,31 @@ export default function BuyerProductModal({
                   <div className="w-12 h-12 mx-auto rounded-full bg-amber-200 border-2 border-amber-500 flex items-center justify-center text-amber-900 shadow-md">
                     <Award className="w-7 h-7" />
                   </div>
-                  <h2 className="font-serif font-bold text-slate-900 text-lg tracking-wide uppercase">
+                  <h2 className="font-serif font-bold text-[#2A1E17] text-lg tracking-wide uppercase">
                     Certificate of Authenticity
                   </h2>
-                  <p className="text-[11px] font-bold text-amber-800 tracking-widest uppercase">
+                  <p className="text-[11px] font-bold text-[#933D1E] tracking-widest uppercase">
                     Geographical Indication (GI) & Heritage Craft Provenance
                   </p>
                 </div>
 
-                <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-xs space-y-3 text-xs">
+                <div className="bg-white p-4 rounded-2xl border border-[#933D1E]/30 shadow-xs space-y-3 text-xs">
                   <div className="flex justify-between items-center pb-2 border-b border-amber-100">
-                    <span className="text-slate-500 font-medium">Craft Item:</span>
-                    <span className="font-bold text-slate-900">{product.title}</span>
+                    <span className="text-[#6B5B51] font-medium">Craft Item:</span>
+                    <span className="font-bold text-[#2A1E17]">{product.title}</span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-amber-100">
-                    <span className="text-slate-500 font-medium">Category / Cluster:</span>
-                    <span className="font-bold text-indigo-700">{product.category}</span>
+                    <span className="text-[#6B5B51] font-medium">Category / Cluster:</span>
+                    <span className="font-bold text-[#933D1E]">{product.category}</span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-amber-100">
-                    <span className="text-slate-500 font-medium">Verification Code:</span>
+                    <span className="text-[#6B5B51] font-medium">Verification Code:</span>
                     <span className="font-mono text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300">
                       ART-GI-{product.id}-{(product.id * 98765).toString(16).toUpperCase()}
                     </span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-amber-100">
-                    <span className="text-slate-500 font-medium">Fair Price Status:</span>
+                    <span className="text-[#6B5B51] font-medium">Fair Price Status:</span>
                     <span className="font-bold text-emerald-700 flex items-center space-x-1">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Verified Fair Trade Price</span>
@@ -437,8 +437,8 @@ export default function BuyerProductModal({
 
                   <div className="pt-2 flex items-center justify-between gap-3">
                     <div className="text-left space-y-1">
-                      <span className="text-[10px] text-slate-500 font-semibold block">Craft Origin:</span>
-                      <p className="text-[11px] text-slate-700 leading-tight">
+                      <span className="text-[10px] text-[#6B5B51] font-semibold block">Craft Origin:</span>
+                      <p className="text-[11px] text-[#2A1E17] leading-tight">
                         Handcrafted by {product.seller?.name || 'certified artisan'} in {product.region_of_origin || product.seller?.location || 'India'}.
                       </p>
                     </div>

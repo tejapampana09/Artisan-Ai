@@ -52,37 +52,37 @@ export default function ReviewsSection({ productId, user, product }) {
     : 0;
 
   return (
-    <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
+    <div className="mt-4 pt-4 border-t border-[#EADFCF] space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <MessageSquare className="w-4 h-4 text-indigo-600" />
-          <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+          <MessageSquare className="w-4 h-4 text-[#933D1E]" />
+          <h4 className="font-bold text-[#2A1E17] text-xs uppercase tracking-wider">
             Verified Buyer Reviews & Ratings
           </h4>
         </div>
         {reviews.length > 0 && (
-          <div className="flex items-center space-x-1.5 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 text-xs font-bold text-amber-900">
+          <div className="flex items-center space-x-1.5 bg-amber-50 px-2.5 py-0.5 rounded-full border border-[#933D1E]/30 text-xs font-bold text-amber-900">
             <Star className="w-3.5 h-3.5 text-amber-500 fill-current" />
             <span>{avgRating} / 5</span>
-            <span className="text-slate-400 text-[10px]">({reviews.length})</span>
+            <span className="text-[#9E8E83] text-[10px]">({reviews.length})</span>
           </div>
         )}
       </div>
 
       {/* Review List */}
       {loading ? (
-        <p className="text-xs text-slate-400">Loading reviews...</p>
+        <p className="text-xs text-[#9E8E83]">Loading reviews...</p>
       ) : reviews.length === 0 ? (
-        <div className="p-3 bg-slate-50 rounded-xl text-center text-xs text-slate-500 border border-slate-100">
+        <div className="p-3 bg-[#FAF7F2] rounded-xl text-center text-xs text-[#6B5B51] border border-[#EADFCF]/60">
           No buyer reviews yet. Be the first verified buyer to leave a review!
         </div>
       ) : (
         <div className="space-y-2.5 max-h-44 overflow-y-auto pr-1">
           {reviews.map((rev) => (
-            <div key={rev.id} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
+            <div key={rev.id} className="p-2.5 bg-[#FAF7F2] rounded-xl border border-[#EADFCF] text-xs space-y-1">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-1.5">
-                  <span className="font-bold text-slate-800">{rev.buyer_name}</span>
+                  <span className="font-bold text-[#2A1E17]">{rev.buyer_name}</span>
                   {rev.verified_purchase && (
                     <span className="flex items-center text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
                       <ShieldCheck className="w-3 h-3 text-emerald-600 mr-0.5" />
@@ -99,7 +99,7 @@ export default function ReviewsSection({ productId, user, product }) {
                   ))}
                 </div>
               </div>
-              {rev.comment && <p className="text-slate-600 leading-snug">{rev.comment}</p>}
+              {rev.comment && <p className="text-[#6B5B51] leading-snug">{rev.comment}</p>}
             </div>
           ))}
         </div>
@@ -107,12 +107,12 @@ export default function ReviewsSection({ productId, user, product }) {
 
       {/* Add Review Form or Seller Self-Review Prohibition Notice */}
       {isSellerOwner ? (
-        <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200 text-amber-900 text-xs space-y-1">
+        <div className="p-3 bg-amber-50/80 rounded-xl border border-[#933D1E]/30 text-amber-900 text-xs space-y-1">
           <div className="flex items-center space-x-1.5 font-bold text-amber-900">
-            <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+            <ShieldCheck className="w-4 h-4 text-[#933D1E] shrink-0" />
             <span>Self-Review Prohibited (మీ సొంత ఉత్పత్తులకు సమీక్ష ఇవ్వడం సాధ్యం కాదు)</span>
           </div>
-          <p className="text-[11px] text-amber-700 leading-snug">
+          <p className="text-[11px] text-[#933D1E] leading-snug">
             As the master artisan of this craft item, you cannot post reviews on your own product. Reviews are reserved for verified buyers.
           </p>
         </div>
@@ -120,7 +120,7 @@ export default function ReviewsSection({ productId, user, product }) {
         <form onSubmit={handleSubmitReview} className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2 text-xs">
           <span className="font-bold text-indigo-900 block text-[11px]">Write a Verified Buyer Review</span>
           <div className="flex items-center space-x-2">
-            <span className="text-slate-600 text-[11px]">Rating:</span>
+            <span className="text-[#6B5B51] text-[11px]">Rating:</span>
             <div className="flex space-x-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -140,13 +140,13 @@ export default function ReviewsSection({ productId, user, product }) {
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Share your feedback on craft quality..."
-              className="flex-1 p-2 rounded-lg border border-indigo-200 bg-white text-xs"
+              className="flex-1 p-2 rounded-lg border border-[#933D1E]/30 bg-white text-xs"
               required
             />
             <button
               type="submit"
               disabled={submitting}
-              className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-xs flex items-center space-x-1 text-xs cursor-pointer"
+              className="px-3 py-2 bg-[#933D1E] hover:bg-[#7E3216] text-white font-bold rounded-lg shadow-xs flex items-center space-x-1 text-xs cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Submit</span>

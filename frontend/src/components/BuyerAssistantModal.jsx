@@ -145,8 +145,8 @@ export default function BuyerAssistantModal({ isOpen, onClose, onSelectProduct }
   const quickPrompts = SUGGESTIONS[language] || SUGGESTIONS.en;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center sm:items-end sm:justify-end p-3 sm:p-6">
-      <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-indigo-200 flex flex-col overflow-hidden max-h-[85vh] h-[650px] animate-in fade-in slide-in-from-bottom-4 duration-200">
+    <div className="fixed inset-0 z-50 bg-[#2A1E17]/70 backdrop-blur-xs flex items-center justify-center sm:items-end sm:justify-end p-3 sm:p-6">
+      <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-[#933D1E]/30 flex flex-col overflow-hidden max-h-[85vh] h-[650px] animate-in fade-in slide-in-from-bottom-4 duration-200">
         
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white p-4 flex justify-between items-center shrink-0">
@@ -176,7 +176,7 @@ export default function BuyerAssistantModal({ isOpen, onClose, onSelectProduct }
                 className="bg-transparent text-white font-semibold text-[11px] focus:outline-none cursor-pointer"
               >
                 {LANGUAGES.map((l) => (
-                  <option key={l.code} value={l.code} className="text-slate-900 bg-white">
+                  <option key={l.code} value={l.code} className="text-[#2A1E17] bg-white">
                     {l.label}
                   </option>
                 ))}
@@ -191,12 +191,12 @@ export default function BuyerAssistantModal({ isOpen, onClose, onSelectProduct }
 
         {/* Quick Suggestion Pills */}
         <div className="bg-indigo-50/70 p-2.5 border-b border-indigo-100 flex items-center space-x-2 overflow-x-auto shrink-0 text-xs scrollbar-none">
-          <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0 ml-1" />
+          <Sparkles className="w-3.5 h-3.5 text-[#933D1E] shrink-0 ml-1" />
           {quickPrompts.map((p, idx) => (
             <button
               key={idx}
               onClick={() => handleSend(p)}
-              className="px-2.5 py-1 bg-white hover:bg-indigo-600 hover:text-white text-indigo-900 rounded-full border border-indigo-200 font-semibold text-[11px] whitespace-nowrap shadow-2xs transition-all cursor-pointer shrink-0"
+              className="px-2.5 py-1 bg-white hover:bg-[#933D1E] hover:text-white text-indigo-900 rounded-full border border-[#933D1E]/30 font-semibold text-[11px] whitespace-nowrap shadow-2xs transition-all cursor-pointer shrink-0"
             >
               {p}
             </button>
@@ -204,7 +204,7 @@ export default function BuyerAssistantModal({ isOpen, onClose, onSelectProduct }
         </div>
 
         {/* Chat Messages Body */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs bg-slate-50/50">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs bg-[#FAF7F2]/50">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -213,16 +213,16 @@ export default function BuyerAssistantModal({ isOpen, onClose, onSelectProduct }
               <div
                 className={`max-w-[85%] rounded-2xl p-3 space-y-2 shadow-2xs ${
                   msg.sender === 'user'
-                    ? 'bg-indigo-600 text-white rounded-br-none'
-                    : 'bg-white border border-indigo-100 text-slate-800 rounded-bl-none'
+                    ? 'bg-[#933D1E] text-white rounded-br-none'
+                    : 'bg-white border border-indigo-100 text-[#2A1E17] rounded-bl-none'
                 }`}
               >
                 <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
 
                 {/* Inline Product Recommendation Cards inside Chat Stream */}
                 {msg.products && msg.products.length > 0 && (
-                  <div className="pt-2 border-t border-slate-100 space-y-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block flex items-center">
+                  <div className="pt-2 border-t border-[#EADFCF]/60 space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#933D1E] block flex items-center">
                       <Sparkles className="w-3 h-3 text-amber-500 mr-1" />
                       Live Search Craft Results ({msg.products.length})
                     </span>
@@ -234,33 +234,33 @@ export default function BuyerAssistantModal({ isOpen, onClose, onSelectProduct }
                           onClick={() => {
                             onSelectProduct(prod);
                           }}
-                          className="p-2.5 bg-indigo-50/60 hover:bg-indigo-100/80 rounded-xl border border-indigo-200/80 flex items-center justify-between gap-2.5 cursor-pointer transition-all hover:scale-[1.01] group"
+                          className="p-2.5 bg-indigo-50/60 hover:bg-indigo-100/80 rounded-xl border border-[#933D1E]/30/80 flex items-center justify-between gap-2.5 cursor-pointer transition-all hover:scale-[1.01] group"
                         >
                           <img
                             src={prod.enhanced_image_url || prod.image_url}
                             alt={prod.title}
-                            className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0"
+                            className="w-12 h-12 rounded-lg object-cover border border-[#EADFCF] shrink-0"
                           />
                           <div className="flex-1 min-w-0">
-                            <h5 className="font-bold text-slate-900 truncate text-xs group-hover:text-indigo-700">
+                            <h5 className="font-bold text-[#2A1E17] truncate text-xs group-hover:text-[#933D1E]">
                               {prod.title}
                             </h5>
-                            <div className="flex items-center space-x-2 text-[10px] text-slate-500 mt-0.5">
-                              <span className="font-semibold text-indigo-700 bg-indigo-100/60 px-1.5 py-0.2 rounded border border-indigo-200">
+                            <div className="flex items-center space-x-2 text-[10px] text-[#6B5B51] mt-0.5">
+                              <span className="font-semibold text-[#933D1E] bg-indigo-100/60 px-1.5 py-0.2 rounded border border-[#933D1E]/30">
                                 {prod.category}
                               </span>
-                              <span className="flex items-center text-slate-500">
-                                <MapPin className="w-2.5 h-2.5 text-amber-600 mr-0.5" />
+                              <span className="flex items-center text-[#6B5B51]">
+                                <MapPin className="w-2.5 h-2.5 text-[#933D1E] mr-0.5" />
                                 {prod.region_of_origin || 'India'}
                               </span>
                             </div>
-                            <span className="font-extrabold text-slate-900 text-xs block mt-1">
+                            <span className="font-extrabold text-[#2A1E17] text-xs block mt-1">
                               ₹{prod.price?.toLocaleString('en-IN')}
                             </span>
                           </div>
                           <button
                             type="button"
-                            className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[10px] shadow-2xs flex items-center space-x-1 shrink-0 cursor-pointer"
+                            className="px-2 py-1 bg-[#933D1E] hover:bg-[#7E3216] text-white rounded-lg font-bold text-[10px] shadow-2xs flex items-center space-x-1 shrink-0 cursor-pointer"
                           >
                             <span>View</span>
                             <ArrowRight className="w-3 h-3" />
@@ -276,8 +276,8 @@ export default function BuyerAssistantModal({ isOpen, onClose, onSelectProduct }
 
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-white border border-indigo-100 rounded-2xl rounded-bl-none p-3 shadow-2xs text-xs text-indigo-700 font-semibold flex items-center space-x-2">
-                <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <div className="bg-white border border-indigo-100 rounded-2xl rounded-bl-none p-3 shadow-2xs text-xs text-[#933D1E] font-semibold flex items-center space-x-2">
+                <div className="w-4 h-4 border-2 border-[#933D1E] border-t-transparent rounded-full animate-spin" />
                 <span>Searching live marketplace database...</span>
               </div>
             </div>
@@ -287,7 +287,7 @@ export default function BuyerAssistantModal({ isOpen, onClose, onSelectProduct }
         </div>
 
         {/* Input Bar */}
-        <div className="p-3 bg-white border-t border-slate-200 shrink-0 space-y-2">
+        <div className="p-3 bg-white border-t border-[#EADFCF] shrink-0 space-y-2">
           {isRecording && (
             <div className="p-2 bg-rose-50 border border-rose-200 rounded-xl text-[11px] font-bold text-rose-700 flex items-center justify-between animate-pulse">
               <div className="flex items-center space-x-2">
@@ -307,7 +307,7 @@ export default function BuyerAssistantModal({ isOpen, onClose, onSelectProduct }
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="Ask for crafts, budget, or heritage items..."
-              className="flex-1 text-xs border border-slate-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+              className="flex-1 text-xs border border-[#EADFCF] rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-[#FAF7F2]"
             />
 
             <button
@@ -316,7 +316,7 @@ export default function BuyerAssistantModal({ isOpen, onClose, onSelectProduct }
               className={`p-2.5 rounded-xl transition-all cursor-pointer ${
                 isRecording
                   ? 'bg-rose-600 text-white animate-pulse'
-                  : 'bg-slate-100 text-indigo-700 hover:bg-indigo-50 border border-indigo-200'
+                  : 'bg-[#F4EBE1] text-[#933D1E] hover:bg-indigo-50 border border-[#933D1E]/30'
               }`}
               title="Speak in native language"
             >
@@ -327,7 +327,7 @@ export default function BuyerAssistantModal({ isOpen, onClose, onSelectProduct }
               type="button"
               onClick={() => handleSend()}
               disabled={loading || !inputMessage.trim()}
-              className="p-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+              className="p-2.5 bg-[#933D1E] hover:bg-[#7E3216] disabled:opacity-50 text-white rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
             >
               <Send className="w-4 h-4" />
             </button>
