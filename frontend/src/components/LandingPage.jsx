@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, 
   Store, 
@@ -17,33 +17,37 @@ import {
   Heart,
   Tag,
   Truck,
-  Layers,
-  Globe,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { getProducts } from '../api/index.js';
+import { getLocalizedProductField } from '../utils/multilingual.js';
 
 export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
   const { language, t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
+  const [realProducts, setRealProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
 
+  // Real Craft Categories (Traditional Indian Craft Heritage Types)
   const craftCategories = [
     {
       id: 'kalamkari',
+      categoryKey: 'Kalamkari',
       name: 'Kalamkari Handlooms',
       telugu: 'కలంకారీ వస్త్రాలు',
       hi: 'कलमकारी वस्त्र',
       ta: 'கலம்காரி ஜவுளி',
       bn: 'কলমকারী টেক্সটাইল',
-      origin: 'Srikalahasti, AP',
+      origin: 'Srikalahasti & Machilipatnam, AP',
       tag: 'GI Tagged Heritage',
-      price: '₹2,499',
-      rating: '4.9',
       image: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=600&q=80',
       description: 'Hand-painted cotton textiles crafted using 100% natural organic vegetable dyes.'
     },
     {
       id: 'etikoppaka',
+      categoryKey: 'Wooden Toys',
       name: 'Etikoppaka Lacquer Toys',
       telugu: 'ఏటికొప్పాక చెక్క బొమ్మలు',
       hi: 'एटीकोप्पका लकड़ी के खिलौने',
@@ -51,13 +55,12 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
       bn: 'এটিকোপ্পাকা কাঠের খেলনা',
       origin: 'Visakhapatnam, AP',
       tag: 'Eco Lacquer Polish',
-      price: '₹899',
-      rating: '4.8',
       image: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=600&q=80',
       description: 'Turned soft wood figurines glazed with non-toxic botanical lac polish.'
     },
     {
       id: 'pottery',
+      categoryKey: 'Blue Pottery',
       name: 'Jaipur Blue Pottery',
       telugu: 'జయపుర బ్లూ కుండల కళ',
       hi: 'जयपुर ब्लू पॉटरी',
@@ -65,13 +68,12 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
       bn: 'জয়পুর ব্লু পটারি',
       origin: 'Jaipur, Rajasthan',
       tag: 'Quartz Ceramic Art',
-      price: '₹1,299',
-      rating: '5.0',
       image: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=600&q=80',
       description: 'Vibrant cobalt blue glazed ceramics made without clay using ground quartz stone.'
     },
     {
       id: 'bidriware',
+      categoryKey: 'Bidriware',
       name: 'Bidriware Silver Inlay',
       telugu: 'బిద్రి వెండి చెక్కడాలు',
       hi: 'बीदरी सिल्वर जड़ाई क्राफ्ट',
@@ -79,95 +81,56 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
       bn: 'বিদ্রি রৌপ্য কারুশিল্প',
       origin: 'Bidar, Karnataka',
       tag: '800-Year Alloy Art',
-      price: '₹3,200',
-      rating: '4.9',
       image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80',
       description: 'Blackened zinc-copper alloy intricately inlaid with 99.9% sterling silver.'
     },
     {
       id: 'terracotta',
+      categoryKey: 'Terracotta',
       name: 'Terracotta & Clay Art',
       telugu: 'టెర్రకోటా మట్టి పాత్రలు',
       hi: 'टेराकोटा मिट्टी के बर्तन',
       ta: 'சுடுமண் கலை',
       bn: 'টেরাকোটা মৃৎশিল্প',
-      origin: 'Bankura, WB',
+      origin: 'Bankura, West Bengal',
       tag: 'Earth-Fired Heritage',
-      price: '₹750',
-      rating: '4.7',
       image: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?auto=format&fit=crop&w=600&q=80',
       description: 'Traditional burnt-clay decorative artifacts and Bankura horses.'
     },
     {
       id: 'ikat',
+      categoryKey: 'Pochampally Ikat',
       name: 'Pochampally Ikat Silks',
       telugu: 'పోచంపల్లి ఇక్కత్ చీరలు',
       hi: 'पोचमपल्ली इकत साड़ी',
       ta: 'போச்சம்பள்ளி இக்கத் பட்டு',
       bn: 'পোচমপল্লী ইকাত সিল্ক',
-      origin: 'Pochampally, TS',
+      origin: 'Pochampally, Telangana',
       tag: 'GI Tag Weave',
-      price: '₹4,999',
-      rating: '5.0',
       image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80',
       description: 'Intricate geometric dyed silk threads woven into heirloom sarees.'
     }
   ];
 
-  const featuredMarketplaceItems = [
-    {
-      id: 1,
-      title: 'Hand-painted Srikalahasti Kalamkari Tree of Life Tapestry',
-      artisan: 'Ramesh Varma',
-      location: 'Srikalahasti, AP',
-      price: '₹3,499',
-      originalPrice: '₹4,500',
-      artisanShare: '82% Direct Earnings',
-      tag: 'GI Certified',
-      rating: 4.9,
-      reviews: 38,
-      image: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=600&q=80'
-    },
-    {
-      id: 2,
-      title: 'Authentic Etikoppaka Traditional Wooden Raja Rani Pair',
-      artisan: 'Chinna Satyanarayana',
-      location: 'Etikoppaka, AP',
-      price: '₹1,199',
-      originalPrice: '₹1,600',
-      artisanShare: '85% Direct Earnings',
-      tag: 'Natural Lacquer',
-      rating: 4.8,
-      reviews: 52,
-      image: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=600&q=80'
-    },
-    {
-      id: 3,
-      title: 'Handcrafted Jaipur Cobalt Blue Floral Planter Vase',
-      artisan: 'Sunita Devi',
-      location: 'Jaipur, Rajasthan',
-      price: '₹1,450',
-      originalPrice: '₹1,850',
-      artisanShare: '80% Direct Earnings',
-      tag: 'Quartz Clay Free',
-      rating: 5.0,
-      reviews: 29,
-      image: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=600&q=80'
-    },
-    {
-      id: 4,
-      title: 'Bidriware Pure Silver Wire Inlaid Decorative Jewellery Box',
-      artisan: 'Mohammed Rashid',
-      location: 'Bidar, Karnataka',
-      price: '₹2,890',
-      originalPrice: '₹3,500',
-      artisanShare: '84% Direct Earnings',
-      tag: 'Heritage Metal',
-      rating: 4.9,
-      reviews: 44,
-      image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80'
+  // Fetch REAL published products dynamically from backend DB
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchRealMarketplaceData() {
+      try {
+        setLoadingProducts(true);
+        const data = await getProducts({ status: 'PUBLISHED' });
+        if (isMounted && Array.isArray(data)) {
+          setRealProducts(data);
+        }
+      } catch (err) {
+        console.error('Failed to load real products on landing page:', err);
+      } finally {
+        if (isMounted) setLoadingProducts(false);
+      }
     }
-  ];
+    fetchRealMarketplaceData();
+    return () => { isMounted = false; };
+  }, []);
 
   const features = [
     {
@@ -234,7 +197,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
             Eliminating middlemen through Multilingual Voice AI, transparent cost-plus pricing protection, and direct buyer-to-artisan connections.
           </p>
 
-          {/* Quick Search Bar (Kreate World Style) */}
+          {/* Quick Search Bar */}
           <form onSubmit={handleSearchSubmit} className="max-w-2xl mx-auto pt-2">
             <div className="relative flex items-center bg-white rounded-2xl p-2 shadow-2xl border border-amber-200/50">
               <Search className="w-5 h-5 text-stone-400 ml-3 shrink-0" />
@@ -341,7 +304,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
         </div>
       </section>
 
-      {/* Featured Indian Heritage Categories (Kreate Style Grid) */}
+      {/* Featured Indian Heritage Categories */}
       <section className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#EADFCF] pb-4">
           <div>
@@ -350,7 +313,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
               <span>Authentic Cultural Heritage</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold font-serif text-[#2A1E17]">
-              Explore Handmade Craft Traditions
+              Explore Traditional Craft Disciplines
             </h2>
           </div>
           <button 
@@ -382,10 +345,6 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
                 <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-xs text-amber-300 px-3 py-1 rounded-full text-[10px] font-bold border border-amber-400/30 shadow-xs">
                   {craft.tag}
                 </div>
-                <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-xs text-[#933D1E] font-bold px-2.5 py-1 rounded-lg text-xs border border-[#EADFCF] shadow-xs flex items-center space-x-1">
-                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                  <span>{craft.rating}</span>
-                </div>
               </div>
 
               <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
@@ -406,9 +365,8 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-[#EADFCF]">
-                  <span className="text-xs text-stone-500">Starting from <strong className="text-sm font-bold text-[#2A1E17] ml-1">{craft.price}</strong></span>
                   <span className="text-xs font-bold text-[#933D1E] flex items-center space-x-1 group-hover:translate-x-1 transition-transform">
-                    <span>Explore</span>
+                    <span>Browse {craft.name}</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
@@ -418,79 +376,100 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
         </div>
       </section>
 
-      {/* Trending Direct-Artisan Marketplace Products (Kreate World Showcase) */}
+      {/* REAL Live Published Products Section */}
       <section className="bg-gradient-to-b from-[#FBF8F3] to-white rounded-3xl p-6 sm:p-10 border border-[#EADFCF] shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-100 text-[#933D1E] text-xs font-bold mb-2">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold mb-2">
               <TrendingUp className="w-3.5 h-3.5" />
-              <span>Trending Verified Listings</span>
+              <span>Real Live Published Crafts</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold font-serif text-[#2A1E17]">
-              Handcrafted Masterpieces Ready to Ship
+              Handcrafted Items Direct from Artisans
             </h2>
           </div>
           <button 
             onClick={() => onSelectMode('BUY')}
             className="px-5 py-2.5 rounded-xl bg-[#933D1E] hover:bg-[#7E3216] text-white text-xs font-bold shadow-md transition-all cursor-pointer shrink-0"
           >
-            Go to Full Marketplace
+            Explore Marketplace ({realProducts.length} Items)
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-2">
-          {featuredMarketplaceItems.map((item) => (
-            <div 
-              key={item.id}
+        {loadingProducts ? (
+          <div className="py-12 text-center text-stone-500 space-y-3">
+            <Loader2 className="w-8 h-8 text-[#933D1E] animate-spin mx-auto" />
+            <p className="text-xs font-medium">Loading live artisan products from database...</p>
+          </div>
+        ) : realProducts.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-2">
+            {realProducts.slice(0, 8).map((prod) => {
+              const localizedTitle = getLocalizedProductField(prod, 'title', language);
+              const localizedDesc = getLocalizedProductField(prod, 'description', language);
+              return (
+                <div 
+                  key={prod.id}
+                  onClick={() => onSelectMode('BUY')}
+                  className="bg-white rounded-2xl border border-[#EADFCF] overflow-hidden hover:border-[#933D1E] shadow-xs hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group"
+                >
+                  <div className="relative h-48 overflow-hidden bg-stone-100">
+                    <img 
+                      src={prod.image_url || 'https://images.unsplash.com/photo-1606787366850-de6330128bfc?auto=format&fit=crop&w=600&q=80'} 
+                      alt={localizedTitle}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://images.unsplash.com/photo-1606787366850-de6330128bfc?auto=format&fit=crop&w=600&q=80';
+                      }}
+                    />
+                    <div className="absolute top-2.5 left-2.5 bg-emerald-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
+                      ≥20% Margin Protected
+                    </div>
+                  </div>
+
+                  <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] text-stone-500 mb-1">
+                        <span className="flex items-center space-x-1 font-medium text-[#933D1E]">
+                          <Tag className="w-3 h-3" />
+                          <span>{prod.category || 'Handicraft'}</span>
+                        </span>
+                      </div>
+
+                      <h3 className="font-bold text-xs text-[#2A1E17] group-hover:text-[#933D1E] line-clamp-2 transition-colors">
+                        {localizedTitle}
+                      </h3>
+                      <p className="text-[11px] text-stone-500 mt-1 line-clamp-2">
+                        {localizedDesc}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#EADFCF] flex items-center justify-between">
+                      <div>
+                        <span className="text-base font-bold text-[#933D1E]">₹{Number(prod.price).toLocaleString('en-IN')}</span>
+                      </div>
+                      <button className="bg-[#FAF7F2] hover:bg-amber-100 text-[#933D1E] px-3 py-1.5 rounded-xl border border-[#EADFCF] text-xs font-bold transition-colors">
+                        View Item
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-white rounded-2xl border border-[#EADFCF] space-y-3">
+            <ShoppingBag className="w-10 h-10 text-stone-400 mx-auto" />
+            <h4 className="font-serif font-bold text-base text-[#2A1E17]">No Published Products Yet</h4>
+            <p className="text-xs text-[#6B5B51]">Artisans are cataloging new creations using Voice AI. Click below to explore all items in the marketplace.</p>
+            <button 
               onClick={() => onSelectMode('BUY')}
-              className="bg-white rounded-2xl border border-[#EADFCF] overflow-hidden hover:border-[#933D1E] shadow-xs hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group"
+              className="mt-2 px-5 py-2 rounded-xl bg-[#933D1E] text-white font-bold text-xs"
             >
-              <div className="relative h-48 overflow-hidden bg-stone-100">
-                <img 
-                  src={item.image} 
-                  alt={item.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute top-2.5 left-2.5 bg-emerald-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
-                  {item.artisanShare}
-                </div>
-                <div className="absolute top-2.5 right-2.5 bg-white/90 text-stone-700 p-1.5 rounded-full shadow-xs hover:text-red-500 transition-colors">
-                  <Heart className="w-3.5 h-3.5" />
-                </div>
-              </div>
-
-              <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between text-[11px] text-stone-500 mb-1">
-                    <span className="flex items-center space-x-1">
-                      <MapPin className="w-3 h-3 text-[#933D1E]" />
-                      <span>{item.location}</span>
-                    </span>
-                    <span className="flex items-center space-x-1 font-semibold text-amber-600">
-                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                      <span>{item.rating} ({item.reviews})</span>
-                    </span>
-                  </div>
-
-                  <h3 className="font-bold text-xs text-[#2A1E17] group-hover:text-[#933D1E] line-clamp-2 transition-colors">
-                    {item.title}
-                  </h3>
-                  <p className="text-[11px] text-stone-500 mt-1">Artisan: <strong className="text-stone-700">{item.artisan}</strong></p>
-                </div>
-
-                <div className="pt-2 border-t border-[#EADFCF] flex items-center justify-between">
-                  <div>
-                    <span className="text-base font-bold text-[#933D1E]">{item.price}</span>
-                    <span className="text-xs text-stone-400 line-through ml-1.5">{item.originalPrice}</span>
-                  </div>
-                  <button className="bg-[#FAF7F2] hover:bg-amber-100 text-[#933D1E] p-2 rounded-xl border border-[#EADFCF] transition-colors">
-                    <ShoppingBag className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              Open Marketplace
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Core Platform Pillars */}
