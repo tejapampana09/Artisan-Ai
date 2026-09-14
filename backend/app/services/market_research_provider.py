@@ -330,9 +330,8 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                         logger.info("[Market] Rejecting listing '%s' - URL '%s' not present in groundingMetadata", title, raw_url)
                         continue
 
-                    if not matched_uri and idx < len(grounded_chunks_list):
-                        matched_uri = grounded_chunks_list[idx]["uri"]
-
+                    # Strict Source Integrity: If no exact domain or title match found in grounded chunks, 
+                    # do NOT guess by array position. Fallback safely to verified live search URL for that craft title.
                     final_url = _clean_or_build_url(matched_uri or raw_url, title, source)
 
                     results.append({
