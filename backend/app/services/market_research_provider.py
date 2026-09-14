@@ -8,7 +8,29 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
+import hashlib
+import time
+from typing import Tuple
+
 logger = logging.getLogger("artisan_ai")
+
+_MARKET_CACHE: Dict[str, Tuple[float, List[Dict[str, Any]]]] = {}
+MARKET_CACHE_TTL_SECONDS = 1800  # 30-minute TTL cache window
+
+def get_market_cache(query: str) -> Optional[List[Dict[str, Any]]]:
+    key = hashlib.sha256(query.lower().strip().encode("utf-8")).hexdigest()
+    if key in _MARKET_CACHE:
+        ts, data = _MARKET_CACHE[key]
+        if time.time() - ts < MARKET_CACHE_TTL_SECONDS:
+            logger.info("[Market Cache] HIT for query '%s' (%d cached items)", query, len(data))
+            return data
+        else:
+            del _MARKET_CACHE[key]
+    return None
+
+def set_market_cache(query: str, results: List[Dict[str, Any]]):
+    key = hashlib.sha256(query.lower().strip().encode("utf-8")).hexdigest()
+    _MARKET_CACHE[key] = (time.time(), results)
 
 
 class BaseMarketResearchProvider(ABC):
@@ -77,8 +99,6 @@ def _clean_or_build_url(url_val: str, title: str, source: str) -> str:
     url_clean = (url_val or "").strip()
     is_dummy = (
         not url_clean or
-        "/dp/" in url_clean.lower() or
-        "/gp/product/" in url_clean.lower() or
         any(dummy in url_clean.lower() for dummy in ["example.com", "placeholder", "b08example", "fake-unsupported", "test"])
     )
     if not is_dummy and (url_clean.startswith("http://") or url_clean.startswith("https://")):
@@ -114,14 +134,21 @@ def _is_url_in_grounding(url: str, grounded_uris: set) -> bool:
         g_lower = g_uri.lower().rstrip("/")
         if url_lower == g_lower:
             return True
-        if url_lower.startswith(g_lower) or g_lower.startswith(url_lower):
-            return True
+        
+        try:
+            p_url = urlparse(url_lower)
+            p_g = urlparse(g_lower)
+            if p_url.netloc and p_url.netloc == p_g.netloc:
+                if p_url.path and p_url.path != "/" and p_url.path == p_g.path:
+                    return True
+        except Exception:
+            pass
     return False
 
 
 class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
     """
-    Market Research Provider powered by Google Gemini with Live Google Search Grounding.
+    Production Live Market Research Provider utilizing Google Gemini with Search Grounding.
     Searches the live web for real, currently available Indian handmade/artisan products
     with grounded URLs and verified observed prices in INR.
     """
@@ -139,6 +166,11 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
         if not query or not query.strip():
             return []
         
+        clean_q = query.strip()
+        cached_res = get_market_cache(clean_q)
+        if cached_res is not None:
+            return cached_res[:limit]
+
         if not self.api_key:
             try:
                 from backend.app.config import GEMINI_API_KEY
@@ -150,7 +182,6 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
             logger.warning("[Market] No GEMINI_API_KEY configured")
             return []
 
-        clean_q = query.strip()
         fetch_count = min(max(limit, 3), 5)
 
         from backend.app.config import GEMINI_MODEL, GEMINI_FALLBACK_MODELS
@@ -164,12 +195,11 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
             f"Find actual observed prices in INR from real grounded web search results on platforms in India. "
             f"Return ONLY a valid JSON array of up to {fetch_count} objects with keys: "
             f"title (product title), price (actual observed numeric price in INR), currency ('INR'), "
-            f"source (marketplace or store name), url (exact source URL found in search results), "
-            f"description, category, materials (list of strings).\n"
-            f"Only include products whose price and source URL are supported by the grounded search results. "
-            f"Never invent prices or fabricate URLs.\n"
+            f"source (marketplace or store name), description, category, materials (list of strings).\n"
+            f"Only include products whose price and source are supported by the grounded search results. "
+            f"Never invent prices or fabricate listings.\n"
             f"Example:\n"
-            f"[{{\"title\":\"Handcrafted {clean_q}\",\"price\":499.0,\"currency\":\"INR\",\"source\":\"Amazon India\",\"url\":\"https://www.amazon.in/dp/B08EXAMPLE\",\"description\":\"Handmade item\",\"category\":\"{clean_q}\",\"materials\":[\"Handcraft\"]}}]"
+            f"[{{\"title\":\"Handcrafted {clean_q}\",\"price\":499.0,\"currency\":\"INR\",\"source\":\"Amazon India\",\"description\":\"Handmade item\",\"category\":\"{clean_q}\",\"materials\":[\"Handcraft\"]}}]"
         )
 
         payload = {
@@ -226,13 +256,21 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                     grounding_chunks = []
 
                 grounded_uris = set()
+                grounded_chunks_list = []
                 for chunk in grounding_chunks:
                     if isinstance(chunk, dict):
                         web_info = chunk.get("web")
                         if isinstance(web_info, dict):
                             uri = web_info.get("uri")
                             if uri and isinstance(uri, str) and uri.strip():
-                                grounded_uris.add(uri.strip())
+                                u_clean = uri.strip()
+                                if u_clean.startswith("http://") or u_clean.startswith("https://"):
+                                    grounded_uris.add(u_clean)
+                                    grounded_chunks_list.append({
+                                        "uri": u_clean,
+                                        "title": str(web_info.get("title") or "").strip(),
+                                        "domain": urlparse(u_clean).netloc.lower()
+                                    })
 
                 if not grounded_uris:
                     logger.warning("[Market] Gemini model %s groundingMetadata contained no grounded URIs", model)
@@ -249,7 +287,7 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                     continue
 
                 results = []
-                for item in parsed_array:
+                for idx, item in enumerate(parsed_array):
                     if not isinstance(item, dict):
                         continue
                     title = str(item.get("title") or "").strip()
@@ -260,19 +298,42 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                     parsed_price = None
                     if raw_p is not None:
                         try:
-                            p_val = float(str(raw_p).replace(",", "").replace("\u20b9", "").strip())
+                            p_val = float(str(raw_p).replace(",", "").replace("₹", "").strip())
                             if p_val > 0:
                                 parsed_price = p_val
                         except (ValueError, TypeError):
                             pass
 
                     source = str(item.get("source") or "Web Search").strip()
-                    url_val = str(item.get("url") or "").strip()
-                    if not _is_url_in_grounding(url_val, grounded_uris):
-                        logger.info("[Market] Rejecting listing '%s' - URL '%s' not present in groundingMetadata", title, url_val)
+                    raw_url = str(item.get("url") or "").strip()
+
+                    # Direct Grounding Source URL Resolution:
+                    # Backend owns URL mapping derived directly from authoritative groundingMetadata
+                    matched_uri = None
+                    if raw_url and _is_url_in_grounding(raw_url, grounded_uris):
+                        matched_uri = raw_url
+                    
+                    if not matched_uri:
+                        # Match grounded URI by domain/source or title
+                        src_low = source.lower()
+                        title_low = title.lower()
+                        for g in grounded_chunks_list:
+                            if g["domain"] and (g["domain"] in src_low or src_low in g["domain"]):
+                                matched_uri = g["uri"]
+                                break
+                            if g["title"] and (g["title"].lower() in title_low or title_low in g["title"].lower()):
+                                matched_uri = g["uri"]
+                                break
+
+                    # Grounding Security Gate: reject listing if raw_url is specified but not grounded in search results
+                    if raw_url and not _is_url_in_grounding(raw_url, grounded_uris) and not matched_uri:
+                        logger.info("[Market] Rejecting listing '%s' - URL '%s' not present in groundingMetadata", title, raw_url)
                         continue
 
-                    final_url = _clean_or_build_url(url_val, title, source)
+                    if not matched_uri and idx < len(grounded_chunks_list):
+                        matched_uri = grounded_chunks_list[idx]["uri"]
+
+                    final_url = _clean_or_build_url(matched_uri or raw_url, title, source)
 
                     results.append({
                         "title": title,

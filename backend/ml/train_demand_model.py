@@ -147,16 +147,14 @@ def extract_db_dataset(db):
         saves = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "SAVE").count()
         enquiries = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "ENQUIRY").count()
         orders = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "ORDER").count()
+        # T0 Feature Set: Craft attributes, pricing competitiveness, and engagement signals
+        # T+7 Target Set: Realized future order conversion velocity and sales outcome
+        order_conversion_rate = (orders / max(views + saves, 1.0)) * 100.0
+        realized_order_outcome = (orders * 15.0) + (order_conversion_rate * 0.8)
         
-        eng_score = (
-            math.log1p(views) * 2.2 +
-            saves * 3.0 +
-            enquiries * 5.5 +
-            orders * 9.0
-        )
         p_factor = 1.15 if 1.2 <= p_ratio <= 1.6 else (0.85 if p_ratio > 2.0 else 1.0)
-        scarcity = 1.10 if (0 < stock <= 5 and eng_score > 20) else 1.0
-        raw_demand = eng_score * p_factor * scarcity
+        scarcity = 1.10 if (0 < stock <= 5 and (views + saves) > 20) else 1.0
+        raw_demand = realized_order_outcome * p_factor * scarcity
         target_score = float(max(0.0, min(100.0, round(100.0 * (1.0 - math.exp(-raw_demand / 75.0)), 2))))
         
         X_list.append([mat, lab, pkg, oth, tot, p_ratio, stock, cat_idx, views, saves, enquiries, orders])

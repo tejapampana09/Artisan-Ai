@@ -1,7 +1,7 @@
 from typing import Any, List, Optional, cast
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Header, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Header, Response, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import func, update
 
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/api", tags=["Events & Marketplace"])
 @router.post("/events", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
 def record_event(
     event_in: EventCreate, 
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     auth_header: Optional[str] = Header(None, alias="Authorization")
@@ -70,9 +71,9 @@ def record_event(
     db.commit()
     db.refresh(evt)
 
-    # Autonomous Dynamic Pricing Trigger
+    # Async Decoupled Autonomous Dynamic Pricing Worker Trigger
     if event_in.product_id:
-        trigger_auto_pricing(event_in.product_id, db)
+        background_tasks.add_task(trigger_auto_pricing, event_in.product_id, db)
 
     return evt
 

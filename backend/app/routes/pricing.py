@@ -115,10 +115,11 @@ def toggle_smart_pricing(
     db.commit()
     db.refresh(product)
 
-    # Autonomous execution: if enabled, immediately run auto-pricing cycle
+    # Autonomous execution: enforce 15-minute cooldown unless invoked by ADMIN role
     decision_record = None
     if product.auto_smart_pricing_enabled:
-        decision_record = process_market_aware_auto_pricing(product, db, bypass_cooldown=True)
+        is_admin = getattr(current_user, "role", None) == "ADMIN"
+        decision_record = process_market_aware_auto_pricing(product, db, bypass_cooldown=is_admin)
     decision_data = cast(Any, decision_record)
 
     return {
@@ -139,6 +140,7 @@ def evaluate_auto_pricing(
 ):
     """
     Evaluates and applies autonomous dynamic pricing for a product if auto_smart_pricing_enabled is True.
+    Respects 15-minute cooldown for regular users to prevent endpoint abuse.
     """
     current_user = cast(Any, current_user)
     rate_limiter.check_rate_limit(f"eval_auto:{get_client_identifier(request, cast(Any, current_user.id))}", max_requests=10, window_seconds=60)
@@ -155,7 +157,8 @@ def evaluate_auto_pricing(
             detail="You do not have permission to execute pricing evaluation for this product."
         )
 
-    decision_record = process_market_aware_auto_pricing(product, db, bypass_cooldown=True)
+    is_admin = getattr(current_user, "role", None) == "ADMIN"
+    decision_record = process_market_aware_auto_pricing(product, db, bypass_cooldown=is_admin)
     return {
         "product_id": product.id,
         "auto_smart_pricing_enabled": product.auto_smart_pricing_enabled,
