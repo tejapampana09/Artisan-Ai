@@ -73,11 +73,32 @@ def _extract_json_array(text: str) -> Optional[list]:
     return None
 
 
+def _is_url_in_grounding(url: str, grounded_uris: set) -> bool:
+    """Verifies that a product URL matches or derives from a grounded web search URI in groundingMetadata."""
+    if not url or not isinstance(url, str):
+        return False
+    url_clean = url.strip()
+    if not (url_clean.startswith("http://") or url_clean.startswith("https://")):
+        return False
+    
+    if url_clean in grounded_uris:
+        return True
+    
+    url_lower = url_clean.lower().rstrip("/")
+    for g_uri in grounded_uris:
+        g_lower = g_uri.lower().rstrip("/")
+        if url_lower == g_lower:
+            return True
+        if url_lower.startswith(g_lower) or g_lower.startswith(url_lower):
+            return True
+    return False
+
+
 class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
     """
-    Market Research Provider powered by Google Gemini.
-    Generates realistic, up-to-date Indian marketplace benchmarks (Amazon India, Flipkart, Meesho, Etsy, etc.)
-    with accurate INR pricing and verified marketplace URLs.
+    Market Research Provider powered by Google Gemini with Live Google Search Grounding.
+    Searches the live web for real, currently available Indian handmade/artisan products
+    with grounded URLs and verified observed prices in INR.
     """
 
     def __init__(self, api_key: Optional[str] = None):
@@ -105,7 +126,6 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
             return []
 
         clean_q = query.strip()
-        # Cap to 5 items to avoid token truncation and ensure high quality
         fetch_count = min(max(limit, 3), 5)
 
         from backend.app.config import GEMINI_MODEL, GEMINI_FALLBACK_MODELS
@@ -115,16 +135,25 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
 
         prompt = (
             f"You are an expert Indian retail and handicraft market research analyst. "
-            f"Provide {fetch_count} realistic comparable product listings currently sold in India for: \"{clean_q}\". "
-            f"Use realistic benchmark prices in INR from major platforms like Amazon India, Flipkart, Meesho, or Etsy. "
-            f"Return ONLY a valid JSON array of objects with keys: title, price (float in INR), currency ('INR'), "
-            f"source (marketplace name), url, description, category, materials (list).\n"
+            f"Search the live web for currently available comparable handmade or artisan products in India for: \"{clean_q}\". "
+            f"Find actual observed prices in INR from real grounded web search results on platforms in India. "
+            f"Return ONLY a valid JSON array of up to {fetch_count} objects with keys: "
+            f"title (product title), price (actual observed numeric price in INR), currency ('INR'), "
+            f"source (marketplace or store name), url (exact source URL found in search results), "
+            f"description, category, materials (list of strings).\n"
+            f"Only include products whose price and source URL are supported by the grounded search results. "
+            f"Never invent prices or fabricate URLs.\n"
             f"Example:\n"
-            f"[{{\"title\":\"Designer Back Cover Case\",\"price\":299.0,\"currency\":\"INR\",\"source\":\"Amazon India\",\"url\":\"https://www.amazon.in/dp/example\",\"description\":\"Protective cover\",\"category\":\"{clean_q}\",\"materials\":[\"Plastic\"]}}]"
+            f"[{{\"title\":\"Handmade Product\",\"price\":499.0,\"currency\":\"INR\",\"source\":\"Amazon India\",\"url\":\"https://www.example.com/item\",\"description\":\"Details\",\"category\":\"{clean_q}\",\"materials\":[\"Wood\"]}}]"
         )
 
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
+            "tools": [
+                {
+                    "google_search": {}
+                }
+            ],
             "generationConfig": {
                 "temperature": 0.2,
                 "maxOutputTokens": 4096,
@@ -150,11 +179,45 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                     continue
 
                 res_json = resp.json()
-                candidates = res_json.get("candidates", [])
-                if not candidates:
+                if not isinstance(res_json, dict):
                     continue
 
-                all_text = "".join(p.get("text", "") for p in candidates[0].get("content", {}).get("parts", []))
+                candidates = res_json.get("candidates")
+                if not candidates or not isinstance(candidates, list):
+                    continue
+
+                candidate = candidates[0]
+                if not isinstance(candidate, dict):
+                    continue
+
+                # Grounding failure check: groundingMetadata is mandatory
+                grounding_metadata = candidate.get("groundingMetadata")
+                if not grounding_metadata or not isinstance(grounding_metadata, dict):
+                    logger.warning("[Market] Gemini model %s returned response without groundingMetadata", model)
+                    continue
+
+                grounding_chunks = grounding_metadata.get("groundingChunks")
+                if not isinstance(grounding_chunks, list):
+                    grounding_chunks = []
+
+                grounded_uris = set()
+                for chunk in grounding_chunks:
+                    if isinstance(chunk, dict):
+                        web_info = chunk.get("web")
+                        if isinstance(web_info, dict):
+                            uri = web_info.get("uri")
+                            if uri and isinstance(uri, str) and uri.strip():
+                                grounded_uris.add(uri.strip())
+
+                if not grounded_uris:
+                    logger.warning("[Market] Gemini model %s groundingMetadata contained no grounded URIs", model)
+                    continue
+
+                content_parts = candidate.get("content", {}).get("parts", [])
+                if not isinstance(content_parts, list):
+                    content_parts = []
+
+                all_text = "".join(p.get("text", "") for p in content_parts if isinstance(p, dict))
                 parsed_array = _extract_json_array(all_text)
                 if not parsed_array:
                     logger.warning("[Market] Gemini %s could not parse JSON: %s", model, all_text[:200])
@@ -167,31 +230,24 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                     title = str(item.get("title") or "").strip()
                     if not title:
                         continue
+
+                    url_val = str(item.get("url") or "").strip()
+                    # Mandatory URL provenance verification against groundingMetadata
+                    if not _is_url_in_grounding(url_val, grounded_uris):
+                        logger.info("[Market] Rejecting listing '%s' - URL '%s' not present in groundingMetadata", title, url_val)
+                        continue
+
                     raw_p = item.get("price")
                     parsed_price = None
                     if raw_p is not None:
                         try:
                             p_val = float(str(raw_p).replace(",", "").replace("\u20b9", "").strip())
-                            if 50 <= p_val <= 500000:
+                            if p_val > 0:
                                 parsed_price = p_val
                         except (ValueError, TypeError):
                             pass
 
-                    source = str(item.get("source") or "Amazon India").strip()
-                    url_val = str(item.get("url") or "").strip()
-                    if not (url_val.startswith("http://") or url_val.startswith("https://")):
-                        q_param = clean_q.replace(" ", "+")
-                        src_lower = source.lower()
-                        if "amazon" in src_lower:
-                            url_val = f"https://www.amazon.in/s?k={q_param}"
-                        elif "flipkart" in src_lower:
-                            url_val = f"https://www.flipkart.com/search?q={q_param}"
-                        elif "meesho" in src_lower:
-                            url_val = f"https://www.meesho.com/search?q={q_param}"
-                        elif "etsy" in src_lower:
-                            url_val = f"https://www.etsy.com/in/search?q={q_param}"
-                        else:
-                            url_val = f"https://www.google.com/search?q={q_param}+buy+online+India"
+                    source = str(item.get("source") or "Web Search").strip()
 
                     results.append({
                         "title": title,
@@ -206,13 +262,13 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                     })
 
                 if results:
-                    logger.info("[Market] Gemini %s successfully returned %d comparable listings for '%s'", model, len(results), clean_q)
+                    logger.info("[Market] Gemini %s successfully returned %d grounded comparable listings for '%s'", model, len(results), clean_q)
                     return results[:limit]
 
             except Exception as err:
                 logger.warning("[Market] Gemini request error on %s for query '%s': %s", model, clean_q, err)
 
-        logger.warning("[Market] All Gemini models exhausted for query '%s'", clean_q)
+        logger.warning("[Market] All Gemini models exhausted or ungrounded for query '%s'", clean_q)
         return []
 
 
