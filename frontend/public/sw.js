@@ -1,5 +1,5 @@
-/* Artisan AI PWA Service Worker v1.0.1 */
-const CACHE_NAME = 'artisan-ai-cache-v2';
+/* Artisan AI PWA Service Worker v1.0.3 */
+const CACHE_NAME = 'artisan-ai-cache-v3';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -19,22 +19,32 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   
-  // Network-first strategy for HTML and API to prevent stale JS caching
-  if (event.request.url.includes('/api/')) {
+  const url = event.request.url;
+
+  // Always fetch API, manifest, and icon assets live from network to prevent stale caching
+  if (
+    url.includes('/api/') || 
+    url.includes('/manifest.json') || 
+    url.includes('/icon-') || 
+    url.includes('/artisan-logo') || 
+    url.includes('apple-touch-icon') ||
+    url.includes('favicon.ico')
+  ) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
     );
-  } else {
-    event.respondWith(
-      fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-        }
-        return networkResponse;
-      }).catch(() => caches.match(event.request))
-    );
+    return;
   }
+
+  event.respondWith(
+    fetch(event.request).then((networkResponse) => {
+      if (networkResponse && networkResponse.status === 200) {
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+      }
+      return networkResponse;
+    }).catch(() => caches.match(event.request))
+  );
 });
 
 // PWA Native Mobile Push Event Listener
