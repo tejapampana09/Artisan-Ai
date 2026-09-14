@@ -17,6 +17,7 @@ import {
   Heart,
   Tag,
   Truck,
+  ChevronLeft,
   ChevronRight,
   Loader2
 } from 'lucide-react';
@@ -29,6 +30,54 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [realProducts, setRealProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+
+  // Kreate World exact Hero Banners Slider Data
+  const heroBanners = [
+    {
+      id: 1,
+      title: 'Farm to Table, Handmade',
+      subtitle: 'Organic pickles, spices, sweets & more — made with love, straight from Indian kitchens',
+      buttonText: 'Shop Now',
+      buttonColor: 'bg-[#E85A71] hover:bg-[#d4485e]',
+      bgImage: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=1600&q=80',
+      badge: '100% Homemade & Pure'
+    },
+    {
+      id: 2,
+      title: 'Authentic Indian Handicrafts',
+      subtitle: 'Kalamkari textiles, Etikoppaka toys & Blue pottery directly from master rural artisans',
+      buttonText: 'Explore Collection',
+      buttonColor: 'bg-[#933D1E] hover:bg-[#7E3216]',
+      bgImage: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1600&q=80',
+      badge: 'GI Tag Certified'
+    },
+    {
+      id: 3,
+      title: 'Empowering Rural Creators',
+      subtitle: 'Voice AI cataloging in 5 Indian languages with guaranteed min 20% fair margin protection',
+      buttonText: 'Join as Artisan',
+      buttonColor: 'bg-amber-600 hover:bg-amber-700',
+      bgImage: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=1600&q=80',
+      badge: 'Zero Commission Cuts'
+    }
+  ];
+
+  // Auto slide carousel every 5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentBannerIndex((prev) => (prev + 1) % heroBanners.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const nextBanner = () => {
+    setCurrentBannerIndex((prev) => (prev + 1) % heroBanners.length);
+  };
+
+  const prevBanner = () => {
+    setCurrentBannerIndex((prev) => (prev - 1 + heroBanners.length) % heroBanners.length);
+  };
 
   // Real Craft Categories (Traditional Indian Craft Heritage Types)
   const craftCategories = [
@@ -65,7 +114,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
       telugu: 'జయపుర బ్లూ కుండల కళ',
       hi: 'जयपुर ब्लू पॉटरी',
       ta: 'ஜெய்ப்பூர் ப்ளூ பாட்டரி',
-      bn: 'জয়পুর ব্লু পটারি',
+      bn: 'জয়পুর બ્લૂ પટરી',
       origin: 'Jaipur, Rajasthan',
       tag: 'Quartz Ceramic Art',
       image: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=600&q=80',
@@ -78,7 +127,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
       telugu: 'బిద్రి వెండి చెక్కడాలు',
       hi: 'बीदरी सिल्वर जड़ाई क्राफ्ट',
       ta: 'பித்ரி வெள்ளி கைவினை',
-      bn: 'বিদ্রি রৌপ্য কারুশিল্প',
+      bn: 'বিদ্রি রৌপ্য কারுশিল্প',
       origin: 'Bidar, Karnataka',
       tag: '800-Year Alloy Art',
       image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80',
@@ -177,59 +226,108 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
   };
 
   return (
-    <div className="space-y-12 pb-16 animate-fade-in font-sans">
+    <div className="space-y-10 pb-16 animate-fade-in font-sans">
       
-      {/* Search & Top Announcement Bar */}
-      <section className="bg-gradient-to-r from-[#933D1E] via-[#B84D26] to-[#7E3216] text-white rounded-3xl p-6 sm:p-10 shadow-xl border border-amber-900/30 relative overflow-hidden">
-        <div className="absolute -right-12 -bottom-12 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 max-w-4xl mx-auto space-y-6 text-center">
-          
-          <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-white/15 border border-white/25 text-amber-200 text-xs font-semibold backdrop-blur-md">
-            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-            <span>{t('ondcPlatformTag', 'India’s #1 Voice-AI Direct Artisan Marketplace • ONDC Integrated')}</span>
-          </div>
-
-          <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight text-white">
-            Discover Authentic Indian Handicrafts Direct from Master Artisans
-          </h1>
-
-          <p className="text-sm sm:text-base text-amber-100/90 font-normal max-w-2xl mx-auto leading-relaxed">
-            Eliminating middlemen through Multilingual Voice AI, transparent cost-plus pricing protection, and direct buyer-to-artisan connections.
-          </p>
-
-          {/* Quick Search Bar */}
-          <form onSubmit={handleSearchSubmit} className="max-w-2xl mx-auto pt-2">
-            <div className="relative flex items-center bg-white rounded-2xl p-2 shadow-2xl border border-amber-200/50">
-              <Search className="w-5 h-5 text-stone-400 ml-3 shrink-0" />
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search Kalamkari, Etikoppaka toys, Blue pottery, Silk sarees..."
-                className="w-full px-3 py-2 text-sm text-[#2A1E17] placeholder-stone-400 bg-transparent focus:outline-hidden font-medium"
-              />
-              <button 
-                type="submit"
-                className="bg-[#933D1E] hover:bg-[#7E3216] text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shrink-0 flex items-center space-x-1.5 cursor-pointer"
-              >
-                <span>Search</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+      {/* Kreate World Style Banner Slider Carousel */}
+      <section className="relative rounded-3xl overflow-hidden shadow-2xl h-[340px] sm:h-[420px] lg:h-[460px] border border-stone-800/40 group">
+        {heroBanners.map((banner, index) => (
+          <div
+            key={banner.id}
+            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+              index === currentBannerIndex ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
+            }`}
+          >
+            {/* Dark contrast overlay over background image */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/30 z-10"></div>
+            <img 
+              src={banner.bgImage} 
+              alt={banner.title} 
+              className="w-full h-full object-cover object-center"
+            />
+            
+            {/* Banner Content (Kreate World Exact Typography & Button Layout) */}
+            <div className="absolute inset-0 z-20 flex flex-col justify-center px-8 sm:px-14 lg:px-20 max-w-3xl space-y-4">
+              <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-white/20 text-amber-200 text-xs font-semibold backdrop-blur-md w-fit border border-white/20">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>{banner.badge}</span>
+              </div>
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-none drop-shadow-md">
+                {banner.title}
+              </h1>
+              <p className="text-sm sm:text-base text-stone-200 font-normal leading-relaxed max-w-xl drop-shadow-xs">
+                {banner.subtitle}
+              </p>
+              <div className="pt-2">
+                <button
+                  onClick={() => onSelectMode('BUY')}
+                  className={`px-7 py-3 rounded-full text-white font-bold text-sm shadow-xl transition-all transform hover:scale-105 cursor-pointer flex items-center space-x-2 ${banner.buttonColor}`}
+                >
+                  <span>{banner.buttonText}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          </form>
-
-          {/* Quick Category Chips */}
-          <div className="flex flex-wrap justify-center gap-2 pt-2 text-xs">
-            {['Kalamkari', 'Etikoppaka Toys', 'Blue Pottery', 'Bidriware', 'Terracotta', 'Pochampally Silks'].map((chip, idx) => (
-              <button 
-                key={idx}
-                onClick={() => onSelectMode('BUY')}
-                className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-amber-100 text-[11px] font-medium backdrop-blur-xs transition-colors cursor-pointer"
-              >
-                ✨ {chip}
-              </button>
-            ))}
           </div>
+        ))}
+
+        {/* Carousel Prev/Next Buttons */}
+        <button
+          onClick={prevBanner}
+          className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs transition-colors cursor-pointer border border-white/20"
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+        <button
+          onClick={nextBanner}
+          className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs transition-colors cursor-pointer border border-white/20"
+        >
+          <ChevronRight className="w-6 h-6" />
+        </button>
+
+        {/* Carousel Dots */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex space-x-2">
+          {heroBanners.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentBannerIndex(idx)}
+              className={`h-2.5 rounded-full transition-all cursor-pointer ${
+                idx === currentBannerIndex ? 'w-8 bg-white' : 'w-2.5 bg-white/50 hover:bg-white/80'
+              }`}
+            ></button>
+          ))}
+        </div>
+      </section>
+
+      {/* Kreate World Style Search & Category Bar */}
+      <section className="bg-white rounded-3xl p-6 border border-[#EADFCF] shadow-sm space-y-4 max-w-5xl mx-auto">
+        <form onSubmit={handleSearchSubmit} className="relative flex items-center bg-[#FBF8F3] rounded-2xl p-2 border border-[#EADFCF]">
+          <Search className="w-5 h-5 text-stone-400 ml-3 shrink-0" />
+          <input 
+            type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search Kalamkari, Etikoppaka toys, Blue pottery, Silk sarees, Organic crafts..."
+            className="w-full px-3 py-2 text-sm text-[#2A1E17] placeholder-stone-400 bg-transparent focus:outline-hidden font-medium"
+          />
+          <button 
+            type="submit"
+            className="bg-[#933D1E] hover:bg-[#7E3216] text-white px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm shrink-0 flex items-center space-x-1.5 cursor-pointer"
+          >
+            <span>Search</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </form>
+
+        <div className="flex flex-wrap justify-center gap-2 text-xs">
+          {['Kalamkari', 'Etikoppaka Toys', 'Blue Pottery', 'Bidriware', 'Terracotta', 'Pochampally Silks'].map((chip, idx) => (
+            <button 
+              key={idx}
+              onClick={() => onSelectMode('BUY')}
+              className="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-amber-100 border border-[#EADFCF] text-[#2A1E17] text-[11px] font-semibold transition-colors cursor-pointer"
+            >
+              ✨ {chip}
+            </button>
+          ))}
         </div>
       </section>
 
@@ -458,13 +556,13 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
             })}
           </div>
         ) : (
-          <div className="p-8 text-center bg-white rounded-2xl border border-[#EADFCF] space-y-3">
+          <div className="p-8 text-center bg-[#FBF8F3] rounded-2xl border border-[#EADFCF] space-y-3">
             <ShoppingBag className="w-10 h-10 text-stone-400 mx-auto" />
             <h4 className="font-serif font-bold text-base text-[#2A1E17]">No Published Products Yet</h4>
             <p className="text-xs text-[#6B5B51]">Artisans are cataloging new creations using Voice AI. Click below to explore all items in the marketplace.</p>
             <button 
               onClick={() => onSelectMode('BUY')}
-              className="mt-2 px-5 py-2 rounded-xl bg-[#933D1E] text-white font-bold text-xs"
+              className="mt-2 px-5 py-2 rounded-xl bg-[#933D1E] text-white font-bold text-xs cursor-pointer"
             >
               Open Marketplace
             </button>
