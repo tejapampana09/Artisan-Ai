@@ -32,33 +32,33 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
 
-  // Kreate World exact Hero Banners Slider Data
+  // Indian Handicrafts & Handloom Banner Slider Data
   const heroBanners = [
     {
       id: 1,
-      title: 'Farm to Table, Handmade',
-      subtitle: 'Organic pickles, spices, sweets & more — made with love, straight from Indian kitchens',
-      buttonText: 'Shop Now',
-      buttonColor: 'bg-[#E85A71] hover:bg-[#d4485e]',
-      bgImage: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=1600&q=80',
-      badge: '100% Homemade & Pure'
+      title: 'Handcrafted with Soul, Direct from Artisans',
+      subtitle: 'Authentic Kalamkari textiles, Etikoppaka lacquer toys, Jaipur pottery & Bidriware silver art',
+      buttonText: 'Shop Handicrafts',
+      buttonColor: 'bg-[#933D1E] hover:bg-[#7E3216]',
+      bgImage: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1600&q=80',
+      badge: '100% Authentic Indian Craft'
     },
     {
       id: 2,
-      title: 'Authentic Indian Handicrafts',
-      subtitle: 'Kalamkari textiles, Etikoppaka toys & Blue pottery directly from master rural artisans',
+      title: 'Preserving Timeless Cultural Heritage',
+      subtitle: 'Handmade by traditional rural artisans across India — zero middleman markups',
       buttonText: 'Explore Collection',
-      buttonColor: 'bg-[#933D1E] hover:bg-[#7E3216]',
-      bgImage: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1600&q=80',
-      badge: 'GI Tag Certified'
+      buttonColor: 'bg-[#E85A71] hover:bg-[#d4485e]',
+      bgImage: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=1600&q=80',
+      badge: 'GI Tag Certified Heritage'
     },
     {
       id: 3,
-      title: 'Empowering Rural Creators',
-      subtitle: 'Voice AI cataloging in 5 Indian languages with guaranteed min 20% fair margin protection',
+      title: 'Voice-AI Powered Direct Fair Trade',
+      subtitle: 'Empowering rural craftspeople in 5 Indian languages with guaranteed profit protection',
       buttonText: 'Join as Artisan',
       buttonColor: 'bg-amber-600 hover:bg-amber-700',
-      bgImage: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=1600&q=80',
+      bgImage: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=1600&q=80',
       badge: 'Zero Commission Cuts'
     }
   ];
