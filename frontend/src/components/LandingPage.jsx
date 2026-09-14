@@ -229,7 +229,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
     <div className="space-y-10 pb-16 animate-fade-in font-sans">
       
       {/* Kreate World Style Banner Slider Carousel */}
-      <section className="relative rounded-3xl overflow-hidden shadow-2xl h-[340px] sm:h-[420px] lg:h-[460px] border border-stone-800/40 group">
+      <section className="relative rounded-3xl overflow-hidden shadow-2xl h-[400px] sm:h-[480px] lg:h-[520px] border border-stone-800/40 group">
         {heroBanners.map((banner, index) => (
           <div
             key={banner.id}
@@ -246,24 +246,24 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
             />
             
             {/* Banner Content (Kreate World Exact Typography & Button Layout) */}
-            <div className="absolute inset-0 z-20 flex flex-col justify-center px-8 sm:px-14 lg:px-20 max-w-3xl space-y-4">
-              <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-white/20 text-amber-200 text-xs font-semibold backdrop-blur-md w-fit border border-white/20">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <div className="absolute inset-0 z-20 flex flex-col justify-center px-8 sm:px-14 lg:px-20 max-w-3xl space-y-5">
+              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-white/20 text-amber-200 text-xs font-semibold backdrop-blur-md w-fit border border-white/25">
+                <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
                 <span>{banner.badge}</span>
               </div>
               <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-none drop-shadow-md">
                 {banner.title}
               </h1>
-              <p className="text-sm sm:text-base text-stone-200 font-normal leading-relaxed max-w-xl drop-shadow-xs">
+              <p className="text-sm sm:text-base lg:text-lg text-stone-200 font-normal leading-relaxed max-w-xl drop-shadow-xs">
                 {banner.subtitle}
               </p>
               <div className="pt-2">
                 <button
                   onClick={() => onSelectMode('BUY')}
-                  className={`px-7 py-3 rounded-full text-white font-bold text-sm shadow-xl transition-all transform hover:scale-105 cursor-pointer flex items-center space-x-2 ${banner.buttonColor}`}
+                  className={`px-8 py-3.5 rounded-full text-white font-bold text-sm sm:text-base shadow-2xl transition-all transform hover:scale-105 cursor-pointer flex items-center space-x-2.5 ${banner.buttonColor}`}
                 >
                   <span>{banner.buttonText}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
             </div>

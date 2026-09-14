@@ -1,5 +1,5 @@
-/* Artisan AI PWA Service Worker v1.0.5 */
-const CACHE_NAME = 'artisan-ai-cache-v5';
+/* Artisan AI PWA Service Worker v1.0.6 */
+const CACHE_NAME = 'artisan-ai-cache-v6';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
