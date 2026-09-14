@@ -4,16 +4,10 @@
   "description": "Voice-First AI Business Platform & Market Linkage for Marginalized Artisans",
   "icons": [
     {
-      "src": "/icon-512-maskable.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-192-maskable.png",
+      "src": "/icon-192-any.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon-512-any.png",
@@ -22,10 +16,16 @@
       "purpose": "any"
     },
     {
-      "src": "/icon-192-any.png",
+      "src": "/icon-192-maskable.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "start_url": "/",
