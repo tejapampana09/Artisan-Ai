@@ -1905,18 +1905,26 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                               </span>
                               {(() => {
                                 const rawUrl = (item.url || '').trim();
-                                const isDummy = !rawUrl || rawUrl.includes('example.com') || rawUrl.includes('placeholder') || rawUrl.includes('B08EXAMPLE') || rawUrl.includes('fake-unsupported') || rawUrl === 'http://' || rawUrl === 'https://';
+                                const isDummy = !rawUrl || 
+                                  rawUrl.includes('/dp/') || 
+                                  rawUrl.includes('/gp/product/') ||
+                                  rawUrl.includes('example.com') || 
+                                  rawUrl.includes('placeholder') || 
+                                  rawUrl.includes('B08EXAMPLE') || 
+                                  rawUrl.includes('fake-unsupported') || 
+                                  rawUrl === 'http://' || 
+                                  rawUrl === 'https://';
                                 let validUrl = rawUrl;
                                 if (isDummy || (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://'))) {
                                   const q = encodeURIComponent(item.title || 'handmade product');
                                   const src = (item.source || '').toLowerCase();
-                                  if (src.includes('amazon')) {
+                                  if (src.includes('amazon') || rawUrl.includes('amazon')) {
                                     validUrl = `https://www.amazon.in/s?k=${q}`;
-                                  } else if (src.includes('flipkart')) {
+                                  } else if (src.includes('flipkart') || rawUrl.includes('flipkart')) {
                                     validUrl = `https://www.flipkart.com/search?q=${q}`;
-                                  } else if (src.includes('meesho')) {
+                                  } else if (src.includes('meesho') || rawUrl.includes('meesho')) {
                                     validUrl = `https://www.meesho.com/search?q=${q}`;
-                                  } else if (src.includes('etsy')) {
+                                  } else if (src.includes('etsy') || rawUrl.includes('etsy')) {
                                     validUrl = `https://www.etsy.com/in-en/search?q=${q}`;
                                   } else {
                                     validUrl = `https://www.google.com/search?q=${q}+buy+online+India`;

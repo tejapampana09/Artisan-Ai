@@ -75,20 +75,26 @@ def _extract_json_array(text: str) -> Optional[list]:
 
 def _clean_or_build_url(url_val: str, title: str, source: str) -> str:
     url_clean = (url_val or "").strip()
-    is_dummy = not url_clean or any(dummy in url_clean.lower() for dummy in ["example.com", "placeholder", "b08example", "fake-unsupported", "test"])
+    is_dummy = (
+        not url_clean or
+        "/dp/" in url_clean.lower() or
+        "/gp/product/" in url_clean.lower() or
+        any(dummy in url_clean.lower() for dummy in ["example.com", "placeholder", "b08example", "fake-unsupported", "test"])
+    )
     if not is_dummy and (url_clean.startswith("http://") or url_clean.startswith("https://")):
         return url_clean
     
     import urllib.parse
     q = urllib.parse.quote_plus(title or "handmade product")
     src = (source or "").lower()
-    if "amazon" in src:
+    url_low = url_clean.lower()
+    if "amazon" in src or "amazon" in url_low:
         return f"https://www.amazon.in/s?k={q}"
-    elif "flipkart" in src:
+    elif "flipkart" in src or "flipkart" in url_low:
         return f"https://www.flipkart.com/search?q={q}"
-    elif "meesho" in src:
+    elif "meesho" in src or "meesho" in url_low:
         return f"https://www.meesho.com/search?q={q}"
-    elif "etsy" in src:
+    elif "etsy" in src or "etsy" in url_low:
         return f"https://www.etsy.com/in-en/search?q={q}"
     return f"https://www.google.com/search?q={q}+buy+online+India"
 
