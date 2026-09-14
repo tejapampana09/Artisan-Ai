@@ -1,5 +1,5 @@
 import re
-from typing import Dict, Any, Tuple, List, Set
+from typing import Dict, Any, Tuple, List, Set, Optional
 from backend.app.schemas import ArtisanFacts
 
 def _normalize_text(text: str) -> str:
@@ -16,7 +16,9 @@ def _get_tokens(text: str) -> Set[str]:
 
 def calculate_market_similarity(
     artisan_facts: ArtisanFacts,
-    listing: Dict[str, Any]
+    listing: Dict[str, Any],
+    title_hint: Optional[str] = None,
+    category_hint: Optional[str] = None
 ) -> Tuple[float, Dict[str, bool], str]:
     """
     Deterministic similarity scorer for market comparable listings.
@@ -32,8 +34,8 @@ def calculate_market_similarity(
     - WEAK:   score >= 0.20
     - REJECT: score < 0.20
     """
-    fact_prod = (artisan_facts.product_name or "").strip()
-    fact_craft = (artisan_facts.craft_type or "").strip()
+    fact_prod = (artisan_facts.product_name or title_hint or "").strip()
+    fact_craft = (artisan_facts.craft_type or category_hint or "").strip()
     fact_mats = [m.strip() for m in (artisan_facts.materials or []) if m.strip()]
 
     list_title = (listing.get("title") or "").strip()

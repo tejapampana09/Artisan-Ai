@@ -75,7 +75,9 @@ async def research_market(
             continue
         seen_identifiers.add(dedup_key)
 
-        score, flags, tier = calculate_market_similarity(facts_copy, item)
+        score, flags, tier = calculate_market_similarity(
+            facts_copy, item, title_hint=title_hint, category_hint=category_hint
+        )
         if score < similarity_threshold:
             continue
 
