@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { 
   PlusCircle, TrendingUp, Tag, Sparkles, Package, Wand2, RefreshCw,
   MessageSquare, ShoppingCart, Phone, ExternalLink, Store, ShieldCheck,
-  Send, Truck, Check, Clock, CheckCircle2, BarChart3, Eye, Layers
+  Send, Truck, Check, Clock, CheckCircle2, BarChart3, Eye, Layers, Globe
 } from 'lucide-react';
 import ProductList from './ProductList';
 import CreateProductModal from './CreateProductModal';
@@ -18,6 +18,7 @@ import {
 } from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
 import { useNotification } from '../context/NotificationContext';
+import { useLanguage } from '../context/LanguageContext';
 import { 
   getCachedProducts, setCachedProducts, 
   getCachedDemands, setCachedDemands, 
@@ -44,6 +45,7 @@ const getStepIndex = (status) => {
 
 export default function SellView({ user, onOpenAuth, onSwitchMode, activeSellerTab = 'DASHBOARD', onSelectSellerTab }) {
   const notify = useNotification();
+  const { language, setIsSelectingLanguage } = useLanguage();
   const [products, setProducts] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -451,14 +453,28 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, activeSellerT
           </button>
         </div>
 
-        {/* Right: Switch to Marketplace Button */}
-        <button
-          onClick={() => onSwitchMode?.('BUY')}
-          className="bg-white hover:bg-stone-50 text-[#1C1C1C] border border-[#E8E5DF] hover:border-[#A6533B] hover:text-[#A6533B] text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center space-x-2 shrink-0 shadow-2xs"
-        >
-          <ShoppingCart className="w-4 h-4 text-[#A6533B]" />
-          <span>Switch to Marketplace</span>
-        </button>
+        {/* Right: Language Switcher & Switch to Marketplace Buttons */}
+        <div className="flex items-center space-x-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsSelectingLanguage(true)}
+            className="bg-white hover:bg-stone-50 text-[#1C1C1C] border border-[#E8E5DF] hover:border-[#A6533B] text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 shadow-2xs"
+            title="Change Language / భాషను మార్చుకోండి"
+          >
+            <Globe className="w-4 h-4 text-[#A6533B]" />
+            <span className="text-[11px] font-extrabold px-1.5 py-0.5 rounded-md bg-[#F4EBE1] text-[#933D1E] border border-[#EADFCF]">
+              {language === 'te' ? 'తెలుగు' : language === 'hi' ? 'हिन्दी' : language === 'ta' ? 'தமிழ்' : language === 'bn' ? 'বাংলা' : 'EN'}
+            </span>
+          </button>
+
+          <button
+            onClick={() => onSwitchMode?.('BUY')}
+            className="bg-white hover:bg-stone-50 text-[#1C1C1C] border border-[#E8E5DF] hover:border-[#A6533B] hover:text-[#A6533B] text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center space-x-2 shrink-0 shadow-2xs"
+          >
+            <ShoppingCart className="w-4 h-4 text-[#A6533B]" />
+            <span>Switch to Marketplace</span>
+          </button>
+        </div>
       </div>
 
       {/* SECTION 1: DASHBOARD */}
