@@ -4,6 +4,7 @@ import {
   PlusCircle, Users, BarChart3, Store, ArrowRight, KeyRound, LogOut, ShoppingBag
 } from 'lucide-react';
 import { loginUser, adminCreateSeller, adminListSellers } from '../api/index.js';
+import { getAdminToken } from '../api/client.js';
 import { useNotification } from '../context/NotificationContext';
 
 export default function AdminView({ user, onAuthChange, onSelectMode }) {
@@ -33,7 +34,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode }) {
   const [verificationStatus, setVerificationStatus] = useState('GI_VERIFIED');
 
   useEffect(() => {
-    if (user?.role === 'ADMIN' || adminUser) {
+    if (getAdminToken() && (user?.role === 'ADMIN' || adminUser)) {
       fetchSellers();
     }
   }, [user, adminUser]);

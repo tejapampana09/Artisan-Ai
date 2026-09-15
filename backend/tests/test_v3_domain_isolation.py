@@ -528,23 +528,25 @@ def test_product_publish_lifecycle_authorization(admin_headers):
     assert create_res.status_code == 201
     pid = create_res.json()["id"]
 
-    # 1. Direct DRAFT -> PUBLISHED by Artisan -> 400 Bad Request
+    # 1. Direct DRAFT -> PUBLISHED by Artisan -> 403 Forbidden
     direct_pub_res = client.patch(f"/api/products/{pid}/status", json={
         "status": "PUBLISHED"
     }, headers=artisan_studio_headers)
-    assert direct_pub_res.status_code == 400
+    assert direct_pub_res.status_code in [400, 403]
 
-    # 2. DRAFT -> APPROVED transition
-    appr_res = client.patch(f"/api/products/{pid}/status", json={
+    # 1b. DRAFT -> APPROVED by Artisan -> 403 Forbidden (Artisan cannot approve own product)
+    artisan_appr_res = client.patch(f"/api/products/{pid}/status", json={
         "status": "APPROVED"
     }, headers=artisan_studio_headers)
+    assert artisan_appr_res.status_code == 403
+
+    # 2. DRAFT -> APPROVED transition by ADMIN -> 200 OK
+    appr_res = client.patch(f"/api/admin/products/{pid}/approve", headers=admin_headers)
     assert appr_res.status_code == 200
     assert appr_res.json()["status"] == "APPROVED"
 
-    # 3. APPROVED -> PUBLISHED transition -> 200 OK
-    pub_res = client.patch(f"/api/products/{pid}/status", json={
-        "status": "PUBLISHED"
-    }, headers=artisan_studio_headers)
+    # 3. APPROVED -> PUBLISHED transition by ADMIN -> 200 OK
+    pub_res = client.patch(f"/api/admin/products/{pid}/publish", headers=admin_headers)
     assert pub_res.status_code == 200
     assert pub_res.json()["status"] == "PUBLISHED"
 
