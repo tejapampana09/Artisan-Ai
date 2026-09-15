@@ -57,11 +57,11 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
   // Shipping Form State
   const [shippingInfo, setShippingInfo] = useState({
     fullName: user?.name || '',
-    phone: user?.phone || '9876543210',
-    address: user?.location || '12-A Heritage Craft Street',
-    city: 'Srikalahasti',
-    state: 'Andhra Pradesh',
-    pincode: '517644'
+    phone: user?.phone || '',
+    address: user?.location || '',
+    city: '',
+    state: '',
+    pincode: ''
   });
 
   // Payment Selection State
@@ -119,7 +119,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
 
     setPlacingOrder(true);
     const placedList = [];
-    const generatedTxId = txId || `TXN_${method}_${Math.floor(10000000 + Math.random() * 90000000)}`;
+    const generatedTxId = txId || null;
 
     try {
       for (const item of cartItems) {
@@ -470,6 +470,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                       type="text"
                       value={shippingInfo.phone}
                       onChange={(e) => setShippingInfo({ ...shippingInfo, phone: e.target.value })}
+                      placeholder="+91 98765 43210"
                       className="w-full p-3 rounded-xl border border-[#E8E5DF] focus:border-[#A6533B] bg-[#FAF9F6]"
                       required
                     />

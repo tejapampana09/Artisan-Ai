@@ -88,7 +88,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
       const res = await loginUser({
         email_or_phone: loginIdentifier.trim(),
         password: loginPassword,
-        required_role: isSellerMode ? 'ARTISAN' : undefined,
+        portal: isSellerMode ? 'STUDIO' : 'MARKETPLACE',
       });
 
       // Defensive client-side role validation

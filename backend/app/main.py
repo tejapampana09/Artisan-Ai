@@ -13,7 +13,13 @@ from backend.app.database import engine, Base, get_db, ensure_sqlite_schema
 from backend.app.models import User, Product, Order, Enquiry, Event, PricingDecision, ProcessedOperation
 from backend.app.schemas import HealthResponse, ReadyResponse, UserResponse
 from backend.app.config import get_cors_origins, ENVIRONMENT
-from backend.app.routes.products import router as products_router
+from backend.app.routes.products import (
+    router as products_router,
+    public_products_router,
+    marketplace_products_router,
+    studio_products_router,
+    admin_products_router
+)
 from backend.app.routes.ai_catalog import router as ai_router
 from backend.app.routes.events import router as events_router
 from backend.app.routes.intelligence import router as intelligence_router
@@ -89,6 +95,10 @@ app.include_router(studio_auth_router)
 app.include_router(admin_auth_router)
 app.include_router(admin_ops_router)
 app.include_router(products_router)
+app.include_router(public_products_router)
+app.include_router(marketplace_products_router)
+app.include_router(studio_products_router)
+app.include_router(admin_products_router)
 app.include_router(ai_router)
 app.include_router(events_router)
 app.include_router(intelligence_router)

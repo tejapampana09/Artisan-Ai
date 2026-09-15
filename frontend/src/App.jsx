@@ -92,8 +92,8 @@ function AppContent() {
         setStoredUser(userData);
         if (userData.role === 'BUYER') {
           setActiveMode('BUY');
-        } else if (userData.active_mode && userData.active_mode !== 'HOME') {
-          setActiveMode(userData.active_mode);
+        } else if (userData.role === 'ADMIN') {
+          setActiveMode('ADMIN');
         } else {
           setActiveMode('SELL');
         }
@@ -266,8 +266,10 @@ function AppContent() {
             setActiveMode('HOME');
           } else if (newUser.role === 'BUYER') {
             setActiveMode('BUY');
+          } else if (newUser.role === 'ADMIN') {
+            setActiveMode('ADMIN');
           } else {
-            setActiveMode(newUser.active_mode && newUser.active_mode !== 'HOME' ? newUser.active_mode : 'SELL');
+            setActiveMode('SELL');
           }
           handleRefreshAll();
         }}

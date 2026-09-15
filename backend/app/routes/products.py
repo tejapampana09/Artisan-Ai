@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import Product, User
 from backend.app.schemas import ProductCreate, ProductUpdate, ProductResponse
-from backend.app.services.auth import require_artisan, get_optional_current_user
+from backend.app.services.auth import require_artisan, require_admin, get_optional_current_user
 
 from decimal import Decimal
 
@@ -234,3 +234,50 @@ def transition_product_status(
     db.commit()
     db.refresh(product)
     return product
+
+# Clean V3 Domain Product Routers
+public_products_router = APIRouter(prefix="/api/public/products", tags=["Public Products"])
+marketplace_products_router = APIRouter(prefix="/api/marketplace/products", tags=["Marketplace Products"])
+studio_products_router = APIRouter(prefix="/api/studio/products", tags=["Studio Products"])
+admin_products_router = APIRouter(prefix="/api/admin/products", tags=["Admin Products"])
+
+@public_products_router.get("", response_model=List[ProductResponse])
+@marketplace_products_router.get("", response_model=List[ProductResponse])
+def domain_list_public_products(
+    category: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    min_price: Optional[float] = Query(None, ge=0.0),
+    max_price: Optional[float] = Query(None, ge=0.0),
+    db: Session = Depends(get_db)
+):
+    return list_products(category=category, status=None, seller_id=None, search=search, min_price=min_price, max_price=max_price, db=db, current_user=None)
+
+@public_products_router.get("/{product_id}", response_model=ProductResponse)
+@marketplace_products_router.get("/{product_id}", response_model=ProductResponse)
+def domain_get_public_product(product_id: int, db: Session = Depends(get_db)):
+    return get_product(product_id=product_id, db=db, current_user=None)
+
+@studio_products_router.get("", response_model=List[ProductResponse])
+def domain_studio_list_products(
+    status: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_artisan: User = Depends(require_artisan)
+):
+    return list_products(status=status, seller_id=current_artisan.id, db=db, current_user=current_artisan)
+
+@studio_products_router.post("", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
+def domain_studio_create_product(
+    product_in: ProductCreate,
+    db: Session = Depends(get_db),
+    current_artisan: User = Depends(require_artisan)
+):
+    return create_product(product_in=product_in, db=db, current_artisan=current_artisan)
+
+@admin_products_router.get("", response_model=List[ProductResponse])
+def domain_admin_list_products(
+    status: Optional[str] = Query(None),
+    seller_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    return list_products(status=status, seller_id=seller_id, db=db, current_user=current_admin)

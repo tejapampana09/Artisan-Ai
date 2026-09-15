@@ -115,10 +115,10 @@ export const registerUser = registerBuyer;
 export const googleAuth = googleAuthBuyer;
 
 export async function loginUser(credentials) {
-  if (credentials.portal === 'STUDIO' || credentials.required_role === 'ARTISAN' || credentials.portal === 'ARTISAN') {
+  if (credentials.portal === 'STUDIO' || credentials.portal === 'ARTISAN') {
     return await loginArtisan(credentials);
   }
-  if (credentials.portal === 'ADMIN' || credentials.required_role === 'ADMIN') {
+  if (credentials.portal === 'ADMIN') {
     return await loginAdmin(credentials);
   }
   try {

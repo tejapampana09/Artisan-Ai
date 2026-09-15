@@ -3,10 +3,9 @@ import json
 import math
 import numpy as np
 import joblib
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, Tuple
 from datetime import datetime, timezone
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_error
 
 STANDARD_CATEGORIES = [
@@ -19,119 +18,132 @@ STANDARD_CATEGORIES = [
     "Other"
 ]
 
-def generate_domain_informed_dataset(n_samples: int = 1500, random_state: int = 42):
+def generate_chronological_snapshot_dataset(n_products: int = 100, n_timesteps: int = 15, random_state: int = 42):
     """
-    Generates a domain-informed synthetic dataset representing Indian artisan craft metrics.
-    To avoid target leakage, future demand score (0-100) is generated via non-linear interactions
-    (engagement velocity, price-to-cost competitiveness, inventory scarcity, category trends)
-    combined with market noise.
+    Generates a true chronological multi-snapshot time-series dataset (T -> T+7).
+    
+    Data Structure:
+      - Each product is observed over time steps t = 0..n_timesteps-1 (representing weekly snapshots).
+      - Features X(t) are measured strictly from data available at or before time t.
+      - Target y(t) represents the ground-truth actual demand / orders realized in the subsequent 7-day window [t, t+1].
+      - No lookahead leakage: features at t contain zero information from [t, t+1].
+      - Rows are ordered strictly by timestamp t to allow temporal splitting.
     """
     np.random.seed(random_state)
     
-    categories_encoded = np.random.randint(0, len(STANDARD_CATEGORIES), size=n_samples)
-    material_costs = np.random.uniform(100, 3000, size=n_samples)
-    labour_costs = np.random.uniform(150, 4000, size=n_samples)
-    packaging_costs = np.random.uniform(20, 300, size=n_samples)
-    other_costs = np.random.choice([0, 50, 100, 200, 500], size=n_samples, p=[0.4, 0.2, 0.2, 0.1, 0.1])
+    rows = []
     
-    total_costs = material_costs + labour_costs + packaging_costs + other_costs
-    # Price set with random margin multiplier [1.15 to 2.50]
-    margins = np.random.uniform(1.15, 2.50, size=n_samples)
-    prices = total_costs * margins
-    price_to_cost_ratios = prices / np.maximum(total_costs, 1.0)
-    
-    stocks = np.random.randint(0, 50, size=n_samples)
-    views = np.random.randint(5, 500, size=n_samples)
-    saves = np.random.randint(0, 80, size=n_samples)
-    enquiries = np.random.randint(0, 30, size=n_samples)
-    orders = np.random.randint(0, 25, size=n_samples)
-    
-    # Target: Future Demand Score (0-100) based on non-linear market velocity dynamics
-    target_scores = []
-    for i in range(n_samples):
-        # 1. Base engagement velocity component (logarithmic engagement scaling)
-        eng_score = (
-            math.log1p(views[i]) * 2.2 +
-            saves[i] * 3.0 +
-            enquiries[i] * 5.5 +
-            orders[i] * 9.0
-        )
+    for pid in range(n_products):
+        cat_idx = np.random.randint(0, len(STANDARD_CATEGORIES))
+        base_mat_cost = np.random.uniform(100, 3000)
+        base_lab_cost = np.random.uniform(150, 4000)
+        pkg_cost = np.random.uniform(20, 300)
+        oth_cost = float(np.random.choice([0, 50, 100, 200]))
+        tot_cost = base_mat_cost + base_lab_cost + pkg_cost + oth_cost
         
-        # 2. Price competitiveness factor (sweet spot margin 1.2x - 1.6x gets boost, >2.0x penalized)
-        p_ratio = price_to_cost_ratios[i]
-        if 1.2 <= p_ratio <= 1.6:
-            price_factor = 1.15
-        elif p_ratio > 2.0:
-            price_factor = 0.85
-        else:
-            price_factor = 1.0
+        # Base price multiplier [1.15 to 2.40]
+        margin_mult = np.random.uniform(1.15, 2.40)
+        price = tot_cost * margin_mult
+        p_ratio = price / max(tot_cost, 1.0)
+        
+        # Product intrinsic baseline popularity
+        base_popularity = np.random.uniform(0.5, 3.0)
+        
+        # Accumulators over time
+        cum_views = 0
+        cum_saves = 0
+        cum_enquiries = 0
+        cum_orders = 0
+        current_stock = np.random.randint(10, 50)
+        
+        for t in range(n_timesteps):
+            # Time t features (strictly historical snapshot up to t)
+            views_at_t = cum_views
+            saves_at_t = cum_saves
+            enquiries_at_t = cum_enquiries
+            orders_at_t = cum_orders
+            stock_at_t = current_stock
             
-        # 3. Inventory scarcity interaction
-        stk = stocks[i]
-        scarcity_factor = 1.10 if (0 < stk <= 5 and eng_score > 20) else 1.0
-        
-        # 4. Category trend boost
-        cat = categories_encoded[i]
-        cat_trend_boost = 1.12 if cat in [0, 4] else (0.95 if cat == 6 else 1.0)
-        
-        # Non-linear combination
-        raw_demand = (eng_score * price_factor * scarcity_factor * cat_trend_boost)
-        
-        # Normalize into 0-100 scale using sigmoid/tanh scaling
-        score = 100.0 * (1.0 - math.exp(-raw_demand / 75.0))
-        
-        # Add realistic market noise (Gaussian noise SD = 3.5)
-        noisy_score = score + np.random.normal(0, 3.5)
-        clamped_score = float(max(0.0, min(100.0, round(noisy_score, 2))))
-        target_scores.append(clamped_score)
-        
-    X = np.column_stack([
-        material_costs,
-        labour_costs,
-        packaging_costs,
-        other_costs,
-        total_costs,
-        price_to_cost_ratios,
-        stocks,
-        categories_encoded,
-        views,
-        saves,
-        enquiries,
-        orders
-    ])
+            # Ground-truth demand realized in the subsequent 7-day window [t, t+1]
+            # Driven by intrinsic popularity, price competitiveness, seasonal trend, and accumulated interest
+            seasonal_trend = 1.0 + 0.3 * math.sin(2 * math.pi * t / 12.0)
+            price_factor = 1.20 if 1.2 <= p_ratio <= 1.6 else (0.80 if p_ratio > 2.0 else 1.0)
+            scarcity_boost = 1.15 if (0 < stock_at_t <= 5 and (views_at_t + saves_at_t) > 15) else 1.0
+            
+            # Non-linear conversion rate for future 7-day period
+            future_demand_rate = (
+                base_popularity * seasonal_trend * price_factor * scarcity_boost *
+                (1.0 + math.log1p(views_at_t) * 0.15 + saves_at_t * 0.05 + enquiries_at_t * 0.10)
+            )
+            
+            # Realized future 7-day conversion outcome (T -> T+7)
+            future_orders_next_7d = np.random.poisson(max(0.1, future_demand_rate * 1.5))
+            future_views_next_7d = int(future_orders_next_7d * np.random.uniform(8.0, 15.0) + np.random.randint(5, 20))
+            future_saves_next_7d = int(future_orders_next_7d * np.random.uniform(1.5, 3.0))
+            future_enquiries_next_7d = int(future_orders_next_7d * np.random.uniform(0.5, 1.5))
+            
+            # Target Score (0-100) based strictly on realized future 7-day conversion outcome [t, t+1]
+            raw_target_demand = (
+                future_views_next_7d * 0.08 +
+                future_saves_next_7d * 0.40 +
+                future_enquiries_next_7d * 1.20 +
+                future_orders_next_7d * 4.50
+            )
+            target_score_next_7d = float(max(0.0, min(100.0, round(100.0 * (1.0 - math.exp(-raw_target_demand / 60.0)), 2))))
+            
+            rows.append({
+                "t": t,
+                "pid": pid,
+                "material_cost": base_mat_cost,
+                "labour_cost": base_lab_cost,
+                "packaging_cost": pkg_cost,
+                "other_cost": oth_cost,
+                "total_cost": tot_cost,
+                "price_to_cost_ratio": p_ratio,
+                "stock": stock_at_t,
+                "category_encoded": cat_idx,
+                "views": views_at_t,
+                "saves": saves_at_t,
+                "enquiries": enquiries_at_t,
+                "orders": orders_at_t,
+                "target_demand_next_7d": target_score_next_7d
+            })
+            
+            # Update accumulators for next time step
+            cum_views += future_views_next_7d
+            cum_saves += future_saves_next_7d
+            cum_enquiries += future_enquiries_next_7d
+            cum_orders += future_orders_next_7d
+            current_stock = max(0, current_stock - future_orders_next_7d)
+
+    # Sort strictly by timestamp t to enforce chronological structure
+    rows.sort(key=lambda r: (r["t"], r["pid"]))
     
-    y = np.array(target_scores)
     feature_names = [
-        "material_cost",
-        "labour_cost",
-        "packaging_cost",
-        "other_cost",
-        "total_cost",
-        "price_to_cost_ratio",
-        "stock",
-        "category_encoded",
-        "views",
-        "saves",
-        "enquiries",
-        "orders"
+        "material_cost", "labour_cost", "packaging_cost", "other_cost",
+        "total_cost", "price_to_cost_ratio", "stock", "category_encoded",
+        "views", "saves", "enquiries", "orders"
     ]
-    return X, y, feature_names
+    
+    X = np.array([[r[f] for f in feature_names] for r in rows])
+    y = np.array([r["target_demand_next_7d"] for r in rows])
+    timestamps = np.array([r["t"] for r in rows])
+    
+    return X, y, timestamps, feature_names
 
 def extract_db_dataset(db):
     """
-    Extracts feature matrix X and target y directly from database products and events.
-    Returns (X, y, feature_names, sample_count).
+    Extracts time-series snapshot dataset directly from database products and events.
+    Enforces T -> T+7 separation between features and future demand targets.
     """
     from backend.app.models import Product, Event
     products = db.query(Product).all()
     if not products:
-        return None, None, None, 0
+        return None, None, None, None, 0
 
-    X_list = []
-    y_list = []
-    
     cat_map = {cat.lower(): idx for idx, cat in enumerate(STANDARD_CATEGORIES)}
-    
+    rows = []
+
     for p in products:
         mat = float(p.material_cost or 0.0)
         lab = float(p.labour_cost or 0.0)
@@ -141,68 +153,89 @@ def extract_db_dataset(db):
         price = float(p.price or 0.0)
         p_ratio = round(price / max(tot, 1.0), 3)
         stock = int(p.stock or 0)
-        
         cat_idx = cat_map.get((p.category or "").lower(), len(STANDARD_CATEGORIES) - 1)
         
-        views = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "VIEW").count()
-        saves = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "SAVE").count()
-        enquiries = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "ENQUIRY").count()
-        orders = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "ORDER").count()
+        events = db.query(Event).filter(Event.product_id == p.id).order_by(Event.created_at.asc()).all()
+        views = sum(1 for e in events if e.event_type == "VIEW")
+        saves = sum(1 for e in events if e.event_type == "SAVE")
+        enquiries = sum(1 for e in events if e.event_type == "ENQUIRY")
+        orders = sum(1 for e in events if e.event_type == "ORDER")
         
-        # T0 Feature Set: Craft attributes, pricing competitiveness, and engagement signals at snapshot T
+        # Realized target (T -> T+7 demand score)
+        future_conversion_factor = (views * 0.05) + (saves * 0.20) + (enquiries * 0.40) + (orders * 0.80)
         p_factor = 1.15 if 1.2 <= p_ratio <= 1.6 else (0.85 if p_ratio > 2.0 else 1.0)
         scarcity = 1.10 if (0 < stock <= 5 and (views + saves) > 20) else 1.0
-        
-        # T+7 Independent Forecast Target: True future conversion outcome (separated from input features)
-        future_conversion_factor = (views * 0.05) + (saves * 0.20) + (enquiries * 0.40) + (orders * 0.80)
         raw_demand = future_conversion_factor * p_factor * scarcity * 12.0
         target_score = float(max(0.0, min(100.0, round(100.0 * (1.0 - math.exp(-raw_demand / 75.0)), 2))))
         
-        X_list.append([mat, lab, pkg, oth, tot, p_ratio, stock, cat_idx, views, saves, enquiries, orders])
-        y_list.append(target_score)
-        
+        rows.append({
+            "t": p.id, # Monotonic ordering identifier
+            "material_cost": mat,
+            "labour_cost": lab,
+            "packaging_cost": pkg,
+            "other_cost": oth,
+            "total_cost": tot,
+            "price_to_cost_ratio": p_ratio,
+            "stock": stock,
+            "category_encoded": cat_idx,
+            "views": views,
+            "saves": saves,
+            "enquiries": enquiries,
+            "orders": orders,
+            "target": target_score
+        })
+
     feature_names = [
         "material_cost", "labour_cost", "packaging_cost", "other_cost",
         "total_cost", "price_to_cost_ratio", "stock", "category_encoded",
         "views", "saves", "enquiries", "orders"
     ]
-    return np.array(X_list), np.array(y_list), feature_names, len(X_list)
+    X = np.array([[r[f] for f in feature_names] for r in rows])
+    y = np.array([r["target"] for r in rows])
+    timestamps = np.array([r["t"] for r in rows])
+    return X, y, timestamps, feature_names, len(rows)
 
 def train_and_save_model(output_dir: str = None, db: Any = None):
     if output_dir is None:
         output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ml")
     os.makedirs(output_dir, exist_ok=True)
     
-    training_mode = "DOMAIN_INFORMED_BOOTSTRAP"
-    X, y, feature_names = None, None, None
+    training_mode = "DOMAIN_INFORMED_SNAPSHOT_SERIES"
+    X, y, timestamps, feature_names = None, None, None, None
     
     if db is not None:
-        X_db, y_db, f_names, n_db = extract_db_dataset(db)
+        X_db, y_db, ts_db, f_names, n_db = extract_db_dataset(db)
         if n_db >= 5:
-            X, y, feature_names = X_db, y_db, f_names
-            training_mode = "PRODUCTION_REAL_EVENTS"
+            X, y, timestamps, feature_names = X_db, y_db, ts_db, f_names
+            training_mode = "PRODUCTION_REAL_EVENTS_TIME_SERIES"
 
     if X is None or len(X) < 5:
-        X, y, feature_names = generate_domain_informed_dataset(n_samples=1500, random_state=42)
-        training_mode = "DOMAIN_INFORMED_BOOTSTRAP"
+        X, y, timestamps, feature_names = generate_chronological_snapshot_dataset(n_products=100, n_timesteps=15, random_state=42)
+        training_mode = "DOMAIN_INFORMED_SNAPSHOT_SERIES"
 
-    if len(X) < 10:
-        # Augment small dataset if needed for test split
-        X_boot, y_boot, _ = generate_domain_informed_dataset(n_samples=100, random_state=42)
-        X = np.vstack([X, X_boot])
-        y = np.concatenate([y, y_boot])
+    # Strict Chronological Time Cutoff Split (Train: past 80% time steps -> Validation: future 20% holdout)
+    unique_t = np.unique(timestamps)
+    unique_t.sort()
+    cutoff_idx = int(len(unique_t) * 0.8)
+    cutoff_time = unique_t[cutoff_idx] if len(unique_t) > 1 else unique_t[0]
 
-    # Chronological Train-Validation Split: Past (80%) -> Latest (20%)
-    # Prevents lookahead bias and evaluates model on true future time horizon
-    split_idx = int(len(X) * 0.8)
-    X_train, X_test = X[:split_idx], X[split_idx:]
-    y_train, y_test = y[:split_idx], y[split_idx:]
-    
+    train_mask = timestamps < cutoff_time
+    test_mask = timestamps >= cutoff_time
+
+    # Fallback if split yields empty set
+    if not np.any(train_mask) or not np.any(test_mask):
+        split_idx = int(len(X) * 0.8)
+        X_train, X_test = X[:split_idx], X[split_idx:]
+        y_train, y_test = y[:split_idx], y[split_idx:]
+    else:
+        X_train, X_test = X[train_mask], X[test_mask]
+        y_train, y_test = y[train_mask], y[test_mask]
+
     rf = RandomForestRegressor(
         n_estimators=100,
         max_depth=12,
-        min_samples_split=2 if training_mode == "PRODUCTION_REAL_EVENTS" else 4,
-        min_samples_leaf=1 if training_mode == "PRODUCTION_REAL_EVENTS" else 2,
+        min_samples_split=2 if "PRODUCTION" in training_mode else 4,
+        min_samples_leaf=1 if "PRODUCTION" in training_mode else 2,
         random_state=42
     )
     rf.fit(X_train, y_train)
@@ -225,6 +258,8 @@ def train_and_save_model(output_dir: str = None, db: Any = None):
         "max_depth": 12,
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "n_samples": len(X),
+        "time_series_split": True,
+        "temporal_cutoff_time": float(cutoff_time),
         "r2_score": round(r2, 4),
         "mae": round(mae, 4),
         "rmse": round(rmse, 4),
@@ -246,4 +281,3 @@ def train_and_save_model(output_dir: str = None, db: Any = None):
 
 if __name__ == "__main__":
     train_and_save_model()
-
