@@ -69,6 +69,11 @@ def ensure_schema_migrations(eng):
                     conn.execute(text("ALTER TABLE users ADD COLUMN experience_years INTEGER DEFAULT 0"))
                 if "verification_status" not in user_cols:
                     conn.execute(text("ALTER TABLE users ADD COLUMN verification_status VARCHAR DEFAULT 'UNVERIFIED'"))
+                if "active_mode" in user_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE users DROP COLUMN active_mode"))
+                    except Exception as ex:
+                        logger.warning("Could not drop legacy active_mode column: %s", ex)
 
             # Check products table columns
             res_prod = conn.execute(text("PRAGMA table_info(products)")).fetchall()
