@@ -460,8 +460,9 @@ def validate_edited_catalog_strictly(
 
     allowed_materials = list(facts_materials)
 
-    # Allow initial AI draft materials ONLY IF the request was genuinely photo-only (no verified artisan facts)
-    is_photo_only = not has_verified_artisan_input(artisan_facts)
+    # Allow initial AI draft materials if genuinely photo-only or if materials were AI-inferred in initial draft
+    ai_inferred_fields = initial_draft.get("ai_inferred_fields", []) if initial_draft else []
+    is_photo_only = (not has_verified_artisan_input(artisan_facts)) or ("materials" in ai_inferred_fields)
     if not facts_materials and is_photo_only and initial_draft:
         raw_init_mats = initial_draft.get("materials")
         if isinstance(raw_init_mats, str):

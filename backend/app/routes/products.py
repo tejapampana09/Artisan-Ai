@@ -71,28 +71,35 @@ def list_products(
     is_admin = current_user and getattr(current_user, "role", None) == "ADMIN"
     is_self_seller = current_user and getattr(current_user, "role", None) == "ARTISAN" and (seller_id is None or current_user.id == seller_id)
 
+    category_val = category if isinstance(category, str) and category.strip() else None
+    status_val = status if isinstance(status, str) and status.strip() else None
+    seller_id_val = seller_id if isinstance(seller_id, int) else None
+    search_val = search if isinstance(search, str) and search.strip() else None
+    min_price_val = min_price if isinstance(min_price, (int, float)) else None
+    max_price_val = max_price if isinstance(max_price, (int, float)) else None
+
     if is_admin:
-        if status:
-            query = query.filter(Product.status == status)
-        if seller_id:
-            query = query.filter(Product.seller_id == seller_id)
+        if status_val:
+            query = query.filter(Product.status == status_val)
+        if seller_id_val:
+            query = query.filter(Product.seller_id == seller_id_val)
     elif is_self_seller:
         query = query.filter(Product.seller_id == current_user.id)
-        if status:
-            query = query.filter(Product.status == status)
+        if status_val:
+            query = query.filter(Product.status == status_val)
     else:
         query = query.filter(Product.status == "PUBLISHED")
-        if seller_id:
-            query = query.filter(Product.seller_id == seller_id)
+        if seller_id_val:
+            query = query.filter(Product.seller_id == seller_id_val)
 
-    if category:
-        query = query.filter(Product.category == category)
-    if min_price is not None:
-        query = query.filter(Product.price >= min_price)
-    if max_price is not None:
-        query = query.filter(Product.price <= max_price)
-    if search and search.strip():
-        term = f"%{search.strip()}%"
+    if category_val:
+        query = query.filter(Product.category == category_val)
+    if min_price_val is not None:
+        query = query.filter(Product.price >= min_price_val)
+    if max_price_val is not None:
+        query = query.filter(Product.price <= max_price_val)
+    if search_val:
+        term = f"%{search_val}%"
         query = query.filter(
             (Product.title.ilike(term)) |
             (Product.description.ilike(term)) |

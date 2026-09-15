@@ -272,7 +272,7 @@ def approve_and_publish_product(
         auto_smart_pricing_enabled=req.auto_smart_pricing_enabled,
         image_url=req.image_url,
         enhanced_image_url=req.enhanced_image_url,
-        status="PUBLISHED",
+        status=req.status if req.status in ["PENDING_APPROVAL", "APPROVED", "PUBLISHED"] else "PUBLISHED",
         seller_id=current_user_id
     )
     draft_record.is_consumed = True

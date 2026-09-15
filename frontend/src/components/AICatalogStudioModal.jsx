@@ -707,15 +707,22 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       ? qnaAnswers.q2_materials.split(',').map(m => m.trim()).filter(Boolean)
       : [];
 
-    const artisanFacts = {
-      product_name: qnaAnswers.q1_title?.trim() || voiceText.trim().split('\n')[0].slice(0, 60) || (selectedPhoto ? selectedPhoto.name : ''),
+    const hasExplicitUserInput = Boolean(
+      qnaAnswers.q1_title?.trim() ||
+      qnaAnswers.q2_materials?.trim() ||
+      qnaAnswers.q3_story?.trim() ||
+      voiceText.trim()
+    );
+
+    const artisanFacts = hasExplicitUserInput ? {
+      product_name: qnaAnswers.q1_title?.trim() || (voiceText.trim() ? voiceText.trim().split('\n')[0].slice(0, 60) : ''),
       craft_type: effectiveCat || '',
       materials: parsedMaterials,
       handmade: null,
       making_time: '',
       artisan_story: qnaAnswers.q3_story?.trim() || '',
       special_characteristics: voiceText.trim()
-    };
+    } : null;
 
     try {
       const res = await processAICatalog({
@@ -823,18 +830,20 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       return;
     }
 
-    // Always publish in English as primary title, description, and craft story
-    const pubTitle = (aiDraft.title_en || aiDraft.title || '').trim();
-    const pubDesc = (aiDraft.description_en || aiDraft.description || '').trim();
-    const pubStory = (aiDraft.craft_story_en || aiDraft.craft_story || '').trim();
+    // Always publish with fallback title, description, and craft story
+    const pubTitle = (aiDraft.title_en || aiDraft.title || 'Handcrafted Craft Item').trim();
+    const pubDesc = (aiDraft.description_en || aiDraft.description || pubTitle).trim();
+    const pubStory = (aiDraft.craft_story_en || aiDraft.craft_story || pubDesc || pubTitle).trim();
+    const pubCategory = (aiDraft.category || 'Handcrafted').trim();
+    const pubMaterials = (aiDraft.materials || '').trim();
 
     setPublishing(true);
     if (isOffline) {
       queueProductDraft({
         draft_token: aiDraft.draft_token,
         title: pubTitle,
-        category: aiDraft.category,
-        materials: aiDraft.materials,
+        category: pubCategory,
+        materials: pubMaterials,
         description: pubDesc,
         craft_story: pubStory,
         title_en: pubTitle,
@@ -864,8 +873,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       await approveAndPublishAICatalog({
         draft_token: aiDraft.draft_token,
         title: pubTitle,
-        category: aiDraft.category,
-        materials: aiDraft.materials,
+        category: pubCategory,
+        materials: pubMaterials,
         description: pubDesc,
         craft_story: pubStory,
         title_en: pubTitle,
@@ -882,13 +891,13 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         auto_smart_pricing_enabled: Boolean(aiDraft.auto_smart_pricing_enabled),
         image_url: aiDraft.image_url,
         enhanced_image_url: aiDraft.enhanced_image_url,
-        status: 'PUBLISHED'
+        status: 'PENDING_APPROVAL'
       });
-      onPublished(`Successfully published "${pubTitle}" to catalog!`);
+      onPublished(`Successfully submitted "${pubTitle}" for Admin Approval!`);
       resetForm();
       onClose();
     } catch (err) {
-      notify.error(err.message || 'Approval failed. Please review your edits.');
+      notify.error(err.message || 'Submission failed. Please review your edits.');
     } finally {
       setPublishing(false);
     }
@@ -2063,7 +2072,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 className="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{publishing ? 'Publishing...' : 'Approve & Publish Craft'}</span>
+                <span>{publishing ? 'Submitting...' : 'Submit for Admin Approval'}</span>
               </button>
             </div>
           </div>
