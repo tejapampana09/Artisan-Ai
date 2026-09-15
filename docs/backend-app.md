@@ -48,8 +48,9 @@ Important endpoints:
 
 - `GET /api/health`: basic application health.
 - `GET /api/ready`: database readiness check.
-- `GET /api/me`: authenticated user details.
-- `PATCH /api/me/mode`: switches between `SELL` and `BUY` modes.
+- `GET /api/marketplace/auth/me`: authenticated Buyer profile details (Marketplace domain).
+- `GET /api/studio/auth/me`: authenticated Artisan profile details (Studio domain).
+- `GET /api/admin/auth/me`: authenticated Admin profile details (Admin domain).
 
 The ONDC router is intentionally not registered. Its source files remain in the repository, but ONDC endpoints are currently inactive.
 
