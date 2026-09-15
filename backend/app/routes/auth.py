@@ -122,6 +122,19 @@ def login_user(payload: UserLogin, request: Request, db: Session = Depends(get_d
             detail="Invalid credentials. Please check your email/phone and password."
         )
 
+    if payload.required_role:
+        expected = payload.required_role.strip().upper()
+        if expected in ["ARTISAN", "SELLER"] and user.role not in ["ARTISAN", "ADMIN"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. This account is registered as a Customer/Buyer. Seller Studio is strictly reserved for verified Artisans and Administrators."
+            )
+        elif expected == "BUYER" and user.role not in ["BUYER", "ADMIN"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. This account is registered as an Artisan. Please sign in via the Artisan Studio portal."
+            )
+
     access_token = create_access_token({
         "sub": str(user.id),
         "name": user.name,

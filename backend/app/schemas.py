@@ -77,6 +77,7 @@ class AdminCreateSellerRequest(BaseModel):
 class UserLogin(BaseModel):
     email_or_phone: str
     password: str
+    required_role: Optional[str] = None
 
 class ResetPasswordRequest(BaseModel):
     email_or_phone: str = Field(..., min_length=3)

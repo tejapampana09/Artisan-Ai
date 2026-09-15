@@ -1,35 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  X, User, Lock, Mail, Phone, MapPin, Sparkles, CheckCircle2, 
-  LogIn, UserPlus, LogOut, KeyRound, ShieldCheck, Store, ArrowRight 
+  X, User, Lock, Mail, Phone, Sparkles, CheckCircle2, 
+  LogIn, ShieldCheck, Store, ArrowRight, Smartphone, Check
 } from 'lucide-react';
-import { loginUser, registerUser, resetPassword, logoutUser, getAuthToken, googleAuth } from '../api/index.js';
+import { loginUser, resetPassword, logoutUser, getAuthToken, clearAuthToken, googleAuth } from '../api/index.js';
+import { clearUserOfflineCache } from '../services/offlineSync.js';
 
 export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavigateMode, initialTab = 'ORDERS' }) {
   const [isSellerMode, setIsSellerMode] = useState(
     initialTab === 'SELL_REGISTER' || initialTab === 'SELL_LOGIN'
   );
-  const [tab, setTab] = useState(initialTab === 'SELL_REGISTER' ? 'register' : 'login'); // 'login' | 'register'
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Login form
+  // Seller Studio Login form
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-
-  // Register form (for buyers)
-  const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-  const [regPassword, setRegPassword] = useState('');
 
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '26058075206-on14bkf0hlrenshpogiglj07ftb8qgba.apps.googleusercontent.com';
 
   useEffect(() => {
     setIsSellerMode(initialTab === 'SELL_REGISTER' || initialTab === 'SELL_LOGIN');
-    setTab('login');
     setError('');
     setSuccessMsg('');
   }, [initialTab, isOpen]);
@@ -82,7 +75,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
         setGoogleLoading(false);
       }
     } else {
-      setError('Google Sign-In is still initializing or blocked by an extension. Please sign in with email/password.');
+      setError('Google Sign-In is still initializing or blocked by an extension. Please refresh and try again.');
       setGoogleLoading(false);
     }
   };
@@ -93,9 +86,18 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
     setError('');
     try {
       const res = await loginUser({
-        email_or_phone: loginIdentifier,
+        email_or_phone: loginIdentifier.trim(),
         password: loginPassword,
+        required_role: isSellerMode ? 'ARTISAN' : undefined,
       });
+
+      // Defensive client-side role validation
+      if (isSellerMode && res.user.role !== 'ARTISAN' && res.user.role !== 'ADMIN') {
+        clearAuthToken();
+        clearUserOfflineCache();
+        setError('Access denied: This account is registered as a Customer/Buyer. Seller Studio is strictly reserved for verified Artisans and Admin accounts.');
+        return;
+      }
 
       setSuccessMsg(`Welcome back, ${res.user.name}!`);
       setTimeout(() => {
@@ -106,38 +108,9 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
         }
       }, 500);
     } catch (err) {
+      clearAuthToken();
+      clearUserOfflineCache();
       setError(err.message || 'Login failed. Please check credentials.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRegister = async (e) => {
-    e?.preventDefault();
-    const cleanedEmail = regEmail.trim();
-    const cleanedPhone = regPhone.trim();
-    if (!cleanedEmail && !cleanedPhone) {
-      setError('Please provide at least an email address or phone number.');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    try {
-      const res = await registerUser({
-        name: regName.trim(),
-        email: cleanedEmail || null,
-        phone: cleanedPhone || null,
-        role: 'BUYER',
-        password: regPassword,
-        active_mode: 'BUY'
-      });
-      setSuccessMsg(`Account created successfully! Welcome, ${res.user.name}.`);
-      setTimeout(() => {
-        onAuthChange(res.user);
-        onClose();
-      }, 500);
-    } catch (err) {
-      setError(err.message || 'Registration failed.');
     } finally {
       setLoading(false);
     }
@@ -173,13 +146,13 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
             <div>
               <div className="inline-flex items-center space-x-1.5 bg-[#FAF9F6] text-[#A6533B] px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-[#E8E5DF] mb-2">
                 <User className="w-3.5 h-3.5 text-[#A6533B]" />
-                <span>Customer Account Portal</span>
+                <span>Customer Sign In / కస్టమర్ లాగిన్</span>
               </div>
               <h3 className="font-serif font-bold text-2xl text-[#2A1E17]">
-                {tab === 'register' ? 'Join Artisan AI as a Buyer' : 'Customer Sign In'}
+                Welcome to Artisan AI
               </h3>
               <p className="text-xs text-[#6B5B51] mt-1 leading-relaxed">
-                Shop authentic Indian handicrafts directly from artisans with zero middleman markups.
+                Shop authentic Indian handicrafts directly from master artisans with zero middleman markups.
               </p>
             </div>
           )}
@@ -271,158 +244,76 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
               </div>
             </div>
           ) : (
-            /* BUYER MODE: Google OAuth + Customer Register/Login */
-            <div className="space-y-3.5">
-              {/* Google Auth Integration Button */}
-              <div className="space-y-3">
+            /* BUYER MODE: 1-Click Google Sign-In + Mobile OTP Preview */
+            <div className="space-y-4">
+              {/* Primary 1-Click Google Sign In */}
+              <div className="space-y-2 pt-1">
                 <button
                   type="button"
                   onClick={handleGoogleAuth}
                   disabled={loading || googleLoading}
-                  className="w-full py-2.5 px-4 bg-white border border-[#E8E5DF] hover:border-amber-700/50 rounded-2xl font-bold text-xs text-[#1C1C1C] shadow-2xs hover:shadow-xs transition-all flex items-center justify-center space-x-2.5 cursor-pointer hover:bg-stone-50 disabled:opacity-60"
+                  className="w-full py-3.5 px-4 bg-white hover:bg-stone-50 border-2 border-[#EADFCF] hover:border-amber-700/60 rounded-2xl font-bold text-sm text-[#1C1C1C] shadow-sm hover:shadow-md transition-all flex items-center justify-center space-x-3 cursor-pointer disabled:opacity-60 group"
                 >
                   {googleLoading ? (
-                    <div className="w-4 h-4 border-2 border-stone-400 border-t-amber-800 rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-stone-400 border-t-amber-800 rounded-full animate-spin" />
                   ) : (
-                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 shrink-0 transition-transform group-hover:scale-105" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                       <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                       <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                       <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                     </svg>
                   )}
-                  <span>{googleLoading ? 'Signing in with Google...' : 'Continue with Google'}</span>
+                  <span className="font-semibold text-stone-800">
+                    {googleLoading ? 'Signing in with Google...' : 'Continue with Google / గూగుల్ తో లాగిన్'}
+                  </span>
                 </button>
+                <p className="text-[11px] text-center text-[#8C7A6B]">
+                  1-Click Instant Sign In • No password required
+                </p>
+              </div>
 
-                <div className="relative flex items-center">
-                  <div className="flex-grow border-t border-[#E8E5DF]"></div>
-                  <span className="flex-shrink mx-3 text-[10px] font-extrabold uppercase tracking-wider text-[#9E8E83]">Or with password</span>
-                  <div className="flex-grow border-t border-[#E8E5DF]"></div>
+              {/* Mobile OTP Login - Coming Soon Section */}
+              <div className="p-3.5 bg-[#FAF6F0] border border-[#EADFCF] rounded-2xl flex items-start space-x-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-100/80 border border-amber-200 flex items-center justify-center shrink-0 text-[#933D1E] mt-0.5">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div className="text-left space-y-0.5 flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#2A1E17]">Mobile OTP Sign-In</span>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 bg-amber-200/60 text-[#823214] rounded-full">
+                      Coming Soon / త్వరలో
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#6B5B51] leading-relaxed">
+                    Direct phone number + OTP login is arriving soon. In the meantime, please sign in with 1-click Google to track orders and save your wishlist.
+                  </p>
                 </div>
               </div>
 
-              {/* Customer Tabs */}
-              <div className="flex border-b border-[#EADFCF] text-xs font-bold text-stone-400 mb-1">
-                <button
-                  onClick={() => { setTab('login'); setError(''); }}
-                  className={`pb-2 px-4 font-bold border-b-2 transition-all cursor-pointer ${tab === 'login' ? 'border-[#933D1E] text-[#933D1E]' : 'border-transparent text-stone-400 hover:text-stone-700'}`}
-                >
-                  Sign In
-                </button>
-                <button
-                  onClick={() => { setTab('register'); setError(''); }}
-                  className={`pb-2 px-4 font-bold border-b-2 transition-all cursor-pointer ${tab === 'register' ? 'border-[#933D1E] text-[#933D1E]' : 'border-transparent text-stone-400 hover:text-stone-700'}`}
-                >
-                  Create Account
-                </button>
+              {/* Customer Benefits */}
+              <div className="bg-white/70 border border-[#EADFCF] rounded-2xl p-3.5 space-y-2 text-xs">
+                <div className="text-[11px] font-bold text-[#2A1E17] uppercase tracking-wider">
+                  Customer Account Perks
+                </div>
+                <div className="space-y-1.5 text-[11px] text-[#5C4D43]">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Real-time tracking of handloom & craft orders</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Direct WhatsApp & voice enquiries to verified artisans</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Secure UPI, Card & Cash on Delivery checkout</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Customer Sign In Form */}
-              {tab === 'login' && (
-                <form onSubmit={handleLogin} className="space-y-3 text-xs">
-                  <div>
-                    <label className="block font-semibold text-[#2A1E17] mb-1">Email or Phone</label>
-                    <div className="relative">
-                      <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
-                      <input
-                        type="text"
-                        value={loginIdentifier}
-                        onChange={(e) => setLoginIdentifier(e.target.value)}
-                        required
-                        placeholder="buyer@domain.com or phone"
-                        className="w-full pl-9 pr-3 py-2.5 bg-white border border-[#EADFCF] rounded-2xl focus:ring-2 focus:ring-[#933D1E] outline-hidden text-[#2A1E17]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-[#2A1E17] mb-1">Password</label>
-                    <div className="relative">
-                      <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
-                      <input
-                        type="password"
-                        value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
-                        required
-                        placeholder="••••••••"
-                        className="w-full pl-9 pr-3 py-2.5 bg-white border border-[#EADFCF] rounded-2xl focus:ring-2 focus:ring-[#933D1E] outline-hidden text-[#2A1E17]"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3 bg-[#933D1E] hover:bg-[#7E3216] text-white font-bold rounded-2xl shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2 text-xs mt-3 disabled:opacity-50"
-                  >
-                    <span>{loading ? 'Signing in...' : 'Sign In as Customer'}</span>
-                  </button>
-                </form>
-              )}
-
-              {/* Customer Register Form */}
-              {tab === 'register' && (
-                <form onSubmit={handleRegister} className="space-y-3 text-xs">
-                  <div>
-                    <label className="block font-semibold text-stone-700 mb-1">Full Name *</label>
-                    <input
-                      type="text"
-                      value={regName}
-                      onChange={(e) => setRegName(e.target.value)}
-                      required
-                      placeholder="e.g. Ramesh Kumar"
-                      className="w-full px-3.5 py-2.5 bg-white border border-[#EADFCF] rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block font-semibold text-stone-700 mb-1">Email</label>
-                      <input
-                        type="email"
-                        value={regEmail}
-                        onChange={(e) => setRegEmail(e.target.value)}
-                        placeholder="buyer@domain.com"
-                        className="w-full px-3.5 py-2.5 bg-white border border-[#EADFCF] rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-stone-700 mb-1">Phone</label>
-                      <input
-                        type="tel"
-                        value={regPhone}
-                        onChange={(e) => setRegPhone(e.target.value)}
-                        placeholder="+91 98765 00000"
-                        className="w-full px-3.5 py-2.5 bg-white border border-[#EADFCF] rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-stone-700 mb-1">Password (min 6 chars) *</label>
-                    <input
-                      type="password"
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      required
-                      minLength={6}
-                      placeholder="••••••••"
-                      className="w-full px-3.5 py-2.5 bg-white border border-[#EADFCF] rounded-2xl focus:ring-2 focus:ring-[#4A2E1B] outline-hidden"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3 bg-[#4A2E1B] hover:bg-[#3D2314] text-white font-bold rounded-2xl shadow-lg transition-all cursor-pointer disabled:opacity-50 mt-3"
-                  >
-                    {loading ? 'Creating Account...' : 'Create Customer Account'}
-                  </button>
-                </form>
-              )}
-
               {/* Switch to Seller Studio Login */}
-              <div className="text-center pt-3 border-t border-[#EADFCF]">
+              <div className="text-center pt-2 border-t border-[#EADFCF]">
                 <button
                   type="button"
                   onClick={() => { setIsSellerMode(true); setError(''); }}

@@ -161,3 +161,32 @@ def test_admin_endpoints_require_admin_role():
     assert res_create.status_code == 403
     assert "admin access required" in res_create.json()["detail"].lower()
 
+
+def test_seller_login_blocks_buyer_accounts():
+    """Verify that a BUYER account cannot log in via Seller Studio login (required_role='ARTISAN')."""
+    buyer_email = f"buyer.{uuid.uuid4().hex[:6]}@artisanai.in"
+    password = "SecurePassword123!"
+    client.post("/api/auth/register", json={
+        "name": "Test Customer",
+        "email": buyer_email,
+        "password": password,
+        "role": "BUYER"
+    })
+
+    # Attempt login with required_role='ARTISAN' (as sent by Seller Studio Login)
+    seller_attempt = client.post("/api/auth/login", json={
+        "email_or_phone": buyer_email,
+        "password": password,
+        "required_role": "ARTISAN"
+    })
+    assert seller_attempt.status_code == 403
+    assert "registered as a customer" in seller_attempt.json()["detail"].lower()
+
+    # Normal login without seller restriction succeeds
+    normal_attempt = client.post("/api/auth/login", json={
+        "email_or_phone": buyer_email,
+        "password": password
+    })
+    assert normal_attempt.status_code == 200
+    assert normal_attempt.json()["user"]["role"] == "BUYER"
+
