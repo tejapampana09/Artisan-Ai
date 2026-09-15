@@ -11,6 +11,15 @@ from decimal import Decimal
 
 router = APIRouter(prefix="/api/products", tags=["Products"])
 
+VALID_LIFECYCLE_STATES = ["DRAFT", "AI_PROCESSING", "AI_GENERATED", "APPROVED", "PUBLISHED"]
+VALID_TRANSITIONS = {
+    "DRAFT": ["AI_PROCESSING", "APPROVED"],
+    "AI_PROCESSING": ["AI_GENERATED", "DRAFT"],
+    "AI_GENERATED": ["APPROVED", "DRAFT", "AI_PROCESSING"],
+    "APPROVED": ["PUBLISHED", "DRAFT"],
+    "PUBLISHED": ["APPROVED", "DRAFT"]
+}
+
 @router.post("", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 def create_product(
     product_in: ProductCreate, 
@@ -20,7 +29,11 @@ def create_product(
     """Creates a new product belonging strictly to the authenticated Artisan, defaulting to DRAFT."""
     product_data = product_in.model_dump()
     product_data["seller_id"] = current_artisan.id
-    if not product_data.get("status"):
+    
+    # Non-admin creations MUST default to DRAFT and cannot self-publish on creation
+    if current_artisan.role != "ADMIN":
+        product_data["status"] = "DRAFT"
+    elif not product_data.get("status"):
         product_data["status"] = "DRAFT"
 
     money_fields = ["price", "material_cost", "labour_cost", "packaging_cost", "other_cost"]
@@ -44,21 +57,27 @@ def list_products(
     search: Optional[str] = Query(None, description="Multi-field search across title, description, materials, category, story"),
     min_price: Optional[float] = Query(None, ge=0.0),
     max_price: Optional[float] = Query(None, ge=0.0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """
-    Lists products. If querying for marketplace (no seller_id specified),
-    only PUBLISHED products are returned by default.
+    Lists products. Public buyers and unauthenticated callers can ONLY see PUBLISHED products.
+    Draft/Unpublished leakage via ?status=DRAFT or ?seller_id=X is strictly blocked.
     """
     query = db.query(Product)
-    if category:
-        query = query.filter(Product.category == category)
-    if status:
-        query = query.filter(Product.status == status)
-    elif seller_id is None:
-        # Public marketplace listing: enforce PUBLISHED only
+
+    is_admin = current_user and getattr(current_user, "role", None) == "ADMIN"
+    is_self_seller = current_user and seller_id and current_user.id == seller_id
+
+    if is_admin or is_self_seller:
+        if status:
+            query = query.filter(Product.status == status)
+    else:
+        # Public listing: strictly enforce PUBLISHED status only under all query parameter combinations
         query = query.filter(Product.status == "PUBLISHED")
 
+    if category:
+        query = query.filter(Product.category == category)
     if seller_id:
         query = query.filter(Product.seller_id == seller_id)
     if min_price is not None:
@@ -77,13 +96,28 @@ def list_products(
     return query.order_by(Product.id.desc()).all()
 
 @router.get("/{product_id}", response_model=ProductResponse)
-def get_product(product_id: int, db: Session = Depends(get_db)):
+def get_product(
+    product_id: int, 
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
+    """Fetches a single product by ID. Non-published products return 404 for non-owner public callers."""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product with id {product_id} not found"
         )
+    
+    is_admin = current_user and getattr(current_user, "role", None) == "ADMIN"
+    is_owner = current_user and current_user.id == product.seller_id
+
+    if product.status != "PUBLISHED" and not (is_admin or is_owner):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with id {product_id} not found"
+        )
+
     return product
 
 @router.patch("/{product_id}", response_model=ProductResponse)
@@ -101,13 +135,23 @@ def update_product(
         )
 
     # Strict artisan ownership check
-    if product.seller_id != current_artisan.id:
+    if product.seller_id != current_artisan.id and current_artisan.role != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to modify another artisan's product."
         )
 
     update_data = product_in.model_dump(exclude_unset=True)
+
+    # Enforce publication approval boundary: cannot set status=PUBLISHED directly if not APPROVED or ADMIN
+    if "status" in update_data and update_data["status"] is not None:
+        target_status = str(update_data["status"]).upper()
+        if target_status == "PUBLISHED" and product.status != "APPROVED" and current_artisan.role != "ADMIN":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Product must be APPROVED by admin before it can be PUBLISHED."
+            )
+
     for field, value in update_data.items():
         if field in ["price", "material_cost", "labour_cost", "packaging_cost", "other_cost"] and value is not None:
             value = Decimal(str(value)).quantize(Decimal("0.01"))
@@ -133,7 +177,7 @@ def delete_product(
         )
 
     # Strict artisan ownership check
-    if product.seller_id != current_artisan.id:
+    if product.seller_id != current_artisan.id and current_artisan.role != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to delete another artisan's product."
@@ -142,15 +186,6 @@ def delete_product(
     db.delete(product)
     db.commit()
     return None
-
-VALID_LIFECYCLE_STATES = ["DRAFT", "AI_PROCESSING", "AI_GENERATED", "APPROVED", "PUBLISHED"]
-VALID_TRANSITIONS = {
-    "DRAFT": ["AI_PROCESSING", "APPROVED", "PUBLISHED"],
-    "AI_PROCESSING": ["AI_GENERATED", "DRAFT"],
-    "AI_GENERATED": ["APPROVED", "DRAFT", "AI_PROCESSING"],
-    "APPROVED": ["PUBLISHED", "DRAFT"],
-    "PUBLISHED": ["APPROVED", "DRAFT"]
-}
 
 @router.patch("/{product_id}/status", response_model=ProductResponse)
 def transition_product_status(
@@ -167,7 +202,7 @@ def transition_product_status(
         )
 
     # Strict artisan ownership check
-    if product.seller_id != current_artisan.id:
+    if product.seller_id != current_artisan.id and current_artisan.role != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to transition status of another artisan's product."
@@ -186,6 +221,13 @@ def transition_product_status(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid lifecycle state transition from '{current_status}' to '{new_status}'. Allowed transitions: {', '.join(valid_next_states)}"
+        )
+
+    # Enforce publication approval boundary: DRAFT -> PUBLISHED direct bypass forbidden
+    if new_status == "PUBLISHED" and current_status != "APPROVED" and current_artisan.role != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Product must be APPROVED by admin before it can be PUBLISHED."
         )
 
     product.status = new_status

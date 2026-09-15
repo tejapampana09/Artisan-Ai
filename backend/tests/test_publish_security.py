@@ -56,7 +56,7 @@ def test_sync_price_decision_ownership_authorization(admin_headers):
     assert sync_res.json()["price_decisions_synced"][0]["status"] == "REJECTED_UNAUTHORIZED"
 
     # Seller B's price unchanged
-    check = client.get(f"/api/products/{pid}")
+    check = client.get(f"/api/products/{pid}", headers=headers_b)
     assert check.status_code == 200
     assert float(check.json()["price"]) == 1000.0
 

@@ -467,3 +467,86 @@ def test_domain_scoped_profile_updates():
     assert data["phone"] == "+919876543210"
     assert data["location"] == "Visakhapatnam, AP, India"
 
+
+def test_public_product_leakage_prevented(admin_headers):
+    """
+    P0 Fix: Public callers attempting GET /api/products?status=DRAFT or ?seller_id=X
+    or direct GET /api/products/{draft_id} cannot see un-published products.
+    """
+    email, pw, token, artisan_studio_headers = make_artisan_via_admin(client, admin_headers)
+    me_res = client.get("/api/studio/auth/me", headers=artisan_studio_headers)
+    assert me_res.status_code == 200
+    artisan_id = me_res.json()["id"]
+
+    # Create a DRAFT product
+    create_res = client.post("/api/products", json={
+        "title": "Secret Unapproved Craft",
+        "price": 1200.0,
+        "category": "Pottery",
+        "stock": 5
+    }, headers=artisan_studio_headers)
+    assert create_res.status_code == 201
+    pid = create_res.json()["id"]
+    assert create_res.json()["status"] == "DRAFT"
+
+    # 1. Public query ?status=DRAFT -> must NOT return draft product
+    pub_status_res = client.get("/api/products?status=DRAFT")
+    assert pub_status_res.status_code == 200
+    pub_status_ids = [p["id"] for p in pub_status_res.json()]
+    assert pid not in pub_status_ids
+
+    # 2. Public query ?seller_id=X -> must NOT return draft product
+    pub_seller_res = client.get(f"/api/products?seller_id={artisan_id}")
+    assert pub_seller_res.status_code == 200
+    pub_seller_ids = [p["id"] for p in pub_seller_res.json()]
+    assert pid not in pub_seller_ids
+
+    # 3. Direct GET /api/products/{pid} -> must return 404 for unauthenticated/buyer
+    pub_detail_res = client.get(f"/api/products/{pid}")
+    assert pub_detail_res.status_code == 404
+
+    # 4. Owner (artisan) querying their own products ?seller_id=X CAN see draft
+    owner_res = client.get(f"/api/products?seller_id={artisan_id}", headers=artisan_studio_headers)
+    assert owner_res.status_code == 200
+    owner_ids = [p["id"] for p in owner_res.json()]
+    assert pid in owner_ids
+
+
+def test_product_publish_lifecycle_authorization(admin_headers):
+    """
+    P1 Fix: Artisan cannot directly transition DRAFT -> PUBLISHED without approval.
+    APPROVED -> PUBLISHED or Admin publish is allowed.
+    """
+    _, _, _, artisan_studio_headers = make_artisan_via_admin(client, admin_headers)
+
+    create_res = client.post("/api/products", json={
+        "title": "Unapproved Silk Saree",
+        "price": 3500.0,
+        "category": "Sarees",
+        "stock": 1
+    }, headers=artisan_studio_headers)
+    assert create_res.status_code == 201
+    pid = create_res.json()["id"]
+
+    # 1. Direct DRAFT -> PUBLISHED by Artisan -> 400 Bad Request
+    direct_pub_res = client.patch(f"/api/products/{pid}/status", json={
+        "status": "PUBLISHED"
+    }, headers=artisan_studio_headers)
+    assert direct_pub_res.status_code == 400
+
+    # 2. DRAFT -> APPROVED transition
+    appr_res = client.patch(f"/api/products/{pid}/status", json={
+        "status": "APPROVED"
+    }, headers=artisan_studio_headers)
+    assert appr_res.status_code == 200
+    assert appr_res.json()["status"] == "APPROVED"
+
+    # 3. APPROVED -> PUBLISHED transition -> 200 OK
+    pub_res = client.patch(f"/api/products/{pid}/status", json={
+        "status": "PUBLISHED"
+    }, headers=artisan_studio_headers)
+    assert pub_res.status_code == 200
+    assert pub_res.json()["status"] == "PUBLISHED"
+
+
+

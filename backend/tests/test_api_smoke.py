@@ -46,7 +46,7 @@ def test_product_crud_lifecycle(admin_headers):
     # V3: products start as DRAFT
     assert prod["status"] == "DRAFT"
 
-    get_res = client.get(f"/api/products/{prod['id']}")
+    get_res = client.get(f"/api/products/{prod['id']}", headers=artisan_studio_headers)
     assert get_res.status_code == 200
     assert get_res.json()["title"] == "Kalamkari Fabric Roll"
 
