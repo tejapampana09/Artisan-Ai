@@ -17,7 +17,14 @@ const CATEGORIES = [
   'Pochampally Ikat'
 ];
 
-export default function BuyView({ user, onOpenAuth }) {
+export default function BuyView({ 
+  user, 
+  onOpenAuth, 
+  searchQuery: externalSearchQuery = '', 
+  onSearchChange,
+  initialSelectedProduct,
+  onClearInitialSelectedProduct
+}) {
   const { language, t, getCategoryTranslation } = useLanguage();
   const [products, setProducts] = useState(() => {
     const cached = getCachedProducts(user?.id);
@@ -25,7 +32,7 @@ export default function BuyView({ user, onOpenAuth }) {
   });
   const [trending, setTrending] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All Crafts');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(externalSearchQuery || '');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -44,14 +51,34 @@ export default function BuyView({ user, onOpenAuth }) {
   // Search debounce ref
   const searchTimeoutRef = useRef(null);
 
+  // Sync internal searchQuery when externalSearchQuery prop changes
+  useEffect(() => {
+    if (externalSearchQuery !== searchQuery) {
+      setSearchQuery(externalSearchQuery);
+      loadMarketplace({ search: externalSearchQuery.trim() || undefined });
+    }
+  }, [externalSearchQuery]);
+
+  // Open detail modal if initialSelectedProduct is passed from Navbar search
+  useEffect(() => {
+    if (initialSelectedProduct) {
+      setSelectedProduct(initialSelectedProduct);
+      setIsDetailOpen(true);
+      if (onClearInitialSelectedProduct) {
+        onClearInitialSelectedProduct();
+      }
+    }
+  }, [initialSelectedProduct]);
+
   const loadMarketplace = async (overrideParams = {}) => {
     if (products.length === 0) {
       setLoading(true);
     }
     try {
+      const activeSearch = overrideParams.search !== undefined ? overrideParams.search : (externalSearchQuery || searchQuery);
       const params = { status: 'PUBLISHED', ...overrideParams };
       if (selectedCategory !== 'All Crafts') params.category = selectedCategory;
-      if (searchQuery.trim()) params.search = searchQuery.trim();
+      if (activeSearch && activeSearch.trim()) params.search = activeSearch.trim();
       if (minPrice) params.min_price = minPrice;
       if (maxPrice) params.max_price = maxPrice;
 
@@ -90,6 +117,7 @@ export default function BuyView({ user, onOpenAuth }) {
   // Handle Search & Record SEARCH Event
   const handleSearchChange = (val) => {
     setSearchQuery(val);
+    if (onSearchChange) onSearchChange(val);
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
 
     if (val.trim().length >= 2 || val.trim().length === 0) {
@@ -154,77 +182,51 @@ export default function BuyView({ user, onOpenAuth }) {
         </div>
       )}
 
-      {/* Header Banner (Screen 6 Design) */}
-      <div className="bg-[#FAF7F2] rounded-3xl p-6 border border-[#EADFCF]/80 space-y-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#2C1A0E] tracking-tight">
-            Discover Handmade Treasures
-          </h1>
-          <p className="text-xs text-stone-500 font-medium mt-1">
-            Real People. Real Crafts. Real Impact.
-          </p>
-        </div>
+      {/* Elegant Luxury Marketplace Header */}
+      <div className="space-y-4 pb-4 border-b border-[#E8E5DF]">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1C1C1C] tracking-tight font-serif-luxury">
+              SHOP HANDMADE
+            </h1>
+            <p className="text-sm text-[#6B6B6B] mt-1 font-sans">
+              Discover authentic pieces crafted by independent artisans across India.
+            </p>
+          </div>
 
-        {/* Search Bar */}
-        <div className="flex items-center bg-white rounded-2xl p-2.5 px-3.5 border border-[#EADFCF] shadow-xs">
-          <Search className="w-4 h-4 text-stone-400 mr-2 shrink-0" />
-          <input
-            id="marketplace-search-input"
-            type="text"
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search for handmade products..."
-            className="w-full bg-transparent text-stone-900 placeholder-stone-400 text-xs focus:outline-none"
-          />
+          {/* Active Search Query Filter Pill Indicator */}
           {searchQuery && (
-            <button onClick={() => handleSearchChange('')} className="text-stone-400 text-xs px-1">
-              Clear
-            </button>
+            <div className="flex items-center space-x-2 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full text-xs text-[#A6533B] font-semibold self-start md:self-auto shadow-2xs">
+              <span>Search: "{searchQuery}"</span>
+              <button
+                onClick={() => handleSearchChange('')}
+                className="hover:text-amber-900 font-bold ml-1 cursor-pointer"
+                title="Clear search filter"
+              >
+                ✕
+              </button>
+            </div>
           )}
         </div>
 
-        {/* Marketplace Banner */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#933D1E] via-[#B84D26] to-[#7E3216] text-white p-6 sm:p-8 shadow-xl border border-amber-900/40">
-          <div className="relative z-10 space-y-2">
-            <div className="inline-flex items-center space-x-2 bg-white/15 border border-white/25 px-3 py-1 rounded-full text-[11px] font-bold text-amber-200 backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Verified Direct-to-Artisan Marketplace</span>
-            </div>
-            
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Live Artisan Marketplace Catalog
-            </h2>
-
-            <p className="text-xs sm:text-sm text-amber-100/90 max-w-xl font-normal">
-              Browse authentic GI-tagged crafts direct from master artisans. 100% fair margin protected with zero middleman commissions.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-2 pt-2 text-[11px] font-bold text-amber-100">
-              <span className="bg-white/10 px-2.5 py-1 rounded-lg border border-white/15">✨ GI Tagged Heritage</span>
-              <span className="bg-white/10 px-2.5 py-1 rounded-lg border border-white/15">🛡️ ≥20% Fair Profit Floor</span>
-              <span className="bg-white/10 px-2.5 py-1 rounded-lg border border-white/15">🤝 1-Click WhatsApp & Direct Call</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Category Chips (Screen 6 Design) */}
-      <div className="space-y-2">
-        <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest px-1">Categories</h3>
-        <div className="flex items-center space-x-2.5 overflow-x-auto pb-2 no-scrollbar">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => handleCategorySelect(cat)}
-              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
-                selectedCategory === cat
-                  ? 'bg-[#933D1E] text-white border-[#933D1E] shadow-sm'
-                  : 'bg-white text-stone-700 border-[#EADFCF] hover:border-amber-700/40'
-              }`}
-            >
-              {getCategoryTranslation(cat)}
-            </button>
-          ))}
+        {/* Clean Minimalist Category Filter Pills */}
+        <div className="flex items-center space-x-2.5 overflow-x-auto pb-1 no-scrollbar pt-2">
+          {CATEGORIES.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => handleCategorySelect(cat)}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#A6533B] text-white shadow-xs'
+                    : 'bg-white border border-[#E8E5DF] text-[#1C1C1C] hover:border-[#A6533B] hover:text-[#A6533B]'
+                }`}
+              >
+                {cat}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -232,11 +234,11 @@ export default function BuyView({ user, onOpenAuth }) {
       {trending.length > 0 && selectedCategory === 'All Crafts' && !searchQuery && !minPrice && !maxPrice && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-[#2A1E17] flex items-center space-x-1.5">
+            <h3 className="text-sm font-bold text-[#1C1C1C] flex items-center space-x-1.5">
               <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
               <span>{t('trendingHeritageCrafts', 'Trending Heritage Crafts')}</span>
             </h3>
-            <span className="text-[11px] text-[#6B5B51]">{t('rankedByInterest', 'Ranked by buyer interest velocity')}</span>
+            <span className="text-[11px] text-[#6B6B6B]">{t('rankedByInterest', 'High Demand')}</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -248,18 +250,18 @@ export default function BuyView({ user, onOpenAuth }) {
                   setIsDetailOpen(true);
                   triggerEventRefresh();
                 }}
-                className="bg-[#FBF8F3] p-3 rounded-2xl border border-[#EADFCF] hover:border-[#933D1E] hover:border-orange-400 transition-all cursor-pointer shadow-xs group"
+                className="bg-white p-2.5 rounded-xl border border-[#E8E5DF] hover:border-[#A6533B] transition-all cursor-pointer shadow-xs group"
               >
-                <div className="relative rounded-xl overflow-hidden h-28 bg-[#F4EBE1]">
+                <div className="relative rounded-lg overflow-hidden h-28 bg-stone-100">
                   <img src={p.image_url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                  <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                    {t('highDemand', 'High Demand')}
+                  <span className="absolute top-1.5 left-1.5 bg-rose-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded">
+                    HOT
                   </span>
                 </div>
-                <h4 className="text-xs font-bold text-[#2A1E17] mt-2 truncate">{getLocalizedProductField(p, 'title', language)}</h4>
+                <h4 className="text-xs font-bold text-[#1C1C1C] mt-2 truncate">{getLocalizedProductField(p, 'title', language)}</h4>
                 <div className="flex justify-between items-center mt-1">
-                  <span className="text-xs font-extrabold text-[#933D1E]">₹{p.price.toLocaleString('en-IN')}</span>
-                  <span className="text-[10px] text-[#6B5B51]">{getCategoryTranslation(p.category)}</span>
+                  <span className="text-xs font-extrabold text-[#A6533B]">₹{p.price.toLocaleString('en-IN')}</span>
+                  <span className="text-[10px] text-[#6B6B6B]">{getCategoryTranslation(p.category)}</span>
                 </div>
               </div>
             ))}
@@ -267,157 +269,120 @@ export default function BuyView({ user, onOpenAuth }) {
         </div>
       )}
 
-      {/* Main Marketplace Grid */}
+      {/* Main Marketplace Grid (Flipkart / Myntra Style Native 2-Column Grid) */}
       <div className="space-y-3">
-        <div className="flex justify-between items-center">
-          <h3 className="text-sm font-bold text-[#2A1E17]">
+        <div className="flex justify-between items-center px-1">
+          <h3 className="text-sm font-bold text-[#1C1C1C]">
             {selectedCategory === 'All Crafts' ? t('allArtisanCollections', 'All Artisan Collections') : `${getCategoryTranslation(selectedCategory)} Collection`}
           </h3>
-          <span className="text-xs text-[#6B5B51]">{products.length} {t('craftsAvailable', 'crafts available')}</span>
+          <span className="text-xs text-[#6B6B6B]">{products.length} {t('craftsAvailable', 'items')}</span>
         </div>
 
         {loading ? (
-          <div className="bg-white p-12 rounded-2xl border border-[#EADFCF] text-center">
-            <div className="w-6 h-6 border-2 border-[#933D1E] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-            <p className="text-xs text-[#6B5B51]">Loading marketplace crafts...</p>
+          <div className="bg-white p-12 rounded-2xl border border-[#E8E5DF] text-center">
+            <div className="w-6 h-6 border-2 border-[#A6533B] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <p className="text-xs text-[#6B6B6B]">Loading marketplace crafts...</p>
           </div>
         ) : products.length === 0 ? (
-          <div className="bg-white p-12 rounded-2xl border border-dashed border-[#EADFCF] text-center space-y-2">
+          <div className="bg-white p-12 rounded-2xl border border-dashed border-[#E8E5DF] text-center space-y-2">
             <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto" />
-            <p className="text-sm font-medium text-[#2A1E17]">No crafts matched your filter or search.</p>
-            <p className="text-xs text-[#9E8E83]">Try adjusting price range, clearing search query, or selecting "All Crafts".</p>
+            <p className="text-sm font-medium text-[#1C1C1C]">No crafts matched your filter or search.</p>
+            <p className="text-xs text-[#6B6B6B]">Try adjusting price range, clearing search query, or selecting "All Crafts".</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4">
             {products.map((p) => {
               const isSaved = savedProductIds.has(p.id);
               const cardTitle = getLocalizedProductField(p, 'title', language);
-              const cardDesc = getLocalizedProductField(p, 'description', language) || getLocalizedProductField(p, 'craft_story', language);
               return (
                 <div
                   key={p.id}
-                  className="bg-white rounded-2xl border border-[#EADFCF] overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
+                  className="bg-white rounded-xl border border-[#E8E5DF] overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer"
+                  onClick={() => {
+                    setSelectedProduct(p);
+                    setIsDetailOpen(true);
+                    triggerEventRefresh();
+                  }}
                 >
                   <div>
-                    {/* Image with quick-save */}
-                    <div className="relative h-48 bg-[#F4EBE1] overflow-hidden">
+                    {/* Flipkart Style Portrait Image (Aspect 4:5) */}
+                    <div className="relative aspect-[4/5] bg-stone-100 overflow-hidden">
                       <img
                         src={p.image_url}
                         alt={cardTitle}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
-                        onClick={() => {
-                          setSelectedProduct(p);
-                          setIsDetailOpen(true);
-                          triggerEventRefresh();
-                        }}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
+                      
+                      {/* Wishlist Heart Overlay */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleSave(p);
                         }}
-                        className={`absolute top-2.5 right-2.5 p-2 rounded-full backdrop-blur-md transition-all cursor-pointer ${
+                        className={`absolute top-2 right-2 p-1.5 rounded-full shadow-xs transition-all cursor-pointer ${
                           isSaved
-                            ? 'bg-rose-600 text-white shadow-md'
-                            : 'bg-white/80 text-[#6B5B51] hover:text-rose-600 hover:bg-white'
+                            ? 'bg-rose-600 text-white'
+                            : 'bg-white/90 text-stone-600 hover:text-rose-600'
                         }`}
-                        title="Save Craft (SAVE event)"
                       >
                         <Heart className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
                       </button>
-                      <span className="absolute bottom-2 left-2 bg-slate-900/80 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full backdrop-blur-xs">
+
+                      {/* Real Craft Category Tag */}
+                      <span className="absolute bottom-2 left-2 bg-[#1C1C1C]/80 text-white text-[10px] font-semibold px-2 py-0.5 rounded backdrop-blur-xs">
                         {getCategoryTranslation(p.category)}
                       </span>
                     </div>
 
-                    {/* Metadata */}
-                    <div className="p-4 space-y-1.5">
-                      <h4
-                        className="font-bold text-[#2A1E17] text-sm hover:text-[#933D1E] cursor-pointer line-clamp-1"
-                        onClick={() => {
-                          setSelectedProduct(p);
-                          setIsDetailOpen(true);
-                          triggerEventRefresh();
-                        }}
-                      >
+                    {/* Product Info */}
+                    <div className="p-3 space-y-1">
+                      <span className="text-[10px] font-bold text-[#A6533B] uppercase tracking-wider block">
+                        {p.artisan_name || 'Authentic Handloom Craft'}
+                      </span>
+                      <h4 className="font-bold text-[#1C1C1C] text-xs truncate">
                         {cardTitle}
                       </h4>
-                      <p className="text-xs text-[#6B5B51] line-clamp-2 leading-relaxed">
-                        {cardDesc}
-                      </p>
+
+                      {/* Real Price & Stock Badge Block */}
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-sm font-extrabold text-[#1C1C1C]">₹{p.price.toLocaleString('en-IN')}</span>
+                        {p.stock > 0 ? (
+                          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            {p.stock} in stock
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                            Out of Stock
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-[10px] font-semibold text-stone-500 pt-0.5">
+                        🚚 Direct Artisan Shipment
+                      </div>
                     </div>
                   </div>
 
-                  {/* Price & Actions */}
-                  <div className="p-4 pt-0 border-t border-[#EADFCF]/60 mt-2 space-y-2.5">
-                    <div className="flex justify-between items-baseline pt-2">
-                      <div>
-                        <span className="text-[10px] text-[#9E8E83] block">{t('directFairPrice', 'Direct Fair Price')}</span>
-                        <span className="text-base font-extrabold text-[#2A1E17]">₹{p.price.toLocaleString('en-IN')}</span>
-                      </div>
-                      {p.stock > 0 ? (
-                        <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                          {p.stock} {t('inStock', 'in stock')}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                          {t('outOfStock', 'Out of Stock')}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedProduct(p);
-                          setIsDetailOpen(true);
-                          triggerEventRefresh();
-                        }}
-                        className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-semibold text-[#2A1E17] bg-[#F4EBE1] hover:bg-[#EADFCF] rounded-xl transition-colors cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>{t('viewDetails', 'View')}</span>
-                      </button>
-
-                      {user && p.seller_id === user.id ? (
-                        <span 
-                          className="inline-flex items-center justify-center space-x-1 py-2 text-[11px] font-bold text-[#933D1E] bg-amber-50 border border-[#933D1E]/30 rounded-xl cursor-default"
-                          title="This is your own listed craft. Self-purchase is disabled."
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#933D1E]" />
-                          <span>{t('yourCraft', 'Your Craft')}</span>
-                        </span>
-                      ) : p.stock <= 0 ? (
-                        <button
-                          onClick={() => {
-                            if (!user) {
-                              onOpenAuth?.();
-                              return;
-                            }
-                            setOrderModal({ isOpen: true, product: p, mode: 'ENQUIRY' });
-                          }}
-                          className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-bold text-[#933D1E] bg-amber-50 hover:bg-amber-100 border border-[#933D1E]/30 rounded-xl transition-colors cursor-pointer"
-                          title="Out of stock for direct checkout. Click to request a custom batch or pre-order."
-                        >
-                          <Send className="w-3.5 h-3.5 text-[#933D1E]" />
-                          <span>{t('preOrder', 'Pre-Order')}</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            if (!user) {
-                              onOpenAuth?.();
-                              return;
-                            }
-                            setOrderModal({ isOpen: true, product: p, mode: 'ORDER' });
-                          }}
-                          className="inline-flex items-center justify-center space-x-1 py-2 text-xs font-bold text-white bg-[#933D1E] hover:bg-[#7E3216] rounded-xl shadow-xs transition-colors cursor-pointer"
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>{t('buyNow', 'Buy Now')}</span>
-                        </button>
-                      )}
-                    </div>
+                  {/* Add to Cart Button */}
+                  <div className="p-3 pt-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!user) {
+                          onOpenAuth?.();
+                          return;
+                        }
+                        if (p.stock > 0) {
+                          setOrderModal({ isOpen: true, product: p, mode: 'ORDER' });
+                        } else {
+                          setOrderModal({ isOpen: true, product: p, mode: 'ENQUIRY' });
+                        }
+                      }}
+                      className="w-full py-2 bg-[#A6533B] hover:bg-[#88412F] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center space-x-1 shadow-xs"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                      <span>{p.stock > 0 ? 'Add to Cart' : 'Pre-Order'}</span>
+                    </button>
                   </div>
                 </div>
               );

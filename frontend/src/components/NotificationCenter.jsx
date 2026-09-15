@@ -8,7 +8,7 @@ export default function NotificationCenter() {
   if (!notifications || notifications.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col space-y-2 max-w-sm w-full px-4 pointer-events-none">
+    <div className="fixed top-4 right-4 z-[9999] flex flex-col space-y-2 max-w-sm w-full px-4 pointer-events-none">
       {notifications.map((n) => {
         let bgClass = 'bg-slate-900 text-white border-slate-700';
         let Icon = Info;

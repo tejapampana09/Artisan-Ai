@@ -42,12 +42,18 @@ const getStepIndex = (status) => {
   }
 };
 
-export default function SellView({ user, onOpenAuth, onSwitchMode }) {
+export default function SellView({ user, onOpenAuth, onSwitchMode, activeSellerTab = 'DASHBOARD', onSelectSellerTab }) {
   const notify = useNotification();
   const [products, setProducts] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [activeTab, setActiveTab] = useState('DASHBOARD'); // 'DASHBOARD' | 'PRODUCTS' | 'PRICING' | 'PASSPORT' | 'ORDERS' | 'INSIGHTS' | 'SYNC_STATUS' | 'CHANNELS'
+  const [activeTab, setActiveTab] = useState(activeSellerTab || 'DASHBOARD'); // 'DASHBOARD' | 'PRODUCTS' | 'PRICING' | 'PASSPORT' | 'ORDERS' | 'INSIGHTS' | 'SYNC_STATUS' | 'CHANNELS'
+
+  useEffect(() => {
+    if (activeSellerTab) {
+      setActiveTab(activeSellerTab);
+    }
+  }, [activeSellerTab]);
   const [demands, setDemands] = useState([]);
   const [copilotInsight, setCopilotInsight] = useState(null);
   const [opportunities, setOpportunities] = useState([]);
@@ -209,6 +215,13 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
   const showNotification = (msg) => {
     setNotification(msg);
     setTimeout(() => setNotification(''), 3500);
+  };
+
+  const handleTabClick = (tab) => {
+    setActiveTab(tab);
+    if (onSelectSellerTab) {
+      onSelectSellerTab(tab);
+    }
   };
 
   const handleSendReply = async (enquiryId) => {
@@ -379,178 +392,200 @@ export default function SellView({ user, onOpenAuth, onSwitchMode }) {
         </div>
       )}
 
-      {/* Welcome Banner (Screen 5 Design) */}
-      <div className="bg-[#FBF8F3] rounded-3xl p-6 sm:p-8 border border-[#EADFCF] shadow-xs space-y-4">
-        <div>
-          <span className="font-script text-[#933D1E] text-lg block">Artisan Studio</span>
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#2A1E17]">
-            Good morning, {user?.name || 'Lakshmi'} 👋
-          </h1>
-          <p className="text-xs text-[#6B5B51] font-medium mt-0.5">
-            Your craft can change lives! • Craft: <span className="font-bold text-[#2A1E17]">{user?.craft || 'Handicrafts'}</span>
-          </p>
-        </div>
-
-        {/* Hero Card: Create Your Product with AI */}
-        <div 
-          onClick={() => setIsAIOpen(true)}
-          className="bg-[#933D1E] text-white p-5 rounded-2xl shadow-md flex items-center justify-between cursor-pointer group hover:bg-[#7E3216] transition-all"
-        >
-          <div className="space-y-1.5 max-w-md">
-            <div className="inline-flex items-center space-x-1.5 bg-white/20 text-amber-200 px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-white/20">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Voice & Camera AI</span>
-            </div>
-            <h3 className="font-serif text-lg font-bold text-white group-hover:translate-x-0.5 transition-transform">
-              Create Your Product with AI →
-            </h3>
-            <p className="text-xs text-amber-100">
-              Take a photo or speak in Telugu/Hindi to create your catalog instantly.
-            </p>
+      {/* Dedicated Seller Studio Portal Top Header with Shifted Navigation Tabs */}
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-2">
+        {/* Left: Brand & Portal Badge */}
+        <div className="flex items-center space-x-3 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-white border border-[#E8E5DF] text-[#A6533B] flex items-center justify-center shrink-0 font-bold shadow-2xs">
+            <Store className="w-5 h-5 text-[#A6533B]" />
           </div>
-          <div className="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <Wand2 className="w-6 h-6 text-amber-300" />
-          </div>
-        </div>
-
-        {/* 4 Pastel Studio Action Cards (Screen 3 Reference Design) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-          {/* Card 1: Create Catalog (Mint) */}
-          <div 
-            onClick={() => setIsAIOpen(true)}
-            className="bg-[#E6F4EA] border border-[#CEEAD6] p-4 rounded-2xl cursor-pointer hover:shadow-md transition-all space-y-2 group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-[#137333] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-              <Wand2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-serif font-bold text-sm text-[#0D652D]">Create Catalog</h4>
-              <p className="text-[11px] text-[#137333]/80 leading-tight mt-0.5">Use AI to generate product details</p>
-            </div>
-          </div>
-
-          {/* Card 2: Market Research (Peach) */}
-          <div 
-            onClick={() => setActiveTab('INSIGHTS')}
-            className="bg-[#FCE8E6] border border-[#FAD2CF] p-4 rounded-2xl cursor-pointer hover:shadow-md transition-all space-y-2 group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-[#C5221F] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-              <BarChart3 className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-serif font-bold text-sm text-[#B31412]">Market Research</h4>
-              <p className="text-[11px] text-[#C5221F]/80 leading-tight mt-0.5">Check market trends & competitors</p>
-            </div>
-          </div>
-
-          {/* Card 3: Smart Pricing (Gold) */}
-          <div 
-            onClick={() => setActiveTab('PRICING')}
-            className="bg-[#FEF7E0] border border-[#FCE8B2] p-4 rounded-2xl cursor-pointer hover:shadow-md transition-all space-y-2 group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-[#B06000] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-              <Tag className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-serif font-bold text-sm text-[#8C4A00]">Smart Pricing</h4>
-              <p className="text-[11px] text-[#B06000]/80 leading-tight mt-0.5">Get AI price recommendations</p>
-            </div>
-          </div>
-
-          {/* Card 4: Demand Insights (Lavender) */}
-          <div 
-            onClick={() => setActiveTab('DASHBOARD')}
-            className="bg-[#F3E8FD] border border-[#E9D5FF] p-4 rounded-2xl cursor-pointer hover:shadow-md transition-all space-y-2 group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-[#7E22CE] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-serif font-bold text-sm text-[#6B21A8]">Demand Insights</h4>
-              <p className="text-[11px] text-[#7E22CE]/80 leading-tight mt-0.5">See what's trending in market</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Today's Insights Section (Screen 5 Design) */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-extrabold text-[#2C1A0E] uppercase tracking-wider">
-          Today's Insights
-        </h3>
-        <div className="grid grid-cols-3 gap-3">
-          {/* Metric 1 */}
-          <div className="bg-white p-4 rounded-2xl border border-[#EADFCF]/80 shadow-xs space-y-1 text-center">
-            <span className="text-[11px] font-semibold text-stone-400 block">New Views</span>
-            <span className="text-xl font-extrabold text-[#2C1A0E]">{dashboardData?.total_views ?? myProducts.reduce((sum, p) => sum + (p.views_count || 0), 0)}</span>
-          </div>
-
-          {/* Metric 2 */}
-          <div className="bg-white p-4 rounded-2xl border border-[#EADFCF]/80 shadow-xs space-y-1 text-center">
-            <span className="text-[11px] font-semibold text-stone-400 block">Enquiries</span>
-            <span className="text-xl font-extrabold text-[#2C1A0E]">{dashboardData?.total_enquiries ?? enquiries.length}</span>
-          </div>
-
-          {/* Metric 3 */}
-          <div className="bg-white p-4 rounded-2xl border border-[#EADFCF]/80 shadow-xs space-y-1 text-center">
-            <span className="text-[11px] font-semibold text-stone-400 block">Potential Earnings</span>
-            <span className="text-xl font-extrabold text-[#4A2E1B]">₹{totalCatalogValue.toLocaleString('en-IN')}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Regional Craft Market Demand */}
-      <MarketDemandWidget demands={demands} />
-
-      {/* 9-Section Unified Artisan Workspace Navigation Tabs */}
-      <div className="flex items-center space-x-1.5 border-b border-[#EADFCF] pb-3 flex-wrap gap-y-2">
-        <button
-          onClick={() => setActiveTab('DASHBOARD')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'DASHBOARD'
-              ? 'bg-[#933D1E] text-white shadow-sm font-bold'
-              : 'bg-white text-[#6B5B51] hover:bg-[#F4EBE1] border border-[#EADFCF]'
-          }`}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>My Dashboard</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('PRODUCTS')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'PRODUCTS'
-              ? 'bg-[#933D1E] text-white shadow-sm font-bold'
-              : 'bg-white text-[#6B5B51] hover:bg-[#F4EBE1] border border-[#EADFCF]'
-          }`}
-        >
-          <Package className="w-3.5 h-3.5" />
-          <span>My Products ({myProducts.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('ORDERS')}
-          className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
-            activeTab === 'ORDERS'
-              ? 'bg-emerald-600 text-white shadow-sm'
-              : 'bg-white text-[#6B5B51] hover:bg-[#F4EBE1] border border-[#EADFCF]'
-          }`}
-        >
-          <ShoppingCart className="w-3.5 h-3.5" />
-          <span>Orders & Enquiries ({orders.length + enquiries.length})</span>
-          {enquiries.length > 0 && (
-            <span className="bg-amber-500 text-white text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ml-1">
-              {enquiries.length} New
+          <div className="flex items-center space-x-2">
+            <h2 className="font-extrabold text-lg text-[#1C1C1C] tracking-tight">ARTISAN AI SELLER STUDIO</h2>
+            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-100 text-[#A6533B] border border-amber-200 shrink-0">
+              Seller Portal
             </span>
-          )}
+          </div>
+        </div>
+
+        {/* Center: Simple Minimalist Navigation Links (No Button Boxes) */}
+        <div className="flex items-center space-x-6 overflow-x-auto max-w-full pb-1 lg:pb-0 no-scrollbar">
+          <button
+            onClick={() => handleTabClick('DASHBOARD')}
+            className={`inline-flex items-center space-x-1.5 text-xs transition-all cursor-pointer shrink-0 pb-1 ${
+              activeTab === 'DASHBOARD'
+                ? 'font-extrabold text-[#A6533B] border-b-2 border-[#A6533B]'
+                : 'font-semibold text-[#6B6B6B] hover:text-[#1C1C1C]'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>My Dashboard</span>
+          </button>
+
+          <button
+            onClick={() => handleTabClick('PRODUCTS')}
+            className={`inline-flex items-center space-x-1.5 text-xs transition-all cursor-pointer shrink-0 pb-1 ${
+              activeTab === 'PRODUCTS'
+                ? 'font-extrabold text-[#A6533B] border-b-2 border-[#A6533B]'
+                : 'font-semibold text-[#6B6B6B] hover:text-[#1C1C1C]'
+            }`}
+          >
+            <Package className="w-3.5 h-3.5" />
+            <span>My Products ({myProducts.length})</span>
+          </button>
+
+          <button
+            onClick={() => handleTabClick('ORDERS')}
+            className={`inline-flex items-center space-x-1.5 text-xs transition-all cursor-pointer relative shrink-0 pb-1 ${
+              activeTab === 'ORDERS'
+                ? 'font-extrabold text-[#A6533B] border-b-2 border-[#A6533B]'
+                : 'font-semibold text-[#6B6B6B] hover:text-[#1C1C1C]'
+            }`}
+          >
+            <ShoppingCart className="w-3.5 h-3.5" />
+            <span>Orders & Enquiries ({orders.length + enquiries.length})</span>
+            {enquiries.length > 0 && (
+              <span className="bg-[#356B4A] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full ml-1">
+                {enquiries.length} New
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Right: Switch to Marketplace Button */}
+        <button
+          onClick={() => onSwitchMode?.('BUY')}
+          className="bg-white hover:bg-stone-50 text-[#1C1C1C] border border-[#E8E5DF] hover:border-[#A6533B] hover:text-[#A6533B] text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center space-x-2 shrink-0 shadow-2xs"
+        >
+          <ShoppingCart className="w-4 h-4 text-[#A6533B]" />
+          <span>Switch to Marketplace</span>
         </button>
       </div>
-
 
       {/* SECTION 1: DASHBOARD */}
       {activeTab === 'DASHBOARD' && (
         <div className="space-y-6">
+          {/* Welcome Banner */}
+          <div className="bg-[#FAF9F6] rounded-2xl p-6 sm:p-8 border border-[#E8E5DF] shadow-xs space-y-4">
+            <div>
+              <span className="text-[#A6533B] text-xs uppercase tracking-widest font-semibold block">Artisan Studio Dashboard</span>
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#1C1C1C] tracking-tight mt-1">
+                Good morning, {user?.name || 'Lakshmi'} 👋
+              </h1>
+              <p className="text-xs text-[#6B6B6B] font-medium mt-1">
+                Your craft can change lives! • Craft: <span className="font-bold text-[#1C1C1C]">{user?.craft || 'Handicrafts'}</span>
+              </p>
+            </div>
 
+            {/* Hero Card: Create Your Product with AI */}
+            <div 
+              onClick={() => setIsAIOpen(true)}
+              className="bg-[#A6533B] text-white p-5 rounded-xl shadow-xs flex items-center justify-between cursor-pointer group hover:bg-[#88412F] transition-all"
+            >
+              <div className="space-y-1.5 max-w-md">
+                <div className="inline-flex items-center space-x-1.5 bg-white/20 text-white px-2.5 py-0.5 rounded-md text-[11px] font-bold">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Voice & Camera AI</span>
+                </div>
+                <h3 className="text-base font-bold text-white group-hover:translate-x-0.5 transition-transform">
+                  Create Your Product with AI →
+                </h3>
+                <p className="text-xs text-stone-200">
+                  Take a photo or speak in Telugu/Hindi to create your catalog instantly.
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <Wand2 className="w-5 h-5 text-white" />
+              </div>
+            </div>
+
+            {/* 4 Studio Action Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              {/* Card 1: Create Catalog */}
+              <div 
+                onClick={() => setIsAIOpen(true)}
+                className="bg-white border border-[#E8E5DF] p-4 rounded-xl cursor-pointer hover:border-[#A6533B] transition-all space-y-2 group"
+              >
+                <div className="w-9 h-9 rounded-lg bg-[#FAF9F6] text-[#A6533B] flex items-center justify-center border border-[#E8E5DF] group-hover:scale-105 transition-transform">
+                  <Wand2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs text-[#1C1C1C]">Create Catalog</h4>
+                  <p className="text-[11px] text-[#6B6B6B] leading-tight mt-0.5">Use AI to generate product details</p>
+                </div>
+              </div>
+
+              {/* Card 2: Market Research */}
+              <div 
+                onClick={() => handleTabClick('INSIGHTS')}
+                className="bg-white border border-[#E8E5DF] p-4 rounded-xl cursor-pointer hover:border-[#A6533B] transition-all space-y-2 group"
+              >
+                <div className="w-9 h-9 rounded-lg bg-[#FAF9F6] text-[#1C1C1C] flex items-center justify-center border border-[#E8E5DF] group-hover:scale-105 transition-transform">
+                  <BarChart3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs text-[#1C1C1C]">Market Research</h4>
+                  <p className="text-[11px] text-[#6B6B6B] leading-tight mt-0.5">Check market trends & competitors</p>
+                </div>
+              </div>
+
+              {/* Card 3: Smart Pricing */}
+              <div 
+                onClick={() => handleTabClick('PRICING')}
+                className="bg-white border border-[#E8E5DF] p-4 rounded-xl cursor-pointer hover:border-[#A6533B] transition-all space-y-2 group"
+              >
+                <div className="w-9 h-9 rounded-lg bg-[#FAF9F6] text-[#1C1C1C] flex items-center justify-center border border-[#E8E5DF] group-hover:scale-105 transition-transform">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs text-[#1C1C1C]">Smart Pricing</h4>
+                  <p className="text-[11px] text-[#6B6B6B] leading-tight mt-0.5">Get AI price recommendations</p>
+                </div>
+              </div>
+
+              {/* Card 4: Demand Insights */}
+              <div 
+                onClick={() => handleTabClick('DASHBOARD')}
+                className="bg-white border border-[#E8E5DF] p-4 rounded-xl cursor-pointer hover:border-[#A6533B] transition-all space-y-2 group"
+              >
+                <div className="w-9 h-9 rounded-lg bg-[#FAF9F6] text-[#1C1C1C] flex items-center justify-center border border-[#E8E5DF] group-hover:scale-105 transition-transform">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs text-[#1C1C1C]">Demand Insights</h4>
+                  <p className="text-[11px] text-[#6B6B6B] leading-tight mt-0.5">See what's trending in market</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Today's Insights Section */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold text-[#1C1C1C] uppercase tracking-wider">
+              Today's Insights
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
+              {/* Metric 1 */}
+              <div className="bg-white p-4 rounded-xl border border-[#E8E5DF] shadow-xs space-y-1 text-center">
+                <span className="text-[11px] font-semibold text-[#6B6B6B] block">New Views</span>
+                <span className="text-xl font-extrabold text-[#1C1C1C]">{dashboardData?.total_views ?? myProducts.reduce((sum, p) => sum + (p.views_count || 0), 0)}</span>
+              </div>
+
+              {/* Metric 2 */}
+              <div className="bg-white p-4 rounded-xl border border-[#E8E5DF] shadow-xs space-y-1 text-center">
+                <span className="text-[11px] font-semibold text-[#6B6B6B] block">Enquiries</span>
+                <span className="text-xl font-extrabold text-[#1C1C1C]">{dashboardData?.total_enquiries ?? enquiries.length}</span>
+              </div>
+
+              {/* Metric 3 */}
+              <div className="bg-white p-4 rounded-xl border border-[#E8E5DF] shadow-xs space-y-1 text-center">
+                <span className="text-[11px] font-semibold text-[#6B6B6B] block">Potential Earnings</span>
+                <span className="text-xl font-extrabold text-[#A6533B]">₹{totalCatalogValue.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Regional Craft Market Demand */}
+          <MarketDemandWidget demands={demands} />
 
           {/* Quick Catalog Overview Grid */}
           <ProductList

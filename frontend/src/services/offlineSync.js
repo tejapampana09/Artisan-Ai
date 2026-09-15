@@ -24,6 +24,15 @@ export function setStoredUser(user) {
   }
 }
 
+export function getStoredUser() {
+  try {
+    const raw = localStorage.getItem('artisan_ai_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 function getQueueKey(userId) {
   return `artisan_ai_offline_queue_${getCurrentUserId(userId)}`;
 }

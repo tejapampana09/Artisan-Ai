@@ -105,6 +105,10 @@ def ensure_schema_migrations(eng):
                     conn.execute(text("ALTER TABLE orders ADD COLUMN cancellation_reason TEXT"))
                 if "tracking_history" not in ord_cols:
                     conn.execute(text("ALTER TABLE orders ADD COLUMN tracking_history TEXT"))
+                if "payment_method" not in ord_cols:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN payment_method VARCHAR DEFAULT 'UPI'"))
+                if "payment_tx_id" not in ord_cols:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN payment_tx_id VARCHAR"))
 
             # Check draft_catalogs table columns
             res_draft = conn.execute(text("PRAGMA table_info(draft_catalogs)")).fetchall()
@@ -137,6 +141,8 @@ def ensure_schema_migrations(eng):
             conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancellation_status VARCHAR DEFAULT 'NONE';"))
             conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;"))
             conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_history TEXT;"))
+            conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR DEFAULT 'UPI';"))
+            conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_tx_id VARCHAR;"))
             conn.commit()
 
 ensure_sqlite_schema = ensure_schema_migrations

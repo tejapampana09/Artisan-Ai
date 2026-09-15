@@ -52,40 +52,40 @@ export default function ReviewsSection({ productId, user, product }) {
     : 0;
 
   return (
-    <div className="mt-4 pt-4 border-t border-[#EADFCF] space-y-3">
+    <div className="mt-4 pt-4 border-t border-[#E8E5DF] space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <MessageSquare className="w-4 h-4 text-[#933D1E]" />
-          <h4 className="font-bold text-[#2A1E17] text-xs uppercase tracking-wider">
+          <MessageSquare className="w-4 h-4 text-[#A6533B]" />
+          <h4 className="font-bold text-[#1C1C1C] text-xs uppercase tracking-wider">
             Verified Buyer Reviews & Ratings
           </h4>
         </div>
         {reviews.length > 0 && (
-          <div className="flex items-center space-x-1.5 bg-amber-50 px-2.5 py-0.5 rounded-full border border-[#933D1E]/30 text-xs font-bold text-amber-900">
+          <div className="flex items-center space-x-1.5 bg-[#FAF9F6] px-2.5 py-0.5 rounded border border-[#E8E5DF] text-xs font-bold text-[#1C1C1C]">
             <Star className="w-3.5 h-3.5 text-amber-500 fill-current" />
             <span>{avgRating} / 5</span>
-            <span className="text-[#9E8E83] text-[10px]">({reviews.length})</span>
+            <span className="text-[#6B6B6B] text-[10px]">({reviews.length})</span>
           </div>
         )}
       </div>
 
       {/* Review List */}
       {loading ? (
-        <p className="text-xs text-[#9E8E83]">Loading reviews...</p>
+        <p className="text-xs text-[#6B6B6B]">Loading reviews...</p>
       ) : reviews.length === 0 ? (
-        <div className="p-3 bg-[#FAF7F2] rounded-xl text-center text-xs text-[#6B5B51] border border-[#EADFCF]/60">
+        <div className="p-3 bg-[#FAF9F6] rounded-md text-center text-xs text-[#6B6B6B] border border-[#E8E5DF]">
           No buyer reviews yet. Be the first verified buyer to leave a review!
         </div>
       ) : (
         <div className="space-y-2.5 max-h-44 overflow-y-auto pr-1">
           {reviews.map((rev) => (
-            <div key={rev.id} className="p-2.5 bg-[#FAF7F2] rounded-xl border border-[#EADFCF] text-xs space-y-1">
+            <div key={rev.id} className="p-2.5 bg-[#FAF9F6] rounded-md border border-[#E8E5DF] text-xs space-y-1">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-1.5">
-                  <span className="font-bold text-[#2A1E17]">{rev.buyer_name}</span>
+                  <span className="font-bold text-[#1C1C1C]">{rev.buyer_name}</span>
                   {rev.verified_purchase && (
-                    <span className="flex items-center text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
-                      <ShieldCheck className="w-3 h-3 text-emerald-600 mr-0.5" />
+                    <span className="flex items-center text-[10px] font-semibold text-[#356B4A] bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                      <ShieldCheck className="w-3 h-3 text-[#356B4A] mr-0.5" />
                       Verified Purchase
                     </span>
                   )}
@@ -99,7 +99,7 @@ export default function ReviewsSection({ productId, user, product }) {
                   ))}
                 </div>
               </div>
-              {rev.comment && <p className="text-[#6B5B51] leading-snug">{rev.comment}</p>}
+              {rev.comment && <p className="text-[#6B6B6B] leading-snug">{rev.comment}</p>}
             </div>
           ))}
         </div>
@@ -107,20 +107,20 @@ export default function ReviewsSection({ productId, user, product }) {
 
       {/* Add Review Form or Seller Self-Review Prohibition Notice */}
       {isSellerOwner ? (
-        <div className="p-3 bg-amber-50/80 rounded-xl border border-[#933D1E]/30 text-amber-900 text-xs space-y-1">
-          <div className="flex items-center space-x-1.5 font-bold text-amber-900">
-            <ShieldCheck className="w-4 h-4 text-[#933D1E] shrink-0" />
-            <span>Self-Review Prohibited (మీ సొంత ఉత్పత్తులకు సమీక్ష ఇవ్వడం సాధ్యం కాదు)</span>
+        <div className="p-3 bg-[#FAF9F6] rounded-md border border-[#E8E5DF] text-[#1C1C1C] text-xs space-y-1">
+          <div className="flex items-center space-x-1.5 font-bold text-[#A6533B]">
+            <ShieldCheck className="w-4 h-4 text-[#A6533B] shrink-0" />
+            <span>Self-Review Prohibited</span>
           </div>
-          <p className="text-[11px] text-[#933D1E] leading-snug">
+          <p className="text-[11px] text-[#6B6B6B] leading-snug">
             As the master artisan of this craft item, you cannot post reviews on your own product. Reviews are reserved for verified buyers.
           </p>
         </div>
       ) : user && (
-        <form onSubmit={handleSubmitReview} className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2 text-xs">
-          <span className="font-bold text-indigo-900 block text-[11px]">Write a Verified Buyer Review</span>
+        <form onSubmit={handleSubmitReview} className="p-3 bg-[#FAF9F6] rounded-md border border-[#E8E5DF] space-y-2 text-xs">
+          <span className="font-bold text-[#1C1C1C] block text-[11px]">Write a Verified Buyer Review</span>
           <div className="flex items-center space-x-2">
-            <span className="text-[#6B5B51] text-[11px]">Rating:</span>
+            <span className="text-[#6B6B6B] text-[11px]">Rating:</span>
             <div className="flex space-x-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -140,13 +140,13 @@ export default function ReviewsSection({ productId, user, product }) {
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Share your feedback on craft quality..."
-              className="flex-1 p-2 rounded-lg border border-[#933D1E]/30 bg-white text-xs"
+              className="flex-1 p-2 rounded-md border border-[#E8E5DF] bg-white text-xs text-[#1C1C1C] focus:border-[#A6533B] focus:outline-none"
               required
             />
             <button
               type="submit"
               disabled={submitting}
-              className="px-3 py-2 bg-[#933D1E] hover:bg-[#7E3216] text-white font-bold rounded-lg shadow-xs flex items-center space-x-1 text-xs cursor-pointer"
+              className="px-3 py-2 bg-[#A6533B] hover:bg-[#88412F] text-white font-semibold rounded-md flex items-center space-x-1 text-xs cursor-pointer transition-colors"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Submit</span>

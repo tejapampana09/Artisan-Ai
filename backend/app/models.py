@@ -112,6 +112,8 @@ class Order(Base):
     unit_price = Column(Numeric(12, 2), nullable=False)
     total_price = Column(Numeric(12, 2), nullable=False)
     delivery_address = Column(Text, nullable=False)
+    payment_method = Column(String, default="UPI", nullable=True) # UPI, CARD, NETBANKING, COD, RAZORPAY
+    payment_tx_id = Column(String, nullable=True)
     status = Column(String, default="CONFIRMED") # CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED
     
     # Cancellation & Refund workflow

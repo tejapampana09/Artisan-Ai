@@ -1,198 +1,72 @@
-import React, { useState, useEffect } from 'react';
-import { Smartphone, Download, X, CheckCircle, Share, PlusSquare, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
+import React from 'react';
+import { X, Smartphone, Download, CheckCircle2 } from 'lucide-react';
 
 export default function DownloadAppModal({ isOpen, onClose }) {
-  const { t } = useLanguage();
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-
-  useEffect(() => {
-    if (window.deferredPwaPrompt) {
-      setDeferredPrompt(window.deferredPwaPrompt);
-    }
-
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      window.deferredPwaPrompt = e;
-      setDeferredPrompt(e);
-    };
-
-    const handleAppInstalled = () => {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-      window.deferredPwaPrompt = null;
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
-
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-    }
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
-  }, []);
-
-  // Automatically trigger native browser install prompt when modal opens
-  useEffect(() => {
-    if (isOpen && (deferredPrompt || window.deferredPwaPrompt) && !isInstalled) {
-      const activePrompt = deferredPrompt || window.deferredPwaPrompt;
-      try {
-        activePrompt.prompt();
-        activePrompt.userChoice.then(({ outcome }) => {
-          if (outcome === 'accepted') {
-            setIsInstalled(true);
-          }
-          setDeferredPrompt(null);
-          window.deferredPwaPrompt = null;
-        }).catch(() => {});
-      } catch (e) {
-        // Browser requires user gesture or already prompted
-      }
-    }
-  }, [isOpen, deferredPrompt, isInstalled]);
-
   if (!isOpen) return null;
-  const isIos = typeof navigator !== 'undefined' && (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  );
 
-  const handleInstallClick = async () => {
-    const activePrompt = deferredPrompt || window.deferredPwaPrompt;
-    if (activePrompt) {
-      activePrompt.prompt();
-      const { outcome } = await activePrompt.userChoice;
-      if (outcome === 'accepted') {
-        setIsInstalled(true);
-      }
-      setDeferredPrompt(null);
-      window.deferredPwaPrompt = null;
-    } else if (isIos) {
-      alert("📲 iPhone Setup Steps / iPhone లో ఇన్స్టాల్ చేయడానికి:\n\n1. Safari బ్రౌజర్ కింద ఉండే Share (📤) ఐకాన్ నొక్కండి.\n2. 'Add to Home Screen' (➕ హోమ్ స్క్రీన్‌కి జోడించు) ఎంచుకోండి.\n3. పైన 'Add' నొక్కండి!");
+  const handleInstallPWA = () => {
+    if (window.deferredPrompt) {
+      window.deferredPrompt.prompt();
+      window.deferredPrompt.userChoice.then(() => {
+        window.deferredPrompt = null;
+      });
     } else {
-      alert(t('pwaBrowserNote', 'Automatic install prompt initialized! If your browser blocked it, tap the 3 dots menu in Chrome/Edge and select "Install app" or "Add to Home Screen".'));
+      alert('To install Artisan AI App on your phone:\n1. Open browser menu (3 dots or share button)\n2. Tap "Add to Home Screen" or "Install App"');
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pb-20 sm:pb-6 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-[#EADFCF]/60 flex flex-col max-h-[85vh] my-auto">
-        {/* Header Banner */}
-        <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 p-6 text-white relative">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-white/80 hover:text-white p-1 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
-          >
-            <X className="w-6 h-6" />
-          </button>
-          
-          <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-3 shadow-inner">
-            <Smartphone className="w-8 h-8 text-white" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn">
+      <div className="bg-white w-full max-w-md rounded-3xl p-6 border border-[#E8E5DF] shadow-2xl space-y-5 text-[#1C1C1C] relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-800 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="text-center space-y-2 pt-2">
+          <div className="w-14 h-14 rounded-2xl bg-[#A6533B] text-white flex items-center justify-center mx-auto shadow-md">
+            <Smartphone className="w-7 h-7" />
           </div>
-          <h2 className="text-xl font-black tracking-tight">
-            {t('downloadAppTitle', 'Download Artisan AI Mobile App')}
-          </h2>
-          <p className="text-xs text-amber-100 mt-1">
-            {t('downloadAppSub', 'Fast, works offline in rural areas, and 100% fair artisan pricing.')}
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#A6533B] bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200">
+            Native Mobile PWA App
+          </span>
+          <h3 className="text-xl font-bold text-[#1C1C1C]">Download Artisan AI App</h3>
+          <p className="text-xs text-[#6B6B6B] leading-relaxed">
+            Get instant push notifications for orders, offline catalog sync, and Voice AI creation directly on your mobile device.
           </p>
         </div>
 
-        {/* Modal Content */}
-        <div className="p-6 space-y-5 overflow-y-auto flex-1 text-[#2A1E17]">
-          {/* Main Action: Instant Install */}
-          {isInstalled ? (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center space-x-3 text-emerald-800">
-              <CheckCircle className="w-6 h-6 text-emerald-600 shrink-0" />
-              <div>
-                <p className="font-bold text-sm">{t('alreadyInstalled', 'App Already Installed!')}</p>
-                <p className="text-xs text-emerald-700">{t('alreadyInstalledSub', 'Artisan AI is ready on your device home screen.')}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-amber-50 border border-[#933D1E]/30 rounded-2xl p-4 space-y-3">
-              <div className="flex items-start space-x-3">
-                <Sparkles className="w-5 h-5 text-[#933D1E] shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-bold text-sm text-amber-900">
-                    {isIos ? '📱 iPhone / iOS Installation Guide' : t('instantInstallTitle', 'Instant 1-Click Installation')}
-                  </h4>
-                  <p className="text-xs text-[#933D1E] mt-0.5">
-                    {isIos 
-                      ? 'iPhone లో అప్లికేషన్ ఇన్స్టాల్ చేయడానికి 3 చిన్న స్టెప్స్ పాటించండి:' 
-                      : t('instantInstallSub', 'No App Store login required. Works natively on Android, iOS, & Desktop.')}
-                  </p>
-                </div>
-              </div>
-
-              {isIos ? (
-                <div className="bg-white p-3.5 rounded-xl border border-[#933D1E]/30 space-y-2 text-xs text-amber-950 font-medium">
-                  <div className="flex items-center space-x-2">
-                    <Share className="w-4 h-4 text-[#933D1E] shrink-0" />
-                    <span><strong>1. Share:</strong> Safari కింద ఉన్న Share (📤) ఐకాన్ నొక్కండి.</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <PlusSquare className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span><strong>2. Add to Home Screen:</strong> 'Add to Home Screen' (➕) ఎంచుకోండి.</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-4 h-4 text-[#933D1E] shrink-0" />
-                    <span><strong>3. Add:</strong> పైన కుడివైపున ఉన్న 'Add' బటన్ నొక్కండి!</span>
-                  </div>
-                </div>
-              ) : null}
-
-              <button
-                onClick={handleInstallClick}
-                className="w-full py-3 px-4 bg-gradient-to-r from-[#933D1E] to-[#A84320] hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-xl shadow-lg shadow-orange-500/25 flex items-center justify-center space-x-2 transition-all cursor-pointer transform active:scale-98"
-              >
-                <Download className="w-5 h-5" />
-                <span>{isIos ? 'Show iPhone Steps / స్టెప్స్ చూడండి' : t('installAppNowBtn', 'Install App Now / ఆప్‌ని ఇన్స్టాల్ చేయండి')}</span>
-              </button>
-            </div>
-          )}
-
-          {/* Features Highlights */}
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="p-3 bg-[#FAF7F2] border border-[#EADFCF]/60 rounded-xl flex items-center space-x-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="font-medium text-[#2A1E17]">{t('featureOfflineMode', 'Rural Offline Mode')}</span>
-            </div>
-            <div className="p-3 bg-[#FAF7F2] border border-[#EADFCF]/60 rounded-xl flex items-center space-x-2">
-              <Sparkles className="w-4 h-4 text-[#933D1E] shrink-0" />
-              <span className="font-medium text-[#2A1E17]">{t('featureVoiceAi', 'Voice AI Guide')}</span>
-            </div>
+        <div className="space-y-2.5 bg-[#FAF9F6] p-4 rounded-2xl border border-[#E8E5DF] text-xs">
+          <div className="flex items-center space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Fast, lightweight app experience (Zero store download needed)</span>
           </div>
-
-          {/* How to add to home screen manually */}
-          <div className="border-t border-[#EADFCF]/60 pt-4">
-            <h4 className="font-bold text-xs text-[#6B5B51] uppercase tracking-wider mb-2">
-              {t('manualInstallHeader', 'Manual Setup Instructions')}
-            </h4>
-            <div className="space-y-2 text-xs text-[#6B5B51]">
-              <div className="flex items-center space-x-2 bg-[#FAF7F2] p-2.5 rounded-lg">
-                <Share className="w-4 h-4 text-[#933D1E] shrink-0" />
-                <span><strong>iOS / Safari:</strong> {t('iosInstallGuide', 'Tap Share button -> Add to Home Screen')}</span>
-              </div>
-              <div className="flex items-center space-x-2 bg-[#FAF7F2] p-2.5 rounded-lg">
-                <PlusSquare className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span><strong>Android / Chrome:</strong> {t('androidInstallGuide', 'Tap 3 dots menu -> Install app or Add to Home screen')}</span>
-              </div>
-            </div>
+          <div className="flex items-center space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Works offline with automatic cloud synchronization</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Instant push alerts for buyer enquiries & sales</span>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 bg-[#FAF7F2] border-t border-[#EADFCF]/60 flex justify-end">
+        <button
+          onClick={handleInstallPWA}
+          className="w-full py-3 bg-[#A6533B] hover:bg-[#88412F] text-white font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2 text-sm"
+        >
+          <Download className="w-4 h-4" />
+          <span>Install App / Add to Home Screen</span>
+        </button>
+
+        <div className="text-center">
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-[#EADFCF] hover:bg-slate-300 text-[#2A1E17] text-xs font-bold transition-colors cursor-pointer"
+            className="text-xs font-semibold text-[#6B6B6B] hover:text-[#1C1C1C] transition-colors cursor-pointer"
           >
-            {t('closeBtn', 'Close')}
+            Close & Continue in Browser
           </button>
         </div>
       </div>

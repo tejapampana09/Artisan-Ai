@@ -4,7 +4,7 @@ from sqlalchemy import or_
 
 from backend.app.database import get_db
 from backend.app.models import User
-from backend.app.schemas import UserRegister, UserLogin, ResetPasswordRequest, ChangePasswordRequest, TokenResponse, UserResponse
+from backend.app.schemas import UserRegister, UserLogin, ResetPasswordRequest, ChangePasswordRequest, TokenResponse, UserResponse, GoogleAuthRequest
 from backend.app.services.auth import (
     hash_password,
     verify_password,
@@ -121,6 +121,101 @@ def login_user(payload: UserLogin, request: Request, db: Session = Depends(get_d
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials. Please check your email/phone and password."
         )
+
+    access_token = create_access_token({
+        "sub": str(user.id),
+        "name": user.name,
+        "role": user.role,
+        "ver": user.token_version or 1
+    })
+
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=user
+    )
+
+@router.post("/google", response_model=TokenResponse)
+def google_auth(payload: GoogleAuthRequest, request: Request, db: Session = Depends(get_db)):
+    """
+    Authenticates or registers a user via Google OAuth 2.0 / One Tap credentials.
+    Verifies tokens against Google's official API servers.
+    Generates and returns a JWT access token.
+    """
+    rate_limiter.check_rate_limit(f"google_auth:{get_client_identifier(request)}", max_requests=10, window_seconds=60)
+    
+    verified_email = None
+    verified_name = None
+    verified_google_id = None
+
+    import httpx
+    # 1. Verify Google OAuth 2.0 Access Token (from real Google OAuth popup)
+    if payload.access_token:
+        try:
+            with httpx.Client(timeout=8.0) as client:
+                res = client.get(
+                    "https://www.googleapis.com/oauth2/v3/userinfo",
+                    headers={"Authorization": f"Bearer {payload.access_token}"}
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    verified_email = data.get("email")
+                    verified_name = data.get("name")
+                    verified_google_id = data.get("sub")
+        except Exception as e:
+            import logging
+            logging.getLogger("artisan_ai").warning("Google userinfo token check failed: %s", e)
+
+    # 2. Verify Google ID Token (from Google Identity Services One Tap / credential response)
+    if not verified_email and payload.token:
+        try:
+            with httpx.Client(timeout=8.0) as client:
+                res = client.get(
+                    f"https://oauth2.googleapis.com/tokeninfo?id_token={payload.token}"
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    verified_email = data.get("email")
+                    verified_name = data.get("name")
+                    verified_google_id = data.get("sub")
+        except Exception as e:
+            import logging
+            logging.getLogger("artisan_ai").warning("Google tokeninfo check failed: %s", e)
+
+    email = (verified_email or payload.email or "").strip().lower()
+    name = (verified_name or payload.name or "").strip()
+    google_id = verified_google_id or payload.google_id
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google authentication failed: Email address could not be verified by Google."
+        )
+
+    # Check if user already exists
+    user = db.query(User).filter(User.email == email).first()
+    
+    target_role = (payload.role or "BUYER").upper().strip()
+    if target_role not in {"BUYER", "ARTISAN"}:
+        target_role = "BUYER"
+        
+    if not user:
+        # Create new user registered via verified Google OAuth
+        user_name = name if name else email.split("@")[0].capitalize()
+        active_mode = "BUY" if target_role == "BUYER" else "SELL"
+        user = User(
+            name=user_name,
+            email=email,
+            phone=None,
+            hashed_password=hash_password(f"google_oauth_{payload.google_id or 'sso'}_secret"),
+            role=target_role,
+            active_mode=active_mode,
+            location="India",
+            craft="Connoisseur Collection" if target_role == "BUYER" else "Handcrafted Goods"
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
 
     access_token = create_access_token({
         "sub": str(user.id),

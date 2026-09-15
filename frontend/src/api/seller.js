@@ -61,6 +61,17 @@ export async function publishToChannel(productId, channelName) {
   });
 }
 
+export async function adminCreateSeller(data) {
+  return await apiRequest('/artisan/admin/create-seller', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function adminListSellers() {
+  return await apiRequest('/artisan/admin/sellers');
+}
+
 export async function downloadAnalyticsCSV() {
   const token = getAuthToken();
   if (!token) throw new Error('Authentication required');

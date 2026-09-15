@@ -14,11 +14,22 @@ import { checkHealth, checkReady, getCurrentUser, updateUserMode, getAuthToken }
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import LanguageSelectorModal from './components/LanguageSelectorModal';
 import DownloadAppModal from './components/DownloadAppModal';
-import { setStoredUser } from './services/offlineSync';
+import { setStoredUser, getStoredUser } from './services/offlineSync';
+
+import OurStoryView from './components/OurStoryView';
+import ArtisansView from './components/ArtisansView';
+import CollectionsView from './components/CollectionsView';
+import OrdersView from './components/OrdersView';
+import WishlistView from './components/WishlistView';
+import EnquiriesView from './components/EnquiriesView';
+import ProfileView from './components/ProfileView';
+import CartView from './components/CartView';
+import Footer from './components/Footer';
+import AdminView from './components/AdminView';
 
 function AppContent() {
-  const [activeMode, setActiveMode] = useState('HOME');
-  const [user, setUser] = useState(null);
+  const [activeMode, setActiveMode] = useState('HOME'); // 'HOME' | 'BUY' | 'SELL' | 'STORY' | 'ARTISANS'
+  const [user, setUser] = useState(getStoredUser());
   const [readyStatus, setReadyStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showSplash, setShowSplash] = useState(() => {
@@ -30,8 +41,18 @@ function AppContent() {
   });
   const [splashFading, setSplashFading] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authInitialTab, setAuthInitialTab] = useState('ORDERS');
   const [isDownloadAppOpen, setIsDownloadAppOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [sellerTab, setSellerTab] = useState('DASHBOARD');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedProductFromSearch, setSelectedProductFromSearch] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [activeMode, sellerTab]);
 
   useEffect(() => {
     if (showSplash) {
@@ -95,6 +116,9 @@ function AppContent() {
       targetMode = user.role === 'BUYER' ? 'BUY' : 'SELL';
     }
     setActiveMode(targetMode);
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     if (!isOffline && user && (targetMode === 'SELL' || targetMode === 'BUY')) {
       const updated = await updateUserMode(targetMode);
       if (updated) {
@@ -107,8 +131,22 @@ function AppContent() {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  const handleOpenAuth = (tabOrMode = 'ORDERS') => {
+    const target = typeof tabOrMode === 'string' ? tabOrMode : 'ORDERS';
+    if (target === 'CART') {
+      setActiveMode('CART');
+      return;
+    }
+    if (user && ['ORDERS', 'WISHLIST', 'ENQUIRIES', 'PROFILE', 'CART'].includes(target)) {
+      setActiveMode(target);
+    } else {
+      setAuthInitialTab(target);
+      setIsAuthOpen(true);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#FAF7F2] text-[#2C1A0E] flex flex-col font-sans relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#FAF9F6] text-[#1C1C1C] flex flex-col font-sans relative overflow-x-hidden">
       {showSplash && <SplashScreen fadeOut={splashFading} />}
       <NotificationCenter />
       <LanguageSelectorModal />
@@ -117,15 +155,23 @@ function AppContent() {
         onClose={() => setIsDownloadAppOpen(false)} 
       />
       
-      {/* Top Navigation */}
-      <Navbar
-        activeMode={activeMode}
-        onToggleMode={handleToggleMode}
-        user={user}
-        readyStatus={readyStatus}
-        onOpenAuth={() => setIsAuthOpen(true)}
-        onOpenDownloadApp={() => setIsDownloadAppOpen(true)}
-      />
+      {/* Top Navigation - Hidden when in Seller Studio */}
+      {activeMode !== 'SELL' && (
+        <Navbar
+          activeMode={activeMode}
+          onToggleMode={handleToggleMode}
+          user={user}
+          readyStatus={readyStatus}
+          onOpenAuth={handleOpenAuth}
+          onOpenDownloadApp={() => setIsDownloadAppOpen(true)}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onSelectProduct={(prod) => {
+            setSelectedProductFromSearch(prod);
+            handleToggleMode('BUY');
+          }}
+        />
+      )}
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 md:pb-6 overflow-x-hidden">
@@ -135,18 +181,81 @@ function AppContent() {
           {activeMode === 'HOME' ? (
             <LandingPage
               onSelectMode={handleToggleMode}
-              onOpenAuth={() => setIsAuthOpen(true)}
+              onOpenAuth={handleOpenAuth}
               user={user}
+            />
+          ) : activeMode === 'STORY' ? (
+            <OurStoryView
+              onSelectMode={handleToggleMode}
+              onOpenAuth={handleOpenAuth}
+              user={user}
+            />
+          ) : activeMode === 'ARTISANS' ? (
+            <ArtisansView
+              user={user}
+              onOpenAuth={handleOpenAuth}
+              onSelectMode={handleToggleMode}
+            />
+          ) : activeMode === 'COLLECTIONS' ? (
+            <CollectionsView
+              onSelectMode={handleToggleMode}
+              onOpenAuth={handleOpenAuth}
+            />
+          ) : activeMode === 'ORDERS' ? (
+            <OrdersView
+              user={user}
+              onSelectMode={handleToggleMode}
+              onOpenAuth={handleOpenAuth}
+            />
+          ) : activeMode === 'WISHLIST' ? (
+            <WishlistView
+              user={user}
+              onSelectMode={handleToggleMode}
+              onOpenAuth={handleOpenAuth}
+            />
+          ) : activeMode === 'ENQUIRIES' ? (
+            <EnquiriesView
+              user={user}
+              onSelectMode={handleToggleMode}
+              onOpenAuth={handleOpenAuth}
+            />
+          ) : activeMode === 'PROFILE' ? (
+            <ProfileView
+              user={user}
+              onSelectMode={handleToggleMode}
+              onAuthChange={setUser}
+            />
+          ) : activeMode === 'CART' ? (
+            <CartView
+              user={user}
+              onSelectMode={handleToggleMode}
+              onOpenAuth={handleOpenAuth}
             />
           ) : activeMode === 'SELL' ? (
             <SellView 
               user={user} 
-              onOpenAuth={() => setIsAuthOpen(true)} 
+              onOpenAuth={handleOpenAuth} 
               onSwitchMode={handleToggleMode}
+              activeSellerTab={sellerTab}
+              onSelectSellerTab={setSellerTab}
               key={`sell_${refreshTrigger}`} 
             />
+          ) : activeMode === 'ADMIN' ? (
+            <AdminView 
+              user={user}
+              onAuthChange={setUser}
+              onSelectMode={handleToggleMode}
+            />
           ) : (
-            <BuyView user={user} onOpenAuth={() => setIsAuthOpen(true)} key={`buy_${refreshTrigger}`} />
+            <BuyView 
+              user={user} 
+              onOpenAuth={handleOpenAuth} 
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              initialSelectedProduct={selectedProductFromSearch}
+              onClearInitialSelectedProduct={() => setSelectedProductFromSearch(null)}
+              key={`buy_${refreshTrigger}`} 
+            />
           )}
         </div>
       </main>
@@ -156,6 +265,7 @@ function AppContent() {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         user={user}
+        initialTab={authInitialTab}
         onAuthChange={(newUser) => {
           setUser(newUser);
           if (!newUser) {
@@ -170,19 +280,18 @@ function AppContent() {
         onNavigateMode={handleToggleMode}
       />
 
-      {/* Enterprise Platform Status Bar */}
-      <footer className="bg-[#FBF8F3] border-t border-[#EADFCF] py-3 text-xs text-[#6B5B51]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-2">
-          <div>
-            <span>© 2026 <strong className="text-[#2A1E17]">Artisan AI Technologies</strong>. Enterprise SaaS Platform for Rural Craft Communities.</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <span>{t('workspaceLabel', 'Workspace')}: <strong className="text-[#2A1E17]">{activeMode === 'HOME' ? t('homeShowcase', 'Home Showcase') : activeMode === 'SELL' ? t('artisanStudio', 'Artisan Studio') : t('buyerMarketplace', 'Buyer Marketplace')}</strong></span>
-            <span>{t('syncLabel', 'Sync')}: <strong className={isOffline ? 'text-orange-600' : 'text-emerald-600'}>{isOffline ? t('offlineLocalCache', 'Offline (Local Cache)') : t('liveCloudDb', 'Live (Cloud DB)')}</strong></span>
-            <span>{t('databaseLabel', 'Database')}: <strong className={readyStatus?.status === 'ready' ? 'text-emerald-600' : 'text-[#933D1E]'}>{readyStatus?.database || t('connectedStatus', 'Connected')}</strong></span>
-          </div>
-        </div>
-      </footer>
+      {/* Download PWA App Modal */}
+      <DownloadAppModal
+        isOpen={isDownloadAppOpen}
+        onClose={() => setIsDownloadAppOpen(false)}
+      />
+
+      {/* Main Page Footer */}
+      <Footer 
+        onSelectMode={handleToggleMode} 
+        onOpenAuth={handleOpenAuth} 
+        user={user} 
+      />
     </div>
   );
 }

@@ -301,6 +301,9 @@ def place_order(
         buyer_name = order.buyer_name.strip() if order.buyer_name and order.buyer_name.strip() else current_user.name
         buyer_phone = order.buyer_phone.strip() if order.buyer_phone and order.buyer_phone.strip() else (current_user.phone or None)
 
+        pay_method = (order.payment_method or "UPI").upper()
+        tx_id = order.payment_tx_id or f"TXN_{pay_method}_{int(datetime.now().timestamp() * 1000)}"
+
         # 1. Dedicated structured order record tied to authenticated user
         order_record = Order(
             product_id=product.id,
@@ -311,13 +314,15 @@ def place_order(
             unit_price=unit_price,
             total_price=total_price,
             delivery_address=order.delivery_address.strip(),
+            payment_method=pay_method,
+            payment_tx_id=tx_id,
             status="CONFIRMED",
             created_at=datetime.now(timezone.utc)
         )
         db.add(order_record)
 
         # 2. Public analytics event with sanitized operational info (NO delivery address or phone PII)
-        sanitized_meta = f"Quantity: {order.quantity} | Total: ₹{float(total_price):,.0f} | Status: CONFIRMED"
+        sanitized_meta = f"Quantity: {order.quantity} | Total: ₹{float(total_price):,.0f} | Pay: {pay_method} (Tx: {tx_id}) | Status: CONFIRMED"
 
         evt = Event(
             event_type="ORDER",

@@ -40,6 +40,20 @@ export async function loginUser(credentials) {
   return data;
 }
 
+export async function googleAuth(googleData) {
+  const data = await apiRequest('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify(googleData),
+  });
+  if (data && data.access_token) {
+    setAuthToken(data.access_token);
+  }
+  if (data && data.user) {
+    setStoredUser(data.user);
+  }
+  return data;
+}
+
 export async function changePassword(payload) {
   const data = await apiRequest('/auth/change-password', {
     method: 'POST',

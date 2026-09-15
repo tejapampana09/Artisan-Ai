@@ -64,6 +64,16 @@ class UserRegister(BaseModel):
     craft: Optional[str] = "Traditional Crafts"
     active_mode: Optional[str] = None
 
+class AdminCreateSellerRequest(BaseModel):
+    name: str = Field(..., min_length=2)
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    password: str = Field(..., min_length=6)
+    craft: Optional[str] = "Traditional Handicrafts"
+    location: Optional[str] = "India"
+    bio: Optional[str] = None
+    verification_status: Optional[str] = "GI_VERIFIED"
+
 class UserLogin(BaseModel):
     email_or_phone: str
     password: str
@@ -188,12 +198,22 @@ class EnquiryResponse(BaseModel):
     replied_at: Optional[datetime] = None
     created_at: datetime
 
+class GoogleAuthRequest(BaseModel):
+    token: Optional[str] = Field(default=None, description="Google OAuth ID Token or Credential string")
+    access_token: Optional[str] = Field(default=None, description="Google OAuth 2.0 Access Token from Google popup")
+    email: Optional[str] = Field(default=None, description="User email from Google OAuth profile")
+    name: Optional[str] = Field(default=None, description="User full name from Google OAuth profile")
+    google_id: Optional[str] = Field(default=None, description="Google OAuth unique User ID")
+    role: Optional[str] = Field(default="BUYER", description="Target user role: BUYER or ARTISAN")
+
 class OrderCreate(BaseModel):
     product_id: int
     buyer_name: Optional[str] = Field(default="", max_length=100)
     buyer_phone: Optional[str] = Field(default=None, max_length=25)
     quantity: int = Field(default=1, ge=1)
     delivery_address: str = Field(..., min_length=3, max_length=500)
+    payment_method: Optional[str] = Field(default="UPI", max_length=50)
+    payment_tx_id: Optional[str] = Field(default=None, max_length=100)
 
 class OrderStatusUpdate(BaseModel):
     status: str = Field(..., description="Order status: CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED")
@@ -214,6 +234,8 @@ class OrderResponse(BaseModel):
     unit_price: float
     total_price: float
     delivery_address: str
+    payment_method: Optional[str] = "UPI"
+    payment_tx_id: Optional[str] = None
     status: str
     created_at: datetime
 

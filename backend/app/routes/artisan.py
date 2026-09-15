@@ -5,7 +5,7 @@ from sqlalchemy import func
 
 from backend.app.database import get_db
 from backend.app.models import User, Product, Review
-from backend.app.schemas import ArtisanProfileResponse, ArtisanProfileUpdate, ProductResponse
+from backend.app.schemas import ArtisanProfileResponse, ArtisanProfileUpdate, ProductResponse, UserResponse, AdminCreateSellerRequest
 from backend.app.services.auth import get_current_user
 
 router = APIRouter(prefix="/api/artisan", tags=["Artisan Profile & Verification"])
@@ -74,3 +74,66 @@ def update_artisan_profile(
     db.refresh(current_user)
 
     return get_artisan_public_profile(current_user.id, db)
+
+@router.post("/admin/create-seller", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def admin_create_seller(
+    payload: AdminCreateSellerRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Admin Dashboard Endpoint: Allows Admin / Master Coordinator to create verified seller profiles
+    and assign login credentials for artisans.
+    """
+    from backend.app.services.auth import hash_password
+
+    clean_email = payload.email.strip().lower() if (payload.email and payload.email.strip()) else None
+    clean_phone = payload.phone.strip() if (payload.phone and payload.phone.strip()) else None
+
+    if not clean_email and not clean_phone:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please provide at least an email address or phone number for the artisan seller profile."
+        )
+
+    # Check for duplicate email/phone
+    filters = []
+    if clean_email:
+        filters.append(User.email == clean_email)
+    if clean_phone:
+        filters.append(User.phone == clean_phone)
+
+    if filters:
+        from sqlalchemy import or_
+        existing = db.query(User).filter(or_(*filters)).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A seller profile with this email or phone number already exists."
+            )
+
+    new_seller = User(
+        name=payload.name.strip(),
+        email=clean_email,
+        phone=clean_phone,
+        hashed_password=hash_password(payload.password),
+        role="ARTISAN",
+        active_mode="SELL",
+        location=payload.location or "India",
+        craft=payload.craft or "Handicrafts",
+        bio=payload.bio or f"Master artisan specializing in traditional {payload.craft or 'handicrafts'}.",
+        verification_status=payload.verification_status or "GI_VERIFIED"
+    )
+    db.add(new_seller)
+    db.commit()
+    db.refresh(new_seller)
+
+    return new_seller
+
+@router.get("/admin/sellers", response_model=List[UserResponse])
+def admin_list_sellers(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Lists all registered verified artisan seller profiles."""
+    return db.query(User).filter(User.role == "ARTISAN").all()
