@@ -393,8 +393,8 @@ export default function Navbar({
 
           {/* Right Action Icons (Seller Login, Search, Language, Notifications, Cart & Profile) */}
           <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Mobile Seller Login (Kept prominent for guests / buyers) */}
-            {(!user || user?.role === 'BUYER') && (
+            {/* Mobile Seller Login (ONLY shown for unauthenticated guests, hidden once logged in) */}
+            {!user && (
               <button
                 onClick={() => onOpenAuth('SELL_LOGIN')}
                 className="md:hidden flex items-center space-x-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-700 to-[#A6533B] text-white text-[11px] font-bold shadow-xs active:scale-95 cursor-pointer shrink-0"
