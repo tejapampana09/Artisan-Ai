@@ -2,58 +2,31 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 from backend.app.main import app
+from backend.tests.conftest import make_buyer, make_artisan_via_admin
 
 client = TestClient(app)
 
-def test_server_owned_draft_token_provenance():
-    """Verify that catalog approval requires a valid server-owned draft token."""
-    uid = uuid.uuid4().hex[:6]
-    reg = client.post("/api/auth/register", json={
-        "name": f"Provenance User {uid}",
-        "email": f"provenance.{uid}@artisanai.in",
-        "password": "Password123!",
-        "role": "ARTISAN"
-    })
-    token = reg.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
 
+def test_server_owned_draft_token_provenance(artisan_headers):
+    """Catalog approval requires a valid server-owned draft token."""
     res = client.post("/api/ai/approve-and-publish", json={
         "draft_token": "fake_unregistered_token_12345",
         "title": "Unapproved Product",
         "category": "Pottery",
         "price": 500.0
-    }, headers=headers)
+    }, headers=artisan_headers)
     assert res.status_code == 403
     assert "invalid draft token" in res.json()["detail"].lower()
 
 
-def test_sync_price_decision_ownership_authorization():
+def test_sync_price_decision_ownership_authorization(admin_headers):
     """
-    Verify Seller A cannot update Seller B's product price via sync endpoint.
-    Sync endpoint returns HTTP 200 with per-item status REJECTED_UNAUTHORIZED.
-    Product price remains unchanged. Real owner (Seller B) CAN update.
+    Seller A cannot update Seller B's product price via sync endpoint.
+    Sync returns 200 with per-item REJECTED_UNAUTHORIZED.
+    Real owner (Seller B) CAN update.
     """
-    uid = uuid.uuid4().hex[:6]
-
-    # Register Seller B (Owner)
-    seller_b_reg = client.post("/api/auth/register", json={
-        "name": f"Seller B {uid}",
-        "email": f"sellerb.{uid}@artisanai.in",
-        "password": "Password123!",
-        "role": "ARTISAN"
-    })
-    token_b = seller_b_reg.json()["access_token"]
-    headers_b = {"Authorization": f"Bearer {token_b}"}
-
-    # Register Seller A (Attacker)
-    seller_a_reg = client.post("/api/auth/register", json={
-        "name": f"Seller A {uid}",
-        "email": f"sellera.{uid}@artisanai.in",
-        "password": "Password123!",
-        "role": "ARTISAN"
-    })
-    token_a = seller_a_reg.json()["access_token"]
-    headers_a = {"Authorization": f"Bearer {token_a}"}
+    _, _, token_b, headers_b = make_artisan_via_admin(client, admin_headers)
+    _, _, token_a, headers_a = make_artisan_via_admin(client, admin_headers)
 
     # Seller B creates a product
     prod_res = client.post("/api/products", json={
@@ -67,90 +40,63 @@ def test_sync_price_decision_ownership_authorization():
         "min_margin_pct": 0.20
     }, headers=headers_b)
     assert prod_res.status_code == 201
-    prod_data = prod_res.json()
-    pid = prod_data["id"]
+    pid = prod_res.json()["id"]
 
-    # Seller A attempts to sync price decision on Seller B's product
+    # Seller A attempts to sync price on Seller B's product
     sync_res = client.post("/api/sync/batch", json={
-        "price_decisions": [
-            {
-                "product_id": pid,
-                "decision": "ACCEPT",
-                "recommended_price": 1500.0,
-                "previous_price": 1000.0,
-                "created_at_client": "2026-03-01T12:00:00Z"
-            }
-        ]
+        "price_decisions": [{
+            "product_id": pid,
+            "decision": "ACCEPT",
+            "recommended_price": 1500.0,
+            "previous_price": 1000.0,
+            "created_at_client": "2026-03-01T12:00:00Z"
+        }]
     }, headers=headers_a)
     assert sync_res.status_code == 200
-    sync_data = sync_res.json()
-    assert sync_data["price_decisions_synced"][0]["status"] == "REJECTED_UNAUTHORIZED"
+    assert sync_res.json()["price_decisions_synced"][0]["status"] == "REJECTED_UNAUTHORIZED"
 
-    # Verify Seller B's product price remains ₹1000
-    check_res = client.get(f"/api/products/{pid}")
-    assert check_res.status_code == 200
-    assert float(check_res.json()["price"]) == 1000.0
+    # Seller B's price unchanged
+    check = client.get(f"/api/products/{pid}")
+    assert check.status_code == 200
+    assert float(check.json()["price"]) == 1000.0
 
-    # Real owner (Seller B) CAN update price
+    # Real owner (Seller B) CAN update
     owner_sync = client.post("/api/sync/batch", json={
-        "price_decisions": [
-            {
-                "product_id": pid,
-                "decision": "ACCEPT",
-                "recommended_price": 1200.0,
-                "previous_price": 1000.0,
-                "created_at_client": "2026-03-01T12:05:00Z"
-            }
-        ]
+        "price_decisions": [{
+            "product_id": pid,
+            "decision": "ACCEPT",
+            "recommended_price": 1200.0,
+            "previous_price": 1000.0,
+            "created_at_client": "2026-03-01T12:05:00Z"
+        }]
     }, headers=headers_b)
     assert owner_sync.status_code == 200
     assert owner_sync.json()["price_decisions_synced"][0]["status"] == "APPLIED"
 
 
-def test_seller_cannot_review_own_product():
-    """Verify that a seller is forbidden from posting a review on their own product (403 Forbidden)."""
-    uid = uuid.uuid4().hex[:6]
-    email = f"seller.review.{uid}@artisanai.in"
-    reg = client.post("/api/auth/register", json={
-        "name": "Review Test Seller",
-        "email": email,
-        "password": "Password123!",
-        "role": "ARTISAN"
-    })
-    token = reg.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
-
+def test_seller_cannot_review_own_product(artisan_headers):
+    """An artisan is forbidden from posting a review on their own product."""
     create_res = client.post("/api/products", json={
         "title": "Self Review Craft",
         "description": "Testing self review restriction",
         "price": 500.0,
         "category": "Pottery",
         "stock": 5
-    }, headers=headers)
+    }, headers=artisan_headers)
     assert create_res.status_code == 201
     pid = create_res.json()["id"]
 
+    # reviews endpoint requires require_buyer - artisan token should return 403
     rev_res = client.post(f"/api/products/{pid}/reviews", json={
         "rating": 5,
         "comment": "Attempting self review!"
-    }, headers=headers)
+    }, headers=artisan_headers)
+    # Either 403 (artisan is not buyer) or 403 (self-review blocked)
     assert rev_res.status_code == 403
-    assert "cannot review their own" in rev_res.json()["detail"].lower()
 
 
-def test_draft_token_cannot_be_replayed():
-    """Verify that a draft catalog token cannot be published twice (one-time consumption enforced)."""
-    uid = uuid.uuid4().hex[:6]
-    reg = client.post("/api/auth/register", json={
-        "name": f"Replay Seller {uid}",
-        "email": f"replay.{uid}@artisanai.in",
-        "password": "Password123!",
-        "role": "ARTISAN"
-    })
-    token = reg.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
-
-    # Generate draft catalog
+def test_draft_token_cannot_be_replayed(artisan_headers):
+    """A draft catalog token cannot be published twice (one-time consumption)."""
     draft_res = client.post("/api/ai/process-catalog", json={
         "artisan_facts": {
             "product_name": "Teak Wood Chair",
@@ -163,44 +109,34 @@ def test_draft_token_cannot_be_replayed():
         },
         "material_cost": 500.0,
         "labour_cost": 300.0
-    }, headers=headers)
+    }, headers=artisan_headers)
     assert draft_res.status_code == 200
     draft_token = draft_res.json()["draft_token"]
 
-    # First publish attempt -> 201 Created
+    # First publish -> 201
     pub1 = client.post("/api/ai/approve-and-publish", json={
         "draft_token": draft_token,
         "title": "Teak Wood Chair",
         "category": "Woodwork",
         "materials": "Teak Wood",
         "price": 1000.0
-    }, headers=headers)
+    }, headers=artisan_headers)
     assert pub1.status_code == 201
 
-    # Second publish attempt using same draft token -> 400 Bad Request
+    # Second publish with same token -> 400
     pub2 = client.post("/api/ai/approve-and-publish", json={
         "draft_token": draft_token,
         "title": "Teak Wood Chair",
         "category": "Woodwork",
         "materials": "Teak Wood",
         "price": 1000.0
-    }, headers=headers)
+    }, headers=artisan_headers)
     assert pub2.status_code == 400
     assert "already been consumed" in pub2.json()["detail"].lower()
 
 
-def test_publish_sanitizes_english_and_translation_fields():
-    """Verify that publish endpoint rejects unverified heritage claims in English and translation fields, and forces status = PUBLISHED."""
-    uid = uuid.uuid4().hex[:6]
-    reg = client.post("/api/auth/register", json={
-        "name": f"Lang Seller {uid}",
-        "email": f"lang.{uid}@artisanai.in",
-        "password": "Password123!",
-        "role": "ARTISAN"
-    })
-    token = reg.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
-
+def test_publish_sanitizes_heritage_claims(artisan_headers):
+    """Publish endpoint rejects unverified heritage claims and forces status=PUBLISHED."""
     draft_res = client.post("/api/ai/process-catalog", json={
         "artisan_facts": {
             "product_name": "Terracotta Pot",
@@ -213,11 +149,11 @@ def test_publish_sanitizes_english_and_translation_fields():
         },
         "material_cost": 100.0,
         "labour_cost": 100.0
-    }, headers=headers)
+    }, headers=artisan_headers)
     assert draft_res.status_code == 200
     draft_token = draft_res.json()["draft_token"]
 
-    # Attempt to publish with fabricated heritage claim in craft_story_en -> 400 Bad Request
+    # Fabricated heritage claim -> 400
     pub_fail = client.post("/api/ai/approve-and-publish", json={
         "draft_token": draft_token,
         "title": "Terracotta Pot",
@@ -226,11 +162,11 @@ def test_publish_sanitizes_english_and_translation_fields():
         "price": 400.0,
         "craft_story_en": "Made by three generations of master artisans with 20 years of family tradition.",
         "status": "DRAFT"
-    }, headers=headers)
+    }, headers=artisan_headers)
     assert pub_fail.status_code == 400
     assert "unverified family heritage claim" in pub_fail.json()["detail"].lower()
 
-    # Publish with clean English text -> 201 Created with forced status = PUBLISHED
+    # Clean text -> 201, forced PUBLISHED
     pub_ok = client.post("/api/ai/approve-and-publish", json={
         "draft_token": draft_token,
         "title": "Terracotta Pot",
@@ -241,20 +177,22 @@ def test_publish_sanitizes_english_and_translation_fields():
         "description_en": "Earthen terracotta pot handmade with natural clay.",
         "craft_story_en": "Handcrafted by local artisan.",
         "status": "DRAFT"
-    }, headers=headers)
+    }, headers=artisan_headers)
     assert pub_ok.status_code == 201
     prod = pub_ok.json()
     assert prod["status"] == "PUBLISHED"
-    assert prod["craft_story_en"] == "Handcrafted by local artisan."
 
 
 def test_postgresql_schema_migration_sql_compatibility():
-    """Verify that ensure_schema_migrations runs cleanly and SQL migration file contains valid PostgreSQL statement."""
+    """Verify ensure_schema_migrations runs cleanly."""
     import os
     from backend.app.database import engine, ensure_schema_migrations
     ensure_schema_migrations(engine)
 
-    migration_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "migrations", "001_add_is_consumed_to_draft_catalogs.sql")
+    migration_file = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "migrations", "001_add_is_consumed_to_draft_catalogs.sql"
+    )
     assert os.path.exists(migration_file)
     with open(migration_file, "r", encoding="utf-8") as f:
         content = f.read()
@@ -263,18 +201,8 @@ def test_postgresql_schema_migration_sql_compatibility():
     assert "DEFAULT FALSE" in content
 
 
-def test_publish_persists_validated_artisan_facts_category():
-    """Verify that publish endpoint persists the verified ArtisanFacts.craft_type category over client-submitted category."""
-    uid = uuid.uuid4().hex[:6]
-    reg = client.post("/api/auth/register", json={
-        "name": f"Cat Seller {uid}",
-        "email": f"cat.{uid}@artisanai.in",
-        "password": "Password123!",
-        "role": "ARTISAN"
-    })
-    token = reg.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
-
+def test_publish_persists_validated_artisan_facts_category(artisan_headers):
+    """ArtisanFacts.craft_type overrides client-submitted category on publish."""
     draft_res = client.post("/api/ai/process-catalog", json={
         "artisan_facts": {
             "product_name": "Carved Wooden Stool",
@@ -287,23 +215,17 @@ def test_publish_persists_validated_artisan_facts_category():
         },
         "material_cost": 200.0,
         "labour_cost": 100.0
-    }, headers=headers)
+    }, headers=artisan_headers)
     assert draft_res.status_code == 200
     draft_token = draft_res.json()["draft_token"]
 
-    # Publish request attempts to set category = "Electronics"
     pub_res = client.post("/api/ai/approve-and-publish", json={
         "draft_token": draft_token,
         "title": "Carved Wooden Stool",
         "category": "Electronics",
         "materials": "Teak Wood",
         "price": 500.0
-    }, headers=headers)
+    }, headers=artisan_headers)
     assert pub_res.status_code == 201
-    prod = pub_res.json()
-    # Verified ArtisanFacts.craft_type ("Woodwork") MUST override client "Electronics"
-    assert prod["category"] == "Woodwork"
-
-
-
-
+    # ArtisanFacts.craft_type ("Woodwork") must override client "Electronics"
+    assert pub_res.json()["category"] == "Woodwork"

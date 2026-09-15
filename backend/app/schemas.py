@@ -49,8 +49,8 @@ class UserResponse(BaseModel):
     name: str
     phone: Optional[str] = None
     email: Optional[str] = None
-    role: Optional[str] = "ARTISAN"
-    active_mode: str
+    role: Optional[str] = "BUYER"
+    status: Optional[str] = "ACTIVE"
     location: Optional[str] = None
     craft: Optional[str] = None
 
@@ -59,10 +59,9 @@ class UserRegister(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     password: str = Field(..., min_length=6)
-    role: Optional[str] = "ARTISAN"
+    role: Optional[str] = "BUYER"
     location: Optional[str] = "India"
     craft: Optional[str] = "Traditional Crafts"
-    active_mode: Optional[str] = None
 
 class AdminCreateSellerRequest(BaseModel):
     name: str = Field(..., min_length=2)
@@ -77,7 +76,6 @@ class AdminCreateSellerRequest(BaseModel):
 class UserLogin(BaseModel):
     email_or_phone: str
     password: str
-    required_role: Optional[str] = None
 
 class ResetPasswordRequest(BaseModel):
     email_or_phone: str = Field(..., min_length=3)
@@ -90,15 +88,9 @@ class ChangePasswordRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    auth_domain: Optional[str] = None
+    session_type: Optional[str] = None
     user: UserResponse
-
-class GoogleAuthRequest(BaseModel):
-    access_token: Optional[str] = None
-    token: Optional[str] = None # Google ID token
-    role: Optional[str] = "BUYER"
-
-class ModeUpdateRequest(BaseModel):
-    mode: str = Field(..., pattern="^(SELL|BUY)$")
 
 # Product Schemas
 class ProductBase(BaseModel):
@@ -115,7 +107,7 @@ class ProductBase(BaseModel):
     stock: int = Field(default=1, ge=0)
     image_url: Optional[str] = None
     enhanced_image_url: Optional[str] = None
-    status: str = "PUBLISHED"  # DRAFT, APPROVED, PUBLISHED
+    status: str = "DRAFT"  # DRAFT, AI_PROCESSING, PENDING_REVIEW, PUBLISHED, SUSPENDED, ARCHIVED
     material_cost: float = Field(default=0.0, ge=0.0)
     labour_cost: float = Field(default=0.0, ge=0.0)
     packaging_cost: float = Field(default=0.0, ge=0.0)
@@ -210,7 +202,7 @@ class GoogleAuthRequest(BaseModel):
     email: Optional[str] = Field(default=None, description="User email from Google OAuth profile")
     name: Optional[str] = Field(default=None, description="User full name from Google OAuth profile")
     google_id: Optional[str] = Field(default=None, description="Google OAuth unique User ID")
-    role: Optional[str] = Field(default="BUYER", description="Target user role: BUYER or ARTISAN")
+    role: Optional[str] = Field(default="BUYER", description="Target user role: BUYER")
 
 class OrderCreate(BaseModel):
     product_id: int
@@ -219,10 +211,9 @@ class OrderCreate(BaseModel):
     quantity: int = Field(default=1, ge=1)
     delivery_address: str = Field(..., min_length=3, max_length=500)
     payment_method: Optional[str] = Field(default="UPI", max_length=50)
-    payment_tx_id: Optional[str] = Field(default=None, max_length=100)
 
 class OrderStatusUpdate(BaseModel):
-    status: str = Field(..., description="Order status: CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED")
+    status: str = Field(..., description="Order status: PENDING_PAYMENT, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED")
 
 class OrderResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -241,9 +232,40 @@ class OrderResponse(BaseModel):
     total_price: float
     delivery_address: str
     payment_method: Optional[str] = "UPI"
+    payment_status: str = "UNPAID"
     payment_tx_id: Optional[str] = None
     status: str
     created_at: datetime
+
+class PaymentCreateRequest(BaseModel):
+    order_id: int
+    provider: str = Field(default="RAZORPAY", description="Payment provider: RAZORPAY, UPI_QR, COD")
+    idempotency_key: Optional[str] = None
+
+class PaymentVerifyRequest(BaseModel):
+    order_id: int
+    provider: str
+    provider_order_id: Optional[str] = None
+    provider_payment_id: Optional[str] = None
+    signature: Optional[str] = None
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    idempotency_key: Optional[str] = None
+
+class PaymentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    order_id: int
+    provider: str
+    provider_order_id: Optional[str] = None
+    provider_payment_id: Optional[str] = None
+    amount: float
+    currency: str
+    status: str
+    signature_verified: bool
+    created_at: datetime
+    verified_at: Optional[datetime] = None
 
 # Step 6: Explainable Dynamic Pricing Schemas
 class PriceRecommendationResponse(BaseModel):

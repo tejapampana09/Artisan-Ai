@@ -289,11 +289,44 @@ def calculate_price_recommendation_from_inputs(
 
         if has_costs and rounded_price < minimum_fair_price:
             rounded_price = minimum_fair_price
+
+        cost_floor_override_applied = False
+        standard_cap_applied = False
+
+        # Upward Pricing Boundary & Cost-Floor Override Policy:
+        # Standard rule: recommendation is capped at +25% (current_price * 1.25).
+        # Cost-Floor Override: When minimum_fair_price exceeds current_price * 1.25, the protected cost floor
+        # takes priority to prevent artisan from selling at a loss.
+        if curr_price > 0 and rounded_price is not None:
+            v3_global_safety_cap = (curr_price * Decimal("1.25")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if has_costs and minimum_fair_price > v3_global_safety_cap:
+                # Cost-Floor Override triggered
+                cost_floor_override_applied = True
+                if rounded_price > minimum_fair_price:
+                    rounded_price = minimum_fair_price
+                reasoning.append(
+                    f"Cost-Floor Override Applied: Recommendation set to protected minimum fair price (₹{float(rounded_price):,.0f}) "
+                    f"to cover verified cost basis and minimum profit margin, taking priority over standard +25% ceiling (₹{float(v3_global_safety_cap):,.0f})."
+                )
+            elif rounded_price > v3_global_safety_cap:
+                rounded_price = v3_global_safety_cap
+                standard_cap_applied = True
+                reasoning.append(f"Standard pricing safety cap applied: recommendation capped to +25% maximum upward limit (₹{float(v3_global_safety_cap):,.0f}).")
+
         pricing_available = True
     else:
+        cost_floor_override_applied = False
+        standard_cap_applied = False
         if has_costs and minimum_fair_price > 0:
             final_recommended = minimum_fair_price
             rounded_price = (Decimal(round(float(final_recommended) / 5.0) * 5)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if curr_price > 0 and rounded_price is not None:
+                v3_global_safety_cap = (curr_price * Decimal("1.25")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                if minimum_fair_price > v3_global_safety_cap:
+                    cost_floor_override_applied = True
+                elif rounded_price > v3_global_safety_cap:
+                    rounded_price = v3_global_safety_cap
+                    standard_cap_applied = True
             pricing_available = True
         else:
             final_recommended = None
@@ -336,6 +369,8 @@ def calculate_price_recommendation_from_inputs(
         "pricing_case": pricing_case,
         "premium_positioning": pricing_case == "CASE_4_ABOVE_MARKET",
         "min_margin_percentage": int(float(margin_pct) * 100) if has_costs else 0,
+        "cost_floor_override_applied": cost_floor_override_applied,
+        "standard_cap_applied": standard_cap_applied,
         "seller_approval_mandatory": not auto_smart_pricing_enabled,
         "autonomous_mode_enabled": auto_smart_pricing_enabled,
         "pricing_mode": "AUTONOMOUS_AUTO_APPLY" if auto_smart_pricing_enabled else "SELLER_APPROVAL_RECOMMENDATION"

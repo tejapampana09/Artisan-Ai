@@ -204,16 +204,173 @@ def get_optional_current_user(
     except Exception:
         return None
 
-def require_admin(
-    current_user: User = Depends(get_current_user_strict)
+def create_domain_token(
+    user: User,
+    auth_domain: str,
+    session_type: str,
+    expires_delta: Optional[timedelta] = None
+) -> str:
+    """
+    Issues a V3 domain-isolated JWT access token.
+    auth_domain: "MARKETPLACE" | "ARTISAN_STUDIO" | "ADMIN"
+    session_type: "BUYER" | "STUDIO" | "ADMIN"
+    """
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode = {
+        "sub": str(user.id),
+        "name": user.name,
+        "role": user.role,
+        "auth_domain": auth_domain,
+        "session_type": session_type,
+        "ver": getattr(user, "token_version", 1) or 1,
+        "exp": expire
+    }
+    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+def get_token_payload_strict(
+    auth_header: Optional[str] = Header(None, alias="Authorization")
+) -> dict:
+    """
+    Strictly extracts and validates JWT payload.
+    Raises 401 on missing, expired, or corrupted token.
+    """
+    token = extract_token_from_header(auth_header)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication credentials were not provided. Expected Bearer token.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    payload = decode_access_token(token)
+    if not payload or "sub" not in payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired authentication token.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    return payload
+
+def require_buyer(
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_token_payload_strict)
 ) -> User:
     """
-    Enforces that the current authenticated user has ADMIN role.
-    Rejects unauthorized access with 403 Forbidden.
+    V3 Strict Buyer Authorization Dependency:
+    - Token auth_domain MUST be "MARKETPLACE"
+    - Token session_type MUST be "BUYER"
+    - Database account role MUST be "BUYER"
+    - Account status MUST be "ACTIVE"
+    NO ADMIN or ARTISAN bypass allowed.
     """
-    if str(current_user.role).upper() != "ADMIN":
+    if payload.get("auth_domain") != "MARKETPLACE" or payload.get("session_type") != "BUYER":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required to perform this action."
+            detail="Access denied. Valid Marketplace Buyer session required."
         )
-    return current_user
+
+    try:
+        user_id = int(str(payload.get("sub")))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject.")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
+
+    if getattr(user, "token_version", 1) != payload.get("ver"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked. Please log in again.")
+
+    if getattr(user, "status", "ACTIVE") != "ACTIVE":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is suspended or disabled.")
+
+    if user.role != "BUYER":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Account is not registered as a Buyer."
+        )
+
+    return user
+
+def require_artisan(
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_token_payload_strict)
+) -> User:
+    """
+    V3 Strict Artisan Authorization Dependency:
+    - Token auth_domain MUST be "ARTISAN_STUDIO"
+    - Token session_type MUST be "STUDIO"
+    - Database account role MUST be "ARTISAN"
+    - Account status MUST be "ACTIVE"
+    NO BUYER or ADMIN bypass allowed.
+    """
+    if payload.get("auth_domain") != "ARTISAN_STUDIO" or payload.get("session_type") != "STUDIO":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Valid Artisan Studio session required."
+        )
+
+    try:
+        user_id = int(str(payload.get("sub")))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject.")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Artisan not found.")
+
+    if getattr(user, "token_version", 1) != payload.get("ver"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked. Please log in again.")
+
+    if getattr(user, "status", "ACTIVE") != "ACTIVE":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Artisan account is suspended or disabled.")
+
+    if user.role != "ARTISAN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Account is not registered as an Artisan."
+        )
+
+    return user
+
+def require_admin(
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_token_payload_strict)
+) -> User:
+    """
+    V3 Strict Admin Authorization Dependency:
+    - Token auth_domain MUST be "ADMIN"
+    - Token session_type MUST be "ADMIN"
+    - Database account role MUST be "ADMIN"
+    - Account status MUST be "ACTIVE"
+    """
+    if payload.get("auth_domain") != "ADMIN" or payload.get("session_type") != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Valid Admin session required."
+        )
+
+    try:
+        user_id = int(str(payload.get("sub")))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject.")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin account not found.")
+
+    if getattr(user, "token_version", 1) != payload.get("ver"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked. Please log in again.")
+
+    if getattr(user, "status", "ACTIVE") != "ACTIVE":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin account is disabled.")
+
+    if user.role != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Account does not possess Administrator privileges."
+        )
+
+    return user

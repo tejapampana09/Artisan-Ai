@@ -11,7 +11,7 @@ from sqlalchemy import text
 
 from backend.app.database import engine, Base, get_db, ensure_sqlite_schema
 from backend.app.models import User, Product, Order, Enquiry, Event, PricingDecision, ProcessedOperation
-from backend.app.schemas import HealthResponse, ReadyResponse, UserResponse, ModeUpdateRequest
+from backend.app.schemas import HealthResponse, ReadyResponse, UserResponse
 from backend.app.config import get_cors_origins, ENVIRONMENT
 from backend.app.routes.products import router as products_router
 from backend.app.routes.ai_catalog import router as ai_router
@@ -19,7 +19,11 @@ from backend.app.routes.events import router as events_router
 from backend.app.routes.intelligence import router as intelligence_router
 from backend.app.routes.pricing import router as pricing_router
 from backend.app.routes.sync import router as sync_router
-from backend.app.routes.auth import router as auth_router
+from backend.app.routes.marketplace_auth import router as marketplace_auth_router
+from backend.app.routes.marketplace_payments import router as marketplace_payments_router
+from backend.app.routes.studio_auth import router as studio_auth_router
+from backend.app.routes.admin_auth import router as admin_auth_router
+from backend.app.routes.admin_ops import admin_ops_router
 from backend.app.routes.channels import router as channels_router
 from backend.app.routes.reviews import router as reviews_router
 from backend.app.routes.notifications import router as notifications_router
@@ -79,7 +83,11 @@ async def add_observability_headers(request: Request, call_next):
     return response
 
 # Include Routers
-app.include_router(auth_router)
+app.include_router(marketplace_auth_router)
+app.include_router(marketplace_payments_router)
+app.include_router(studio_auth_router)
+app.include_router(admin_auth_router)
+app.include_router(admin_ops_router)
 app.include_router(products_router)
 app.include_router(ai_router)
 app.include_router(events_router)
@@ -122,15 +130,4 @@ def readiness_check(db: Session = Depends(get_db)):
 
 @app.get("/api/me", response_model=UserResponse)
 def get_user_me(current_user: User = Depends(auth_get_current_user)):
-    return current_user
-
-@app.patch("/api/me/mode", response_model=UserResponse)
-def update_user_mode(
-    payload: ModeUpdateRequest, 
-    db: Session = Depends(get_db),
-    current_user: User = Depends(auth_get_current_user)
-):
-    current_user.active_mode = payload.mode
-    db.commit()
-    db.refresh(current_user)
     return current_user

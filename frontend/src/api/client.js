@@ -13,33 +13,124 @@ export function getApiBase() {
   return '/api';
 }
 
-export const AUTH_TOKEN_KEY = 'artisan_ai_auth_token';
+export const BUYER_TOKEN_KEY = 'artisan_ai_buyer_token';
+export const STUDIO_TOKEN_KEY = 'artisan_ai_studio_token';
+export const ADMIN_TOKEN_KEY = 'artisan_ai_admin_token';
+export const AUTH_TOKEN_KEY = 'artisan_ai_auth_token'; // Legacy fallback
 
-export function getAuthToken() {
+// --- Domain-specific token accessors ---
+export function getBuyerToken() {
   try {
-    return localStorage.getItem(AUTH_TOKEN_KEY);
+    return localStorage.getItem(BUYER_TOKEN_KEY) || localStorage.getItem(AUTH_TOKEN_KEY);
   } catch {
     return null;
   }
 }
 
-export function setAuthToken(token) {
+export function setBuyerToken(token) {
   try {
     if (token) {
-      localStorage.setItem(AUTH_TOKEN_KEY, token);
+      localStorage.setItem(BUYER_TOKEN_KEY, token);
+      localStorage.setItem(AUTH_TOKEN_KEY, token); // Keep legacy synced for unmigrated components
     } else {
+      localStorage.removeItem(BUYER_TOKEN_KEY);
       localStorage.removeItem(AUTH_TOKEN_KEY);
     }
   } catch (e) {
-    console.error('Failed to write auth token:', e);
+    console.error('Failed to write buyer token:', e);
   }
 }
 
-export function clearAuthToken() {
+export function clearBuyerToken() {
   try {
+    localStorage.removeItem(BUYER_TOKEN_KEY);
     localStorage.removeItem(AUTH_TOKEN_KEY);
   } catch (e) {
-    console.error('Failed to clear auth token:', e);
+    console.error('Failed to clear buyer token:', e);
+  }
+}
+
+export function getStudioToken() {
+  try {
+    return localStorage.getItem(STUDIO_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setStudioToken(token) {
+  try {
+    if (token) {
+      localStorage.setItem(STUDIO_TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(STUDIO_TOKEN_KEY);
+    }
+  } catch (e) {
+    console.error('Failed to write studio token:', e);
+  }
+}
+
+export function clearStudioToken() {
+  try {
+    localStorage.removeItem(STUDIO_TOKEN_KEY);
+  } catch (e) {
+    console.error('Failed to clear studio token:', e);
+  }
+}
+
+export function getAdminToken() {
+  try {
+    return localStorage.getItem(ADMIN_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAdminToken(token) {
+  try {
+    if (token) {
+      localStorage.setItem(ADMIN_TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(ADMIN_TOKEN_KEY);
+    }
+  } catch (e) {
+    console.error('Failed to write admin token:', e);
+  }
+}
+
+export function clearAdminToken() {
+  try {
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+  } catch (e) {
+    console.error('Failed to clear admin token:', e);
+  }
+}
+
+export function getAuthToken(domain = null) {
+  if (domain === 'STUDIO' || domain === 'ARTISAN') return getStudioToken();
+  if (domain === 'ADMIN') return getAdminToken();
+  if (domain === 'MARKETPLACE' || domain === 'BUYER') return getBuyerToken();
+  return getBuyerToken() || getStudioToken() || getAdminToken();
+}
+
+export function setAuthToken(token, domain = 'MARKETPLACE') {
+  if (domain === 'STUDIO' || domain === 'ARTISAN') setStudioToken(token);
+  else if (domain === 'ADMIN') setAdminToken(token);
+  else setBuyerToken(token);
+}
+
+export function clearAuthToken(domain = null) {
+  if (domain === 'STUDIO' || domain === 'ARTISAN') {
+    clearStudioToken();
+  } else if (domain === 'ADMIN') {
+    clearAdminToken();
+  } else if (domain === 'MARKETPLACE' || domain === 'BUYER') {
+    clearBuyerToken();
+  } else {
+    // Clear all if no specific domain requested
+    clearBuyerToken();
+    clearStudioToken();
+    clearAdminToken();
   }
 }
 
@@ -110,7 +201,32 @@ export async function apiRequest(endpoint, options = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const token = getAuthToken();
+  // Resolve domain-appropriate authorization token
+  let token = null;
+  if (options.auth !== false) {
+    if (options.domain) {
+      token = getAuthToken(options.domain);
+    } else {
+      // Infer from backend API endpoint prefix
+      const cleanEndpoint = endpoint.startsWith('/api') ? endpoint.slice(4) : endpoint;
+      if (cleanEndpoint.startsWith('/marketplace')) {
+        token = getBuyerToken();
+      } else if (
+        cleanEndpoint.startsWith('/studio') ||
+        cleanEndpoint.startsWith('/artisan') ||
+        cleanEndpoint.startsWith('/ai') ||
+        cleanEndpoint.startsWith('/sync') ||
+        cleanEndpoint.startsWith('/pricing')
+      ) {
+        token = getStudioToken();
+      } else if (cleanEndpoint.startsWith('/admin')) {
+        token = getAdminToken();
+      } else {
+        token = getBuyerToken() || getStudioToken() || getAdminToken();
+      }
+    }
+  }
+
   if (token && !headers['Authorization']) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -140,7 +256,14 @@ export async function apiRequest(endpoint, options = {}) {
         }
         
         if (response.status === 401) {
-          clearAuthToken();
+          // Domain-scoped 401 cleanup: clear only the domain that was rejected
+          const cleanEndpoint = endpoint.startsWith('/api') ? endpoint.slice(4) : endpoint;
+          const targetDomain = options.domain || (
+            cleanEndpoint.startsWith('/marketplace') ? 'MARKETPLACE' :
+            cleanEndpoint.startsWith('/studio') || cleanEndpoint.startsWith('/artisan') ? 'STUDIO' :
+            cleanEndpoint.startsWith('/admin') ? 'ADMIN' : null
+          );
+          clearAuthToken(targetDomain);
         }
 
         throw new ApiError(message, response.status, 'HTTP_ERROR', errData, isRetryable);
@@ -163,4 +286,20 @@ export async function apiRequest(endpoint, options = {}) {
       throw new ApiError(err.message || 'An unexpected error occurred', 500, 'UNEXPECTED_ERROR');
     }
   }
+}
+
+export function marketplaceRequest(endpoint, options = {}) {
+  return apiRequest(endpoint, { ...options, domain: 'MARKETPLACE' });
+}
+
+export function studioRequest(endpoint, options = {}) {
+  return apiRequest(endpoint, { ...options, domain: 'STUDIO' });
+}
+
+export function adminRequest(endpoint, options = {}) {
+  return apiRequest(endpoint, { ...options, domain: 'ADMIN' });
+}
+
+export function publicRequest(endpoint, options = {}) {
+  return apiRequest(endpoint, { ...options, auth: false });
 }

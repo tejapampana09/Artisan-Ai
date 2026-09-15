@@ -302,9 +302,8 @@ def place_order(
         buyer_phone = order.buyer_phone.strip() if order.buyer_phone and order.buyer_phone.strip() else (current_user.phone or None)
 
         pay_method = (order.payment_method or "UPI").upper()
-        tx_id = order.payment_tx_id or f"TXN_{pay_method}_{int(datetime.now().timestamp() * 1000)}"
 
-        # 1. Dedicated structured order record tied to authenticated user
+        # 1. Dedicated structured order record created as PENDING_PAYMENT
         order_record = Order(
             product_id=product.id,
             user_id=current_user.id,
@@ -315,14 +314,15 @@ def place_order(
             total_price=total_price,
             delivery_address=order.delivery_address.strip(),
             payment_method=pay_method,
-            payment_tx_id=tx_id,
-            status="CONFIRMED",
+            payment_status="UNPAID",
+            payment_tx_id=None,
+            status="PENDING_PAYMENT",
             created_at=datetime.now(timezone.utc)
         )
         db.add(order_record)
 
-        # 2. Public analytics event with sanitized operational info (NO delivery address or phone PII)
-        sanitized_meta = f"Quantity: {order.quantity} | Total: ₹{float(total_price):,.0f} | Pay: {pay_method} (Tx: {tx_id}) | Status: CONFIRMED"
+        # 2. Public analytics event with operational info
+        sanitized_meta = f"Quantity: {order.quantity} | Total: ₹{float(total_price):,.0f} | Pay: {pay_method} | Status: PENDING_PAYMENT"
 
         evt = Event(
             event_type="ORDER",
@@ -335,23 +335,6 @@ def place_order(
         db.add(evt)
         db.commit()
         db.refresh(evt)
-
-        # Notify seller of new order
-        if product.seller_id:
-            db.add(Notification(
-                user_id=product.seller_id,
-                title="🛒 New Order Received!",
-                message=f"{buyer_name} ordered '{product.title}' × {order.quantity} unit(s) for ₹{float(total_price):,.0f}. Go to Orders tab to process.",
-                type="ORDER"
-            ))
-        # Confirm order to buyer
-        db.add(Notification(
-            user_id=current_user.id,
-            title="✅ Order Confirmed!",
-            message=f"Your order for '{product.title}' × {order.quantity} unit(s) (₹{float(total_price):,.0f}) is confirmed. The artisan will process it soon.",
-            type="ORDER"
-        ))
-        db.commit()
 
         return evt
     except Exception as e:
@@ -405,6 +388,9 @@ def list_orders(
             unit_price=float(o.unit_price),
             total_price=float(o.total_price),
             delivery_address=o.delivery_address,
+            payment_method=getattr(o, "payment_method", "UPI"),
+            payment_status=getattr(o, "payment_status", "UNPAID") or "UNPAID",
+            payment_tx_id=getattr(o, "payment_tx_id", None),
             status=o.status,
             created_at=o.created_at
         ))

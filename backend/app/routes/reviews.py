@@ -6,7 +6,7 @@ from sqlalchemy import func
 from backend.app.database import get_db
 from backend.app.models import Review, Product, Order, User, Notification
 from backend.app.schemas import ReviewCreate, ReviewResponse
-from backend.app.services.auth import get_current_user
+from backend.app.services.auth import require_buyer
 
 router = APIRouter(prefix="/api", tags=["Verified Reviews & Ratings"])
 
@@ -37,7 +37,7 @@ def create_product_review(
     product_id: int,
     req: ReviewCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_buyer)
 ):
     """
     Submits a verified buyer review.

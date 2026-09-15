@@ -2,11 +2,11 @@
   "model_name": "RandomForestRegressor",
   "n_estimators": 100,
   "max_depth": 12,
-  "trained_at": "2026-09-14T14:12:00.727495+00:00",
+  "trained_at": "2026-09-15T13:38:07.781957+00:00",
   "n_samples": 1500,
-  "r2_score": 0.667,
-  "mae": 2.4962,
-  "rmse": 3.2527,
+  "r2_score": 0.7458,
+  "mae": 2.5772,
+  "rmse": 3.3173,
   "categories": [
     "Kalamkari",
     "Wooden Toys",
@@ -31,18 +31,18 @@
     "orders"
   ],
   "feature_importances": {
-    "material_cost": 0.0174,
-    "labour_cost": 0.0136,
-    "packaging_cost": 0.0175,
-    "other_cost": 0.0059,
-    "total_cost": 0.0105,
-    "price_to_cost_ratio": 0.0417,
-    "stock": 0.0166,
-    "category_encoded": 0.0106,
-    "views": 0.017,
-    "saves": 0.284,
-    "enquiries": 0.259,
-    "orders": 0.3061
+    "material_cost": 0.0166,
+    "labour_cost": 0.0171,
+    "packaging_cost": 0.0195,
+    "other_cost": 0.006,
+    "total_cost": 0.0125,
+    "price_to_cost_ratio": 0.0413,
+    "stock": 0.0154,
+    "category_encoded": 0.0112,
+    "views": 0.0168,
+    "saves": 0.3158,
+    "enquiries": 0.2442,
+    "orders": 0.2835
   },
   "training_mode": "DOMAIN_INFORMED_BOOTSTRAP"
 }

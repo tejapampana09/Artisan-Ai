@@ -2,191 +2,254 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 from backend.app.main import app
+from backend.tests.conftest import make_buyer, make_artisan_via_admin
 
 client = TestClient(app)
 
-def test_register_and_login_flow():
-    """Verify user registration and subsequent login with JWT token issue."""
+
+# ── Marketplace Buyer Auth ────────────────────────────────────────────────────
+
+def test_buyer_register_and_login():
+    """Marketplace: register buyer -> login -> get MARKETPLACE/BUYER token."""
     uid = uuid.uuid4().hex[:6]
-    email = f"user.{uid}@artisanai.in"
-    password = "Password123!"
+    email = f"buyer.{uid}@artisanai.in"
+    pw = "BuyerPass123!"
 
-    reg_res = client.post("/api/auth/register", json={
-        "name": "Auth Flow Tester",
+    reg = client.post("/api/marketplace/auth/register", json={
+        "name": "Auth Flow Buyer",
         "email": email,
-        "password": password,
-        "role": "ARTISAN"
+        "password": pw
     })
-    assert reg_res.status_code == 201
-    reg_data = reg_res.json()
-    assert "access_token" in reg_data
-    assert reg_data["token_type"].lower() == "bearer"
+    assert reg.status_code == 201
+    data = reg.json()
+    assert "access_token" in data
+    assert data["auth_domain"] == "MARKETPLACE"
+    assert data["session_type"] == "BUYER"
+    assert data["token_type"].lower() == "bearer"
 
-    login_res = client.post("/api/auth/login", json={
+    login = client.post("/api/marketplace/auth/login", json={
         "email_or_phone": email,
-        "password": password
+        "password": pw
     })
-    assert login_res.status_code == 200
-    assert "access_token" in login_res.json()
+    assert login.status_code == 200
+    ldata = login.json()
+    assert ldata["auth_domain"] == "MARKETPLACE"
+    assert ldata["session_type"] == "BUYER"
 
 
-def test_unauthenticated_password_change_rejected():
-    """Verify that /api/auth/change-password requires a valid Bearer token."""
-    res = client.post("/api/auth/change-password", json={
-        "current_password": "SomePassword123!",
-        "new_password": "NewPassword123!"
-    })
+def test_buyer_me_with_valid_token():
+    """Marketplace /me returns buyer info for valid MARKETPLACE token."""
+    _, _, _, headers = make_buyer(client)
+    me = client.get("/api/marketplace/auth/me", headers=headers)
+    assert me.status_code == 200
+    assert me.json()["role"] == "BUYER"
+
+
+def test_buyer_unauthenticated_me_rejected():
+    """/marketplace/auth/me requires a valid MARKETPLACE token."""
+    res = client.get("/api/marketplace/auth/me")
     assert res.status_code == 401
 
 
-def test_incorrect_current_password_rejected():
-    """Verify that change-password fails with 400 if current_password is wrong."""
-    uid = uuid.uuid4().hex[:6]
-    email = f"pwd.test.{uid}@artisanai.in"
-    reg = client.post("/api/auth/register", json={
-        "name": "Password Test User",
-        "email": email,
-        "password": "CorrectPassword123!",
-        "role": "ARTISAN"
-    })
-    assert reg.status_code == 201
-    token = reg.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+def test_buyer_invalid_token_rejected():
+    """Garbage JWT -> 401 on protected Marketplace endpoint."""
+    headers = {"Authorization": "Bearer not.a.jwt.token"}
+    res = client.get("/api/marketplace/auth/me", headers=headers)
+    assert res.status_code == 401
 
-    res = client.post("/api/auth/change-password", json={
-        "current_password": "WrongPassword999!",
-        "new_password": "NewPassword123!"
+
+def test_artisan_cannot_login_via_marketplace():
+    """Artisan account rejected at Marketplace Buyer login."""
+    res = client.post("/api/marketplace/auth/login", json={
+        "email_or_phone": "lakshmi@artisanai.in",
+        "password": "ArtisanPass123!"
+    })
+    assert res.status_code == 403
+    assert "buyer" in res.json()["detail"].lower() or "artisan" in res.json()["detail"].lower()
+
+
+def test_buyer_cannot_login_via_studio(admin_headers):
+    """Buyer account rejected at Studio Artisan login."""
+    uid = uuid.uuid4().hex[:6]
+    email = f"stub.buyer.{uid}@artisanai.in"
+    pw = "BuyerPass123!"
+    client.post("/api/marketplace/auth/register", json={
+        "name": "Stub Buyer",
+        "email": email,
+        "password": pw
+    })
+    res = client.post("/api/studio/auth/login", json={
+        "email_or_phone": email,
+        "password": pw
+    })
+    assert res.status_code == 403
+    assert "artisan" in res.json()["detail"].lower() or "buyer" in res.json()["detail"].lower()
+
+
+def test_buyer_change_password_full_cycle():
+    """Buyer can change password; old token/password rejected after."""
+    email, old_pw, token, headers = make_buyer(client)
+
+    change = client.post("/api/marketplace/auth/change-password", json={
+        "current_password": old_pw,
+        "new_password": "NewBuyer456!"
+    }, headers=headers)
+    assert change.status_code == 200
+    assert "access_token" in change.json()
+
+    # New credentials work
+    new_login = client.post("/api/marketplace/auth/login", json={
+        "email_or_phone": email,
+        "password": "NewBuyer456!"
+    })
+    assert new_login.status_code == 200
+
+    # Old password rejected
+    old_login = client.post("/api/marketplace/auth/login", json={
+        "email_or_phone": email,
+        "password": old_pw
+    })
+    assert old_login.status_code == 401
+
+
+def test_buyer_wrong_current_password_rejected():
+    """change-password fails with 400 if current_password is wrong."""
+    _, _, _, headers = make_buyer(client)
+    res = client.post("/api/marketplace/auth/change-password", json={
+        "current_password": "WrongPass999!",
+        "new_password": "DoesntMatter456!"
     }, headers=headers)
     assert res.status_code == 400
     assert "incorrect" in res.json()["detail"].lower()
 
 
-def test_authenticated_user_changes_own_password():
-    """Verify user can change own password with correct current_password."""
-    uid = uuid.uuid4().hex[:6]
-    email = f"pwd.owner.{uid}@artisanai.in"
-    reg = client.post("/api/auth/register", json={
-        "name": "Password Owner Test",
-        "email": email,
-        "password": "InitialPassword123!",
-        "role": "ARTISAN"
-    })
-    assert reg.status_code == 201
-    token = reg.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
-
-    change_res = client.post("/api/auth/change-password", json={
-        "current_password": "InitialPassword123!",
-        "new_password": "UpdatedPassword456!"
-    }, headers=headers)
-    assert change_res.status_code == 200
-    assert "access_token" in change_res.json()
-
-    new_login = client.post("/api/auth/login", json={
-        "email_or_phone": email,
-        "password": "UpdatedPassword456!"
-    })
-    assert new_login.status_code == 200
-
-    old_login = client.post("/api/auth/login", json={
-        "email_or_phone": email,
-        "password": "InitialPassword123!"
-    })
-    assert old_login.status_code == 401
-
-
-def test_public_reset_password_returns_501():
-    """Verify that public /api/auth/reset-password endpoint returns 501 Not Implemented."""
-    res = client.post("/api/auth/reset-password", json={
-        "email_or_phone": "anyuser@artisanai.in",
-        "new_password": "NewPassword123!"
-    })
-    assert res.status_code == 501
-    assert "not available" in res.json()["detail"].lower()
-
-
-def test_invalid_jwt_token_rejected():
-    """Verify endpoints reject garbage JWT tokens with 401 Unauthorized."""
-    headers = {"Authorization": "Bearer invalid.jwt.token.string"}
-    res = client.get("/api/notifications", headers=headers)
-    assert res.status_code == 401
-
-
-def test_admin_self_registration_is_blocked():
-    """Verify that public registration attempting to specify role='ADMIN' is blocked with 403 Forbidden."""
-    uid = uuid.uuid4().hex[:6]
-    res = client.post("/api/auth/register", json={
-        "name": "Attacker Admin",
-        "email": f"attacker.{uid}@artisanai.in",
-        "password": "Password123!",
-        "role": "ADMIN"
-    })
-    assert res.status_code == 403
-    assert "cannot be self-registered" in res.json()["detail"].lower()
-
-
-def test_google_auth_spoofed_request_without_valid_token_returns_401():
-    """Verify that unverified / spoofed Google auth requests are strictly rejected with 401."""
-    res = client.post("/api/auth/google", json={
-        "access_token": "fake_invalid_google_token",
-        "role": "ARTISAN"
+def test_google_auth_invalid_token_rejected():
+    """Spoofed Google auth -> 401."""
+    res = client.post("/api/marketplace/auth/google", json={
+        "access_token": "fake_invalid_google_access_token"
     })
     assert res.status_code == 401
     assert "google authentication failed" in res.json()["detail"].lower()
 
 
-def test_admin_endpoints_require_admin_role():
-    """Verify that /api/artisan/admin/sellers and /api/artisan/admin/create-seller require ADMIN role."""
-    # 1. Non-admin buyer attempt
-    buyer_email = f"buyer.{uuid.uuid4().hex[:6]}@artisanai.in"
-    reg = client.post("/api/auth/register", json={
-        "name": "Normal Buyer",
-        "email": buyer_email,
-        "password": "Password123!",
-        "role": "BUYER"
+# ── Artisan Studio Auth ───────────────────────────────────────────────────────
+
+def test_artisan_login_via_studio():
+    """Seeded artisan can login via Studio and gets ARTISAN_STUDIO domain token."""
+    res = client.post("/api/studio/auth/login", json={
+        "email_or_phone": "lakshmi@artisanai.in",
+        "password": "ArtisanPass123!"
     })
-    buyer_token = reg.json()["access_token"]
-    buyer_headers = {"Authorization": f"Bearer {buyer_token}"}
+    assert res.status_code == 200
+    data = res.json()
+    assert data["auth_domain"] == "ARTISAN_STUDIO"
+    assert data["session_type"] == "STUDIO"
 
-    # Attempt to access admin endpoints
-    res_list = client.get("/api/artisan/admin/sellers", headers=buyer_headers)
-    assert res_list.status_code == 403
-    assert "admin access required" in res_list.json()["detail"].lower()
 
-    res_create = client.post("/api/artisan/admin/create-seller", json={
-        "name": "Spoofed Artisan",
-        "email": f"seller.{uuid.uuid4().hex[:6]}@artisanai.in",
-        "password": "Password123!"
+def test_artisan_me_with_studio_token(artisan_headers):
+    """/studio/auth/me returns artisan info for valid ARTISAN_STUDIO token."""
+    me = client.get("/api/studio/auth/me", headers=artisan_headers)
+    assert me.status_code == 200
+    assert me.json()["role"] == "ARTISAN"
+
+
+def test_artisan_me_with_buyer_token_rejected():
+    """Buyer MARKETPLACE token cannot access /studio/auth/me (403)."""
+    _, _, _, buyer_headers = make_buyer(client)
+    res = client.get("/api/studio/auth/me", headers=buyer_headers)
+    assert res.status_code == 403
+
+
+def test_artisan_change_password(artisan_headers):
+    """Artisan can change password via Studio endpoint."""
+    change = client.post("/api/studio/auth/change-password", json={
+        "current_password": "ArtisanPass123!",
+        "new_password": "ArtisanNew456!"
+    }, headers=artisan_headers)
+    assert change.status_code == 200
+    assert "access_token" in change.json()
+    assert change.json()["auth_domain"] == "ARTISAN_STUDIO"
+
+
+# ── Admin Auth ────────────────────────────────────────────────────────────────
+
+def test_admin_login_returns_admin_domain_token():
+    """Admin login returns ADMIN domain token."""
+    res = client.post("/api/admin/auth/login", json={
+        "email_or_phone": "admin@artisanai.in",
+        "password": "AdminPass123!"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["auth_domain"] == "ADMIN"
+    assert data["session_type"] == "ADMIN"
+
+
+def test_admin_me_requires_admin_token(admin_headers):
+    """/admin/auth/me works with Admin domain token."""
+    me = client.get("/api/admin/auth/me", headers=admin_headers)
+    assert me.status_code == 200
+    assert me.json()["role"] == "ADMIN"
+
+
+def test_buyer_token_cannot_access_admin_me():
+    """MARKETPLACE Buyer token rejected at /admin/auth/me (403)."""
+    _, _, _, buyer_headers = make_buyer(client)
+    res = client.get("/api/admin/auth/me", headers=buyer_headers)
+    assert res.status_code == 403
+
+
+def test_artisan_token_cannot_access_admin_me(artisan_headers):
+    """ARTISAN_STUDIO token rejected at /admin/auth/me (403)."""
+    res = client.get("/api/admin/auth/me", headers=artisan_headers)
+    assert res.status_code == 403
+
+
+# ── Admin Endpoint Protection ─────────────────────────────────────────────────
+
+def test_admin_create_seller_requires_admin_token(admin_headers):
+    """Admin can create an artisan via /api/artisan/admin/create-seller."""
+    uid = uuid.uuid4().hex[:6]
+    res = client.post("/api/artisan/admin/create-seller", json={
+        "name": f"New Artisan {uid}",
+        "email": f"newartisan.{uid}@artisanai.in",
+        "password": "NewArt123!",
+        "craft": "Weaving"
+    }, headers=admin_headers)
+    assert res.status_code == 201
+    assert res.json()["role"] == "ARTISAN"
+
+
+def test_buyer_token_blocked_from_admin_create_seller():
+    """Buyer token cannot create seller (403)."""
+    _, _, _, buyer_headers = make_buyer(client)
+    uid = uuid.uuid4().hex[:6]
+    res = client.post("/api/artisan/admin/create-seller", json={
+        "name": f"Attacker {uid}",
+        "email": f"attacker.{uid}@artisanai.in",
+        "password": "Attacker123!"
     }, headers=buyer_headers)
-    assert res_create.status_code == 403
-    assert "admin access required" in res_create.json()["detail"].lower()
+    assert res.status_code == 403
 
 
-def test_seller_login_blocks_buyer_accounts():
-    """Verify that a BUYER account cannot log in via Seller Studio login (required_role='ARTISAN')."""
-    buyer_email = f"buyer.{uuid.uuid4().hex[:6]}@artisanai.in"
-    password = "SecurePassword123!"
-    client.post("/api/auth/register", json={
-        "name": "Test Customer",
-        "email": buyer_email,
-        "password": password,
-        "role": "BUYER"
+def test_no_public_artisan_self_registration():
+    """Artisan Studio has no public /register — only admin can create artisans."""
+    uid = uuid.uuid4().hex[:6]
+    res = client.post("/api/studio/auth/register", json={
+        "name": f"Self-reg Artisan {uid}",
+        "email": f"selfreg.{uid}@artisanai.in",
+        "password": "SelfReg123!"
     })
+    # Should return 404 (route doesn't exist) or 405/400
+    assert res.status_code in [404, 405, 422]
 
-    # Attempt login with required_role='ARTISAN' (as sent by Seller Studio Login)
-    seller_attempt = client.post("/api/auth/login", json={
-        "email_or_phone": buyer_email,
-        "password": password,
-        "required_role": "ARTISAN"
+
+def test_no_public_admin_registration():
+    """Admin Console has no public /register."""
+    uid = uuid.uuid4().hex[:6]
+    res = client.post("/api/admin/auth/register", json={
+        "name": f"Admin Attacker {uid}",
+        "email": f"adminreg.{uid}@artisanai.in",
+        "password": "Attack123!"
     })
-    assert seller_attempt.status_code == 403
-    assert "registered as a customer" in seller_attempt.json()["detail"].lower()
-
-    # Normal login without seller restriction succeeds
-    normal_attempt = client.post("/api/auth/login", json={
-        "email_or_phone": buyer_email,
-        "password": password
-    })
-    assert normal_attempt.status_code == 200
-    assert normal_attempt.json()["user"]["role"] == "BUYER"
-
+    assert res.status_code in [404, 405, 422]

@@ -6,7 +6,7 @@ from sqlalchemy import func
 from backend.app.database import get_db
 from backend.app.models import User, Product, Review
 from backend.app.schemas import ArtisanProfileResponse, ArtisanProfileUpdate, ProductResponse, UserResponse, AdminCreateSellerRequest
-from backend.app.services.auth import get_current_user, require_admin
+from backend.app.services.auth import get_current_user, require_admin, require_artisan
 
 router = APIRouter(prefix="/api/artisan", tags=["Artisan Profile & Verification"])
 
@@ -52,37 +52,37 @@ def get_artisan_public_profile(artisan_id: int, db: Session = Depends(get_db)):
 def update_artisan_profile(
     req: ArtisanProfileUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_artisan: User = Depends(require_artisan)
 ):
     """Updates current artisan profile details."""
     if req.avatar_url is not None:
-        current_user.avatar_url = req.avatar_url
+        current_artisan.avatar_url = req.avatar_url
     if req.bio is not None:
-        current_user.bio = req.bio
+        current_artisan.bio = req.bio
     if req.craft_specialization is not None:
-        current_user.craft_specialization = req.craft_specialization
+        current_artisan.craft_specialization = req.craft_specialization
     if req.experience_years is not None:
-        current_user.experience_years = req.experience_years
+        current_artisan.experience_years = req.experience_years
     if req.location is not None:
-        current_user.location = req.location
+        current_artisan.location = req.location
 
     # Auto-update status to PROFILE_COMPLETE if basic fields filled
-    if current_user.verification_status == "UNVERIFIED" and current_user.bio:
-        current_user.verification_status = "PROFILE_COMPLETE"
+    if current_artisan.verification_status == "UNVERIFIED" and current_artisan.bio:
+        current_artisan.verification_status = "PROFILE_COMPLETE"
 
     db.commit()
-    db.refresh(current_user)
+    db.refresh(current_artisan)
 
-    return get_artisan_public_profile(current_user.id, db)
+    return get_artisan_public_profile(current_artisan.id, db)
 
 @router.post("/admin/create-seller", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def admin_create_seller(
     payload: AdminCreateSellerRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_admin: User = Depends(require_admin)
 ):
     """
-    Admin Dashboard Endpoint: Allows Admin / Master Coordinator to create verified seller profiles
+    Admin Dashboard Endpoint: Allows Admin to create verified seller profiles
     and assign login credentials for artisans. Strictly protected by require_admin.
     """
     from backend.app.services.auth import hash_password
@@ -118,7 +118,7 @@ def admin_create_seller(
         phone=clean_phone,
         hashed_password=hash_password(payload.password),
         role="ARTISAN",
-        active_mode="SELL",
+        status="ACTIVE",
         location=payload.location or "India",
         craft=payload.craft or "Handicrafts",
         bio=payload.bio or f"Master artisan specializing in traditional {payload.craft or 'handicrafts'}.",
@@ -142,13 +142,9 @@ def admin_list_sellers(
 @router.get("/admin/system-accounts")
 def admin_get_system_accounts(
     db: Session = Depends(get_db),
-    x_admin_secret: Optional[str] = Header(None)
+    current_admin: User = Depends(require_admin)
 ):
-    """Fetches all system accounts (Admins & Artisans) from the active database."""
-    from backend.app.config import JWT_SECRET_KEY
-    if not x_admin_secret or x_admin_secret != JWT_SECRET_KEY:
-        raise HTTPException(status_code=403, detail="Invalid admin secret authorization.")
-
+    """Fetches all system accounts (Admins & Artisans) from the active database. Strictly requires Admin session."""
     admins = db.query(User).filter(User.role == "ADMIN").all()
     artisans = db.query(User).filter(User.role == "ARTISAN").all()
     buyers_count = db.query(User).filter(User.role == "BUYER").count()
@@ -186,16 +182,13 @@ def admin_get_system_accounts(
 @router.post("/admin/cleanup-buyers")
 def admin_cleanup_buyers(
     db: Session = Depends(get_db),
-    x_admin_secret: Optional[str] = Header(None)
+    current_admin: User = Depends(require_admin)
 ):
     """
-    Cleans up all BUYER accounts and their associated order/notification/enquiry/event records from active database.
-    Retains all ADMIN and ARTISAN accounts intact.
+    Cleans up all BUYER accounts and their associated records.
+    Retains all ADMIN and ARTISAN accounts intact. Strictly requires Admin session.
     """
-    from backend.app.config import JWT_SECRET_KEY
     from backend.app.models import Order, Notification, Enquiry, Event, Review
-    if not x_admin_secret or x_admin_secret != JWT_SECRET_KEY:
-        raise HTTPException(status_code=403, detail="Invalid admin secret authorization.")
 
     buyer_ids = [u.id for u in db.query(User.id).filter(User.role == "BUYER").all()]
     deleted_count = len(buyer_ids)
@@ -246,13 +239,10 @@ def admin_cleanup_buyers(
 def admin_seed_account(
     payload: dict,
     db: Session = Depends(get_db),
-    x_admin_secret: Optional[str] = Header(None)
+    current_admin: User = Depends(require_admin)
 ):
-    """Provisions or updates an Admin or Artisan account in the active database."""
-    from backend.app.config import JWT_SECRET_KEY
+    """Provisions or updates an Admin or Artisan account in the active database. Strictly requires Admin session."""
     from backend.app.services.auth import hash_password
-    if not x_admin_secret or x_admin_secret != JWT_SECRET_KEY:
-        raise HTTPException(status_code=403, detail="Invalid admin secret.")
     
     email = payload.get("email", "").strip().lower()
     name = payload.get("name", "").strip()
@@ -269,6 +259,7 @@ def admin_seed_account(
     if user:
         user.name = name or user.name
         user.role = role
+        user.status = "ACTIVE"
         user.hashed_password = hash_password(password)
         if phone:
             user.phone = phone
@@ -280,7 +271,7 @@ def admin_seed_account(
             phone=phone,
             hashed_password=hash_password(password),
             role=role,
-            active_mode="SELL",
+            status="ACTIVE",
             location=location,
             craft=craft,
             verification_status="VERIFIED_ARTISAN" if role == "ARTISAN" else "PROFILE_COMPLETE"

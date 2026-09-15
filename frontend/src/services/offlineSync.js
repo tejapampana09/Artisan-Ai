@@ -12,20 +12,30 @@ export function getCurrentUserId(userIdOverride = null) {
   return 'guest';
 }
 
-export function setStoredUser(user) {
+export function setStoredUser(user, domain = 'BUYER') {
   try {
+    const domainKey = `artisan_ai_${domain.toLowerCase()}_user`;
     if (user && user.id) {
       localStorage.setItem('artisan_ai_user', JSON.stringify(user));
+      localStorage.setItem(domainKey, JSON.stringify(user));
     } else {
-      localStorage.removeItem('artisan_ai_user');
+      localStorage.removeItem(domainKey);
+      if (domain === 'BUYER') {
+        localStorage.removeItem('artisan_ai_user');
+      }
     }
   } catch (e) {
     console.error('Failed to set stored user:', e);
   }
 }
 
-export function getStoredUser() {
+export function getStoredUser(domain = null) {
   try {
+    if (domain) {
+      const domainKey = `artisan_ai_${domain.toLowerCase()}_user`;
+      const domainRaw = localStorage.getItem(domainKey);
+      if (domainRaw) return JSON.parse(domainRaw);
+    }
     const raw = localStorage.getItem('artisan_ai_user');
     return raw ? JSON.parse(raw) : null;
   } catch (e) {

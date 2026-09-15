@@ -198,14 +198,12 @@ def test_market_research_requires_auth_and_rate_limiting():
     assert unauth_res.status_code == 401
 
     # 2. Authenticated request -> 200 OK
-    uid = uuid.uuid4().hex[:6]
-    reg = client.post("/api/auth/register", json={
-        "name": f"Mkt Seller {uid}",
-        "email": f"mkt.{uid}@artisanai.in",
-        "password": "Password123!",
-        "role": "ARTISAN"
+    # Use the seeded artisan (from conftest) via Studio login
+    login_res = client.post("/api/studio/auth/login", json={
+        "email_or_phone": "lakshmi@artisanai.in",
+        "password": "ArtisanPass123!"
     })
-    token = reg.json()["access_token"]
+    token = login_res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
     auth_res = client.post("/api/market/research", json={

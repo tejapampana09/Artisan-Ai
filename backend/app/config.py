@@ -103,3 +103,7 @@ MAX_DOWNWARD_ADJUSTMENT_PCT: float = float(os.getenv("PRICING_MAX_DOWNWARD_ADJUS
 MIN_DEMAND_FACTOR: float = float(os.getenv("PRICING_MIN_DEMAND_FACTOR", "0.95"))
 MAX_DEMAND_FACTOR: float = float(os.getenv("PRICING_MAX_DEMAND_FACTOR", "1.15"))
 
+# Payment Gateway Configuration
+RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "").strip()
+RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "").strip()
+

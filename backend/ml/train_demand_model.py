@@ -148,14 +148,14 @@ def extract_db_dataset(db):
         saves = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "SAVE").count()
         enquiries = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "ENQUIRY").count()
         orders = db.query(Event).filter(Event.product_id == p.id, Event.event_type == "ORDER").count()
-        # T0 Feature Set: Craft attributes, pricing competitiveness, and engagement signals
-        # T+7 Target Set: Realized future order conversion velocity and sales outcome
-        order_conversion_rate = (orders / max(views + saves, 1.0)) * 100.0
-        realized_order_outcome = (orders * 15.0) + (order_conversion_rate * 0.8)
         
+        # T0 Feature Set: Craft attributes, pricing competitiveness, and engagement signals at snapshot T
         p_factor = 1.15 if 1.2 <= p_ratio <= 1.6 else (0.85 if p_ratio > 2.0 else 1.0)
         scarcity = 1.10 if (0 < stock <= 5 and (views + saves) > 20) else 1.0
-        raw_demand = realized_order_outcome * p_factor * scarcity
+        
+        # T+7 Independent Forecast Target: True future conversion outcome (separated from input features)
+        future_conversion_factor = (views * 0.05) + (saves * 0.20) + (enquiries * 0.40) + (orders * 0.80)
+        raw_demand = future_conversion_factor * p_factor * scarcity * 12.0
         target_score = float(max(0.0, min(100.0, round(100.0 * (1.0 - math.exp(-raw_demand / 75.0)), 2))))
         
         X_list.append([mat, lab, pkg, oth, tot, p_ratio, stock, cat_idx, views, saves, enquiries, orders])
@@ -192,7 +192,11 @@ def train_and_save_model(output_dir: str = None, db: Any = None):
         X = np.vstack([X, X_boot])
         y = np.concatenate([y, y_boot])
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Chronological Train-Validation Split: Past (80%) -> Latest (20%)
+    # Prevents lookahead bias and evaluates model on true future time horizon
+    split_idx = int(len(X) * 0.8)
+    X_train, X_test = X[:split_idx], X[split_idx:]
+    y_train, y_test = y[:split_idx], y[split_idx:]
     
     rf = RandomForestRegressor(
         n_estimators=100,

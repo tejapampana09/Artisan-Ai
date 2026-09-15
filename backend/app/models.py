@@ -13,7 +13,7 @@ class User(Base):
     hashed_password = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     role = Column(String, default="ARTISAN", nullable=False) # "ARTISAN", "BUYER", "ADMIN"
-    active_mode = Column(String, default="SELL", nullable=False) # "SELL" or "BUY"
+    status = Column(String, default="ACTIVE", nullable=False) # "ACTIVE", "PENDING", "SUSPENDED"
     location = Column(String, nullable=True)
     craft = Column(String, nullable=True)
     token_version = Column(Integer, default=1, nullable=False)
@@ -72,7 +72,7 @@ class Product(Base):
     verification_status = Column(String, default="ARTISAN_PROVIDED", nullable=False) # "ARTISAN_PROVIDED", "AI_DRAFT", "PENDING_VERIFICATION", "VERIFIED"
 
     # Lifecycle status: DRAFT -> AI_PROCESSING -> AI_GENERATED -> APPROVED -> PUBLISHED
-    status = Column(String, default="PUBLISHED")
+    status = Column(String, default="DRAFT", nullable=False)
     
     # Cost structure for explainable pricing
     material_cost = Column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
@@ -113,8 +113,9 @@ class Order(Base):
     total_price = Column(Numeric(12, 2), nullable=False)
     delivery_address = Column(Text, nullable=False)
     payment_method = Column(String, default="UPI", nullable=True) # UPI, CARD, NETBANKING, COD, RAZORPAY
+    payment_status = Column(String, default="UNPAID", nullable=False) # UNPAID, VERIFIED, REFUNDED
     payment_tx_id = Column(String, nullable=True)
-    status = Column(String, default="CONFIRMED") # CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+    status = Column(String, default="PENDING_PAYMENT", nullable=False) # PENDING_PAYMENT, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED
     
     # Cancellation & Refund workflow
     cancellation_status = Column(String, default="NONE", nullable=False) # "NONE", "REQUESTED", "CANCELLED", "REJECTED"
@@ -126,6 +127,26 @@ class Order(Base):
     product = relationship("Product", back_populates="orders")
     user = relationship("User", back_populates="orders")
     review = relationship("Review", back_populates="order", uselist=False)
+    payments = relationship("Payment", back_populates="order", cascade="all, delete-orphan")
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), index=True, nullable=False)
+    provider = Column(String, nullable=False) # RAZORPAY, UPI_QR, CASHFREE, COD
+    provider_order_id = Column(String, nullable=True, index=True)
+    provider_payment_id = Column(String, nullable=True, index=True)
+    amount = Column(Numeric(12, 2), nullable=False)
+    currency = Column(String, default="INR", nullable=False)
+    status = Column(String, default="CREATED", nullable=False) # CREATED, PENDING, VERIFIED, FAILED, REFUNDED
+    signature_verified = Column(Boolean, default=False, nullable=False)
+    idempotency_key = Column(String, unique=True, index=True, nullable=True)
+    raw_payload = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    verified_at = Column(DateTime, nullable=True)
+
+    order = relationship("Order", back_populates="payments")
 
 class Enquiry(Base):
     __tablename__ = "enquiries"
@@ -152,6 +173,7 @@ class Review(Base):
     __tablename__ = "reviews"
     __table_args__ = (
         CheckConstraint("rating >= 1 AND rating <= 5", name="chk_review_rating_range"),
+        UniqueConstraint("order_id", "product_id", "buyer_id", name="uq_review_order_product_buyer"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -167,6 +189,21 @@ class Review(Base):
     product = relationship("Product", back_populates="reviews")
     order = relationship("Order", back_populates="review")
     buyer = relationship("User", back_populates="reviews")
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    actor_id = Column(Integer, nullable=True, index=True)
+    actor_email = Column(String, nullable=True)
+    action = Column(String, index=True, nullable=False)
+    resource_type = Column(String, index=True, nullable=False)
+    resource_id = Column(String, nullable=True)
+    before_state = Column(Text, nullable=True)
+    after_state = Column(Text, nullable=True)
+    reason = Column(Text, nullable=True)
+    ip_metadata = Column(String, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class Notification(Base):
     """

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import Product, User
 from backend.app.schemas import ProductCreate, ProductUpdate, ProductResponse
-from backend.app.services.auth import get_current_user
+from backend.app.services.auth import require_artisan, get_optional_current_user
 
 from decimal import Decimal
 
@@ -15,18 +15,13 @@ router = APIRouter(prefix="/api/products", tags=["Products"])
 def create_product(
     product_in: ProductCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_artisan: User = Depends(require_artisan)
 ):
-    # Prevent seller spoofing: non-admin users cannot assign products to other sellers
-    user_role = cast(Optional[str], current_user.role)
-    requested_seller_id = cast(Optional[int], product_in.seller_id)
-    if user_role == "ADMIN" and requested_seller_id is not None:
-        seller_id = requested_seller_id
-    else:
-        seller_id = current_user.id
-
+    """Creates a new product belonging strictly to the authenticated Artisan, defaulting to DRAFT."""
     product_data = product_in.model_dump()
-    product_data["seller_id"] = seller_id
+    product_data["seller_id"] = current_artisan.id
+    if not product_data.get("status"):
+        product_data["status"] = "DRAFT"
 
     money_fields = ["price", "material_cost", "labour_cost", "packaging_cost", "other_cost"]
     for f in money_fields:
@@ -51,11 +46,19 @@ def list_products(
     max_price: Optional[float] = Query(None, ge=0.0),
     db: Session = Depends(get_db)
 ):
+    """
+    Lists products. If querying for marketplace (no seller_id specified),
+    only PUBLISHED products are returned by default.
+    """
     query = db.query(Product)
     if category:
         query = query.filter(Product.category == category)
     if status:
         query = query.filter(Product.status == status)
+    elif seller_id is None:
+        # Public marketplace listing: enforce PUBLISHED only
+        query = query.filter(Product.status == "PUBLISHED")
+
     if seller_id:
         query = query.filter(Product.seller_id == seller_id)
     if min_price is not None:
@@ -88,7 +91,7 @@ def update_product(
     product_id: int,
     product_in: ProductUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_artisan: User = Depends(require_artisan)
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -97,16 +100,8 @@ def update_product(
             detail=f"Product with id {product_id} not found"
         )
 
-    # Seller Ownership / Admin Authorization Validation
-    product_seller_id = cast(Optional[int], product.seller_id)
-    current_user_id = cast(Optional[int], current_user.id)
-    user_role = cast(Optional[str], current_user.role)
-    if (
-        product_seller_id is not None
-        and current_user_id is not None
-        and product_seller_id != current_user_id
-        and user_role != "ADMIN"
-    ):
+    # Strict artisan ownership check
+    if product.seller_id != current_artisan.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to modify another artisan's product."
@@ -128,7 +123,7 @@ def update_product(
 def delete_product(
     product_id: int, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_artisan: User = Depends(require_artisan)
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -137,16 +132,8 @@ def delete_product(
             detail=f"Product with id {product_id} not found"
         )
 
-    # Seller Ownership / Admin Authorization Validation
-    product_seller_id = cast(Optional[int], product.seller_id)
-    current_user_id = cast(Optional[int], current_user.id)
-    user_role = cast(Optional[str], current_user.role)
-    if (
-        product_seller_id is not None
-        and current_user_id is not None
-        and product_seller_id != current_user_id
-        and user_role != "ADMIN"
-    ):
+    # Strict artisan ownership check
+    if product.seller_id != current_artisan.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to delete another artisan's product."
@@ -170,7 +157,7 @@ def transition_product_status(
     product_id: int,
     status_payload: dict,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_artisan: User = Depends(require_artisan)
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -179,16 +166,8 @@ def transition_product_status(
             detail=f"Product with id {product_id} not found"
         )
 
-    # Seller Ownership / Admin Authorization Validation
-    product_seller_id = cast(Optional[int], product.seller_id)
-    current_user_id = cast(Optional[int], current_user.id)
-    user_role = cast(Optional[str], current_user.role)
-    if (
-        product_seller_id is not None
-        and current_user_id is not None
-        and product_seller_id != current_user_id
-        and user_role != "ADMIN"
-    ):
+    # Strict artisan ownership check
+    if product.seller_id != current_artisan.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to transition status of another artisan's product."
@@ -203,7 +182,7 @@ def transition_product_status(
 
     current_status = (product.status or "DRAFT").upper()
     valid_next_states = VALID_TRANSITIONS.get(current_status, VALID_LIFECYCLE_STATES)
-    if new_status != current_status and new_status not in valid_next_states and user_role != "ADMIN":
+    if new_status != current_status and new_status not in valid_next_states:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid lifecycle state transition from '{current_status}' to '{new_status}'. Allowed transitions: {', '.join(valid_next_states)}"

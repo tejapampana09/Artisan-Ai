@@ -105,8 +105,14 @@ def test_4_extreme_low_market_median_cannot_violate_20_percent_cost_floor(db: Se
     assert rec["minimum_fair_price"] == 1200.0
     assert rec["recommended_price"] >= 1200.0
 
-def test_5_below_market_median_adjusts_to_market_median(db: Session):
-    """Verify Case 2: Artisan price below market adjusts to market median without being capped by 25% ceiling."""
+def test_5_below_market_median_adjusts_toward_market_median_v3_capped(db: Session):
+    """
+    Verify Case 2 (V3): Artisan price below market adjusts toward market median,
+    but the V3 Global Safety Cap (+25% max upward adjustment) is enforced.
+    price=500, market_median=850, V3 cap = 500 * 1.25 = 625
+    Cost floor: cost_basis=380, min_fair=456 (below cap)
+    Expected: recommended = 625 (capped, not full 850)
+    """
     product = Product(
         title="Handloom Scarf",
         category="Textiles",
@@ -125,9 +131,12 @@ def test_5_below_market_median_adjusts_to_market_median(db: Session):
     # Artisan price ₹500, observed market median ₹850
     rec = calculate_price_recommendation(product, db, market_median=850.0, market_currency="INR")
 
-    # Case 2: Underpriced craft adjusts toward market median (₹850.00), not capped at ₹625 (+25%)
+    # V3: CASE_2 is below market, but V3 Global Safety Cap applies: max = 500 * 1.25 = 625
     assert rec["pricing_case"] == "CASE_2_BELOW_MARKET"
-    assert rec["recommended_price"] == 850.0
+    # V3 global cap: 500 * 1.25 = 625; cost floor (456) < cap (625) so cap wins
+    assert rec["recommended_price"] == 625.0, (
+        f"Expected V3-capped CASE_2 recommendation of 625.0, got {rec['recommended_price']}"
+    )
 
 def test_6_currency_mismatch_ignores_market_median(db: Session):
     product = Product(

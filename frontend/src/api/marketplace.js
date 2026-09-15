@@ -47,3 +47,22 @@ export async function updateOrderStatus(orderId, newStatus) {
     body: JSON.stringify({ status: newStatus }),
   });
 }
+
+export async function createPayment(orderId, provider = 'RAZORPAY', idempotencyKey = null) {
+  return await apiRequest('/marketplace/payments/create', {
+    method: 'POST',
+    body: JSON.stringify({
+      order_id: orderId,
+      provider: provider,
+      idempotency_key: idempotencyKey
+    }),
+  });
+}
+
+export async function verifyPayment(payload) {
+  return await apiRequest('/marketplace/payments/verify', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
