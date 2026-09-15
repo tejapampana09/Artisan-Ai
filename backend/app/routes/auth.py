@@ -103,12 +103,26 @@ def login_user(payload: UserLogin, request: Request, db: Session = Depends(get_d
     """
     rate_limiter.check_rate_limit(f"login:{get_client_identifier(request)}", max_requests=5, window_seconds=60)
     identifier = payload.email_or_phone.strip()
-    user = db.query(User).filter(
-        or_(
-            User.email == identifier.lower(),
-            User.phone == identifier
-        )
-    ).first()
+    import re
+    digits = re.sub(r"\D", "", identifier)
+    match_conditions = [User.email == identifier.lower(), User.phone == identifier]
+    if len(digits) == 10:
+        match_conditions.extend([
+            User.phone == digits,
+            User.phone == f"+91{digits}",
+            User.phone == f"91{digits}",
+            User.phone == f"0{digits}"
+        ])
+    elif len(digits) == 12 and digits.startswith("91"):
+        pure_10 = digits[2:]
+        match_conditions.extend([
+            User.phone == digits,
+            User.phone == f"+{digits}",
+            User.phone == pure_10,
+            User.phone == f"0{pure_10}"
+        ])
+
+    user = db.query(User).filter(or_(*match_conditions)).first()
 
     if not user or not user.hashed_password:
         raise HTTPException(
