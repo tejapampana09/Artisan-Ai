@@ -55,6 +55,10 @@ def ensure_schema_migrations(eng):
             res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
             user_cols = [row[1] for row in res]
             if user_cols:
+                if "status" not in user_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN status VARCHAR DEFAULT 'ACTIVE'"))
+                if "token_version" not in user_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 1"))
                 if "avatar_url" not in user_cols:
                     conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url TEXT"))
                 if "bio" not in user_cols:
@@ -70,6 +74,8 @@ def ensure_schema_migrations(eng):
             res_prod = conn.execute(text("PRAGMA table_info(products)")).fetchall()
             prod_cols = [row[1] for row in res_prod]
             if prod_cols:
+                if "status" not in prod_cols:
+                    conn.execute(text("ALTER TABLE products ADD COLUMN status VARCHAR DEFAULT 'DRAFT'"))
                 if "craft_process" not in prod_cols:
                     conn.execute(text("ALTER TABLE products ADD COLUMN craft_process TEXT"))
                 if "region_of_origin" not in prod_cols:
@@ -99,6 +105,8 @@ def ensure_schema_migrations(eng):
             res_ord = conn.execute(text("PRAGMA table_info(orders)")).fetchall()
             ord_cols = [row[1] for row in res_ord]
             if ord_cols:
+                if "payment_status" not in ord_cols:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN payment_status VARCHAR DEFAULT 'UNPAID'"))
                 if "cancellation_status" not in ord_cols:
                     conn.execute(text("ALTER TABLE orders ADD COLUMN cancellation_status VARCHAR DEFAULT 'NONE'"))
                 if "cancellation_reason" not in ord_cols:
