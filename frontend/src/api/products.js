@@ -82,3 +82,34 @@ export async function estimateFairPrice(payload) {
   });
 }
 
+// Admin Governance Product Operations
+export async function adminListProducts(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const endpoint = query ? `/admin/products?${query}` : '/admin/products';
+  return await apiRequest(endpoint);
+}
+
+export async function adminApproveProduct(id) {
+  return await apiRequest(`/admin/products/${id}/approve`, {
+    method: 'PATCH',
+  });
+}
+
+export async function adminPublishProduct(id) {
+  return await apiRequest(`/admin/products/${id}/publish`, {
+    method: 'PATCH',
+  });
+}
+
+export async function adminSuspendProduct(id) {
+  return await apiRequest(`/admin/products/${id}/suspend`, {
+    method: 'PATCH',
+  });
+}
+
+export async function adminDeleteProduct(id) {
+  return await apiRequest(`/admin/products/${id}`, {
+    method: 'DELETE',
+  });
+}
+
