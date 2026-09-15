@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -137,3 +137,106 @@ def admin_list_sellers(
 ):
     """Lists all registered verified artisan seller profiles. Strictly protected by require_admin."""
     return db.query(User).filter(User.role == "ARTISAN").all()
+
+
+@router.get("/admin/system-accounts")
+def admin_get_system_accounts(
+    db: Session = Depends(get_db),
+    x_admin_secret: Optional[str] = Header(None)
+):
+    """Fetches all system accounts (Admins & Artisans) from the active database."""
+    from backend.app.config import JWT_SECRET_KEY
+    if not x_admin_secret or x_admin_secret != JWT_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Invalid admin secret authorization.")
+
+    admins = db.query(User).filter(User.role == "ADMIN").all()
+    artisans = db.query(User).filter(User.role == "ARTISAN").all()
+    buyers_count = db.query(User).filter(User.role == "BUYER").count()
+
+    return {
+        "status": "success",
+        "admins": [
+            {
+                "id": u.id,
+                "name": u.name,
+                "email": u.email,
+                "phone": u.phone,
+                "role": u.role,
+                "verification_status": u.verification_status
+            }
+            for u in admins
+        ],
+        "artisans": [
+            {
+                "id": u.id,
+                "name": u.name,
+                "email": u.email,
+                "phone": u.phone,
+                "role": u.role,
+                "craft": u.craft,
+                "location": u.location,
+                "verification_status": u.verification_status
+            }
+            for u in artisans
+        ],
+        "buyers_count": buyers_count
+    }
+
+
+@router.post("/admin/cleanup-buyers")
+def admin_cleanup_buyers(
+    db: Session = Depends(get_db),
+    x_admin_secret: Optional[str] = Header(None)
+):
+    """
+    Cleans up all BUYER accounts and their associated order/notification/enquiry/event records from active database.
+    Retains all ADMIN and ARTISAN accounts intact.
+    """
+    from backend.app.config import JWT_SECRET_KEY
+    from backend.app.models import Order, Notification, Enquiry, Event, Review
+    if not x_admin_secret or x_admin_secret != JWT_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Invalid admin secret authorization.")
+
+    buyer_ids = [u.id for u in db.query(User.id).filter(User.role == "BUYER").all()]
+    deleted_count = len(buyer_ids)
+
+    if buyer_ids:
+        db.query(Notification).filter(Notification.user_id.in_(buyer_ids)).delete(synchronize_session=False)
+        db.query(Event).filter(Event.user_id.in_(buyer_ids)).delete(synchronize_session=False)
+        db.query(Enquiry).filter(Enquiry.user_id.in_(buyer_ids)).delete(synchronize_session=False)
+        db.query(Review).filter(Review.buyer_id.in_(buyer_ids)).delete(synchronize_session=False)
+        db.query(Order).filter(Order.user_id.in_(buyer_ids)).delete(synchronize_session=False)
+        db.query(User).filter(User.id.in_(buyer_ids)).delete(synchronize_session=False)
+        db.commit()
+
+    admins = db.query(User).filter(User.role == "ADMIN").all()
+    artisans = db.query(User).filter(User.role == "ARTISAN").all()
+
+    return {
+        "status": "success",
+        "deleted_buyers_count": deleted_count,
+        "admins": [
+            {
+                "id": u.id,
+                "name": u.name,
+                "email": u.email,
+                "phone": u.phone,
+                "role": u.role,
+                "verification_status": u.verification_status
+            }
+            for u in admins
+        ],
+        "artisans": [
+            {
+                "id": u.id,
+                "name": u.name,
+                "email": u.email,
+                "phone": u.phone,
+                "role": u.role,
+                "craft": u.craft,
+                "location": u.location,
+                "verification_status": u.verification_status
+            }
+            for u in artisans
+        ]
+    }
