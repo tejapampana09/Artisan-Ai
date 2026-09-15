@@ -1286,38 +1286,74 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, activeSellerT
                   <span>Export CSV Report</span>
                 </button>
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                  {(dashboardData?.product_performance || []).length} Products
+                  {(() => {
+                    const perfList = (dashboardData?.product_performance && dashboardData.product_performance.length > 0)
+                      ? dashboardData.product_performance
+                      : myProducts.map(p => ({
+                          product_id: p.id,
+                          title: p.title,
+                          category: p.category,
+                          price: p.price,
+                          stock: p.stock,
+                          image_url: p.image_url,
+                          views: 0,
+                          units_sold: 0,
+                          revenue: 0,
+                          orders_count: 0
+                        }));
+                    return `${perfList.length} Products`;
+                  })()}
                 </span>
               </div>
             </div>
 
-            {!dashboardData?.product_performance || dashboardData.product_performance.length === 0 ? (
-              <div className="p-10 text-center">
-                <BarChart3 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs text-[#6B5B51]">No product analytics recorded yet. Add crafts to track sales!</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-[#2A1E17]">
-                  <thead className="bg-[#F4EBE1]/70 text-[#6B5B51] font-bold uppercase tracking-wider text-[10px]">
-                    <tr>
-                      <th className="py-3 px-4">Craft Item / హస్తకళ</th>
-                      <th className="py-3 px-4">Price</th>
-                      <th className="py-3 px-4">Stock</th>
-                      <th className="py-3 px-4 text-center">Views / చూసిన వారు</th>
-                      <th className="py-3 px-4 text-center">Units Sold / విక్రయాలు</th>
-                      <th className="py-3 px-4 text-right">Total Revenue / మొత్తం రాబడి</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {dashboardData.product_performance.map((item) => (
-                      <tr key={item.product_id} className="hover:bg-amber-50/40 transition-colors">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center space-x-3">
-                            {item.image_url ? (
-                              <img src={item.image_url} alt={item.title} className="w-10 h-10 rounded-lg object-cover border border-[#EADFCF] shrink-0" />
-                            ) : (
-                              <div className="w-10 h-10 rounded-lg bg-amber-100 border border-[#933D1E]/30 flex items-center justify-center shrink-0 font-bold text-[#933D1E] text-[10px]">
+            {(() => {
+              const perfList = (dashboardData?.product_performance && dashboardData.product_performance.length > 0)
+                ? dashboardData.product_performance
+                : myProducts.map(p => ({
+                    product_id: p.id,
+                    title: p.title,
+                    category: p.category,
+                    price: p.price,
+                    stock: p.stock,
+                    image_url: p.image_url,
+                    views: 0,
+                    units_sold: 0,
+                    revenue: 0,
+                    orders_count: 0
+                  }));
+
+              if (perfList.length === 0) {
+                return (
+                  <div className="p-10 text-center">
+                    <BarChart3 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs text-[#6B5B51]">No products added yet. Add crafts to start tracking sales!</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-[#2A1E17]">
+                    <thead className="bg-[#F4EBE1]/70 text-[#6B5B51] font-bold uppercase tracking-wider text-[10px]">
+                      <tr>
+                        <th className="py-3 px-4">Craft Item / హస్తకళ</th>
+                        <th className="py-3 px-4">Price</th>
+                        <th className="py-3 px-4">Stock</th>
+                        <th className="py-3 px-4 text-center">Views / చూసిన వారు</th>
+                        <th className="py-3 px-4 text-center">Units Sold / విక్రయాలు</th>
+                        <th className="py-3 px-4 text-right">Total Revenue / మొత్తం రాబడి</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {perfList.map((item) => (
+                        <tr key={item.product_id} className="hover:bg-amber-50/40 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center space-x-3">
+                              {item.image_url ? (
+                                <img src={item.image_url} alt={item.title} className="w-10 h-10 rounded-lg object-cover border border-[#EADFCF] shrink-0" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-amber-100 border border-[#933D1E]/30 flex items-center justify-center shrink-0 font-bold text-[#933D1E] text-[10px]">
                                 Craft
                               </div>
                             )}
@@ -1351,7 +1387,8 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, activeSellerT
                   </tbody>
                 </table>
               </div>
-            )}
+            );
+          })()}
           </div>
         </div>
       )}
