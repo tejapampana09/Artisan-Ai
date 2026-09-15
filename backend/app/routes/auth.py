@@ -182,36 +182,33 @@ def google_auth(payload: GoogleAuthRequest, request: Request, db: Session = Depe
             import logging
             logging.getLogger("artisan_ai").warning("Google tokeninfo check failed: %s", e)
 
-    email = (verified_email or payload.email or "").strip().lower()
-    name = (verified_name or payload.name or "").strip()
-    google_id = verified_google_id or payload.google_id
-
-    if not email:
+    if not verified_email:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Google authentication failed: Email address could not be verified by Google."
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google authentication failed: Valid Google access_token or id_token is required and must be verified by Google.",
+            headers={"WWW-Authenticate": "Bearer"}
         )
+
+    email = verified_email.strip().lower()
+    name = (verified_name or email.split("@")[0]).strip()
+    google_id = verified_google_id or f"google_{email}"
 
     # Check if user already exists
     user = db.query(User).filter(User.email == email).first()
     
-    target_role = (payload.role or "BUYER").upper().strip()
-    if target_role not in {"BUYER", "ARTISAN"}:
-        target_role = "BUYER"
-        
     if not user:
         # Create new user registered via verified Google OAuth
+        # New users default strictly to BUYER role (prevent client role escalation)
         user_name = name if name else email.split("@")[0].capitalize()
-        active_mode = "BUY" if target_role == "BUYER" else "SELL"
         user = User(
             name=user_name,
             email=email,
             phone=None,
-            hashed_password=hash_password(f"google_oauth_{payload.google_id or 'sso'}_secret"),
-            role=target_role,
-            active_mode=active_mode,
+            hashed_password=hash_password(f"google_oauth_{google_id}_secret"),
+            role="BUYER",
+            active_mode="BUY",
             location="India",
-            craft="Connoisseur Collection" if target_role == "BUYER" else "Handcrafted Goods"
+            craft="Connoisseur Collection"
         )
         db.add(user)
         db.commit()

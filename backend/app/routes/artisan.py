@@ -6,7 +6,7 @@ from sqlalchemy import func
 from backend.app.database import get_db
 from backend.app.models import User, Product, Review
 from backend.app.schemas import ArtisanProfileResponse, ArtisanProfileUpdate, ProductResponse, UserResponse, AdminCreateSellerRequest
-from backend.app.services.auth import get_current_user
+from backend.app.services.auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/api/artisan", tags=["Artisan Profile & Verification"])
 
@@ -79,11 +79,11 @@ def update_artisan_profile(
 def admin_create_seller(
     payload: AdminCreateSellerRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_admin)
 ):
     """
     Admin Dashboard Endpoint: Allows Admin / Master Coordinator to create verified seller profiles
-    and assign login credentials for artisans.
+    and assign login credentials for artisans. Strictly protected by require_admin.
     """
     from backend.app.services.auth import hash_password
 
@@ -122,7 +122,7 @@ def admin_create_seller(
         location=payload.location or "India",
         craft=payload.craft or "Handicrafts",
         bio=payload.bio or f"Master artisan specializing in traditional {payload.craft or 'handicrafts'}.",
-        verification_status=payload.verification_status or "GI_VERIFIED"
+        verification_status=payload.verification_status or "UNVERIFIED"
     )
     db.add(new_seller)
     db.commit()
@@ -133,7 +133,7 @@ def admin_create_seller(
 @router.get("/admin/sellers", response_model=List[UserResponse])
 def admin_list_sellers(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_admin)
 ):
-    """Lists all registered verified artisan seller profiles."""
+    """Lists all registered verified artisan seller profiles. Strictly protected by require_admin."""
     return db.query(User).filter(User.role == "ARTISAN").all()

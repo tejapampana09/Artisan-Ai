@@ -105,15 +105,16 @@ def test_4_extreme_low_market_median_cannot_violate_20_percent_cost_floor(db: Se
     assert rec["minimum_fair_price"] == 1200.0
     assert rec["recommended_price"] >= 1200.0
 
-def test_5_extreme_high_market_median_cannot_breach_25_percent_upward_cap(db: Session):
+def test_5_below_market_median_adjusts_to_market_median(db: Session):
+    """Verify Case 2: Artisan price below market adjusts to market median without being capped by 25% ceiling."""
     product = Product(
-        title="Silver Filigree Box",
-        category="Jewelry",
-        price=Decimal("1500.00"),
-        material_cost=Decimal("500.00"),
-        labour_cost=Decimal("300.00"),
-        packaging_cost=Decimal("100.00"),
-        other_cost=Decimal("100.00"),
+        title="Handloom Scarf",
+        category="Textiles",
+        price=Decimal("500.00"),
+        material_cost=Decimal("200.00"),
+        labour_cost=Decimal("150.00"),
+        packaging_cost=Decimal("20.00"),
+        other_cost=Decimal("10.00"),
         min_margin_pct=Decimal("0.20"),
         stock=10
     )
@@ -121,11 +122,12 @@ def test_5_extreme_high_market_median_cannot_breach_25_percent_upward_cap(db: Se
     db.commit()
     db.refresh(product)
 
-    # Extreme high market median ₹10,000 (current price is ₹1,500)
-    rec = calculate_price_recommendation(product, db, market_median=10000.0, market_currency="INR")
+    # Artisan price ₹500, observed market median ₹850
+    rec = calculate_price_recommendation(product, db, market_median=850.0, market_currency="INR")
 
-    # Case 2: Artisan price (₹1,500) below market median (₹10,000) -> capped at +25% max upward adjustment (₹1,875.00)
-    assert rec["recommended_price"] == 1875.0
+    # Case 2: Underpriced craft adjusts toward market median (₹850.00), not capped at ₹625 (+25%)
+    assert rec["pricing_case"] == "CASE_2_BELOW_MARKET"
+    assert rec["recommended_price"] == 850.0
 
 def test_6_currency_mismatch_ignores_market_median(db: Session):
     product = Product(

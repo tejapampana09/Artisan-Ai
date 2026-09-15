@@ -325,14 +325,14 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                                 matched_uri = g["uri"]
                                 break
 
-                    # Grounding Security Gate: reject listing if raw_url is specified but not grounded in search results
-                    if raw_url and not _is_url_in_grounding(raw_url, grounded_uris) and not matched_uri:
-                        logger.info("[Market] Rejecting listing '%s' - URL '%s' not present in groundingMetadata", title, raw_url)
+                    # Strict Grounding Provenance Gate:
+                    # A price-bearing comparable MUST derive directly from an authentic web URI in groundingMetadata.
+                    # Artificial or synthesized search URLs are strictly forbidden for pricing comparables.
+                    if not matched_uri:
+                        logger.info("[Market] Rejecting listing '%s' - no verified grounded web source URI found in groundingMetadata", title)
                         continue
 
-                    # Strict Source Integrity: If no exact domain or title match found in grounded chunks, 
-                    # do NOT guess by array position. Fallback safely to verified live search URL for that craft title.
-                    final_url = _clean_or_build_url(matched_uri or raw_url, title, source)
+                    final_url = matched_uri
 
                     results.append({
                         "title": title,

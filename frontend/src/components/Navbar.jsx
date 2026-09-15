@@ -137,9 +137,11 @@ export default function Navbar({
     if (onSearchChange) onSearchChange('');
   };
 
+  const isInitialFetchRef = useRef(true);
+
   const getSeenNotifIds = () => {
     try {
-      const stored = sessionStorage.getItem('artisan_seen_notif_ids');
+      const stored = localStorage.getItem('artisan_seen_notif_ids');
       return stored ? new Set(JSON.parse(stored)) : new Set();
     } catch {
       return new Set();
@@ -150,7 +152,17 @@ export default function Navbar({
     try {
       const current = getSeenNotifIds();
       current.add(id);
-      sessionStorage.setItem('artisan_seen_notif_ids', JSON.stringify(Array.from(current)));
+      localStorage.setItem('artisan_seen_notif_ids', JSON.stringify(Array.from(current)));
+    } catch {
+      // Ignore storage errors
+    }
+  };
+
+  const saveAllSeenNotifIds = (ids) => {
+    try {
+      const current = getSeenNotifIds();
+      ids.forEach(id => current.add(id));
+      localStorage.setItem('artisan_seen_notif_ids', JSON.stringify(Array.from(current)));
     } catch {
       // Ignore storage errors
     }
@@ -158,6 +170,7 @@ export default function Navbar({
 
   useEffect(() => {
     if (user) {
+      isInitialFetchRef.current = true;
       fetchNotifications();
       const interval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(interval);
@@ -171,12 +184,20 @@ export default function Navbar({
 
       const seenIds = getSeenNotifIds();
 
-      // Detect newly arrived unread notifications and fire Native Mobile Device Push & In-App Toast
+      // On initial app load/open:
+      // Mark all pre-existing notifications as seen in localStorage so they don't spam toasts
+      if (isInitialFetchRef.current) {
+        isInitialFetchRef.current = false;
+        saveAllSeenNotifIds(data.map(n => n.id));
+        return;
+      }
+
+      // On subsequent polling intervals, detect NEWLY arrived notifications
       data.forEach(n => {
         if (!n.is_read && !seenIds.has(n.id)) {
           saveSeenNotifId(n.id);
           triggerMobilePush(n.title, n.message);
-          toast.info(`${n.title}: ${n.message}`, 8000);
+          toast.info(`${n.title}: ${n.message}`, 6000);
         } else {
           saveSeenNotifId(n.id);
         }
@@ -200,6 +221,16 @@ export default function Navbar({
       setNotifications(notifications.map(n => n.id === id ? { ...n, is_read: true } : n));
     } catch (err) {
       console.error('Failed to mark notification read:', err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      const unreadList = notifications.filter(n => !n.is_read);
+      await Promise.all(unreadList.map(n => markNotificationRead(n.id)));
+      setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+    } catch (err) {
+      console.error('Failed to mark all notifications read:', err);
     }
   };
 
@@ -418,12 +449,22 @@ export default function Navbar({
                   </span>
                 )}
               </div>
-              <button 
-                onClick={() => setShowNotifications(false)} 
-                className="text-[#9E8E83] hover:text-white text-base font-bold p-1 cursor-pointer"
-              >
-                ✕
-              </button>
+              <div className="flex items-center space-x-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllRead}
+                    className="text-[10px] text-amber-400 hover:text-amber-300 font-semibold underline cursor-pointer"
+                  >
+                    Mark all read
+                  </button>
+                )}
+                <button 
+                  onClick={() => setShowNotifications(false)} 
+                  className="text-[#9E8E83] hover:text-white text-base font-bold p-1 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">

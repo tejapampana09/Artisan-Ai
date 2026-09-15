@@ -203,3 +203,17 @@ def get_optional_current_user(
         return user
     except Exception:
         return None
+
+def require_admin(
+    current_user: User = Depends(get_current_user_strict)
+) -> User:
+    """
+    Enforces that the current authenticated user has ADMIN role.
+    Rejects unauthorized access with 403 Forbidden.
+    """
+    if str(current_user.role).upper() != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required to perform this action."
+        )
+    return current_user

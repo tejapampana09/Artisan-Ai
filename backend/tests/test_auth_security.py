@@ -124,3 +124,40 @@ def test_admin_self_registration_is_blocked():
     assert res.status_code == 403
     assert "cannot be self-registered" in res.json()["detail"].lower()
 
+
+def test_google_auth_spoofed_request_without_valid_token_returns_401():
+    """Verify that unverified / spoofed Google auth requests are strictly rejected with 401."""
+    res = client.post("/api/auth/google", json={
+        "access_token": "fake_invalid_google_token",
+        "role": "ARTISAN"
+    })
+    assert res.status_code == 401
+    assert "google authentication failed" in res.json()["detail"].lower()
+
+
+def test_admin_endpoints_require_admin_role():
+    """Verify that /api/artisan/admin/sellers and /api/artisan/admin/create-seller require ADMIN role."""
+    # 1. Non-admin buyer attempt
+    buyer_email = f"buyer.{uuid.uuid4().hex[:6]}@artisanai.in"
+    reg = client.post("/api/auth/register", json={
+        "name": "Normal Buyer",
+        "email": buyer_email,
+        "password": "Password123!",
+        "role": "BUYER"
+    })
+    buyer_token = reg.json()["access_token"]
+    buyer_headers = {"Authorization": f"Bearer {buyer_token}"}
+
+    # Attempt to access admin endpoints
+    res_list = client.get("/api/artisan/admin/sellers", headers=buyer_headers)
+    assert res_list.status_code == 403
+    assert "admin access required" in res_list.json()["detail"].lower()
+
+    res_create = client.post("/api/artisan/admin/create-seller", json={
+        "name": "Spoofed Artisan",
+        "email": f"seller.{uuid.uuid4().hex[:6]}@artisanai.in",
+        "password": "Password123!"
+    }, headers=buyer_headers)
+    assert res_create.status_code == 403
+    assert "admin access required" in res_create.json()["detail"].lower()
+

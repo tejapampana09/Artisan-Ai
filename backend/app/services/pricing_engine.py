@@ -275,7 +275,7 @@ def calculate_price_recommendation_from_inputs(
         else:
             rounded_price = (Decimal(round(float(final_recommended) / 5.0) * 5)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             
-        if has_artisan_price:
+        if has_artisan_price and pricing_case != "CASE_2_BELOW_MARKET":
             max_price = (curr_price * (Decimal("1.0") + MAX_UPWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             min_price = (curr_price * (Decimal("1.0") - MAX_DOWNWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if rounded_price > max_price:
@@ -360,6 +360,7 @@ def calculate_price_recommendation_from_inputs(
             "high": float(high_dec) if high_dec is not None else 0.0
         },
         "current_market_position": market_pos,
+        "pricing_case": pricing_case,
         "price_change_amount": float(price_change_amount),
         "price_change_percentage": price_change_pct,
         "reasoning": reasoning,

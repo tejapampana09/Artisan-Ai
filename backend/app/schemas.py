@@ -91,6 +91,11 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     user: UserResponse
 
+class GoogleAuthRequest(BaseModel):
+    access_token: Optional[str] = None
+    token: Optional[str] = None # Google ID token
+    role: Optional[str] = "BUYER"
+
 class ModeUpdateRequest(BaseModel):
     mode: str = Field(..., pattern="^(SELL|BUY)$")
 
