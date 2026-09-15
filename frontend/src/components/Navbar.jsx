@@ -305,7 +305,7 @@ export default function Navbar({
 
           {/* Desktop Center Header Navigation / Search Bar */}
           {activeMode === 'HOME' ? (
-            <div className="flex items-center">
+            <div className="hidden sm:flex items-center">
               <button
                 onClick={() => onToggleMode('BUY')}
                 className="flex items-center space-x-2 text-sm font-bold text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer bg-white border border-[#E8E5DF] px-4 py-1.5 rounded-lg shadow-2xs hover:border-[#A6533B]"
@@ -391,27 +391,21 @@ export default function Navbar({
             </div>
           )}
 
-          {/* Right Action Icons (Shop/Search, Cart & Profile) */}
+          {/* Right Action Icons (Seller Login, Search, Language, Notifications, Cart & Profile) */}
           <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Mobile Studio Quick Access */}
-            <button
-              onClick={() => (!user || user?.role === 'BUYER' ? onOpenAuth('SELL_LOGIN') : onToggleMode('SELL'))}
-              className="md:hidden flex items-center space-x-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-700 to-[#A6533B] text-white text-[11px] font-bold shadow-xs active:scale-95 cursor-pointer shrink-0"
-              title="Artisan Studio Login / సెల్లర్ లాగిన్"
-            >
-              <Store className="w-3.5 h-3.5" />
-              <span>{user?.role === 'ARTISAN' || user?.role === 'ADMIN' ? 'Studio' : 'Seller Login'}</span>
-            </button>
-
-            {activeMode === 'HOME' ? (
+            {/* Mobile Seller Login (Kept prominent for guests / buyers) */}
+            {(!user || user?.role === 'BUYER') && (
               <button
-                onClick={() => onToggleMode('BUY')}
-                className="sm:hidden text-xs font-bold text-white bg-[#A6533B] hover:bg-[#88412F] px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center space-x-1"
+                onClick={() => onOpenAuth('SELL_LOGIN')}
+                className="md:hidden flex items-center space-x-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-700 to-[#A6533B] text-white text-[11px] font-bold shadow-xs active:scale-95 cursor-pointer shrink-0"
+                title="Seller Login / సెల్లర్ లాగిన్"
               >
-                <ShoppingBag className="w-3.5 h-3.5" />
-                <span>Shop</span>
+                <Store className="w-3.5 h-3.5" />
+                <span>Seller Login</span>
               </button>
-            ) : (
+            )}
+
+            {activeMode !== 'HOME' && (
               <button
                 onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
                 className="sm:hidden p-1.5 text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer"
@@ -820,23 +814,37 @@ export default function Navbar({
           <span className="text-[10px] mt-0.5 font-bold">Shop</span>
         </button>
 
-        {/* Center Prominent Studio Action (Mobile Studio Portal / Login) */}
-        <button
-          onClick={() => (!user || user?.role === 'BUYER' ? onOpenAuth('SELL_LOGIN') : onToggleMode('SELL'))}
-          className={`relative -top-3 flex flex-col items-center justify-center px-3.5 py-1.5 rounded-2xl shadow-xl transition-all active:scale-95 cursor-pointer border-2 ${
-            activeMode === 'SELL'
-              ? 'bg-gradient-to-tr from-[#933D1E] to-[#A6533B] text-white border-amber-300 ring-2 ring-amber-400/50 scale-105'
-              : 'bg-gradient-to-tr from-amber-800 via-[#A6533B] to-[#2A1E17] text-white border-white ring-1 ring-stone-200'
-          }`}
-          title="Artisan Studio Login / సెల్లర్ లాగిన్"
-        >
-          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-inner">
-            <Store className="w-5 h-5" />
-          </div>
-          <span className="text-[10px] font-black tracking-tight mt-0.5 text-white">
-            {user?.role === 'ARTISAN' || user?.role === 'ADMIN' ? 'Studio' : 'Studio Login'}
-          </span>
-        </button>
+        {/* Center Action: Studio button ONLY AFTER artisan/admin login; Wishlist for guests/buyers */}
+        {user && (user.role === 'ARTISAN' || user.role === 'ADMIN') ? (
+          <button
+            onClick={() => onToggleMode('SELL')}
+            className={`relative -top-3 flex flex-col items-center justify-center px-3.5 py-1.5 rounded-2xl shadow-xl transition-all active:scale-95 cursor-pointer border-2 ${
+              activeMode === 'SELL'
+                ? 'bg-gradient-to-tr from-[#933D1E] to-[#A6533B] text-white border-amber-300 ring-2 ring-amber-400/50 scale-105'
+                : 'bg-gradient-to-tr from-amber-800 via-[#A6533B] to-[#2A1E17] text-white border-white ring-1 ring-stone-200'
+            }`}
+            title="Artisan Studio / సెల్లర్ స్టూడియో"
+          >
+            <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-inner">
+              <Store className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-black tracking-tight mt-0.5 text-white">
+              Studio
+            </span>
+          </button>
+        ) : (
+          <button
+            onClick={() => onOpenAuth('WISHLIST')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all active:scale-95 cursor-pointer ${
+              activeMode === 'WISHLIST'
+                ? 'text-[#A6533B] font-extrabold'
+                : 'text-stone-500 hover:text-stone-900 font-semibold'
+            }`}
+          >
+            <Heart className="w-5 h-5" />
+            <span className="text-[10px] mt-0.5 font-bold">Wishlist</span>
+          </button>
+        )}
 
         <button
           onClick={() => onOpenAuth('ORDERS')}

@@ -150,29 +150,6 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
           </button>
         </div>
       </div>
-
-      {/* Dedicated Artisan Studio Access Card */}
-      <div className="bg-gradient-to-r from-[#2A1E17] to-amber-950 rounded-2xl p-5 sm:p-6 text-white shadow-md border border-amber-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2">
-            <Store className="w-5 h-5 text-amber-400 shrink-0" />
-            <span className="font-bold text-base">
-              {isArtisan ? 'Artisan Creator Studio / సెల్లర్ స్టూడియో' : 'Sell on Artisan AI / సెల్లర్ లాగిన్'}
-            </span>
-          </div>
-          <p className="text-xs text-stone-300 leading-relaxed max-w-xl">
-            {isArtisan
-              ? 'Manage your craft inventory, live demand signals, automated AI fair pricing, and customer orders.'
-              : 'Direct artisan seller onboarding with zero platform commissions, protected 20%+ profit floor, and voice-assisted AI cataloging.'}
-          </p>
-        </div>
-        <button
-          onClick={() => onSelectMode('SELL')}
-          className="px-5 py-2.5 bg-[#A6533B] hover:bg-[#88412F] text-white font-extrabold text-xs rounded-xl shadow-md transition-all shrink-0 cursor-pointer active:scale-95"
-        >
-          {isArtisan ? 'Open Studio →' : 'Artisan Studio Login →'}
-        </button>
-      </div>
     </div>
   );
 }
