@@ -56,7 +56,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode }) {
   const [systemHealth, setSystemHealth] = useState(null);
 
   useEffect(() => {
-    if (getAdminToken() && (user?.role === 'ADMIN' || adminUser)) {
+    if (user?.role === 'ADMIN' || adminUser || getAdminToken()) {
       fetchAllData();
     }
   }, [user, adminUser]);

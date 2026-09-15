@@ -46,6 +46,33 @@ const getStepIndex = (status) => {
 export default function SellView({ user, onOpenAuth, onSwitchMode, activeSellerTab = 'DASHBOARD', onSelectSellerTab }) {
   const notify = useNotification();
   const { language, setIsSelectingLanguage } = useLanguage();
+
+  if (user?.role === 'ADMIN') {
+    return (
+      <div className="max-w-xl mx-auto my-12 bg-white rounded-3xl p-8 border border-[#E8E5DF] shadow-2xl text-center space-y-4 font-sans text-xs">
+        <ShieldCheck className="w-12 h-12 text-[#A6533B] mx-auto" />
+        <h2 className="text-xl font-bold text-[#1C1C1C]">Admin Governance Active</h2>
+        <p className="text-[#6B6B6B] leading-relaxed">
+          Administrator accounts manage platform moderation, approvals, and artisan provisioning. Under V3 Domain Isolation, Admin accounts cannot act as sellers to create products or run seller dashboards.
+        </p>
+        <div className="pt-4 flex items-center justify-center space-x-3">
+          <button
+            onClick={() => onSwitchMode('ADMIN')}
+            className="px-4 py-2.5 bg-[#1C1C1C] hover:bg-[#A6533B] text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+          >
+            Open Admin Console
+          </button>
+          <button
+            onClick={() => onOpenAuth('LOGIN')}
+            className="px-4 py-2.5 bg-[#A6533B] hover:bg-[#8C432E] text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+          >
+            Log In as Artisan Seller
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const [products, setProducts] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
   const [orders, setOrders] = useState([]);

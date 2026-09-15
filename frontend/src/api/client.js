@@ -209,8 +209,10 @@ export async function apiRequest(endpoint, options = {}) {
     } else {
       // Infer from backend API endpoint prefix
       const cleanEndpoint = endpoint.startsWith('/api') ? endpoint.slice(4) : endpoint;
-      if (cleanEndpoint.startsWith('/marketplace')) {
-        token = getBuyerToken();
+      if (cleanEndpoint.includes('/admin')) {
+        token = getAdminToken() || getBuyerToken() || getStudioToken();
+      } else if (cleanEndpoint.startsWith('/marketplace') || cleanEndpoint.startsWith('/buyer')) {
+        token = getBuyerToken() || getAdminToken();
       } else if (
         cleanEndpoint.startsWith('/studio') ||
         cleanEndpoint.startsWith('/artisan') ||
@@ -218,11 +220,9 @@ export async function apiRequest(endpoint, options = {}) {
         cleanEndpoint.startsWith('/sync') ||
         cleanEndpoint.startsWith('/pricing')
       ) {
-        token = getStudioToken();
-      } else if (cleanEndpoint.startsWith('/admin')) {
-        token = getAdminToken();
+        token = getStudioToken() || getAdminToken();
       } else {
-        token = getBuyerToken() || getStudioToken() || getAdminToken();
+        token = getAdminToken() || getBuyerToken() || getStudioToken();
       }
     }
   }

@@ -62,14 +62,25 @@ export async function publishToChannel(productId, channelName) {
 }
 
 export async function adminCreateSeller(data) {
-  return await apiRequest('/artisan/admin/create-seller', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  try {
+    return await apiRequest('/admin/artisans', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  } catch (err) {
+    return await apiRequest('/artisan/admin/create-seller', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export async function adminListSellers() {
-  return await apiRequest('/artisan/admin/sellers');
+  try {
+    return await apiRequest('/admin/artisans');
+  } catch (err) {
+    return await apiRequest('/artisan/admin/sellers');
+  }
 }
 
 export async function downloadAnalyticsCSV() {
