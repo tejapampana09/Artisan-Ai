@@ -9,10 +9,3 @@ export async function getCurrentUser() {
     return null;
   }
 }
-
-export async function updateUserMode(mode) {
-  return await apiRequest('/me/mode', {
-    method: 'PATCH',
-    body: JSON.stringify({ mode }),
-  });
-}

@@ -9,7 +9,7 @@ import NotificationCenter from './components/NotificationCenter';
 import SplashScreen from './components/SplashScreen';
 import { OfflineProvider, useOffline } from './context/OfflineContext';
 import { NotificationProvider } from './context/NotificationContext';
-import { checkHealth, checkReady, getCurrentUser, updateUserMode, getAuthToken } from './api/index.js';
+import { checkHealth, checkReady, getCurrentUser, getAuthToken } from './api/index.js';
 
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import LanguageSelectorModal from './components/LanguageSelectorModal';
@@ -119,12 +119,6 @@ function AppContent() {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
-    if (!isOffline && user && (targetMode === 'SELL' || targetMode === 'BUY')) {
-      const updated = await updateUserMode(targetMode);
-      if (updated) {
-        setUser(updated);
-      }
-    }
   };
 
   const handleRefreshAll = () => {
