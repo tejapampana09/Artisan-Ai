@@ -1,20 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User, Mail, Phone, MapPin, Award, ShieldCheck, CheckCircle2, 
-  LogOut, Store, Sparkles, Edit3, Globe, Smartphone, ChevronRight, PlusCircle
+  LogOut, Store, Sparkles, Edit3, Globe, Smartphone, ChevronRight, PlusCircle, X, Save
 } from 'lucide-react';
-import { logoutUser } from '../api/index.js';
+import { logoutUser, updateUserProfile } from '../api/index.js';
+import { setStoredUser } from '../services/offlineSync.js';
 import { useNotification } from '../context/NotificationContext';
 
 export default function ProfileView({ user, onSelectMode, onAuthChange }) {
   const notify = useNotification();
   const isArtisan = user?.role === 'ARTISAN';
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [form, setForm] = useState({
+    name: '',
+    phone: '',
+    location: '',
+    craft: '',
+    craft_specialization: '',
+    bio: ''
+  });
+
+  useEffect(() => {
+    if (user) {
+      setForm({
+        name: user.name || '',
+        phone: user.phone || '',
+        location: user.location || '',
+        craft: user.craft || '',
+        craft_specialization: user.craft_specialization || '',
+        bio: user.bio || ''
+      });
+    }
+  }, [user]);
+
   const handleSignOut = () => {
     logoutUser();
     onAuthChange(null);
     onSelectMode('HOME');
     notify.success('Signed out cleanly');
+  };
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const updated = await updateUserProfile({
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        location: form.location.trim(),
+        craft: form.craft.trim(),
+        craft_specialization: form.craft_specialization.trim(),
+        bio: form.bio.trim()
+      });
+
+      if (updated) {
+        setStoredUser(updated, updated.role || 'BUYER');
+        onAuthChange(updated);
+        notify.success('Profile updated successfully!');
+        setIsEditing(false);
+      }
+    } catch (err) {
+      notify.error(err.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -43,13 +95,22 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
             </div>
           </div>
 
-          <button
-            onClick={handleSignOut}
-            className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-600 text-white font-semibold text-xs transition-colors cursor-pointer shrink-0"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Sign Out</span>
-          </button>
+          <div className="flex items-center space-x-3 shrink-0">
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white font-semibold text-xs border border-white/30 transition-colors cursor-pointer"
+            >
+              <Edit3 className="w-4 h-4" />
+              <span>Edit Profile</span>
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-600 text-white font-semibold text-xs transition-colors cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -62,9 +123,13 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
               <User className="w-4 h-4 text-[#A6533B]" />
               <span>Personal Information</span>
             </h2>
-            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-              Verified
-            </span>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="text-xs font-bold text-[#A6533B] hover:text-[#8C432E] inline-flex items-center space-x-1 cursor-pointer bg-[#FAF9F6] px-2.5 py-1 rounded-lg border border-[#E8E5DF]"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Edit</span>
+            </button>
           </div>
 
           <div className="space-y-3 text-xs">
@@ -78,13 +143,25 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
             </div>
             <div>
               <span className="text-[#6B6B6B] block">Phone Number</span>
-              <span className="font-bold text-[#1C1C1C]">{user?.phone || '+91 98765 43210'}</span>
+              {user?.phone ? (
+                <span className="font-bold text-[#1C1C1C]">{user.phone}</span>
+              ) : (
+                <span className="text-amber-800 font-medium bg-amber-50 px-2 py-0.5 rounded text-[11px] border border-amber-200">
+                  Not provided — Click edit to add phone
+                </span>
+              )}
             </div>
             <div>
-              <span className="text-[#6B6B6B] block">Location / Craft Region</span>
+              <span className="text-[#6B6B6B] block">Location / Delivery Address</span>
               <span className="font-bold text-[#1C1C1C] flex items-center mt-0.5">
-                <MapPin className="w-3.5 h-3.5 text-[#A6533B] mr-1" />
-                <span>{user?.location || 'Andhra Pradesh, India'}</span>
+                <MapPin className="w-3.5 h-3.5 text-[#A6533B] mr-1 shrink-0" />
+                {user?.location ? (
+                  <span>{user.location}</span>
+                ) : (
+                  <span className="text-amber-800 font-medium bg-amber-50 px-2 py-0.5 rounded text-[11px] border border-amber-200">
+                    Not provided — Click edit to add address
+                  </span>
+                )}
               </span>
             </div>
           </div>
@@ -150,6 +227,108 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
           </button>
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      {isEditing && (
+        <div className="fixed inset-0 z-[110] bg-[#2A1E17]/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#FBF8F3] rounded-3xl max-w-lg w-full shadow-2xl border border-[#EADFCF] overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div className="p-6 border-b border-[#EADFCF] flex items-center justify-between bg-white">
+              <div className="flex items-center space-x-2">
+                <Edit3 className="w-5 h-5 text-[#A6533B]" />
+                <h3 className="font-serif font-bold text-xl text-[#2A1E17]">
+                  Edit Profile / ప్రొఫైల్ ఎడిట్ చేయండి
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-[#2A1E17] mb-1">Full Name / పేరు</label>
+                <input
+                  type="text"
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="e.g. Teja Pampana"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] bg-white focus:outline-none focus:border-[#A6533B]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#2A1E17] mb-1">Phone Number / ఫోన్ నంబర్</label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="e.g. +91 98765 43210"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] bg-white focus:outline-none focus:border-[#A6533B]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#2A1E17] mb-1">Location / Delivery Address / అడ్రస్</label>
+                <input
+                  type="text"
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  placeholder="e.g. Visakhapatnam, Andhra Pradesh, India"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] bg-white focus:outline-none focus:border-[#A6533B]"
+                />
+              </div>
+
+              {isArtisan && (
+                <>
+                  <div>
+                    <label className="block font-bold text-[#2A1E17] mb-1">Craft Category / Specialization</label>
+                    <input
+                      type="text"
+                      value={form.craft_specialization || form.craft}
+                      onChange={(e) => setForm({ ...form, craft_specialization: e.target.value, craft: e.target.value })}
+                      placeholder="e.g. Kalamkari Handloom Painting"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] bg-white focus:outline-none focus:border-[#A6533B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[#2A1E17] mb-1">Bio / Artisan Craft Story</label>
+                    <textarea
+                      rows={3}
+                      value={form.bio}
+                      onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                      placeholder="Share your craft heritage and story..."
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E8E5DF] bg-white focus:outline-none focus:border-[#A6533B]"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="pt-4 flex items-center justify-end space-x-3 border-t border-[#EADFCF]">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="px-4 py-2.5 rounded-xl border border-[#E8E5DF] text-[#6B5B51] font-semibold hover:bg-stone-100 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-[#933D1E] hover:bg-[#7A3218] text-white font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

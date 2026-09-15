@@ -445,3 +445,25 @@ def test_razorpay_verification_full_cycle_and_anti_replay(admin_headers):
     }, headers=buyer_headers)
     assert repeat_res.status_code == 200
     assert repeat_res.json()["status"] == "VERIFIED"
+
+
+def test_generic_api_me_endpoint_removed():
+    """V3 Architecture rule: generic /api/me is removed (returns 404)."""
+    res = client.get("/api/me")
+    assert res.status_code == 404
+
+
+def test_domain_scoped_profile_updates():
+    """Domain-scoped profile updates via /marketplace/auth/me and /studio/auth/me."""
+    _, _, _, buyer_headers = make_buyer(client)
+    res = client.put("/api/marketplace/auth/me", json={
+        "name": "Updated Buyer Name",
+        "phone": "+919876543210",
+        "location": "Visakhapatnam, AP, India"
+    }, headers=buyer_headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["name"] == "Updated Buyer Name"
+    assert data["phone"] == "+919876543210"
+    assert data["location"] == "Visakhapatnam, AP, India"
+

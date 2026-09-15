@@ -30,11 +30,11 @@ from backend.app.routes.notifications import router as notifications_router
 from backend.app.routes.artisan import router as artisan_router
 from backend.app.routes.ml_demand import router as ml_demand_router
 from backend.app.routes.tts import router as tts_router
-from backend.app.services.auth import get_current_user as auth_get_current_user
-
-# Initialize database tables directly via SQLAlchemy Base metadata
-Base.metadata.create_all(bind=engine)
-ensure_sqlite_schema(engine)
+# In non-production/development environments, initialize tables directly if uninitialized.
+# In production, Alembic migrations (alembic upgrade head) are the sole schema authority.
+if ENVIRONMENT != "production":
+    Base.metadata.create_all(bind=engine)
+    ensure_sqlite_schema(engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -128,6 +128,3 @@ def readiness_check(db: Session = Depends(get_db)):
             detail="Database temporarily unavailable"
         )
 
-@app.get("/api/me", response_model=UserResponse)
-def get_user_me(current_user: User = Depends(auth_get_current_user)):
-    return current_user

@@ -53,6 +53,22 @@ class UserResponse(BaseModel):
     status: Optional[str] = "ACTIVE"
     location: Optional[str] = None
     craft: Optional[str] = None
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    craft_specialization: Optional[str] = None
+    experience_years: Optional[int] = 0
+    verification_status: Optional[str] = "UNVERIFIED"
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    craft: Optional[str] = None
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    craft_specialization: Optional[str] = None
+    experience_years: Optional[int] = None
+
 
 class UserRegister(BaseModel):
     name: str = Field(..., min_length=2)

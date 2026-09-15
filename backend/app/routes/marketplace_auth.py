@@ -12,6 +12,7 @@ from backend.app.schemas import (
     ChangePasswordRequest,
     TokenResponse,
     UserResponse,
+    UserUpdate,
     GoogleAuthRequest
 )
 from backend.app.services.auth import (
@@ -261,6 +262,36 @@ def get_buyer_me(current_buyer: User = Depends(require_buyer)):
     Returns current authenticated Buyer details.
     Enforces Marketplace domain token.
     """
+    return current_buyer
+
+@router.put("/me", response_model=UserResponse)
+def update_buyer_me(
+    payload: UserUpdate,
+    db: Session = Depends(get_db),
+    current_buyer: User = Depends(require_buyer)
+):
+    """
+    Updates current authenticated Buyer profile details (name, phone, location, etc.).
+    """
+    if payload.name is not None and payload.name.strip():
+        current_buyer.name = payload.name.strip()
+    if payload.phone is not None:
+        current_buyer.phone = payload.phone.strip() if payload.phone.strip() else None
+    if payload.location is not None:
+        current_buyer.location = payload.location.strip() if payload.location.strip() else None
+    if payload.craft is not None:
+        current_buyer.craft = payload.craft.strip() if payload.craft.strip() else None
+    if payload.avatar_url is not None:
+        current_buyer.avatar_url = payload.avatar_url
+    if payload.bio is not None:
+        current_buyer.bio = payload.bio
+    if payload.craft_specialization is not None:
+        current_buyer.craft_specialization = payload.craft_specialization
+    if payload.experience_years is not None:
+        current_buyer.experience_years = payload.experience_years
+
+    db.commit()
+    db.refresh(current_buyer)
     return current_buyer
 
 @router.post("/change-password", response_model=TokenResponse)

@@ -10,7 +10,8 @@ from backend.app.schemas import (
     UserLogin,
     ChangePasswordRequest,
     TokenResponse,
-    UserResponse
+    UserResponse,
+    UserUpdate
 )
 from backend.app.services.auth import (
     hash_password,
@@ -100,6 +101,40 @@ def get_artisan_me(current_artisan: User = Depends(require_artisan)):
     Returns authenticated Artisan profile details.
     Enforces Artisan Studio domain token.
     """
+    return current_artisan
+
+@router.put("/me", response_model=UserResponse)
+def update_artisan_me(
+    payload: UserUpdate,
+    db: Session = Depends(get_db),
+    current_artisan: User = Depends(require_artisan)
+):
+    """
+    Updates authenticated Artisan profile details (name, phone, location, craft, bio, etc.).
+    """
+    if payload.name is not None and payload.name.strip():
+        current_artisan.name = payload.name.strip()
+    if payload.phone is not None:
+        current_artisan.phone = payload.phone.strip() if payload.phone.strip() else None
+    if payload.location is not None:
+        current_artisan.location = payload.location.strip() if payload.location.strip() else None
+    if payload.craft is not None:
+        current_artisan.craft = payload.craft.strip() if payload.craft.strip() else None
+    if payload.avatar_url is not None:
+        current_artisan.avatar_url = payload.avatar_url
+    if payload.bio is not None:
+        current_artisan.bio = payload.bio
+    if payload.craft_specialization is not None:
+        current_artisan.craft_specialization = payload.craft_specialization
+    if payload.experience_years is not None:
+        current_artisan.experience_years = payload.experience_years
+
+    # Auto-update status to PROFILE_COMPLETE if basic fields filled
+    if current_artisan.verification_status == "UNVERIFIED" and current_artisan.bio:
+        current_artisan.verification_status = "PROFILE_COMPLETE"
+
+    db.commit()
+    db.refresh(current_artisan)
     return current_artisan
 
 @router.post("/change-password", response_model=TokenResponse)

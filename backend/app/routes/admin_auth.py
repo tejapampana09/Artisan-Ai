@@ -10,7 +10,8 @@ from backend.app.schemas import (
     UserLogin,
     ChangePasswordRequest,
     TokenResponse,
-    UserResponse
+    UserResponse,
+    UserUpdate
 )
 from backend.app.services.auth import (
     hash_password,
@@ -100,6 +101,32 @@ def get_admin_me(current_admin: User = Depends(require_admin)):
     Returns authenticated Administrator details.
     Enforces Admin domain token.
     """
+    return current_admin
+
+@router.put("/me", response_model=UserResponse)
+def update_admin_me(
+    payload: UserUpdate,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """
+    Updates authenticated Administrator profile details (name, phone, location, etc.).
+    """
+    if payload.name is not None and payload.name.strip():
+        current_admin.name = payload.name.strip()
+    if payload.phone is not None:
+        current_admin.phone = payload.phone.strip() if payload.phone.strip() else None
+    if payload.location is not None:
+        current_admin.location = payload.location.strip() if payload.location.strip() else None
+    if payload.craft is not None:
+        current_admin.craft = payload.craft.strip() if payload.craft.strip() else None
+    if payload.avatar_url is not None:
+        current_admin.avatar_url = payload.avatar_url
+    if payload.bio is not None:
+        current_admin.bio = payload.bio
+
+    db.commit()
+    db.refresh(current_admin)
     return current_admin
 
 @router.post("/change-password", response_model=TokenResponse)
