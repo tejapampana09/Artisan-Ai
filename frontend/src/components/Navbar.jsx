@@ -172,8 +172,18 @@ export default function Navbar({
     if (user) {
       isInitialFetchRef.current = true;
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
+
+      // High-frequency polling (3.5s) for instant real-time updates
+      const interval = setInterval(fetchNotifications, 3500);
+
+      // Instant push on local actions across components
+      const handleInstantRefresh = () => fetchNotifications();
+      window.addEventListener('artisan_notification_refresh', handleInstantRefresh);
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('artisan_notification_refresh', handleInstantRefresh);
+      };
     }
   }, [user]);
 
@@ -185,14 +195,25 @@ export default function Navbar({
       const seenIds = getSeenNotifIds();
 
       // On initial app load/open:
-      // Mark all pre-existing notifications as seen in localStorage so they don't spam toasts
+      // Show unread notifications from the last 15 minutes that haven't been seen yet,
+      // and suppress older historic notifications so we don't spam.
       if (isInitialFetchRef.current) {
         isInitialFetchRef.current = false;
-        saveAllSeenNotifIds(data.map(n => n.id));
+        const recentThreshold = Date.now() - 15 * 60 * 1000;
+        data.forEach(n => {
+          const createdAtMs = n.created_at ? new Date(n.created_at).getTime() : 0;
+          if (!n.is_read && !seenIds.has(n.id) && createdAtMs > recentThreshold) {
+            saveSeenNotifId(n.id);
+            triggerMobilePush(n.title, n.message);
+            toast.info(`${n.title}: ${n.message}`, 6000);
+          } else {
+            saveSeenNotifId(n.id);
+          }
+        });
         return;
       }
 
-      // On subsequent polling intervals, detect NEWLY arrived notifications
+      // On subsequent polling intervals, detect NEWLY arrived notifications in real time
       data.forEach(n => {
         if (!n.is_read && !seenIds.has(n.id)) {
           saveSeenNotifId(n.id);
@@ -209,10 +230,19 @@ export default function Navbar({
 
   const handleEnableMobilePush = async () => {
     const granted = await requestNotificationPermission();
-    setPushStatus(getNotificationPermissionStatus());
+    const status = getNotificationPermissionStatus();
+    setPushStatus(status);
     if (granted) {
-      triggerMobilePush('🔔 Mobile Notifications Enabled!', 'You will now receive instant push alerts for orders, enquiries, and price updates.');
+      toast.success('Mobile notifications enabled! / మొబైల్ నోటిఫికేషన్లు యాక్టివ్ అయ్యాయి');
+      triggerMobilePush('🔔 Mobile Notifications Active!', 'You will now receive instant push alerts for orders, enquiries, and price updates.');
+    } else if (status === 'denied') {
+      toast.warning('Push notifications blocked in browser settings. Please allow notifications for this site.');
     }
+  };
+
+  const handleTestNotification = () => {
+    triggerMobilePush('🔔 Test Alert / టెస్ట్ నోటిఫికేషన్', 'Real-time mobile alerts and chimes are working perfectly!');
+    toast.success('Test notification sent with chime & vibration!');
   };
 
   const handleMarkRead = async (id) => {
@@ -362,7 +392,17 @@ export default function Navbar({
           )}
 
           {/* Right Action Icons (Shop/Search, Cart & Profile) */}
-          <div className="flex items-center space-x-3 sm:space-x-5">
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* Mobile Studio Quick Access */}
+            <button
+              onClick={() => (!user || user?.role === 'BUYER' ? onOpenAuth('SELL_LOGIN') : onToggleMode('SELL'))}
+              className="md:hidden flex items-center space-x-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-700 to-[#A6533B] text-white text-[11px] font-bold shadow-xs active:scale-95 cursor-pointer shrink-0"
+              title="Artisan Studio Login / సెల్లర్ లాగిన్"
+            >
+              <Store className="w-3.5 h-3.5" />
+              <span>{user?.role === 'ARTISAN' || user?.role === 'ADMIN' ? 'Studio' : 'Seller Login'}</span>
+            </button>
+
             {activeMode === 'HOME' ? (
               <button
                 onClick={() => onToggleMode('BUY')}
@@ -492,6 +532,34 @@ export default function Navbar({
                 >
                   ✕
                 </button>
+              </div>
+            </div>
+
+            {/* Real-time Push Notification Status & Test Control */}
+            <div className="px-3.5 py-2 bg-stone-50 border-b border-stone-200 flex items-center justify-between text-[11px]">
+              <div className="flex items-center space-x-2">
+                <span className={`w-2 h-2 rounded-full ${pushStatus === 'granted' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                <span className="font-semibold text-stone-700">
+                  {pushStatus === 'granted' ? 'Mobile Alerts: Active' : 'Mobile Alerts: Not enabled'}
+                </span>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                {pushStatus !== 'granted' ? (
+                  <button
+                    onClick={handleEnableMobilePush}
+                    className="px-2 py-0.5 rounded-md bg-[#A6533B] text-white font-bold text-[10px] hover:bg-[#88412F] cursor-pointer"
+                  >
+                    Enable
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleTestNotification}
+                    className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[10px] hover:bg-amber-200 cursor-pointer"
+                    title="Send test alert to mobile phone"
+                  >
+                    Test Alert
+                  </button>
+                )}
               </div>
             </div>
 
@@ -644,18 +712,33 @@ export default function Navbar({
                 <ArrowRight className="w-3.5 h-3.5 text-[#6B6B6B]" />
               </button>
 
-              {user?.role !== 'BUYER' && (
-                <button
-                  onClick={() => { setShowMoreMenu(false); onToggleMode('SELL'); }}
-                  className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-amber-50 text-[#A6533B] font-semibold transition-colors cursor-pointer text-left"
-                >
-                  <div className="flex items-center space-x-2">
-                    <Store className="w-4 h-4 text-[#A6533B]" />
-                    <span>Seller Studio</span>
+              {/* Artisan Studio Access / Login */}
+              <button
+                onClick={() => {
+                  setShowMoreMenu(false);
+                  if (!user || user?.role === 'BUYER') {
+                    onOpenAuth('SELL_LOGIN');
+                  } else {
+                    onToggleMode('SELL');
+                  }
+                }}
+                className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50/60 border border-amber-200/80 text-[#A6533B] font-bold transition-all hover:bg-amber-100 cursor-pointer text-left shadow-xs"
+              >
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-[#A6533B] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Store className="w-4 h-4" />
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-[#A6533B]" />
-                </button>
-              )}
+                  <div>
+                    <span className="block text-xs font-bold text-[#1C1C1C]">
+                      {user?.role === 'ARTISAN' || user?.role === 'ADMIN' ? 'Artisan Studio' : 'Artisan Studio Login'}
+                    </span>
+                    <span className="block text-[10px] text-[#A6533B] font-medium">సెల్లర్ పోర్టల్ & AI ప్రైసింగ్</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-extrabold uppercase bg-[#A6533B] text-white px-2.5 py-0.5 rounded-full">
+                  {user?.role === 'ARTISAN' || user?.role === 'ADMIN' ? 'Open' : 'Sell'}
+                </span>
+              </button>
             </div>
 
             {/* App Settings */}
@@ -711,14 +794,14 @@ export default function Navbar({
         </>
       )}
 
-      {/* Flipkart / Myntra Style Fixed Native Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[99] bg-white text-stone-800 border-t border-[#E8E5DF] py-2 px-2 shadow-2xl flex items-center justify-around">
+      {/* Flipkart / Myntra Style Fixed Native Mobile Bottom Navigation Bar with Raised Studio Action */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[99] bg-white text-stone-800 border-t border-[#E8E5DF] py-1.5 px-3 shadow-2xl flex items-end justify-between">
         <button
           onClick={() => onToggleMode('HOME')}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 cursor-pointer ${
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all active:scale-95 cursor-pointer ${
             activeMode === 'HOME'
               ? 'text-[#A6533B] font-extrabold'
-              : 'text-stone-600 hover:text-stone-950 font-semibold'
+              : 'text-stone-500 hover:text-stone-900 font-semibold'
           }`}
         >
           <Home className="w-5 h-5" />
@@ -727,34 +810,40 @@ export default function Navbar({
 
         <button
           onClick={() => onToggleMode('BUY')}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 cursor-pointer ${
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all active:scale-95 cursor-pointer ${
             activeMode === 'BUY'
               ? 'text-[#A6533B] font-extrabold'
-              : 'text-stone-600 hover:text-stone-950 font-semibold'
+              : 'text-stone-500 hover:text-stone-900 font-semibold'
           }`}
         >
           <ShoppingBag className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5 font-bold">Categories</span>
+          <span className="text-[10px] mt-0.5 font-bold">Shop</span>
         </button>
 
+        {/* Center Prominent Studio Action (Mobile Studio Portal / Login) */}
         <button
-          onClick={() => onOpenAuth('WISHLIST')}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 cursor-pointer ${
-            activeMode === 'WISHLIST'
-              ? 'text-[#A6533B] font-extrabold'
-              : 'text-stone-600 hover:text-stone-950 font-semibold'
+          onClick={() => (!user || user?.role === 'BUYER' ? onOpenAuth('SELL_LOGIN') : onToggleMode('SELL'))}
+          className={`relative -top-3 flex flex-col items-center justify-center px-3.5 py-1.5 rounded-2xl shadow-xl transition-all active:scale-95 cursor-pointer border-2 ${
+            activeMode === 'SELL'
+              ? 'bg-gradient-to-tr from-[#933D1E] to-[#A6533B] text-white border-amber-300 ring-2 ring-amber-400/50 scale-105'
+              : 'bg-gradient-to-tr from-amber-800 via-[#A6533B] to-[#2A1E17] text-white border-white ring-1 ring-stone-200'
           }`}
+          title="Artisan Studio Login / సెల్లర్ లాగిన్"
         >
-          <Heart className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5 font-bold">Wishlist</span>
+          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-inner">
+            <Store className="w-5 h-5" />
+          </div>
+          <span className="text-[10px] font-black tracking-tight mt-0.5 text-white">
+            {user?.role === 'ARTISAN' || user?.role === 'ADMIN' ? 'Studio' : 'Studio Login'}
+          </span>
         </button>
 
         <button
           onClick={() => onOpenAuth('ORDERS')}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 cursor-pointer ${
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all active:scale-95 cursor-pointer ${
             activeMode === 'ORDERS'
               ? 'text-[#A6533B] font-extrabold'
-              : 'text-stone-600 hover:text-stone-950 font-semibold'
+              : 'text-stone-500 hover:text-stone-900 font-semibold'
           }`}
         >
           <Package className="w-5 h-5" />
@@ -763,10 +852,10 @@ export default function Navbar({
 
         <button
           onClick={() => onOpenAuth('PROFILE')}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 cursor-pointer ${
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all active:scale-95 cursor-pointer ${
             activeMode === 'PROFILE'
               ? 'text-[#A6533B] font-extrabold'
-              : 'text-stone-600 hover:text-stone-950 font-semibold'
+              : 'text-stone-500 hover:text-stone-900 font-semibold'
           }`}
         >
           <UserCheck className="w-5 h-5" />

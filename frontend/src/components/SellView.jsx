@@ -233,6 +233,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, activeSellerT
     try {
       const updatedEnq = await replyToEnquiry(enquiryId, text.trim());
       setEnquiries(prev => prev.map(e => e.id === enquiryId ? updatedEnq : e));
+      window.dispatchEvent(new CustomEvent('artisan_notification_refresh'));
       showNotification('Response sent to buyer! / మీ స్పందన పంపబడింది!');
       setEditingReply(prev => ({ ...prev, [enquiryId]: false }));
     } catch (err) {
@@ -247,6 +248,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, activeSellerT
     try {
       const updatedOrd = await updateOrderStatus(orderId, newStatus);
       setOrders(prev => prev.map(o => o.id === orderId ? updatedOrd : o));
+      window.dispatchEvent(new CustomEvent('artisan_notification_refresh'));
       showNotification(`Order status updated to ${newStatus}! / ఆర్డర్ స్టేటస్ అప్‌డేట్ అయింది!`);
     } catch (err) {
       notify.error('Failed to update status: ' + (err.message || 'Error occurred'));

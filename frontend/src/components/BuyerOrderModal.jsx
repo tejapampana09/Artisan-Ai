@@ -50,6 +50,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
           payment_method: 'UPI',
           payment_tx_id: txId
         });
+        window.dispatchEvent(new CustomEvent('artisan_notification_refresh'));
         onSuccess(`Order placed & payment verified for ${formData.quantity} unit(s) of "${product.title}"! (Tx: ${txId})`);
       } else {
         await submitEnquiry({
@@ -59,6 +60,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
           quantity: formData.quantity,
           message: formData.message
         });
+        window.dispatchEvent(new CustomEvent('artisan_notification_refresh'));
         onSuccess(`Wholesale enquiry submitted for ${formData.quantity} units to artisan!`);
       }
       onClose();

@@ -142,6 +142,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
       setReceiptTxId(generatedTxId);
       saveStoredCart([]);
       setCartItems([]);
+      window.dispatchEvent(new CustomEvent('artisan_notification_refresh'));
       setCheckoutStep(4);
       notify.success('🎉 Payment Verified! Direct Artisan Order Placed.');
     } catch (err) {

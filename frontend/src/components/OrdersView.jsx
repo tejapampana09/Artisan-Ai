@@ -67,6 +67,7 @@ export default function OrdersView({ user, onSelectMode, onOpenAuth }) {
       const updatedOrd = await updateOrderStatus(orderId, newStatus);
       setSellerOrders(prev => prev.map(o => o.id === orderId ? updatedOrd : o));
       setBuyerOrders(prev => prev.map(o => o.id === orderId ? updatedOrd : o));
+      window.dispatchEvent(new CustomEvent('artisan_notification_refresh'));
       notify.success(`Order status updated to ${newStatus}`);
     } catch (err) {
       notify.error('Failed to update status: ' + (err.message || 'Error occurred'));
