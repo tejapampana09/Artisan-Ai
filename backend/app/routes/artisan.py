@@ -240,3 +240,64 @@ def admin_cleanup_buyers(
             for u in artisans
         ]
     }
+
+
+@router.post("/admin/seed-account")
+def admin_seed_account(
+    payload: dict,
+    db: Session = Depends(get_db),
+    x_admin_secret: Optional[str] = Header(None)
+):
+    """Provisions or updates an Admin or Artisan account in the active database."""
+    from backend.app.config import JWT_SECRET_KEY
+    from backend.app.services.auth import hash_password
+    if not x_admin_secret or x_admin_secret != JWT_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Invalid admin secret.")
+    
+    email = payload.get("email", "").strip().lower()
+    name = payload.get("name", "").strip()
+    phone = payload.get("phone")
+    password = payload.get("password")
+    role = payload.get("role", "ADMIN").upper()
+    craft = payload.get("craft", "Handicrafts")
+    location = payload.get("location", "India")
+
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
+
+    user = db.query(User).filter(User.email == email).first()
+    if user:
+        user.name = name or user.name
+        user.role = role
+        user.hashed_password = hash_password(password)
+        if phone:
+            user.phone = phone
+        user.verification_status = "VERIFIED_ARTISAN" if role == "ARTISAN" else "PROFILE_COMPLETE"
+    else:
+        user = User(
+            name=name or email.split("@")[0].title(),
+            email=email,
+            phone=phone,
+            hashed_password=hash_password(password),
+            role=role,
+            active_mode="SELL",
+            location=location,
+            craft=craft,
+            verification_status="VERIFIED_ARTISAN" if role == "ARTISAN" else "PROFILE_COMPLETE"
+        )
+        db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "status": "success",
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "phone": user.phone,
+            "role": user.role,
+            "craft": user.craft,
+            "location": user.location
+        }
+    }
