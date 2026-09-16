@@ -109,6 +109,11 @@ def seed_initial_database(db: Session):
         db.add(artisan)
         db.commit()
         db.refresh(artisan)
+    else:
+        artisan.hashed_password = hash_password("password123")
+        artisan.role = "ARTISAN"
+        artisan.status = "ACTIVE"
+        db.commit()
 
     # Check if default Admin exists
     admin = db.query(User).filter(User.email == "admin@artisanai.com").first()
