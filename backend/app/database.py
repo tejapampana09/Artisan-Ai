@@ -148,11 +148,15 @@ def ensure_schema_migrations(eng):
     elif "postgresql" in driver or "postgres" in driver:
         with eng.connect() as conn:
             conn.execute(text("ALTER TABLE draft_catalogs ADD COLUMN IF NOT EXISTS is_consumed BOOLEAN DEFAULT FALSE NOT NULL;"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'ACTIVE';"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT 1;"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR;"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS craft_specialization VARCHAR;"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS experience_years INTEGER DEFAULT 0;"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_status VARCHAR DEFAULT 'UNVERIFIED';"))
+            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'DRAFT';"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS craft_process TEXT;"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS region_of_origin VARCHAR;"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS handmade_pct INTEGER DEFAULT 100;"))
@@ -165,6 +169,7 @@ def ensure_schema_migrations(eng):
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS description_en TEXT;"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS craft_story_en TEXT;"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS translations TEXT;"))
+            conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR DEFAULT 'UNPAID';"))
             conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancellation_status VARCHAR DEFAULT 'NONE';"))
             conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;"))
             conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_history TEXT;"))
