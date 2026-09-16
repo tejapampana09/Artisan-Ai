@@ -254,6 +254,13 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
     loadDashboard();
   }, [isOffline, offlineQueue.length]);
 
+  // Auto-reload orders & enquiries when Navbar detects a new inbound notification
+  useEffect(() => {
+    const onNewOrder = () => { if (!isOffline) loadDashboard(); };
+    window.addEventListener('artisan_notification_refresh', onNewOrder);
+    return () => window.removeEventListener('artisan_notification_refresh', onNewOrder);
+  }, [isOffline]);
+
   const showNotification = (msg) => {
     setNotification(msg);
     setTimeout(() => setNotification(''), 3500);
