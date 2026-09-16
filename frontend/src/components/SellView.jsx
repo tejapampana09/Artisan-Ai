@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { 
   PlusCircle, TrendingUp, Tag, Sparkles, Package, Wand2, RefreshCw,
   MessageSquare, ShoppingCart, Phone, ExternalLink, Store, ShieldCheck,
-  Send, Truck, Check, Clock, CheckCircle2, BarChart3, Eye, Layers, Globe
+  Send, Truck, Check, Clock, CheckCircle2, BarChart3, Eye, Layers, Globe, LogOut
 } from 'lucide-react';
 import ProductList from './ProductList';
 import CreateProductModal from './CreateProductModal';
@@ -14,7 +14,7 @@ import {
   getProducts, createProduct, updateProduct, deleteProduct, 
   getMarketDemand, getSellerOpportunities, getEnquiries, getOrders,
   replyToEnquiry, updateOrderStatus, getSellerDashboard, downloadAnalyticsCSV,
-  getSellerReadiness, getSalesChannels, publishToChannel
+  getSellerReadiness, getSalesChannels, publishToChannel, logoutUser
 } from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
 import { useNotification } from '../context/NotificationContext';
@@ -43,9 +43,22 @@ const getStepIndex = (status) => {
   }
 };
 
-export default function SellView({ user, onOpenAuth, onSwitchMode, activeSellerTab = 'DASHBOARD', onSelectSellerTab }) {
+export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange, onLogout, activeSellerTab = 'DASHBOARD', onSelectSellerTab }) {
   const notify = useNotification();
   const { language, setIsSelectingLanguage } = useLanguage();
+
+  const handleSignOut = () => {
+    logoutUser('STUDIO');
+    if (onLogout) {
+      onLogout();
+    } else if (onAuthChange) {
+      onAuthChange(null);
+    }
+    if (onSwitchMode) {
+      onSwitchMode('HOME');
+    }
+    notify.success(language === 'te' ? 'విజయవంతంగా సైన్ అవుట్ అయ్యారు' : 'Signed out cleanly');
+  };
 
   if (user?.role === 'ADMIN') {
     return (
@@ -497,11 +510,13 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, activeSellerT
           </button>
 
           <button
-            onClick={() => onSwitchMode?.('BUY')}
-            className="bg-white hover:bg-stone-50 text-[#1C1C1C] border border-[#E8E5DF] hover:border-[#A6533B] hover:text-[#A6533B] text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center space-x-2 shrink-0 shadow-2xs"
+            type="button"
+            onClick={handleSignOut}
+            className="bg-white hover:bg-red-50 text-stone-700 hover:text-red-700 border border-[#E8E5DF] hover:border-red-300 text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center space-x-2 shrink-0 shadow-2xs group"
+            title="Sign Out / సైన్ అవుట్"
           >
-            <ShoppingCart className="w-4 h-4 text-[#A6533B]" />
-            <span>Switch to Marketplace</span>
+            <LogOut className="w-4 h-4 text-stone-500 group-hover:text-red-600 transition-colors" />
+            <span>{language === 'te' ? 'సైన్ అవుట్' : 'Sign Out'}</span>
           </button>
         </div>
       </div>

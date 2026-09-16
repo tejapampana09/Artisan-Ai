@@ -261,6 +261,12 @@ function AppContent() {
               user={user} 
               onOpenAuth={handleOpenAuth} 
               onSwitchMode={handleToggleMode}
+              onAuthChange={setUser}
+              onLogout={() => {
+                setUser(null);
+                setStoredUser(null);
+                handleToggleMode('HOME');
+              }}
               activeSellerTab={sellerTab}
               onSelectSellerTab={setSellerTab}
               key={`sell_${refreshTrigger}`} 
