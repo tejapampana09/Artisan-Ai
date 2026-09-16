@@ -137,6 +137,12 @@ async def research_market(
         )
         retained_listings.append(listing_model)
 
+    # Sort listings so that price-verified items appear FIRST for UI rendering
+    retained_listings.sort(
+        key=lambda l: (1 if l.price is not None and l.price > 0 else 0, l.similarity_score),
+        reverse=True
+    )
+
     # Calculate Market Summary statistics on valid positive prices with verified source URLs ONLY
     total_comparable_count = len(retained_listings)
     
