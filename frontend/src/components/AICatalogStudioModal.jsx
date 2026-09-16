@@ -1812,27 +1812,32 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   </div>
 
                   {/* Main Price Action Row */}
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-0.5">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-0.5 p-3 bg-white/90 border border-emerald-300 rounded-xl shadow-xs">
                     <div>
-                      <h5 className="text-xs font-bold text-[#2A1E17]">Final Recommended Selling Price</h5>
-                      <p className="text-[11px] text-emerald-800 font-medium leading-tight mt-0.5">
+                      <div className="flex items-center space-x-1.5">
+                        <Sparkles className="w-4 h-4 text-emerald-600 animate-pulse" />
+                        <h5 className="text-sm font-extrabold text-[#2A1E17]">✨ AI Recommended Selling Price</h5>
+                      </div>
+                      <p className="text-[11px] text-emerald-800 font-medium leading-tight mt-1">
                         {aiDraft.min_fair_price 
                           ? 'Combines artisan cost basis + 20% floor + live market median signal.'
-                          : 'Estimated directly from live online market research (no cost breakdown provided).'}
+                          : (aiDraft.market_summary?.comparable_count 
+                              ? `Based on ${aiDraft.market_summary.comparable_count} verified market listings (Market Range: ₹${aiDraft.market_summary.min_price || 0} – ₹${aiDraft.market_summary.max_price || 0}, Median: ₹${aiDraft.market_summary.median_price || aiDraft.suggested_price})`
+                              : 'Estimated directly from live online market research.')}
                       </p>
                     </div>
                     <div className="flex items-center space-x-2 shrink-0">
-                      <span className="text-xs font-extrabold text-[#2A1E17]">Selling Price:</span>
+                      <span className="text-xs font-black text-[#2A1E17]">Selling Price:</span>
                       <div className="flex items-center">
-                        <span className="text-base font-black text-[#4A2E1B] mr-1">₹</span>
+                        <span className="text-lg font-black text-[#933D1E] mr-1">₹</span>
                         <input
                           type="number"
                           value={aiDraft.suggested_price ?? (aiDraft.market_summary?.median_price || '')}
                           onChange={(e) => handleDraftChange('suggested_price', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                          className={`w-32 text-base font-black border-2 rounded-xl px-3 py-1 text-[#2A1E17] bg-white text-right shadow-xs focus:ring-2 focus:ring-emerald-500 ${
+                          className={`w-32 text-lg font-black border-2 rounded-xl px-3 py-1.5 text-[#2A1E17] bg-white text-right shadow-xs focus:ring-2 focus:ring-emerald-500 ${
                             aiDraft.min_fair_price && Number(aiDraft.suggested_price || aiDraft.market_summary?.median_price) < Number(aiDraft.min_fair_price || 0)
                               ? 'border-rose-500 text-rose-700 bg-rose-50'
-                              : 'border-emerald-400'
+                              : 'border-emerald-500 text-emerald-950 bg-emerald-50/50'
                           }`}
                         />
                       </div>
