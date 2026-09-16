@@ -1,6 +1,6 @@
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
@@ -8,10 +8,14 @@ from backend.app.database import get_db
 from backend.app.models import (
     User, Product, Event, PricingDecision,
     Notification, Order, Payment, Enquiry, Review,
-    ProcessedOperation, DraftCatalog
+    ProcessedOperation, DraftCatalog, AuditLog
 )
-from backend.app.schemas import AdminCreateSellerRequest, UserResponse, AdminResetArtisanPasswordRequest
+from backend.app.schemas import (
+    AdminCreateSellerRequest, UserResponse, AdminResetArtisanPasswordRequest,
+    AuditLogResponse
+)
 from backend.app.services.auth import require_admin, hash_password
+from backend.app.services.audit import record_audit_log
 
 admin_ops_router = APIRouter(prefix="/api/admin", tags=["Admin Console Management"])
 
@@ -62,6 +66,16 @@ def admin_create_artisan(
         db.add(seller)
         db.commit()
         db.refresh(seller)
+        record_audit_log(
+            db=db,
+            actor=current_admin,
+            action="ARTISAN_CREATE",
+            resource_type="USER",
+            resource_id=str(seller.id),
+            before_state=None,
+            after_state=f"ACTIVE ({seller.email})",
+            commit=True
+        )
         return seller
     except HTTPException:
         raise
@@ -110,8 +124,19 @@ def admin_reset_artisan_password(
             detail="Target user account is not an artisan."
         )
 
+    old_ver = artisan.token_version or 1
     artisan.hashed_password = hash_password(payload.new_password)
-    artisan.token_version = (artisan.token_version or 1) + 1
+    artisan.token_version = old_ver + 1
+    record_audit_log(
+        db=db,
+        actor=current_admin,
+        action="ARTISAN_PASSWORD_RESET",
+        resource_type="USER",
+        resource_id=str(artisan.id),
+        before_state=f"token_version={old_ver}",
+        after_state=f"token_version={artisan.token_version}",
+        commit=False
+    )
     db.commit()
 
     return {
@@ -144,6 +169,7 @@ def admin_delete_artisan(
         )
 
     artisan_name = artisan.name
+    artisan_email = artisan.email
 
     try:
         # 1. Clean ProcessedOperations and DraftCatalogs
@@ -191,6 +217,16 @@ def admin_delete_artisan(
 
         # 8. Delete the artisan User record
         db.delete(artisan)
+        record_audit_log(
+            db=db,
+            actor=current_admin,
+            action="ARTISAN_DELETE",
+            resource_type="USER",
+            resource_id=str(artisan_id),
+            before_state=f"{artisan_name} ({artisan_email})",
+            after_state="DELETED",
+            commit=False
+        )
         db.commit()
 
         return {
@@ -206,3 +242,22 @@ def admin_delete_artisan(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal error occurred while removing the artisan profile. Please try again."
         )
+
+@admin_ops_router.get("/audit-logs", response_model=List[AuditLogResponse])
+def admin_list_audit_logs(
+    action: Optional[str] = Query(None),
+    resource_type: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """
+    Retrieves platform audit logs for compliance, security auditing, and governance traceability.
+    Strictly protected by require_admin.
+    """
+    query = db.query(AuditLog)
+    if action:
+        query = query.filter(AuditLog.action == action)
+    if resource_type:
+        query = query.filter(AuditLog.resource_type == resource_type)
+    return query.order_by(AuditLog.id.desc()).limit(limit).all()

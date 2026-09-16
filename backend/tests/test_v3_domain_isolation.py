@@ -20,7 +20,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from backend.app.main import app
 from backend.app.models import (
-    Product, Order, Payment, Review, Enquiry, Event, PricingDecision
+    Product, Order, Payment, Review, Enquiry, Event, PricingDecision, AuditLog
 )
 from backend.tests.conftest import make_buyer, make_artisan_via_admin
 
@@ -747,6 +747,114 @@ def test_admin_cascade_deletion_unexpected_exception_masks_error(admin_headers, 
     monkeypatch.setattr(Session, "commit", orig_commit)
     prod_in_db = db.query(Product).filter(Product.id == pid).first()
     assert prod_in_db is not None
+
+
+def test_admin_product_approval_and_publish_creates_audit_log(admin_headers, db):
+    """Admin approval and publication writes AuditLog entries."""
+    _, _, _, headers = make_artisan_via_admin(client, admin_headers)
+
+    create_res = client.post("/api/products", json={
+        "title": "Audited Brass Lamp",
+        "category": "Metalwork",
+        "price": 1800.0,
+        "stock": 4
+    }, headers=headers)
+    assert create_res.status_code == 201
+    pid = create_res.json()["id"]
+
+    # 1. Admin Approves
+    appr_res = client.patch(f"/api/admin/products/{pid}/approve", headers=admin_headers)
+    assert appr_res.status_code == 200
+
+    log_appr = db.query(AuditLog).filter(
+        AuditLog.action == "PRODUCT_APPROVED",
+        AuditLog.resource_id == str(pid)
+    ).first()
+    assert log_appr is not None
+    assert log_appr.resource_type == "PRODUCT"
+    assert log_appr.before_state == "DRAFT"
+    assert log_appr.after_state == "APPROVED"
+    assert log_appr.actor_email == "admin@artisanai.in"
+
+    # 2. Admin Publishes
+    pub_res = client.patch(f"/api/admin/products/{pid}/publish", headers=admin_headers)
+    assert pub_res.status_code == 200
+
+    log_pub = db.query(AuditLog).filter(
+        AuditLog.action == "PRODUCT_PUBLISHED",
+        AuditLog.resource_id == str(pid)
+    ).first()
+    assert log_pub is not None
+    assert log_pub.before_state == "APPROVED"
+    assert log_pub.after_state == "PUBLISHED"
+
+
+def test_admin_product_deletion_creates_audit_log(admin_headers, db):
+    """Admin deleting a product writes an AuditLog entry with DELETED state."""
+    _, _, _, headers = make_artisan_via_admin(client, admin_headers)
+
+    create_res = client.post("/api/products", json={
+        "title": "Audited Deletable Carving",
+        "category": "Woodwork",
+        "price": 2200.0,
+        "stock": 1
+    }, headers=headers)
+    assert create_res.status_code == 201
+    pid = create_res.json()["id"]
+
+    del_res = client.delete(f"/api/admin/products/{pid}", headers=admin_headers)
+    assert del_res.status_code == 204
+
+    log_del = db.query(AuditLog).filter(
+        AuditLog.action == "PRODUCT_DELETE",
+        AuditLog.resource_id == str(pid)
+    ).first()
+    assert log_del is not None
+    assert log_del.resource_type == "PRODUCT"
+    assert log_del.after_state == "DELETED"
+    assert log_del.actor_email == "admin@artisanai.in"
+
+
+def test_admin_audit_logs_endpoint_protection_and_retrieval(admin_headers):
+    """GET /api/admin/audit-logs is protected by require_admin and returns audit records."""
+    # 1. Unauthenticated / Buyer blocked with 403
+    _, _, _, buyer_headers = make_buyer(client)
+    res_buyer = client.get("/api/admin/audit-logs", headers=buyer_headers)
+    assert res_buyer.status_code == 403
+
+    # Generate an audited event: Artisan creates product, Admin approves it
+    _, _, _, artisan_headers = make_artisan_via_admin(client, admin_headers)
+    create_res = client.post("/api/products", json={
+        "title": "Audit Query Craft",
+        "category": "Pottery",
+        "price": 300.0,
+        "stock": 2
+    }, headers=artisan_headers)
+    assert create_res.status_code == 201
+    pid = create_res.json()["id"]
+
+    appr_res = client.patch(f"/api/admin/products/{pid}/approve", headers=admin_headers)
+    assert appr_res.status_code == 200
+
+    # 2. Admin gets 200
+    res_admin = client.get("/api/admin/audit-logs", headers=admin_headers)
+    assert res_admin.status_code == 200
+    logs = res_admin.json()
+    assert isinstance(logs, list)
+    assert len(logs) > 0
+    first_log = logs[0]
+    assert "action" in first_log
+    assert "resource_type" in first_log
+    assert "created_at" in first_log
+
+    # 3. Filtering by resource_type
+    res_filter = client.get("/api/admin/audit-logs?resource_type=PRODUCT", headers=admin_headers)
+    assert res_filter.status_code == 200
+    filtered_logs = res_filter.json()
+    assert len(filtered_logs) > 0
+    for l in filtered_logs:
+        assert l["resource_type"] == "PRODUCT"
+
 
 
 

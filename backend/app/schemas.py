@@ -462,6 +462,22 @@ class MarketResearchResponse(BaseModel):
     summary: MarketSummary
     notice: Optional[str] = None
 
+class AuditLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    actor_id: Optional[int] = None
+    actor_email: Optional[str] = None
+    action: str
+    resource_type: str
+    resource_id: Optional[str] = None
+    before_state: Optional[str] = None
+    after_state: Optional[str] = None
+    reason: Optional[str] = None
+    ip_metadata: Optional[str] = None
+    created_at: datetime
+
+
 
 
 

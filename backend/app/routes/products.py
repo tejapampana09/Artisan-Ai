@@ -13,6 +13,7 @@ from backend.app.models import (
 )
 from backend.app.schemas import ProductCreate, ProductUpdate, ProductResponse
 from backend.app.services.auth import require_artisan, require_admin, get_optional_current_user
+from backend.app.services.audit import record_audit_log
 
 router = APIRouter(prefix="/api/products", tags=["Products"])
 
@@ -306,7 +307,19 @@ def transition_product_status(
             detail="Only Platform Administrators can SUSPEND products."
         )
 
+    old_status = product.status
     product.status = new_status
+    if is_admin:
+        record_audit_log(
+            db=db,
+            actor=current_user,
+            action=f"PRODUCT_{new_status}",
+            resource_type="PRODUCT",
+            resource_id=str(product.id),
+            before_state=old_status,
+            after_state=new_status,
+            reason=status_payload.get("reason")
+        )
     db.commit()
     db.refresh(product)
     return product
@@ -427,5 +440,17 @@ def domain_admin_delete_product(
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product with id {product_id} not found")
+    old_status = product.status
+    prod_id = product.id
     cascade_delete_product(db, product)
+    record_audit_log(
+        db=db,
+        actor=current_admin,
+        action="PRODUCT_DELETE",
+        resource_type="PRODUCT",
+        resource_id=str(prod_id),
+        before_state=old_status,
+        after_state="DELETED",
+        commit=True
+    )
     return None
