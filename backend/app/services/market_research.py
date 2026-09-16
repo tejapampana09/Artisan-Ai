@@ -43,7 +43,7 @@ def build_market_query(
         raw_q = "handicraft artisan craft"
 
     if "price" not in raw_q.lower():
-        return f"{raw_q} price buy India".strip()
+        return f"{raw_q} handicraft price buy India".strip()
     return raw_q.strip()
 
 async def research_market(
@@ -140,8 +140,13 @@ async def research_market(
     def _is_domestic_indian_source(listing: MarketListing) -> int:
         url = (listing.url or "").lower()
         src = (listing.source or "").lower()
-        if any(dom in url or dom in src for dom in [".in", "amazon.in", "flipkart", "meesho", "zapvi", "cosmoslayers", "myntra", "nykaa", "ajio", "tatacliq"]):
-            return 2  # Highest priority: local Indian seller/marketplace
+        indian_craft_domains = [
+            ".in", "jaypore", "craftsvilla", "exclusivelane", "itokri", "tjori",
+            "indiamart", "amazon.in", "flipkart", "meesho", "zapvi", "cosmoslayers",
+            "myntra", "nykaa", "ajio", "tatacliq", "pepperfry", "woodenstreet", "engrave"
+        ]
+        if any(dom in url or dom in src for dom in indian_craft_domains):
+            return 2  # Highest priority: local Indian handicraft seller & marketplace
         if any(exp in url or exp in src for exp in ["etsy.com", "ebay.com", "amazon.com"]):
             return 0  # Lower priority: cross-border international platform (USD conversion)
         return 1  # Standard priority
