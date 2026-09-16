@@ -4,7 +4,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from backend.app.database import get_db
-from backend.app.models import User, Product, Event, PricingDecision
+from backend.app.models import (
+    User, Product, Event, PricingDecision,
+    Notification, Order, Payment, Enquiry, Review,
+    ProcessedOperation, DraftCatalog
+)
 from backend.app.schemas import AdminCreateSellerRequest, UserResponse, AdminResetArtisanPasswordRequest
 from backend.app.services.auth import require_admin, hash_password
 
@@ -23,42 +27,38 @@ def admin_create_artisan(
     clean_email = payload.email.strip().lower() if (payload.email and payload.email.strip()) else None
     clean_phone = payload.phone.strip() if (payload.phone and payload.phone.strip()) else None
 
-    if not clean_email and not clean_phone:
+    # Enforce uniqueness for email or phone
+    existing_user = db.query(User).filter(
+        or_(
+            (User.email == clean_email) if clean_email else False,
+            (User.phone == clean_phone) if clean_phone else False
+        )
+    ).first()
+
+    if existing_user:
+        conflict_field = "Email" if (clean_email and existing_user.email == clean_email) else "Phone number"
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Please provide at least an email address or phone number for the artisan seller profile."
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"{conflict_field} is already registered on the platform."
         )
 
-    filters = []
-    if clean_email:
-        filters.append(User.email == clean_email)
-    if clean_phone:
-        filters.append(User.phone == clean_phone)
-
-    if filters:
-        existing = db.query(User).filter(or_(*filters)).first()
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="A seller profile with this email or phone number already exists."
-            )
-
-    new_seller = User(
+    seller = User(
         name=payload.name.strip(),
         email=clean_email,
         phone=clean_phone,
         hashed_password=hash_password(payload.password),
         role="ARTISAN",
         status="ACTIVE",
-        location=payload.location or "India",
-        craft=payload.craft or "Handicrafts",
-        bio=payload.bio or f"Master artisan specializing in traditional {payload.craft or 'handicrafts'}.",
-        verification_status=payload.verification_status or "UNVERIFIED"
+        location=payload.location.strip() if payload.location else None,
+        craft=payload.craft.strip() if payload.craft else None,
+        craft_specialization=payload.craft.strip() if payload.craft else None,
+        verification_status=payload.verification_status,
+        experience_years=payload.experience_years
     )
-    db.add(new_seller)
+    db.add(seller)
     db.commit()
-    db.refresh(new_seller)
-    return new_seller
+    db.refresh(seller)
+    return seller
 
 @admin_ops_router.get("/artisans", response_model=List[UserResponse])
 def admin_list_artisans(
@@ -109,6 +109,8 @@ def admin_delete_artisan(
 ):
     """
     Admin permanently deletes an artisan seller profile and associated catalog data.
+    Safely cascades removal of draft catalogs, processed operations, notifications,
+    events, reviews, enquiries, pricing decisions, orders, and products.
     """
     artisan = db.query(User).filter(User.id == artisan_id).first()
     if not artisan:
@@ -124,19 +126,61 @@ def admin_delete_artisan(
 
     artisan_name = artisan.name
 
-    # Dissociate or delete dependent records
-    db.query(Event).filter(Event.user_id == artisan.id).delete(synchronize_session=False)
+    try:
+        # 1. Clean ProcessedOperations and DraftCatalogs
+        db.query(ProcessedOperation).filter(ProcessedOperation.user_id == artisan.id).delete(synchronize_session=False)
+        db.query(DraftCatalog).filter(DraftCatalog.user_id == artisan.id).delete(synchronize_session=False)
 
-    products = db.query(Product).filter(Product.seller_id == artisan.id).all()
-    for prod in products:
-        db.query(PricingDecision).filter(PricingDecision.product_id == prod.id).delete(synchronize_session=False)
-        db.query(Event).filter(Event.product_id == prod.id).delete(synchronize_session=False)
-        db.delete(prod)
+        # 2. Clean Notifications
+        db.query(Notification).filter(Notification.user_id == artisan.id).delete(synchronize_session=False)
 
-    db.delete(artisan)
-    db.commit()
+        # 3. Clean Events for artisan
+        db.query(Event).filter(Event.user_id == artisan.id).delete(synchronize_session=False)
 
-    return {
-        "status": "success",
-        "message": f"Artisan '{artisan_name}' (ID: {artisan_id}) and catalog data removed successfully."
-    }
+        # 4. Clean Enquiries made by artisan
+        db.query(Enquiry).filter(Enquiry.user_id == artisan.id).delete(synchronize_session=False)
+
+        # 5. Clean Reviews made by artisan
+        db.query(Review).filter(Review.buyer_id == artisan.id).delete(synchronize_session=False)
+
+        # 6. Orders placed by artisan (if any)
+        user_orders = db.query(Order).filter(Order.user_id == artisan.id).all()
+        user_order_ids = [o.id for o in user_orders]
+        if user_order_ids:
+            db.query(Payment).filter(Payment.order_id.in_(user_order_ids)).delete(synchronize_session=False)
+            db.query(Review).filter(Review.order_id.in_(user_order_ids)).delete(synchronize_session=False)
+            db.query(Order).filter(Order.id.in_(user_order_ids)).delete(synchronize_session=False)
+
+        # 7. Products belonging to this artisan and all dependent records
+        products = db.query(Product).filter(Product.seller_id == artisan.id).all()
+        prod_ids = [p.id for p in products]
+        if prod_ids:
+            db.query(PricingDecision).filter(PricingDecision.product_id.in_(prod_ids)).delete(synchronize_session=False)
+            db.query(Event).filter(Event.product_id.in_(prod_ids)).delete(synchronize_session=False)
+            db.query(Enquiry).filter(Enquiry.product_id.in_(prod_ids)).delete(synchronize_session=False)
+            db.query(Review).filter(Review.product_id.in_(prod_ids)).delete(synchronize_session=False)
+
+            prod_orders = db.query(Order).filter(Order.product_id.in_(prod_ids)).all()
+            prod_order_ids = [o.id for o in prod_orders]
+            if prod_order_ids:
+                db.query(Payment).filter(Payment.order_id.in_(prod_order_ids)).delete(synchronize_session=False)
+                db.query(Review).filter(Review.order_id.in_(prod_order_ids)).delete(synchronize_session=False)
+                db.query(Order).filter(Order.id.in_(prod_order_ids)).delete(synchronize_session=False)
+
+            for prod in products:
+                db.delete(prod)
+
+        # 8. Delete the artisan User record
+        db.delete(artisan)
+        db.commit()
+
+        return {
+            "status": "success",
+            "message": f"Artisan '{artisan_name}' (ID: {artisan_id}) and catalog data removed successfully."
+        }
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete artisan due to database error: {str(exc)}"
+        )

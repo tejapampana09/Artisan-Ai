@@ -1,4 +1,4 @@
-name: CI Test Gate & Auto Deploy Frontend
+name: CI Test Gate & Auto Deploy (Frontend & Backend)
 
 on:
   push:
@@ -22,7 +22,7 @@ jobs:
       - name: Install Backend Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
+          pip install -r requirements.txt
           pip install pytest anyio httpx
 
       - name: Run Pytest Suite
@@ -30,9 +30,9 @@ jobs:
           DATABASE_URL: sqlite:///./test_ci.db
           ENVIRONMENT: test
           DEMO_MODE: "true"
+          PYTHONPATH: .
         run: |
-          cd backend
-          python -m pytest
+          python -m pytest backend/tests
 
   deploy-frontend:
     name: Build & Deploy Frontend to S3
@@ -77,3 +77,43 @@ jobs:
       - name: Invalidate CloudFront Cache
         run: |
           aws cloudfront create-invalidation --distribution-id E8OV8X242WBXH --paths "/*"
+
+  deploy-backend:
+    name: Package & Deploy Backend to Elastic Beanstalk
+    needs: test-backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Package Backend Zip Bundle
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          VERSION_LABEL="v-auto-${{ github.run_number }}-${SHORT_SHA}"
+          echo "VERSION_LABEL=${VERSION_LABEL}" >> $GITHUB_ENV
+          zip -r "deploy-${VERSION_LABEL}.zip" backend requirements.txt Procfile .ebextensions -x "*.pyc" "*__pycache__*" "*test_ci.db*" "*.db"
+
+      - name: Upload Zip to S3
+        run: |
+          aws s3 cp "deploy-${VERSION_LABEL}.zip" "s3://elasticbeanstalk-us-east-1-339954341605/deploy-${VERSION_LABEL}.zip"
+
+      - name: Create Elastic Beanstalk Application Version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name artisan-ai-backend \
+            --version-label "${VERSION_LABEL}" \
+            --source-bundle S3Bucket="elasticbeanstalk-us-east-1-339954341605",S3Key="deploy-${VERSION_LABEL}.zip" \
+            --description "Auto-deploy commit ${{ github.sha }}"
+
+      - name: Update Elastic Beanstalk Environment
+        run: |
+          aws elasticbeanstalk update-environment \
+            --environment-name artisan-ai-backend-prod \
+            --version-label "${VERSION_LABEL}"
