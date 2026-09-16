@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, ShieldCheck, MessageSquare, Send, CheckCircle2 } from 'lucide-react';
+import { Star, ShieldCheck, MessageSquare, Send } from 'lucide-react';
 import { getProductReviews, createProductReview } from '../api/trust.js';
 import { useNotification } from '../context/NotificationContext.jsx';
 

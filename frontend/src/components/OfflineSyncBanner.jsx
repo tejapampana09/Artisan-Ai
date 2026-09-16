@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wifi, WifiOff, RefreshCw, CheckCircle2, AlertTriangle, Layers } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { useOffline } from '../context/OfflineContext';
 
 export default function OfflineSyncBanner() {

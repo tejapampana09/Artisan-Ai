@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, TrendingUp, Package, MessageSquare, ArrowUpRight, Sparkles, Check, AlertTriangle, Layers } from 'lucide-react';
+import { Bot, TrendingUp, Package, MessageSquare, ArrowUpRight, Sparkles, Layers } from 'lucide-react';
 
 export default function CopilotWidget({ copilotInsight, opportunities = [], onActionTaken, onOpenEnquiries }) {
   // Combine single insight and full opportunities list

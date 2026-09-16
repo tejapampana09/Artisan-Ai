@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, Edit2, Trash2, Eye, IndianRupee, Layers, CheckCircle2 } from 'lucide-react';
+import { Package, Edit2, Trash2, Eye } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { getLocalizedProductField } from '../utils/multilingual.js';
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Check, AlertCircle } from 'lucide-react';
+import { X, Sparkles, AlertCircle } from 'lucide-react';
 import { estimateFairPrice } from '../api/index.js';
 
 const CATEGORIES = [

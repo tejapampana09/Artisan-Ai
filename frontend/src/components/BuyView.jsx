@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, ShoppingBag, Heart, Sparkles, Filter, MapPin, Send, Eye, Flame, CheckCircle2, SlidersHorizontal, RefreshCw, Bot } from 'lucide-react';
+import { Search, ShoppingBag, Heart, Filter, Flame } from 'lucide-react';
 import BuyerProductModal from './BuyerProductModal';
 import BuyerOrderModal from './BuyerOrderModal';
 import BuyerAssistantModal from './BuyerAssistantModal';

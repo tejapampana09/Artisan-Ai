@@ -45,12 +45,27 @@ def validate_production_config(env: str, demo_mode: bool = False, database_url: 
     if env == "production":
         if demo_mode:
             raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: DEMO_MODE cannot be enabled in production!")
+        if not jwt_secret or jwt_secret == DEV_FALLBACK_JWT_SECRET:
+            raise RuntimeError(
+                "CRITICAL SECURITY ERROR: JWT_SECRET_KEY is not set or is using the insecure dev fallback. "
+                "Generate a strong secret with: openssl rand -hex 32"
+            )
+        if len(jwt_secret) < 32:
+            raise RuntimeError(
+                "CRITICAL SECURITY ERROR: JWT_SECRET_KEY is too short (minimum 32 characters). "
+                "Generate a strong secret with: openssl rand -hex 32"
+            )
+        if not database_url or "sqlite" in database_url.lower():
+            raise RuntimeError(
+                "CRITICAL CONFIGURATION ERROR: SQLite cannot be used in production (ephemeral filesystem). "
+                "Set DATABASE_URL to a PostgreSQL connection string."
+            )
     return True
 
 validate_production_config(ENVIRONMENT, DEMO_MODE, DATABASE_URL, JWT_SECRET_KEY)
 
 JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
+ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))  # 8h default (was 24h)
 
 # CORS origins
 raw_cors = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000")

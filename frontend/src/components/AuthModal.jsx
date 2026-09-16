@@ -3,7 +3,7 @@ import {
   X, User, Lock, Mail, Phone, Sparkles, CheckCircle2, 
   LogIn, ShieldCheck, Store, ArrowRight, Smartphone, Check
 } from 'lucide-react';
-import { loginUser, resetPassword, logoutUser, getAuthToken, clearAuthToken, googleAuth } from '../api/index.js';
+import { loginUser, clearAuthToken, googleAuth } from '../api/index.js';
 import { clearUserOfflineCache } from '../services/offlineSync.js';
 
 export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavigateMode, initialTab = 'ORDERS' }) {

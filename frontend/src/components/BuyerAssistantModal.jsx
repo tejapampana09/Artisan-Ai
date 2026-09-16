@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Bot, Send, Mic, MicOff, Sparkles, ShoppingBag, MapPin, Globe, ArrowRight, ShieldCheck } from 'lucide-react';
+import { X, Bot, Send, Mic, MicOff, Sparkles, MapPin, Globe, ArrowRight } from 'lucide-react';
 import { sendBuyerCopilotMessage } from '../api/index.js';
 import { useNotification } from '../context/NotificationContext.jsx';
 

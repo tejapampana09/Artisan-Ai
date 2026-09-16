@@ -843,9 +843,9 @@ export default function AdminView({ user, onAuthChange, onSelectMode }) {
             </div>
 
             <div className="p-4 bg-[#FAF9F6] rounded-2xl border border-[#E8E5DF]">
-              <span className="text-[10px] font-bold text-[#6B6B6B] uppercase block">Active Database Users</span>
+              <span className="text-[10px] font-bold text-[#6B6B6B] uppercase block">Registered Artisans</span>
               <span className="text-sm font-bold text-[#1C1C1C] mt-1 block">
-                {systemHealth?.user_count !== undefined ? systemHealth.user_count : 'Healthy'}
+                {sellers.length > 0 ? sellers.length : (systemHealth?.status === 'ready' ? '—' : 'Healthy')}
               </span>
             </div>
 

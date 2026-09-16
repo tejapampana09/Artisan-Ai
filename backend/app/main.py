@@ -64,7 +64,10 @@ app = FastAPI(
     title="Artisan AI API",
     description="Voice-First AI Business Platform & Market Linkage for Marginalized Artisans",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs" if ENVIRONMENT != "production" else None,
+    redoc_url="/redoc" if ENVIRONMENT != "production" else None,
+    openapi_url="/openapi.json" if ENVIRONMENT != "production" else None,
 )
 
 
@@ -72,8 +75,10 @@ cors_origins = get_cors_origins()
 cors_kwargs = {
     "allow_origins": cors_origins,
     "allow_credentials": True,
-    "allow_methods": ["*"],
-    "allow_headers": ["*"],
+    "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    "allow_headers": ["Authorization", "Content-Type", "X-Request-ID", "Accept", "X-Requested-With"],
+    "expose_headers": ["X-Request-ID", "X-Process-Time-Ms"],
+    "max_age": 600,
 }
 if ENVIRONMENT != "production":
     cors_kwargs["allow_origin_regex"] = r"https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.\d+\.\d+\.\d+)(:\d+)?"
@@ -84,13 +89,21 @@ app.add_middleware(
 )
 
 @app.middleware("http")
-async def add_observability_headers(request: Request, call_next):
+async def add_security_headers(request: Request, call_next):
     start_time = time.time()
     response = await call_next(request)
     duration_ms = round((time.time() - start_time) * 1000, 2)
+    # Observability
     response.headers["X-Request-ID"] = request.headers.get("X-Request-ID", str(uuid.uuid4()))
     response.headers["X-Process-Time-Ms"] = str(duration_ms)
     response.headers["Access-Control-Allow-Private-Network"] = "true"
+    # Security hardening headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=()"
+    if request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
     return response
 
 # Include Routers
@@ -128,18 +141,16 @@ def health_check():
 @app.get("/api/ready", response_model=ReadyResponse)
 def readiness_check(db: Session = Depends(get_db)):
     try:
-        # Check DB connection
         db.execute(text("SELECT 1"))
-        user_count = db.query(User).count()
         return ReadyResponse(
             status="ready",
             database="connected",
-            user_count=user_count
         )
     except Exception as e:
         logging.getLogger("artisan_ai").error("Database readiness check failed: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Database temporarily unavailable: {str(e)}"
+            detail="Database temporarily unavailable. Please try again shortly."
         )
+
 

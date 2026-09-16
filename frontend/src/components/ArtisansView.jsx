@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Award, CheckCircle2, Star, Sparkles, ArrowRight, Eye, ShoppingBag } from 'lucide-react';
+import { MapPin, CheckCircle2, Star, Eye, ShoppingBag } from 'lucide-react';
 import ArtisanProfileModal from './ArtisanProfileModal';
 
 export default function ArtisansView({ user, onOpenAuth, onSelectMode }) {

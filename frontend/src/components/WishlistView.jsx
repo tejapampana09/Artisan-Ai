@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, ShoppingBag, Trash2, ArrowRight, Sparkles, MapPin } from 'lucide-react';
+import { Heart, ShoppingBag, Trash2, ArrowRight } from 'lucide-react';
 import { getProducts } from '../api/index.js';
 import { getSavedProductIds, removeSavedProductId } from '../services/offlineSync';
 import { useNotification } from '../context/NotificationContext';

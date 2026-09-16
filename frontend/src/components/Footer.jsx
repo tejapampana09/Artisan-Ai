@@ -1,5 +1,5 @@
 import React from 'react';
-import { Store, ShieldCheck, CreditCard, Lock, ArrowRight } from 'lucide-react';
+import { Store, Lock } from 'lucide-react';
 
 export default function Footer({ onSelectMode, onOpenAuth, user }) {
   const handleNav = (mode) => {

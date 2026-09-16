@@ -144,7 +144,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
       notify.success('🎉 Order confirmed! The artisan has been notified.');
     } catch (err) {
       notify.error('Order placement failed: ' + (err.message || 'Error occurred'));
-    } fontally: {
+    } finally {
       setPlacingOrder(false);
     }
   };

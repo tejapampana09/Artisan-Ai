@@ -4,7 +4,7 @@ import {
   Layers, Volume2, Globe, ShieldCheck, ArrowRight, RefreshCw, Wand2,
   Camera, Upload, Trash2, AlertTriangle, Zap
 } from 'lucide-react';
-import { processAICatalog, approveAndPublishAICatalog, estimateFairPrice, getApiBase } from '../api/index.js';
+import { processAICatalog, approveAndPublishAICatalog, getApiBase } from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
 import { useNotification } from '../context/NotificationContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -810,7 +810,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     setCustomImageUrl('');
     setVoiceText('');
     setAudioUrl(null);
-    setCosts({ material: '', labour: '', packaging: '', other: '' });
+    setCosts({ material: '', labour: '', packaging: '', other: '', selling_price: '' });
     setAiDraft(null);
     setPublishing(false);
     setLoading(false);

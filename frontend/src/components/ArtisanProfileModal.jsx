@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Award, MapPin, CheckCircle2, Star, Sparkles, Shield, User, Edit3 } from 'lucide-react';
+import { X, Award, MapPin, CheckCircle2, Star, Sparkles, Shield, Edit3 } from 'lucide-react';
 import { getArtisanProfile, updateArtisanProfile } from '../api/trust.js';
 import { useNotification } from '../context/NotificationContext.jsx';
 

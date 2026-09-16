@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, MapPin, Tag, ArrowRight, ShieldCheck, Layers, Eye } from 'lucide-react';
+import { MapPin, Tag, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function CollectionsView({ onSelectMode, onOpenAuth }) {

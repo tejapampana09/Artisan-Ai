@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, Flame, Activity } from 'lucide-react';
+import { TrendingUp, Activity } from 'lucide-react';
 
 export default function MarketDemandWidget({ demands = [] }) {
   if (!demands || demands.length === 0) return null;

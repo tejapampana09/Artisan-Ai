@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Heart, ShoppingBag, Send, ShieldCheck, MapPin, Sparkles, Check, CheckCircle2, Award, UserCheck, Clock, Hammer, Globe, RefreshCw, Maximize2, Tag, ArrowRight } from 'lucide-react';
+import { X, Heart, ShoppingBag, ShieldCheck, MapPin, Sparkles, Check, CheckCircle2, Award, Globe, RefreshCw, Maximize2, Tag } from 'lucide-react';
 import { recordEvent, translateProduct, getProducts } from '../api/index.js';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { useNotification } from '../context/NotificationContext.jsx';
