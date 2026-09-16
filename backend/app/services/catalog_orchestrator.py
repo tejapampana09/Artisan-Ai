@@ -81,7 +81,8 @@ async def process_full_catalog_pipeline(
             artisan_facts=canonical_facts,
             provider=provider,
             title_hint=canonical_facts.product_name or category_hint,
-            category_hint=canonical_facts.craft_type or category_hint
+            category_hint=canonical_facts.craft_type or category_hint,
+            image_url=image_url
         )
         raw_draft, market_response = await asyncio.gather(draft_coro, market_coro)
         validated_catalog = validate_catalog_draft(
@@ -112,7 +113,8 @@ async def process_full_catalog_pipeline(
             artisan_facts=canonical_facts,
             provider=provider,
             title_hint=validated_catalog.get("title") or validated_catalog.get("title_en"),
-            category_hint=validated_catalog.get("category") or category_hint
+            category_hint=validated_catalog.get("category") or category_hint,
+            image_url=image_url
         )
 
     raw_market_median = market_response.summary.median_price if market_response.summary else None

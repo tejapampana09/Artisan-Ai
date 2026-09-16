@@ -38,62 +38,48 @@ _env_jwt_secret = os.getenv("JWT_SECRET_KEY")
 JWT_SECRET_KEY: str = _env_jwt_secret or (DEV_FALLBACK_JWT_SECRET if ENVIRONMENT != "production" else "")
 
 def validate_production_config(env: str, demo_mode: bool = False, database_url: str = "", jwt_secret: str = "") -> bool:
-    """Strict configuration validator for production deployments."""
     if env == "production":
         if demo_mode:
-            raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: DEMO_MODE cannot be enabled in production! Set DEMO_MODE=false.")
-        if not jwt_secret or jwt_secret == DEV_FALLBACK_JWT_SECRET or "artisan_ai_dev" in jwt_secret or "sih_" in jwt_secret or "dev-" in jwt_secret:
-            raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: JWT_SECRET_KEY environment variable must be explicitly set to a secure, unpredictable secret in production! Do not use predictable development fallback secrets.")
+            raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: DEMO_MODE cannot be enabled in production!")
+        if not jwt_secret or jwt_secret == DEV_FALLBACK_JWT_SECRET:
+            raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: JWT_SECRET_KEY must be set!")
         if database_url.startswith("sqlite"):
-            raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: SQLite cannot be used as the production database. Set DATABASE_URL to PostgreSQL.")
+            raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: SQLite cannot be used in production.")
     return True
 
-# Validate active environment settings
 validate_production_config(ENVIRONMENT, DEMO_MODE, DATABASE_URL, JWT_SECRET_KEY)
 
 JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")) # 24 hours
+ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 
 # CORS origins
-raw_cors = os.getenv(
-    "CORS_ORIGINS", 
-    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000"
-)
+raw_cors = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000")
 
 def get_cors_origins() -> List[str]:
     origins = [origin.strip() for origin in raw_cors.split(",") if origin.strip()]
     if ENVIRONMENT == "production":
-        # Strict in production: only allow explicitly configured domains
         return origins
-
-    default_dev_origins = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:4173",
-        "http://127.0.0.1:4173",
-        "http://artisan-ai-frontend-339954341605.s3-website-us-east-1.amazonaws.com",
-        "https://dd8bq7j24onss.cloudfront.net",
-        "http://dd8bq7j24onss.cloudfront.net"
-    ]
+    default_dev_origins = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8000", "http://127.0.0.1:8000", "http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:4173", "http://127.0.0.1:4173"]
     return list(set(origins + default_dev_origins))
 
 # AI API configuration
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
-GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.5-flash").strip()
-_raw_fallback_models = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite,gemini-3.6-flash")
+GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
+_raw_fallback_models = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.6-flash,gemini-3.5-flash")
 GEMINI_FALLBACK_MODELS: List[str] = [m.strip() for m in _raw_fallback_models.split(",") if m.strip()]
-AI_REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "15.0"))
+
+MARKET_SEARCH_GEMINI_MODEL: str = os.getenv("MARKET_SEARCH_GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
+_raw_market_search_fallback_models = os.getenv("MARKET_SEARCH_GEMINI_FALLBACK_MODELS", "gemini-3.6-flash,gemini-3.5-flash")
+MARKET_SEARCH_GEMINI_FALLBACK_MODELS: List[str] = [m.strip() for m in _raw_market_search_fallback_models.split(",") if m.strip()]
+AI_REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "10.0"))
 
 # Market Research API & Search Strategy configuration
-MARKET_RESEARCH_PROVIDER: str = os.getenv("MARKET_RESEARCH_PROVIDER", "WEB_SEARCH").strip().upper()
+MARKET_RESEARCH_PROVIDER: str = os.getenv("MARKET_RESEARCH_PROVIDER", "SEARXNG").strip().upper()
 MARKET_RESEARCH_API_KEY: str = os.getenv("MARKET_RESEARCH_API_KEY", "").strip()
 MARKET_SEARCH_COUNTRY: str = os.getenv("MARKET_SEARCH_COUNTRY", "IN").strip()
 MARKET_SEARCH_LANGUAGE: str = os.getenv("MARKET_SEARCH_LANGUAGE", "en").strip()
 MARKET_SEARCH_MAX_RESULTS: int = int(os.getenv("MARKET_SEARCH_MAX_RESULTS", "10"))
+SEARXNG_BASE_URL: str = os.getenv("SEARXNG_BASE_URL", "http://localhost:8080").strip().rstrip("/")
 
 # Pricing Engine Business Constants & Bounds
 MIN_MARGIN_PCT: float = float(os.getenv("PRICING_MIN_MARGIN_PCT", "0.20"))
@@ -106,4 +92,3 @@ MAX_DEMAND_FACTOR: float = float(os.getenv("PRICING_MAX_DEMAND_FACTOR", "1.15"))
 # Payment Gateway Configuration
 RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "").strip()
 RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "").strip()
-

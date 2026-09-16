@@ -17,8 +17,14 @@ logger = logging.getLogger("artisan_ai")
 _MARKET_CACHE: Dict[str, Tuple[float, List[Dict[str, Any]]]] = {}
 MARKET_CACHE_TTL_SECONDS = 1800  # 30-minute TTL cache window
 
-def get_market_cache(query: str) -> Optional[List[Dict[str, Any]]]:
-    key = hashlib.sha256(query.lower().strip().encode("utf-8")).hexdigest()
+def _market_cache_key(query: str, image_url: Optional[str] = None) -> str:
+    """Keep visual searches separate from text-only searches for the same query."""
+    payload = f"{query.lower().strip()}|{image_url or ''}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def get_market_cache(query: str, image_url: Optional[str] = None) -> Optional[List[Dict[str, Any]]]:
+    key = _market_cache_key(query, image_url)
     if key in _MARKET_CACHE:
         ts, data = _MARKET_CACHE[key]
         if time.time() - ts < MARKET_CACHE_TTL_SECONDS:
@@ -28,19 +34,23 @@ def get_market_cache(query: str) -> Optional[List[Dict[str, Any]]]:
             del _MARKET_CACHE[key]
     return None
 
-def set_market_cache(query: str, results: List[Dict[str, Any]]):
-    key = hashlib.sha256(query.lower().strip().encode("utf-8")).hexdigest()
+def set_market_cache(query: str, results: List[Dict[str, Any]], image_url: Optional[str] = None):
+    key = _market_cache_key(query, image_url)
     _MARKET_CACHE[key] = (time.time(), results)
 
 
 class BaseMarketResearchProvider(ABC):
     @abstractmethod
-    async def search_comparable_products(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+    async def search_comparable_products(
+        self, query: str, limit: int = 10, image_url: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         raise NotImplementedError
 
 
 class NoOpMarketResearchProvider(BaseMarketResearchProvider):
-    async def search_comparable_products(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+    async def search_comparable_products(
+        self, query: str, limit: int = 10, image_url: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         return []
 
 
@@ -161,13 +171,19 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
             except Exception:
                 pass
         self.api_key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
+        # Read by the orchestration layer to distinguish an unavailable live
+        # provider from a genuine "no comparable products" search result.
+        self.last_failure_reason: Optional[str] = None
 
-    async def search_comparable_products(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+    async def search_comparable_products(
+        self, query: str, limit: int = 10, image_url: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        self.last_failure_reason = None
         if not query or not query.strip():
             return []
         
         clean_q = query.strip()
-        cached_res = get_market_cache(clean_q)
+        cached_res = get_market_cache(clean_q, image_url)
         if cached_res is not None:
             return cached_res[:limit]
 
@@ -180,39 +196,61 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
         
         if not self.api_key:
             logger.warning("[Market] No GEMINI_API_KEY configured")
+            self.last_failure_reason = "Gemini Search is not configured on this server."
             return []
 
         fetch_count = min(max(limit, 3), 5)
 
-        from backend.app.config import GEMINI_MODEL, GEMINI_FALLBACK_MODELS
-
-        fallback_list = GEMINI_FALLBACK_MODELS if isinstance(GEMINI_FALLBACK_MODELS, list) else [m.strip() for m in str(GEMINI_FALLBACK_MODELS).split(",") if m.strip()]
-        models_to_try = [GEMINI_MODEL] + [m for m in fallback_list if m != GEMINI_MODEL]
-
-        prompt = (
-            f"You are an expert Indian retail and handicraft market research analyst. "
-            f"Search the live web for currently available comparable handmade or artisan products in India for: \"{clean_q}\". "
-            f"Find actual observed prices in INR from real grounded web search results on platforms in India. "
-            f"Return ONLY a valid JSON array of up to {fetch_count} objects with keys: "
-            f"title (product title), price (actual observed numeric price in INR), currency ('INR'), "
-            f"source (marketplace or store name), description, category, materials (list of strings).\n"
-            f"Only include products whose price and source are supported by the grounded search results. "
-            f"Never invent prices or fabricate listings.\n"
-            f"Example:\n"
-            f"[{{\"title\":\"Handcrafted {clean_q}\",\"price\":499.0,\"currency\":\"INR\",\"source\":\"Amazon India\",\"description\":\"Handmade item\",\"category\":\"{clean_q}\",\"materials\":[\"Handcraft\"]}}]"
+        from backend.app.config import (
+            MARKET_SEARCH_GEMINI_MODEL,
+            MARKET_SEARCH_GEMINI_FALLBACK_MODELS,
         )
 
-        payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "tools": [
-                {
-                    "google_search": {}
-                }
-            ],
+        # The grounded web lookup deliberately has its own model selection.
+        # Do not silently use the catalog model when Search Grounding is not
+        # allocated for it.
+        fallback_list = (
+            MARKET_SEARCH_GEMINI_FALLBACK_MODELS
+            if isinstance(MARKET_SEARCH_GEMINI_FALLBACK_MODELS, list)
+            else [m.strip() for m in str(MARKET_SEARCH_GEMINI_FALLBACK_MODELS).split(",") if m.strip()]
+        )
+        models_to_try = [MARKET_SEARCH_GEMINI_MODEL] + [
+            m for m in fallback_list if m != MARKET_SEARCH_GEMINI_MODEL
+        ]
+
+        research_prompt = (
+            f"You are an expert Indian retail and handicraft market research analyst. "
+            f"Search the live web for currently available comparable handmade or artisan products in India for: \"{clean_q}\". "
+            f"The attached craft photo is the primary visual reference; use its shape, material, pattern, craft style, and finish to reject text-only lookalikes. " if image_url else
+            f"You are an expert Indian retail and handicraft market research analyst. Search the live web for currently available comparable handmade or artisan products in India for: \"{clean_q}\". "
+        ) + (
+            f"Find up to {fetch_count} actual observed prices in INR from real grounded web search results on platforms in India. "
+            f"Reply in plain research notes, one listing at a time, with its title, observed price, marketplace, "
+            f"and why it visually matches. Do not make up a price, product, or URL; omit a listing if the "
+            f"grounded source does not show enough evidence."
+        )
+
+        content_parts: List[Dict[str, Any]] = [{"text": research_prompt}]
+        if image_url:
+            # Reuse the catalog image preparation path so uploaded data-URI
+            # photos are sent as Gemini inline vision input.
+            from backend.app.services.ai_adapter import prepare_image_part
+            async with httpx.AsyncClient(timeout=10.0) as image_client:
+                image_part = await prepare_image_part(image_url, image_client)
+            if image_part:
+                content_parts.append(image_part)
+            else:
+                logger.warning("[Market] Craft image could not be prepared; continuing with text-only grounded search")
+
+        # Pass 1 is deliberately plain text. Google Search Grounding metadata
+        # is retained here, then a second non-search pass extracts JSON. This
+        # avoids coupling structured output with the grounding tool.
+        grounded_payload = {
+            "contents": [{"parts": content_parts}],
+            "tools": [{"google_search": {}}],
             "generationConfig": {
                 "temperature": 0.2,
                 "maxOutputTokens": 4096,
-                "responseMimeType": "application/json"
             }
         }
 
@@ -223,14 +261,21 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                     f"{model}:generateContent?key={self.api_key}"
                 )
                 async with httpx.AsyncClient(timeout=12.0) as client:
-                    resp = await client.post(api_url, json=payload, headers={"Content-Type": "application/json"})
+                    resp = await client.post(api_url, json=grounded_payload, headers={"Content-Type": "application/json"})
 
                 if resp.status_code == 429:
                     logger.warning("[Market] Gemini model %s quota exceeded (429), trying next model", model)
+                    self.last_failure_reason = (
+                        "Gemini Google Search grounding quota is exhausted, so no live market lookup could run. "
+                        "The Gemini model is available, but its separate Search-grounding allowance needs quota or billing."
+                    )
                     continue
 
                 if resp.status_code != 200:
                     logger.warning("[Market] Gemini model %s returned HTTP %s", model, resp.status_code)
+                    self.last_failure_reason = (
+                        f"Gemini Search is temporarily unavailable (HTTP {resp.status_code})."
+                    )
                     continue
 
                 res_json = resp.json()
@@ -276,14 +321,69 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                     logger.warning("[Market] Gemini model %s groundingMetadata contained no grounded URIs", model)
                     continue
 
-                content_parts = candidate.get("content", {}).get("parts", [])
-                if not isinstance(content_parts, list):
-                    content_parts = []
+                research_parts = candidate.get("content", {}).get("parts", [])
+                if not isinstance(research_parts, list):
+                    research_parts = []
+                research_text = "".join(
+                    p.get("text", "") for p in research_parts if isinstance(p, dict)
+                ).strip()
+                if not research_text:
+                    logger.warning("[Market] Gemini %s returned no grounded research text", model)
+                    continue
 
-                all_text = "".join(p.get("text", "") for p in content_parts if isinstance(p, dict))
-                parsed_array = _extract_json_array(all_text)
+                # Pass 2 has no web tool. The model receives only the research
+                # text and server-owned grounded source list. It must return a
+                # source index, never a URL. The backend owns every final URL.
+                source_manifest = [
+                    {
+                        "source_index": index + 1,
+                        "title": source["title"],
+                        "domain": source["domain"],
+                        "url": source["uri"],
+                    }
+                    for index, source in enumerate(grounded_chunks_list)
+                ]
+                extraction_prompt = (
+                    "Convert the grounded market-research notes below into a JSON array. "
+                    "Return at most {limit} objects with: source_index (integer from the supplied sources), "
+                    "title, price (numeric INR or null), currency ('INR'), source, description, category, "
+                    "and materials (string array). Never output a URL. Only retain an observed price that "
+                    "appears in the research notes. If a fact is uncertain, omit that listing.\n\n"
+                    "Grounded sources (server-owned):\n{sources}\n\n"
+                    "Research notes:\n{research}"
+                ).format(
+                    limit=fetch_count,
+                    sources=json.dumps(source_manifest, ensure_ascii=False),
+                    research=research_text,
+                )
+                extraction_payload = {
+                    "contents": [{"parts": [{"text": extraction_prompt}]}],
+                    "generationConfig": {
+                        "temperature": 0.0,
+                        "maxOutputTokens": 4096,
+                        "responseMimeType": "application/json",
+                    },
+                }
+                async with httpx.AsyncClient(timeout=12.0) as client:
+                    extraction_resp = await client.post(
+                        api_url, json=extraction_payload, headers={"Content-Type": "application/json"}
+                    )
+                if extraction_resp.status_code != 200:
+                    logger.warning(
+                        "[Market] Gemini extraction pass on %s returned HTTP %s",
+                        model, extraction_resp.status_code,
+                    )
+                    self.last_failure_reason = "Gemini could not structure the grounded market research."
+                    continue
+                extraction_candidates = extraction_resp.json().get("candidates") or []
+                extraction_candidate = extraction_candidates[0] if extraction_candidates else {}
+                extraction_parts = extraction_candidate.get("content", {}).get("parts", []) if isinstance(extraction_candidate, dict) else []
+                extraction_text = "".join(
+                    p.get("text", "") for p in extraction_parts if isinstance(p, dict)
+                )
+                parsed_array = _extract_json_array(extraction_text)
                 if not parsed_array:
-                    logger.warning("[Market] Gemini %s could not parse JSON: %s", model, all_text[:200])
+                    logger.warning("[Market] Gemini %s could not parse extraction JSON: %s", model, extraction_text[:200])
                     continue
 
                 results = []
@@ -305,34 +405,20 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
                             pass
 
                     source = str(item.get("source") or "Web Search").strip()
-                    raw_url = str(item.get("url") or "").strip()
-
-                    # Direct Grounding Source URL Resolution:
-                    # Backend owns URL mapping derived directly from authoritative groundingMetadata
-                    matched_uri = None
-                    if raw_url and _is_url_in_grounding(raw_url, grounded_uris):
-                        matched_uri = raw_url
-                    
-                    if not matched_uri:
-                        # Match grounded URI by domain/source or title
-                        src_low = source.lower()
-                        title_low = title.lower()
-                        for g in grounded_chunks_list:
-                            if g["domain"] and (g["domain"] in src_low or src_low in g["domain"]):
-                                matched_uri = g["uri"]
-                                break
-                            if g["title"] and (g["title"].lower() in title_low or title_low in g["title"].lower()):
-                                matched_uri = g["uri"]
-                                break
-
-                    # Strict Grounding Provenance Gate:
-                    # A price-bearing comparable MUST derive directly from an authentic web URI in groundingMetadata.
-                    # Artificial or synthesized search URLs are strictly forbidden for pricing comparables.
-                    if not matched_uri:
-                        logger.info("[Market] Rejecting listing '%s' - no verified grounded web source URI found in groundingMetadata", title)
+                    source_index = item.get("source_index")
+                    try:
+                        source_index = int(source_index)
+                    except (TypeError, ValueError):
+                        # Compatibility for older responses: order maps to the
+                        # server-owned source manifest, never to a model URL.
+                        source_index = idx + 1
+                    if source_index < 1 or source_index > len(grounded_chunks_list):
+                        logger.info("[Market] Rejecting listing '%s' - invalid grounded source index", title)
                         continue
-
-                    final_url = matched_uri
+                    grounded_source = grounded_chunks_list[source_index - 1]
+                    final_url = grounded_source["uri"]
+                    if source == "Web Search":
+                        source = grounded_source["domain"] or source
 
                     results.append({
                         "title": title,
@@ -352,8 +438,326 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
 
             except Exception as err:
                 logger.warning("[Market] Gemini request error on %s for query '%s': %s", model, clean_q, err)
+                self.last_failure_reason = "Gemini Search could not be reached. Please try again shortly."
 
         logger.warning("[Market] All Gemini models exhausted or ungrounded for query '%s'", clean_q)
+        return []
+
+
+def _extract_regex_price(text: str) -> Optional[float]:
+    """
+    Extracts price from text via regex supporting INR, Rs, USD ($), and trailing currency words.
+    Converts USD to INR at standard 83.0 conversion rate.
+    """
+    if not text:
+        return None
+    inr_match = re.search(r'(?:₹|INR|Rs\.?)\s*([\d,]+(?:\.\d{2})?)', text, re.IGNORECASE)
+    if inr_match:
+        try:
+            val = float(inr_match.group(1).replace(",", ""))
+            if val > 0:
+                return round(val, 2)
+        except ValueError:
+            pass
+
+    usd_match = re.search(r'(?:\$|USD)\s*([\d,]+(?:\.\d{2})?)', text, re.IGNORECASE)
+    if usd_match:
+        try:
+            val_usd = float(usd_match.group(1).replace(",", ""))
+            if val_usd > 0:
+                return round(val_usd * 83.0, 2)
+        except ValueError:
+            pass
+
+    trailing_match = re.search(r'([\d,]+(?:\.\d{2})?)\s*(?:rupees|rs|inr)\b', text, re.IGNORECASE)
+    if trailing_match:
+        try:
+            val = float(trailing_match.group(1).replace(",", ""))
+            if val > 0:
+                return round(val, 2)
+        except ValueError:
+            pass
+
+    return None
+
+
+def _verify_price_in_evidence(price_val: float, price_evidence: str, title: str, snippet: str) -> bool:
+    """
+    Verifies that numeric price_val is explicitly supported by text evidence (title, snippet, or price_evidence).
+    Rejects range prices, subscription prices, or ungrounded prices.
+    """
+    if price_val <= 0:
+        return False
+
+    combined_text = f"{title} {snippet} {price_evidence}".lower()
+
+    # Reject subscription/recurring indicators if ambiguous
+    ambiguous_patterns = [
+        r"\bper\s+month\b", r"\b/mo\b", r"\bper\s+year\b", r"\bstarting\s+at\b", r"\bstarts\s+at\b", r"\bup\s+to\b"
+    ]
+    for pat in ambiguous_patterns:
+        if re.search(pat, combined_text):
+            logger.info("[Market Verify] Rejecting price %.2f due to ambiguous phrase '%s'", price_val, pat)
+            return False
+
+    int_price = int(round(price_val))
+    str_price_plain = str(int_price)
+    str_price_commas = f"{int_price:,}"
+
+    if str_price_plain in combined_text or str_price_commas in combined_text:
+        return True
+
+    return False
+
+
+class SearXNGMarketResearchProvider(BaseMarketResearchProvider):
+    """
+    Self-Hosted Free SearXNG Market Research Provider.
+    Queries a SearXNG instance for real search results, uses Gemini Flash for structured JSON extraction,
+    and enforces a strict verification layer (URL proof & snippet price evidence).
+    Does not automatically failover to WEB_SEARCH (Gemini Grounding) to avoid unexpected 429 quota errors.
+    """
+
+    def __init__(self, searxng_url: Optional[str] = None, api_key: Optional[str] = None):
+        if not searxng_url:
+            try:
+                from backend.app.config import SEARXNG_BASE_URL
+                searxng_url = SEARXNG_BASE_URL
+            except Exception:
+                searxng_url = os.getenv("SEARXNG_BASE_URL", "http://localhost:8080")
+        self.searxng_url = (searxng_url or "http://localhost:8080").rstrip("/")
+
+        if not api_key:
+            try:
+                from backend.app.config import GEMINI_API_KEY
+                api_key = GEMINI_API_KEY
+            except Exception:
+                pass
+        self.api_key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
+        self.last_failure_reason: Optional[str] = None
+
+    async def search_comparable_products(
+        self, query: str, limit: int = 10, image_url: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        self.last_failure_reason = None
+        if not query or not query.strip():
+            return []
+
+        clean_q = query.strip()
+        cached_res = get_market_cache(clean_q, image_url)
+        if cached_res is not None:
+            return cached_res[:limit]
+
+        # Step 1: Query SearXNG JSON API
+        searxng_endpoint = f"{self.searxng_url}/search"
+        params = {
+            "q": clean_q,
+            "format": "json",
+            "categories": "general",
+            "language": "en"
+        }
+
+        searxng_results = []
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(searxng_endpoint, params=params)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if isinstance(data, dict) and "results" in data and isinstance(data["results"], list):
+                        searxng_results = data["results"]
+                else:
+                    logger.warning("[SearXNG] SearXNG returned HTTP %s", resp.status_code)
+                    self.last_failure_reason = f"SearXNG service returned HTTP {resp.status_code}."
+        except Exception as err:
+            logger.warning("[SearXNG] Could not connect to SearXNG at %s: %s", self.searxng_url, err)
+            self.last_failure_reason = f"Could not connect to SearXNG search engine at {self.searxng_url}."
+
+        if not searxng_results:
+            if not self.last_failure_reason:
+                self.last_failure_reason = "SearXNG search returned 0 results."
+            logger.warning("[SearXNG] No results for query '%s'", clean_q)
+            return []
+
+        # Prepare source manifest from SearXNG search results
+        sources = []
+        for idx, item in enumerate(searxng_results[:15]):
+            if not isinstance(item, dict):
+                continue
+            url = str(item.get("url") or "").strip()
+            title = str(item.get("title") or "").strip()
+            content = str(item.get("content") or item.get("snippet") or "").strip()
+            if url.startswith("http://") or url.startswith("https://"):
+                sources.append({
+                    "source_index": len(sources) + 1,
+                    "url": url,
+                    "title": title,
+                    "snippet": content,
+                    "domain": urlparse(url).netloc.lower()
+                })
+
+        if not sources:
+            self.last_failure_reason = "No valid web source URLs found in SearXNG results."
+            return []
+
+        if not self.api_key:
+            try:
+                from backend.app.config import GEMINI_API_KEY
+                self.api_key = GEMINI_API_KEY.strip()
+            except Exception:
+                pass
+
+        if not self.api_key:
+            # Basic regex extraction if no Gemini key available
+            results = []
+            for s in sources[:limit]:
+                price_val = _extract_regex_price(f"{s['title']} {s['snippet']}")
+                if price_val and not _verify_price_in_evidence(price_val, "", s["title"], s["snippet"]):
+                    price_val = None
+                results.append({
+                    "title": s["title"],
+                    "price": price_val,
+                    "currency": "INR",
+                    "source": s["domain"],
+                    "url": s["url"],
+                    "description": s["snippet"][:200],
+                    "category": clean_q,
+                    "materials": [],
+                    "observed_at": datetime.now(timezone.utc)
+                })
+            set_market_cache(clean_q, results, image_url)
+            return results[:limit]
+
+        # Step 2: Use Gemini Flash for structured extraction
+        from backend.app.config import GEMINI_MODEL, GEMINI_FALLBACK_MODELS
+        models_to_try = [GEMINI_MODEL] + [m for m in GEMINI_FALLBACK_MODELS if m != GEMINI_MODEL]
+
+        extraction_prompt = (
+            f"You are an expert market analyst extracting product pricing for handmade/artisan items in India. "
+            f"Analyze these real web search results from SearXNG for query: \"{clean_q}\".\n\n"
+            f"SearXNG Search Results:\n{json.dumps(sources, ensure_ascii=False, indent=2)}\n\n"
+            f"Return a JSON array of up to {min(limit, len(sources))} objects. Each object MUST include:\n"
+            f"- source_index (integer matching source_index above)\n"
+            f"- title (string)\n"
+            f"- price_evidence (string, exact price mention from snippet/title e.g. \"₹1,499\", or null if not explicitly mentioned)\n"
+            f"- price (numeric INR or null)\n"
+            f"- currency ('INR')\n"
+            f"- description (string)\n"
+            f"- category (string)\n"
+            f"- materials (list of strings)\n"
+            f"Do not invent a price. If the snippet does not show an explicit price, set price and price_evidence to null."
+        )
+
+        extraction_payload = {
+            "contents": [{"parts": [{"text": extraction_prompt}]}],
+            "generationConfig": {
+                "temperature": 0.0,
+                "maxOutputTokens": 4096,
+                "responseMimeType": "application/json",
+            },
+        }
+
+        results = []
+        for model in models_to_try:
+            try:
+                api_url = (
+                    f"https://generativelanguage.googleapis.com/v1beta/models/"
+                    f"{model}:generateContent?key={self.api_key}"
+                )
+                async with httpx.AsyncClient(timeout=6.0) as client:
+                    resp = await client.post(api_url, json=extraction_payload, headers={"Content-Type": "application/json"})
+
+                if resp.status_code != 200:
+                    logger.warning("[SearXNG] Gemini extraction pass on %s returned HTTP %s", model, resp.status_code)
+                    continue
+
+                res_json = resp.json()
+                candidates = res_json.get("candidates") or []
+                if not candidates:
+                    continue
+
+                parts = candidates[0].get("content", {}).get("parts", []) if isinstance(candidates[0], dict) else []
+                extraction_text = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
+                parsed_array = _extract_json_array(extraction_text)
+                if not parsed_array:
+                    continue
+
+                # Step 3: Verification Layer
+                for item in parsed_array:
+                    if not isinstance(item, dict):
+                        continue
+                    title = str(item.get("title") or "").strip()
+                    if not title:
+                        continue
+
+                    # 3a. URL Verification (must come from SearXNG source list)
+                    s_idx = item.get("source_index")
+                    try:
+                        s_idx = int(s_idx)
+                    except (TypeError, ValueError):
+                        continue
+                    if s_idx < 1 or s_idx > len(sources):
+                        continue
+                    matched_source = sources[s_idx - 1]
+                    final_url = matched_source["url"]
+
+                    # 3b. Price Evidence Verification
+                    raw_price = item.get("price")
+                    price_evidence = str(item.get("price_evidence") or "").strip()
+                    parsed_price = None
+
+                    if raw_price is not None:
+                        try:
+                            p_val = float(str(raw_price).replace(",", "").replace("₹", "").strip())
+                            if p_val > 0:
+                                if _verify_price_in_evidence(p_val, price_evidence, matched_source["title"], matched_source["snippet"]):
+                                    parsed_price = p_val
+                                else:
+                                    logger.info("[SearXNG] Unverified price %s for '%s' (not in snippet text)", p_val, title)
+                        except (ValueError, TypeError):
+                            pass
+
+                    results.append({
+                        "title": title,
+                        "price": parsed_price,
+                        "currency": "INR",
+                        "source": matched_source["domain"],
+                        "url": final_url,
+                        "description": str(item.get("description") or matched_source["snippet"]),
+                        "category": str(item.get("category") or clean_q),
+                        "materials": item.get("materials") or [],
+                        "observed_at": datetime.now(timezone.utc)
+                    })
+
+                if results:
+                    logger.info("[SearXNG] Successfully extracted %d verified comparables for '%s'", len(results), clean_q)
+                    set_market_cache(clean_q, results, image_url)
+                    return results[:limit]
+
+            except Exception as err:
+                logger.warning("[SearXNG] Gemini request error on %s: %s", model, err)
+
+        # Basic fallback regex if LLM pass yielded no valid items
+        if not results and sources:
+            for s in sources[:limit]:
+                price_val = _extract_regex_price(f"{s['title']} {s['snippet']}")
+                if price_val and not _verify_price_in_evidence(price_val, "", s["title"], s["snippet"]):
+                    price_val = None
+                results.append({
+                    "title": s["title"],
+                    "price": price_val,
+                    "currency": "INR",
+                    "source": s["domain"],
+                    "url": s["url"],
+                    "description": s["snippet"][:200],
+                    "category": clean_q,
+                    "materials": [],
+                    "observed_at": datetime.now(timezone.utc)
+                })
+
+        if results:
+            set_market_cache(clean_q, results, image_url)
+            return results[:limit]
+
         return []
 
 
@@ -361,7 +765,9 @@ class MockMarketResearchProvider(BaseMarketResearchProvider):
     def __init__(self, mock_listings=None):
         self._mock_listings = mock_listings
 
-    async def search_comparable_products(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+    async def search_comparable_products(
+        self, query: str, limit: int = 10, image_url: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         now = datetime.now(timezone.utc)
         if self._mock_listings is not None:
             results = []
@@ -381,9 +787,17 @@ WebSearchMarketResearchProvider = GeminiGroundingMarketResearchProvider
 
 
 def get_default_market_research_provider() -> BaseMarketResearchProvider:
-    prov_setting = os.getenv("MARKET_RESEARCH_PROVIDER", "WEB_SEARCH").strip().upper()
+    try:
+        from backend.app.config import MARKET_RESEARCH_PROVIDER
+        prov_setting = MARKET_RESEARCH_PROVIDER
+    except Exception:
+        prov_setting = os.getenv("MARKET_RESEARCH_PROVIDER", "SEARXNG").strip().upper()
+
+    if prov_setting == "SEARXNG":
+        return SearXNGMarketResearchProvider()
     if prov_setting == "MOCK":
         return MockMarketResearchProvider()
     if prov_setting == "NOOP":
         return NoOpMarketResearchProvider()
     return GeminiGroundingMarketResearchProvider()
+

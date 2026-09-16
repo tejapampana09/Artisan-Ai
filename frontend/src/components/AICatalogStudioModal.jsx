@@ -738,7 +738,16 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         other_cost: oth || null,
         selling_price: targetSellingPrice
       });
-      setAiDraft(res);
+      // A server-generated recommendation is the initial selling price, while
+      // still leaving the artisan free to edit it before publishing.
+      const recommendedPrice = Number(res?.price_recommendation?.recommended_price ?? res?.suggested_price);
+      const hydratedDraft = Number.isFinite(recommendedPrice) && recommendedPrice > 0 && !Number(res?.suggested_price)
+        ? { ...res, suggested_price: recommendedPrice }
+        : res;
+      if (Number.isFinite(recommendedPrice) && recommendedPrice > 0) {
+        setCosts((prev) => ({ ...prev, selling_price: String(recommendedPrice) }));
+      }
+      setAiDraft(hydratedDraft);
       setStep('REVIEW');
     } catch (err) {
       if (err.message?.includes('401') || err.message?.toLowerCase().includes('authenticated')) {
@@ -1928,40 +1937,11 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 </div>
               )}
 
-              {/* ALWAYS VISIBLE: Similar Products & Market Reference Section */}
+              {/* Market references are shown only when the backend returns grounded live results. */}
               {(() => {
                 const results = Array.isArray(aiDraft.market_research?.results) && aiDraft.market_research.results.length > 0
                   ? aiDraft.market_research.results.slice(0, 4)
-                  : [
-                      {
-                        title: `${aiDraft.title || aiDraft.category || 'Handcrafted Item'} (Amazon India Market Comparable)`,
-                        price: 499,
-                        source: 'Amazon India',
-                        url: `https://www.amazon.in/s?k=${encodeURIComponent(aiDraft.title || aiDraft.category || 'handicraft')}`,
-                        similarity_score: 0.88
-                      },
-                      {
-                        title: `${aiDraft.title || aiDraft.category || 'Handcrafted Item'} (Flipkart Marketplace)`,
-                        price: 599,
-                        source: 'Flipkart',
-                        url: `https://www.flipkart.com/search?q=${encodeURIComponent(aiDraft.title || aiDraft.category || 'handicraft')}`,
-                        similarity_score: 0.85
-                      },
-                      {
-                        title: `${aiDraft.title || aiDraft.category || 'Handcrafted Item'} (Etsy Craft Market)`,
-                        price: 750,
-                        source: 'Etsy',
-                        url: `https://www.etsy.com/in-en/search?q=${encodeURIComponent(aiDraft.title || aiDraft.category || 'handicraft')}`,
-                        similarity_score: 0.82
-                      },
-                      {
-                        title: `${aiDraft.title || aiDraft.category || 'Handcrafted Item'} (Meesho Wholesale)`,
-                        price: 399,
-                        source: 'Meesho',
-                        url: `https://www.meesho.com/search?q=${encodeURIComponent(aiDraft.title || aiDraft.category || 'handicraft')}`,
-                        similarity_score: 0.79
-                      }
-                    ];
+                  : [];
 
                 return (
                   <div className="bg-[#FAF9F6] p-3.5 rounded-xl border border-[#E8E5DF] space-y-2.5">
@@ -1972,10 +1952,15 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                           Similar Products & Market Price Benchmarks
                         </span>
                       </div>
-                      <span className="text-[10px] font-bold text-[#A6533B] bg-amber-50 px-2 py-0.5 rounded border border-[#E8E5DF]">
-                        Live Market Search
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${results.length > 0 ? 'text-emerald-800 bg-emerald-50 border-emerald-200' : 'text-[#6B6B6B] bg-stone-50 border-[#E8E5DF]'}`}>
+                        {results.length > 0 ? 'Verified live results' : 'No verified results'}
                       </span>
                     </div>
+                    {results.length === 0 ? (
+                      <p className="text-[11px] text-[#6B6B6B] leading-relaxed">
+                        {aiDraft.market_research?.notice || 'Live market research did not return price-verified comparable listings. No estimate has been shown as a market price.'}
+                      </p>
+                    ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {results.map((item, idx) => (
                         <div key={idx} className="p-2.5 rounded-md border border-[#E8E5DF] bg-white flex flex-col justify-between space-y-2">
@@ -1994,48 +1979,21 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                             <span className="text-xs font-bold text-[#1C1C1C]">
                               {item.price ? `₹${item.price}` : 'Price unlisted'}
                             </span>
-                            {(() => {
-                              const rawUrl = (item.url || '').trim();
-                              const isDummy = !rawUrl || 
-                                rawUrl.includes('/dp/') || 
-                                rawUrl.includes('/gp/product/') ||
-                                rawUrl.includes('example.com') || 
-                                rawUrl.includes('placeholder') || 
-                                rawUrl.includes('B08EXAMPLE') || 
-                                rawUrl.includes('fake-unsupported') || 
-                                rawUrl === 'http://' || 
-                                rawUrl === 'https://';
-                              let validUrl = rawUrl;
-                              if (isDummy || (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://'))) {
-                                const q = encodeURIComponent(item.title || aiDraft.title || 'handmade product');
-                                const src = (item.source || '').toLowerCase();
-                                if (src.includes('amazon') || rawUrl.includes('amazon')) {
-                                  validUrl = `https://www.amazon.in/s?k=${q}`;
-                                } else if (src.includes('flipkart') || rawUrl.includes('flipkart')) {
-                                  validUrl = `https://www.flipkart.com/search?q=${q}`;
-                                } else if (src.includes('meesho') || rawUrl.includes('meesho')) {
-                                  validUrl = `https://www.meesho.com/search?q=${q}`;
-                                } else if (src.includes('etsy') || rawUrl.includes('etsy')) {
-                                  validUrl = `https://www.etsy.com/in-en/search?q=${q}`;
-                                } else {
-                                  validUrl = `https://www.google.com/search?q=${q}+buy+online+India`;
-                                }
-                              }
-                              return (
+                            {item.url?.startsWith('http') && (
                                 <a
-                                  href={validUrl}
+                                  href={item.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-[10px] font-semibold text-[#A6533B] hover:text-[#88412F] underline"
                                 >
                                   Compare Price →
                                 </a>
-                              );
-                            })()}
+                            )}
                           </div>
                         </div>
                       ))}
                     </div>
+                    )}
                   </div>
                 );
               })()}

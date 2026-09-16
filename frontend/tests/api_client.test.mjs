@@ -18,6 +18,8 @@ import {
   getAuthToken, 
   setAuthToken, 
   clearAuthToken, 
+  setBuyerToken,
+  setStudioToken,
   ApiError, 
   formatApiErrorMessage 
 } from '../src/api/client.js';
@@ -37,6 +39,18 @@ test('getAuthToken, setAuthToken, clearAuthToken function correctly', () => {
 
   clearAuthToken();
   assert.equal(getAuthToken(), null);
+});
+
+test('studio token takes precedence over buyer token for default auth lookups', () => {
+  clearAuthToken();
+  setBuyerToken('buyer-token');
+  setStudioToken('studio-token');
+
+  assert.equal(getAuthToken(), 'studio-token');
+  assert.equal(getAuthToken('BUYER'), 'buyer-token');
+  assert.equal(getAuthToken('STUDIO'), 'studio-token');
+
+  clearAuthToken();
 });
 
 test('ApiError encapsulates status, code, details and message', () => {

@@ -24,23 +24,35 @@ def build_market_query(
         base_name = ""
 
     craft = (artisan_facts.craft_type or category_hint or "").strip()
-    if craft and craft.lower() in ["handcrafted", "handmade", "artisan", "custom"]:
+    generic_categories = [
+        "electronics & accessories", "electronics", "accessories", "home & living", 
+        "clothing & apparel", "fashion & accessories", "jewelry & accessories",
+        "handcrafted", "handmade", "artisan", "custom"
+    ]
+    if craft and any(g in craft.lower() for g in generic_categories):
         craft = ""
 
     if base_name:
-        if craft and craft.lower() not in base_name.lower():
-            return f"{craft} {base_name}".strip()
-        return base_name
+        if craft and craft.lower() not in base_name.lower() and len(base_name.split()) < 3:
+            raw_q = f"{craft} {base_name}".strip()
+        else:
+            raw_q = base_name
     elif craft:
-        return f"{craft} craft".strip()
-    return "handicraft artisan craft"
+        raw_q = f"{craft} craft".strip()
+    else:
+        raw_q = "handicraft artisan craft"
+
+    if "price" not in raw_q.lower():
+        return f"{raw_q} price buy India".strip()
+    return raw_q.strip()
 
 async def research_market(
     artisan_facts: ArtisanFacts,
     provider: Optional[BaseMarketResearchProvider] = None,
     similarity_threshold: float = 0.20,
     title_hint: Optional[str] = None,
-    category_hint: Optional[str] = None
+    category_hint: Optional[str] = None,
+    image_url: Optional[str] = None
 ) -> MarketResearchResponse:
     """
     Market Research Service for finding external comparable listings and calculating
@@ -59,7 +71,9 @@ async def research_market(
         )
 
     active_provider = provider if provider is not None else get_default_market_research_provider()
-    raw_listings = await active_provider.search_comparable_products(query, limit=20)
+    raw_listings = await active_provider.search_comparable_products(
+        query, limit=20, image_url=image_url
+    )
 
     retained_listings: List[MarketListing] = []
     seen_identifiers = set()
@@ -176,7 +190,14 @@ async def research_market(
     if isinstance(active_provider, NoOpMarketResearchProvider):
         notice = "No live external search provider is currently configured. Configure a market provider to fetch external listings."
     elif not retained_listings:
-        notice = f"No comparable market listings found for query '{query}' above similarity threshold."
+        provider_reason = getattr(active_provider, "last_failure_reason", None)
+        if provider_reason:
+            notice = provider_reason
+        else:
+            notice = (
+                "No price-verified visual market matches were found for the uploaded craft image. "
+                if image_url else "No comparable market listings found for the supplied description. "
+            ) + "No market price was used."
 
     return MarketResearchResponse(
         query=query,

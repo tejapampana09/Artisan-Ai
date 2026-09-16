@@ -220,11 +220,10 @@ def test_gemini_grounding_request_payload(monkeypatch):
     """Test A: Assert Gemini request payload contains tools: [{'google_search': {}}]"""
     from unittest.mock import AsyncMock, MagicMock
 
-    captured_json = {}
+    captured_json = []
 
     async def mock_post(url, json=None, headers=None):
-        nonlocal captured_json
-        captured_json = json
+        captured_json.append(json)
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -253,9 +252,13 @@ def test_gemini_grounding_request_payload(monkeypatch):
     provider = GeminiGroundingMarketResearchProvider(api_key="test_api_key")
     results = asyncio.run(provider.search_comparable_products("Clay Pot"))
 
-    assert captured_json is not None
-    assert "tools" in captured_json
-    assert captured_json["tools"] == [{"google_search": {}}]
+    assert len(captured_json) == 2
+    # Pass 1 performs grounded research without structured JSON mode.
+    assert captured_json[0]["tools"] == [{"google_search": {}}]
+    assert "responseMimeType" not in captured_json[0]["generationConfig"]
+    # Pass 2 extracts JSON from the evidence without invoking web search.
+    assert "tools" not in captured_json[1]
+    assert captured_json[1]["generationConfig"]["responseMimeType"] == "application/json"
     assert len(results) == 1
     assert results[0]["title"] == "Grounded Item"
 
@@ -452,4 +455,137 @@ def test_gemini_grounding_no_fabricated_prices(monkeypatch):
     asyncio.run(_test())
 
 
+def test_verify_price_in_evidence_accepted_and_rejected():
+    """Verify price evidence rule accepts verified prices and rejects ungrounded/ambiguous prices."""
+    from backend.app.services.market_research_provider import _verify_price_in_evidence
+
+    # Valid explicit price in snippet/evidence
+    assert _verify_price_in_evidence(1299.0, "₹1,299", "Handmade Brass Bell", "Buy online for ₹1,299 with free shipping") is True
+    assert _verify_price_in_evidence(850.0, "", "Bamboo Basket Rs 850", "Eco friendly basket") is True
+
+    # Ungrounded price (price digits missing from text)
+    assert _verify_price_in_evidence(9999.0, "", "Handmade Bell", "Price around 500 rupees") is False
+
+    # Ambiguous / subscription / starting price phrases
+    assert _verify_price_in_evidence(500.0, "Starting at ₹500", "Handmade Bell", "Starting at ₹500 per month") is False
+    assert _verify_price_in_evidence(200.0, "₹200/mo", "Craft Subscription", "Only ₹200/mo") is False
+
+
+def test_searxng_market_research_provider_success(monkeypatch):
+    """Verify SearXNGMarketResearchProvider queries SearXNG and extracts verified comparables."""
+    from unittest.mock import AsyncMock, MagicMock
+    from backend.app.services.market_research_provider import SearXNGMarketResearchProvider
+
+    searxng_mock_data = {
+        "results": [
+            {
+                "url": "https://www.etsy.com/in-en/listing/101",
+                "title": "Handcrafted Brass Bell",
+                "content": "Authentic handmade brass temple bell. Price ₹1,500 INR."
+            },
+            {
+                "url": "https://www.amazon.in/dp/B08XYZ123",
+                "title": "Traditional Brass Puja Bell",
+                "content": "Pure brass bell for home temple. ₹1,200 only."
+            }
+        ]
+    }
+
+    gemini_mock_data = {
+        "candidates": [
+            {
+                "content": {
+                    "parts": [
+                        {
+                            "text": '''[
+                                {
+                                    "source_index": 1,
+                                    "title": "Handcrafted Brass Bell",
+                                    "price_evidence": "₹1,500",
+                                    "price": 1500.0,
+                                    "currency": "INR",
+                                    "description": "Temple bell",
+                                    "category": "Brassware",
+                                    "materials": ["Brass"]
+                                },
+                                {
+                                    "source_index": 2,
+                                    "title": "Traditional Brass Puja Bell",
+                                    "price_evidence": "₹1,200",
+                                    "price": 1200.0,
+                                    "currency": "INR",
+                                    "description": "Puja bell",
+                                    "category": "Brassware",
+                                    "materials": ["Brass"]
+                                }
+                            ]'''
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+
+    async def mock_get(url, params=None):
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = searxng_mock_data
+        return resp
+
+    async def mock_post(url, json=None, headers=None):
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = gemini_mock_data
+        return resp
+
+    mock_client = AsyncMock()
+    mock_client.get = mock_get
+    mock_client.post = mock_post
+    mock_client.__aenter__.return_value = mock_client
+    mock_client.__aexit__.return_value = None
+
+    monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: mock_client)
+
+    async def _test():
+        provider = SearXNGMarketResearchProvider(searxng_url="http://localhost:8080", api_key="test_key")
+        results = await provider.search_comparable_products("Brass Bell", limit=5)
+
+        assert len(results) == 2
+        assert results[0]["title"] == "Handcrafted Brass Bell"
+        assert results[0]["price"] == 1500.0
+        assert results[0]["url"] == "https://www.etsy.com/in-en/listing/101"
+
+        assert results[1]["title"] == "Traditional Brass Puja Bell"
+        assert results[1]["price"] == 1200.0
+        assert results[1]["url"] == "https://www.amazon.in/dp/B08XYZ123"
+
+    asyncio.run(_test())
+
+
+def test_searxng_provider_failure_does_not_trigger_web_search(monkeypatch):
+    """Verify SearXNG failure fails gracefully with failure_reason and doesn't invoke Gemini Grounding."""
+    from unittest.mock import AsyncMock, MagicMock
+    from backend.app.services.market_research_provider import SearXNGMarketResearchProvider, GeminiGroundingMarketResearchProvider
+
+    async def mock_get(url, params=None):
+        resp = MagicMock()
+        resp.status_code = 500
+        return resp
+
+    mock_client = AsyncMock()
+    mock_client.get = mock_get
+    mock_client.__aenter__.return_value = mock_client
+    mock_client.__aexit__.return_value = None
+
+    monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: mock_client)
+
+    async def _test():
+        provider = SearXNGMarketResearchProvider(searxng_url="http://localhost:8080")
+        results = await provider.search_comparable_products("Bamboo Basket", limit=5)
+
+        assert len(results) == 0
+        assert provider.last_failure_reason is not None
+        assert "500" in provider.last_failure_reason
+
+    asyncio.run(_test())
 

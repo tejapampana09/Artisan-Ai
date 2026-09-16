@@ -22,36 +22,36 @@ export async function getMarketDemand() {
 }
 
 export async function getSellerOpportunities() {
-  if (!getAuthToken()) {
+  if (!getAuthToken('STUDIO')) {
     return { copilot_insight: null, opportunities: [], category_demand: [] };
   }
-  return await apiRequest('/seller/opportunities');
+  return await apiRequest('/seller/opportunities', { domain: 'STUDIO' });
 }
 
 export async function getCopilotInsight() {
-  if (!getAuthToken()) {
+  if (!getAuthToken('STUDIO')) {
     return null;
   }
-  return await apiRequest('/seller/copilot-insight');
+  return await apiRequest('/seller/copilot-insight', { domain: 'STUDIO' });
 }
 
 export async function getSellerDashboard() {
-  if (!getAuthToken()) {
+  if (!getAuthToken('STUDIO')) {
     return null;
   }
-  return await apiRequest('/seller/dashboard');
+  return await apiRequest('/seller/dashboard', { domain: 'STUDIO' });
 }
 
 export async function getSellerReadiness() {
-  if (!getAuthToken()) {
+  if (!getAuthToken('STUDIO')) {
     return { score: 0, strengths: [], improvements: [], next_best_action: "" };
   }
-  return await apiRequest('/seller/readiness');
+  return await apiRequest('/seller/readiness', { domain: 'STUDIO' });
 }
 
 export async function getSalesChannels() {
-  if (!getAuthToken()) return [];
-  return await apiRequest('/channels/list');
+  if (!getAuthToken('STUDIO')) return [];
+  return await apiRequest('/channels/list', { domain: 'STUDIO' });
 }
 
 export async function publishToChannel(productId, channelName) {
@@ -84,7 +84,7 @@ export async function adminListSellers() {
 }
 
 export async function downloadAnalyticsCSV() {
-  const token = getAuthToken();
+  const token = getAuthToken('STUDIO');
   if (!token) throw new Error('Authentication required');
 
   const apiBase = getApiBase();

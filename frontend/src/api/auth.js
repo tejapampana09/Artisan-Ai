@@ -37,6 +37,13 @@ export function isAuthenticated(domain = null) {
   return !!getAuthToken(domain);
 }
 
+// A browser has one active Artisan AI identity at a time. Keeping stale domain
+// tokens would let a reload silently restore a different role's workspace.
+function activateSingleRoleSession(domain, token) {
+  clearAuthToken();
+  setAuthToken(token, domain);
+}
+
 // 1. Marketplace Buyer Auth
 export async function registerBuyer(userData) {
   const data = await marketplaceRequest('/marketplace/auth/register', {
@@ -44,7 +51,7 @@ export async function registerBuyer(userData) {
     body: JSON.stringify(userData),
   });
   if (data && data.access_token) {
-    setBuyerToken(data.access_token);
+    activateSingleRoleSession('BUYER', data.access_token);
   }
   if (data && data.user) {
     setStoredUser(data.user, 'BUYER');
@@ -58,7 +65,7 @@ export async function loginBuyer(credentials) {
     body: JSON.stringify(credentials),
   });
   if (data && data.access_token) {
-    setBuyerToken(data.access_token);
+    activateSingleRoleSession('BUYER', data.access_token);
   }
   if (data && data.user) {
     setStoredUser(data.user, 'BUYER');
@@ -72,7 +79,7 @@ export async function googleAuthBuyer(googleData) {
     body: JSON.stringify(googleData),
   });
   if (data && data.access_token) {
-    setBuyerToken(data.access_token);
+    activateSingleRoleSession('BUYER', data.access_token);
   }
   if (data && data.user) {
     setStoredUser(data.user, 'BUYER');
@@ -87,7 +94,7 @@ export async function loginArtisan(credentials) {
     body: JSON.stringify(credentials),
   });
   if (data && data.access_token) {
-    setStudioToken(data.access_token);
+    activateSingleRoleSession('STUDIO', data.access_token);
   }
   if (data && data.user) {
     setStoredUser(data.user, 'STUDIO');
@@ -102,7 +109,7 @@ export async function loginAdmin(credentials) {
     body: JSON.stringify(credentials),
   });
   if (data && data.access_token) {
-    setAdminToken(data.access_token);
+    activateSingleRoleSession('ADMIN', data.access_token);
   }
   if (data && data.user) {
     setStoredUser(data.user, 'ADMIN');
@@ -146,7 +153,7 @@ export async function changePassword(payload, domain = 'MARKETPLACE') {
     domain: domain
   });
   if (data && data.access_token) {
-    setAuthToken(data.access_token, domain);
+    activateSingleRoleSession(domain, data.access_token);
   }
   return data;
 }

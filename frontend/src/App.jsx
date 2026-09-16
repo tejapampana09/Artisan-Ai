@@ -9,7 +9,7 @@ import NotificationCenter from './components/NotificationCenter';
 import SplashScreen from './components/SplashScreen';
 import { OfflineProvider, useOffline } from './context/OfflineContext';
 import { NotificationProvider } from './context/NotificationContext';
-import { checkHealth, checkReady, getCurrentUser, getAuthToken } from './api/index.js';
+import { checkHealth, checkReady, getCurrentUser, getAuthToken, setAuthToken, clearAuthToken } from './api/index.js';
 
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import LanguageSelectorModal from './components/LanguageSelectorModal';
@@ -26,6 +26,14 @@ import ProfileView from './components/ProfileView';
 import CartView from './components/CartView';
 import Footer from './components/Footer';
 import AdminView from './components/AdminView';
+
+const roleDomain = (role) => (
+  role === 'ARTISAN' ? 'STUDIO' : role === 'ADMIN' ? 'ADMIN' : role === 'BUYER' ? 'BUYER' : null
+);
+
+const roleHomeMode = (role) => (
+  role === 'ARTISAN' ? 'SELL' : role === 'ADMIN' ? 'ADMIN' : 'BUY'
+);
 
 function AppContent() {
   const [activeMode, setActiveMode] = useState('HOME'); // 'HOME' | 'BUY' | 'SELL' | 'STORY' | 'ARTISANS'
@@ -80,14 +88,23 @@ function AppContent() {
         if (ready) setReadyStatus(ready);
       }).catch(() => {});
 
-      const token = getAuthToken();
+      const storedUser = getStoredUser();
+      const domain = roleDomain(storedUser?.role);
+      const token = getAuthToken(domain);
       if (!token) {
         setUser(null);
         return;
       }
 
-      const userData = await getCurrentUser();
+      const userData = await getCurrentUser(domain);
       if (userData && !userData.detail && !userData.error) {
+        // Migrate any session created before single-role sessions were enforced.
+        // Keep only the token that was just verified for this user's role.
+        const verifiedDomain = roleDomain(userData.role);
+        if (verifiedDomain) {
+          clearAuthToken();
+          setAuthToken(token, verifiedDomain);
+        }
         setUser(userData);
         setStoredUser(userData);
         if (userData.role === 'BUYER') {
@@ -112,8 +129,22 @@ function AppContent() {
 
   const handleToggleMode = async (newMode) => {
     let targetMode = newMode;
+    const role = user?.role;
     if (user && targetMode === 'HOME') {
-      targetMode = user.role === 'BUYER' ? 'BUY' : 'SELL';
+      targetMode = roleHomeMode(role);
+    }
+
+    // Role workspaces are intentionally isolated. Public pages remain
+    // navigable, but an authenticated role cannot enter another role's area.
+    if (user) {
+      const buyerOnlyModes = ['BUY', 'CART', 'ORDERS', 'WISHLIST', 'ENQUIRIES', 'PROFILE'];
+      const isWrongWorkspace =
+        (targetMode === 'SELL' && role !== 'ARTISAN') ||
+        (targetMode === 'ADMIN' && role !== 'ADMIN') ||
+        (buyerOnlyModes.includes(targetMode) && role !== 'BUYER');
+      if (isWrongWorkspace) {
+        targetMode = roleHomeMode(role);
+      }
     }
     setActiveMode(targetMode);
     window.scrollTo(0, 0);

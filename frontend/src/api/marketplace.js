@@ -19,19 +19,21 @@ export async function getTrendingProducts() {
 }
 
 export async function getEnquiries(params = {}) {
+  const isSeller = params === 'seller' || params?.role_view === 'seller';
   const query = typeof params === 'string'
     ? `role_view=${encodeURIComponent(params)}`
     : new URLSearchParams(params).toString();
   const endpoint = query ? `/marketplace/enquiries?${query}` : '/marketplace/enquiries';
-  return await apiRequest(endpoint);
+  return await apiRequest(endpoint, isSeller ? { domain: 'STUDIO' } : {});
 }
 
 export async function getOrders(params = {}) {
+  const isSeller = params === 'seller' || params?.role_view === 'seller';
   const query = typeof params === 'string'
     ? `role_view=${encodeURIComponent(params)}`
     : new URLSearchParams(params).toString();
   const endpoint = query ? `/marketplace/orders?${query}` : '/marketplace/orders';
-  return await apiRequest(endpoint);
+  return await apiRequest(endpoint, isSeller ? { domain: 'STUDIO' } : {});
 }
 
 export async function replyToEnquiry(enquiryId, replyText) {

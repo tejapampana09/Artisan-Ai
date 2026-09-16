@@ -52,7 +52,7 @@ function loadRazorpayScript() {
 export default function CartView({ user, onSelectMode, onOpenAuth }) {
   const notify = useNotification();
   const [cartItems, setCartItems] = useState(getStoredCart());
-  const [checkoutStep, setCheckoutStep] = useState(1); // 1: Cart, 2: Address, 3: Payment, 4: Receipt
+  const [checkoutStep, setCheckoutStep] = useState(1); // 1: Cart, 2: Address, 3: Confirmation
 
   // Shipping Form State
   const [shippingInfo, setShippingInfo] = useState({
@@ -109,8 +109,8 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
 
   const fullDeliveryAddress = `${shippingInfo.address}, ${shippingInfo.city}, ${shippingInfo.state} - ${shippingInfo.pincode}`;
 
-  // Execute Order Placement & Payment Processing
-  const processFinalPayment = async (method, txId) => {
+  // Payments are disabled for the local prototype. Submit the order directly.
+  const placeOrderDirectly = async () => {
     if (!user) {
       onOpenAuth('LOGIN');
       return;
@@ -119,8 +119,6 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
 
     setPlacingOrder(true);
     const placedList = [];
-    const generatedTxId = txId || null;
-
     try {
       for (const item of cartItems) {
         const res = await placeOrder({
@@ -129,8 +127,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
           buyer_phone: shippingInfo.phone,
           quantity: item.quantity,
           delivery_address: fullDeliveryAddress,
-          payment_method: method,
-          payment_tx_id: generatedTxId
+          payment_method: 'NOT_REQUIRED'
         });
         placedList.push({
           ...item,
@@ -139,14 +136,14 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
       }
 
       setCompletedOrders(placedList);
-      setReceiptTxId(generatedTxId);
+      setReceiptTxId('Not required');
       saveStoredCart([]);
       setCartItems([]);
       window.dispatchEvent(new CustomEvent('artisan_notification_refresh'));
-      setCheckoutStep(4);
-      notify.success('🎉 Payment Verified! Direct Artisan Order Placed.');
+      setCheckoutStep(3);
+      notify.success('🎉 Order confirmed! The artisan has been notified.');
     } catch (err) {
-      notify.error('Payment execution failed: ' + (err.message || 'Error occurred'));
+      notify.error('Order placement failed: ' + (err.message || 'Error occurred'));
     } fontally: {
       setPlacingOrder(false);
     }
@@ -164,7 +161,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
 
     if (!scriptLoaded) {
       notify.warning("Razorpay SDK offline, falling back to simulated secure checkout.");
-      processFinalPayment('RAZORPAY', `RZP_MOCK_${Date.now()}`);
+      placeOrderDirectly();
       return;
     }
 
@@ -178,7 +175,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
       description: `Direct Artisan Purchase (${cartItems.length} Craft Items)`,
       image: "/artisan-logo.png",
       handler: function (response) {
-        processFinalPayment('RAZORPAY', response.razorpay_payment_id || `RZP_${Date.now()}`);
+        placeOrderDirectly();
       },
       prefill: {
         name: shippingInfo.fullName,
@@ -200,17 +197,13 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (err) {
-      processFinalPayment('RAZORPAY', `RZP_MOCK_${Date.now()}`);
+      placeOrderDirectly();
     }
   };
 
   const handleCheckoutSubmit = (e) => {
     e.preventDefault();
-    if (paymentMethod === 'RAZORPAY') {
-      handleRazorpayGateway();
-    } else {
-      processFinalPayment(paymentMethod);
-    }
+    placeOrderDirectly();
   };
 
   return (
@@ -222,13 +215,12 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
             DIRECT ARTISAN FAIR-TRADE CHECKOUT
           </span>
           <h1 className="text-2xl sm:text-4xl font-bold text-[#1C1C1C] tracking-tight mt-0.5">
-            {checkoutStep === 4 ? 'Order Confirmation & Invoice' : 'Shopping Cart & Checkout'}
+            {checkoutStep === 3 ? 'Order Confirmation' : 'Shopping Cart & Checkout'}
           </h1>
           <p className="text-xs sm:text-sm text-[#6B6B6B] mt-1">
             {checkoutStep === 1 && 'Review items in your shopping bag and proceed to shipping.'}
             {checkoutStep === 2 && 'Enter delivery address and recipient details.'}
-            {checkoutStep === 3 && 'Choose your preferred instant payment method (UPI, Cards, NetBanking, COD, Razorpay).'}
-            {checkoutStep === 4 && 'Your payment was successful! Official digital tax invoice generated.'}
+            {checkoutStep === 3 && 'Your order is confirmed. No payment is required for this local demo.'}
           </p>
         </div>
         <button
@@ -241,7 +233,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
       </div>
 
       {/* Wizard Progress Steps Bar */}
-      {checkoutStep < 4 && cartItems.length > 0 && (
+      {checkoutStep < 3 && cartItems.length > 0 && (
         <div className="bg-white border border-[#E8E5DF] rounded-2xl p-4 flex items-center justify-between max-w-2xl mx-auto text-xs font-bold text-[#6B6B6B]">
           <button 
             onClick={() => setCheckoutStep(1)}
@@ -261,33 +253,24 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
             <span className="hidden sm:inline">Shipping Address</span>
           </button>
 
-          <ChevronRight className="w-4 h-4 text-stone-300" />
-
-          <button 
-            onClick={() => setCheckoutStep(3)}
-            className={`flex items-center space-x-2 cursor-pointer ${checkoutStep >= 3 ? 'text-[#A6533B]' : ''}`}
-          >
-            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${checkoutStep >= 3 ? 'bg-[#A6533B] text-white' : 'bg-stone-100'}`}>3</span>
-            <span className="hidden sm:inline">Payment Gateway</span>
-          </button>
         </div>
       )}
 
       {/* STEP 4: DIGITAL ORDER RECEIPT & TAX INVOICE */}
-      {checkoutStep === 4 ? (
+      {checkoutStep === 3 ? (
         <div className="bg-white border border-[#E8E5DF] rounded-3xl p-6 sm:p-10 max-w-3xl mx-auto space-y-8 shadow-xl">
           <div className="text-center space-y-3 border-b border-[#E8E5DF] pb-6">
             <div className="w-16 h-16 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center mx-auto shadow-sm">
               <CheckCircle2 className="w-9 h-9" />
             </div>
             <span className="text-[11px] font-extrabold uppercase tracking-widest px-3 py-1 bg-amber-50 text-[#A6533B] rounded-full border border-amber-200">
-              OFFICIAL DIGITAL TAX INVOICE & RECEIPT
+              ORDER CONFIRMATION
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-[#1C1C1C]">
-              Payment Successful & Order Confirmed!
+              Order Confirmed!
             </h2>
             <p className="text-xs text-[#6B6B6B]">
-              Transaction Reference: <span className="font-mono font-bold text-[#1C1C1C]">{receiptTxId}</span>
+              Payment: <span className="font-bold text-[#1C1C1C]">Not required for this local demo</span>
             </p>
           </div>
 
@@ -301,9 +284,9 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
             </div>
 
             <div>
-              <span className="font-bold text-[#6B6B6B] block">Payment Summary:</span>
+              <span className="font-bold text-[#6B6B6B] block">Order Summary:</span>
               <div className="mt-1 space-y-1">
-                <p><span className="text-[#6B6B6B]">Payment Method:</span> <span className="font-bold text-[#A6533B]">{paymentMethod}</span></p>
+                <p><span className="text-[#6B6B6B]">Payment:</span> <span className="font-bold text-[#A6533B]">Not required</span></p>
                 <p><span className="text-[#6B6B6B]">Estimated Delivery:</span> <span className="font-bold text-[#1C1C1C]">3 - 5 Business Days</span></p>
                 <p><span className="text-[#6B6B6B]">Craft Guarantee:</span> <span className="font-semibold text-emerald-800">100% Handcrafted Fair Trade</span></p>
               </div>
@@ -765,11 +748,18 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                       Back
                     </button>
                     <button
-                      onClick={() => setCheckoutStep(3)}
-                      className="flex-1 py-3.5 bg-[#A6533B] hover:bg-[#88412F] text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center space-x-2 cursor-pointer"
+                      onClick={placeOrderDirectly}
+                      disabled={placingOrder}
+                      className="flex-1 py-3.5 bg-[#A6533B] hover:bg-[#88412F] disabled:opacity-50 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center space-x-2 cursor-pointer"
                     >
-                      <span>Proceed to Payment</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      {placingOrder ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Place Order</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 )}

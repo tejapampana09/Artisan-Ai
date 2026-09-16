@@ -110,7 +110,7 @@ export function getAuthToken(domain = null) {
   if (domain === 'STUDIO' || domain === 'ARTISAN') return getStudioToken();
   if (domain === 'ADMIN') return getAdminToken();
   if (domain === 'MARKETPLACE' || domain === 'BUYER') return getBuyerToken();
-  return getBuyerToken() || getStudioToken() || getAdminToken();
+  return getStudioToken() || getBuyerToken() || getAdminToken();
 }
 
 export function setAuthToken(token, domain = 'MARKETPLACE') {
@@ -191,6 +191,7 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_TI
 
 export async function apiRequest(endpoint, options = {}) {
   const apiBase = getApiBase();
+  const cleanEndpoint = endpoint.startsWith('/api') ? endpoint.slice(4) : endpoint;
   const url = endpoint.startsWith('http') ? endpoint : `${apiBase}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
   
   const headers = {
@@ -208,21 +209,24 @@ export async function apiRequest(endpoint, options = {}) {
       token = getAuthToken(options.domain);
     } else {
       // Infer from backend API endpoint prefix
-      const cleanEndpoint = endpoint.startsWith('/api') ? endpoint.slice(4) : endpoint;
       if (cleanEndpoint.includes('/admin')) {
         token = getAdminToken() || getBuyerToken() || getStudioToken();
-      } else if (cleanEndpoint.startsWith('/marketplace') || cleanEndpoint.startsWith('/buyer')) {
-        token = getBuyerToken() || getAdminToken();
       } else if (
+        cleanEndpoint.includes('role_view=seller') ||
+        cleanEndpoint.includes('/reply') ||
+        (cleanEndpoint.includes('/orders/') && cleanEndpoint.includes('/status')) ||
         cleanEndpoint.startsWith('/studio') ||
         cleanEndpoint.startsWith('/artisan') ||
+        cleanEndpoint.startsWith('/seller') ||
         cleanEndpoint.startsWith('/ai') ||
         cleanEndpoint.startsWith('/sync') ||
         cleanEndpoint.startsWith('/pricing')
       ) {
         token = getStudioToken() || getAdminToken();
+      } else if (cleanEndpoint.startsWith('/marketplace') || cleanEndpoint.startsWith('/buyer')) {
+        token = getBuyerToken() || getAdminToken();
       } else {
-        token = getAdminToken() || getBuyerToken() || getStudioToken();
+        token = getStudioToken() || getBuyerToken() || getAdminToken();
       }
     }
   }
@@ -257,7 +261,6 @@ export async function apiRequest(endpoint, options = {}) {
         
         if (response.status === 401) {
           // Domain-scoped 401 cleanup: clear only the domain that was rejected
-          const cleanEndpoint = endpoint.startsWith('/api') ? endpoint.slice(4) : endpoint;
           const targetDomain = options.domain || (
             cleanEndpoint.startsWith('/marketplace') ? 'MARKETPLACE' :
             cleanEndpoint.startsWith('/studio') || cleanEndpoint.startsWith('/artisan') ? 'STUDIO' :

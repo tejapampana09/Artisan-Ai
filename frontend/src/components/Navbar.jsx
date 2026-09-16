@@ -189,7 +189,8 @@ export default function Navbar({
 
   const fetchNotifications = async () => {
     try {
-      const data = await getNotifications();
+      const domain = user?.role === 'ARTISAN' ? 'STUDIO' : (user?.role === 'ADMIN' ? 'ADMIN' : 'MARKETPLACE');
+      const data = await getNotifications(domain);
       setNotifications(data);
 
       const seenIds = getSeenNotifIds();

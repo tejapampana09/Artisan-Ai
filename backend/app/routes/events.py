@@ -73,7 +73,7 @@ def record_event(
 
     # Async Decoupled Autonomous Dynamic Pricing Worker Trigger
     if event_in.product_id:
-        background_tasks.add_task(trigger_auto_pricing, event_in.product_id, db)
+        background_tasks.add_task(trigger_auto_pricing, event_in.product_id, None)
 
     return evt
 
@@ -301,9 +301,11 @@ def place_order(
         buyer_name = order.buyer_name.strip() if order.buyer_name and order.buyer_name.strip() else current_user.name
         buyer_phone = order.buyer_phone.strip() if order.buyer_phone and order.buyer_phone.strip() else (current_user.phone or None)
 
-        pay_method = (order.payment_method or "UPI").upper()
+        # Payments are disabled for the local prototype. Orders should move
+        # straight into fulfilment instead of blocking the artisan on payment.
+        pay_method = "NOT_REQUIRED"
 
-        # 1. Dedicated structured order record created as PENDING_PAYMENT
+        # 1. Dedicated structured order record ready for fulfilment.
         order_record = Order(
             product_id=product.id,
             user_id=current_user.id,
@@ -314,15 +316,15 @@ def place_order(
             total_price=total_price,
             delivery_address=order.delivery_address.strip(),
             payment_method=pay_method,
-            payment_status="UNPAID",
+            payment_status="NOT_REQUIRED",
             payment_tx_id=None,
-            status="PENDING_PAYMENT",
+            status="CONFIRMED",
             created_at=datetime.now(timezone.utc)
         )
         db.add(order_record)
 
         # 2. Public analytics event with operational info
-        sanitized_meta = f"Quantity: {order.quantity} | Total: ₹{float(total_price):,.0f} | Pay: {pay_method} | Status: PENDING_PAYMENT"
+        sanitized_meta = f"Quantity: {order.quantity} | Total: ₹{float(total_price):,.0f} | Payment: not required | Status: CONFIRMED"
 
         evt = Event(
             event_type="ORDER",
@@ -333,6 +335,16 @@ def place_order(
             timestamp=datetime.now(timezone.utc)
         )
         db.add(evt)
+
+        # Notify seller of new incoming order
+        if product.seller_id:
+            db.add(Notification(
+                user_id=product.seller_id,
+                title="🛍️ New Order Placed!",
+                message=f"{buyer_name} placed an order for '{product.title}' × {order.quantity} unit(s) (₹{float(total_price):,.0f}). Check your orders tab.",
+                type="ORDER"
+            ))
+
         db.commit()
         db.refresh(evt)
 

@@ -558,7 +558,7 @@ def process_auto_smart_pricing(
 
 def trigger_auto_pricing(
     product_or_id: Any,
-    db: Session,
+    db: Optional[Session] = None,
     bypass_cooldown: bool = False,
     market_median: Optional[Any] = None,
     market_currency: Optional[str] = None,
@@ -571,19 +571,30 @@ def trigger_auto_pricing(
     """
     if product_or_id is None:
         return None
-    if isinstance(product_or_id, (int, str)) and str(product_or_id).isdigit():
-        product = db.query(Product).filter(Product.id == int(product_or_id)).first()
-    else:
-        product = product_or_id
 
-    if not product or not getattr(product, "auto_smart_pricing_enabled", False):
-        return None
+    close_db_after = False
+    if db is None:
+        from backend.app.database import SessionLocal
+        db = SessionLocal()
+        close_db_after = True
 
-    return process_auto_smart_pricing(
-        product,
-        db,
-        bypass_cooldown=bypass_cooldown,
-        market_median=market_median,
-        market_currency=market_currency,
-        market_is_reliable=market_is_reliable
-    )
+    try:
+        if isinstance(product_or_id, (int, str)) and str(product_or_id).isdigit():
+            product = db.query(Product).filter(Product.id == int(product_or_id)).first()
+        else:
+            product = product_or_id
+
+        if not product or not getattr(product, "auto_smart_pricing_enabled", False):
+            return None
+
+        return process_auto_smart_pricing(
+            product,
+            db,
+            bypass_cooldown=bypass_cooldown,
+            market_median=market_median,
+            market_currency=market_currency,
+            market_is_reliable=market_is_reliable
+        )
+    finally:
+        if close_db_after:
+            db.close()

@@ -25,8 +25,8 @@ export async function createProductReview(productId, data) {
 }
 
 // Persistent Notifications
-export async function getNotifications() {
-  return await apiRequest('/notifications');
+export async function getNotifications(domain = null) {
+  return await apiRequest('/notifications', domain ? { domain } : {});
 }
 
 export async function markNotificationRead(notificationId) {
