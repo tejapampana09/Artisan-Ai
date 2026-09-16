@@ -140,6 +140,6 @@ def readiness_check(db: Session = Depends(get_db)):
         logging.getLogger("artisan_ai").error("Database readiness check failed: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database temporarily unavailable"
+            detail=f"Database temporarily unavailable: {str(e)}"
         )
 
