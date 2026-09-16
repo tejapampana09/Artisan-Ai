@@ -554,7 +554,7 @@ class SearXNGMarketResearchProvider(BaseMarketResearchProvider):
             "q": clean_q,
             "format": "json",
             "categories": "general",
-            "language": "en"
+            "language": "en-IN"
         }
 
         searxng_results = []

@@ -137,9 +137,22 @@ async def research_market(
         )
         retained_listings.append(listing_model)
 
-    # Sort listings so that price-verified items appear FIRST for UI rendering
+    def _is_domestic_indian_source(listing: MarketListing) -> int:
+        url = (listing.url or "").lower()
+        src = (listing.source or "").lower()
+        if any(dom in url or dom in src for dom in [".in", "amazon.in", "flipkart", "meesho", "zapvi", "cosmoslayers", "myntra", "nykaa", "ajio", "tatacliq"]):
+            return 2  # Highest priority: local Indian seller/marketplace
+        if any(exp in url or exp in src for exp in ["etsy.com", "ebay.com", "amazon.com"]):
+            return 0  # Lower priority: cross-border international platform (USD conversion)
+        return 1  # Standard priority
+
+    # Sort listings: Price-verified -> Domestic India source -> Similarity score
     retained_listings.sort(
-        key=lambda l: (1 if l.price is not None and l.price > 0 else 0, l.similarity_score),
+        key=lambda l: (
+            1 if l.price is not None and l.price > 0 else 0,
+            _is_domestic_indian_source(l),
+            l.similarity_score
+        ),
         reverse=True
     )
 
