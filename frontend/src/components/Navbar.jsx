@@ -467,17 +467,8 @@ export default function Navbar({
               </button>
             )}
 
-            {/* Sign Out for Admin, Profile for standard users */}
-            {activeMode === 'ADMIN' ? (
-              <button
-                onClick={onLogout}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-all cursor-pointer shadow-2xs"
-                title="Sign Out of Admin Console"
-              >
-                <LogOut className="w-3.5 h-3.5 text-rose-600" />
-                <span>Sign Out</span>
-              </button>
-            ) : (
+            {/* Profile for standard users (Hidden in Admin Console) */}
+            {activeMode !== 'ADMIN' && (
               <button
                 onClick={() => onOpenAuth('PROFILE')}
                 className="p-1.5 text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer"

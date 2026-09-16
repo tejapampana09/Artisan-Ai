@@ -161,7 +161,10 @@ function AppContent() {
     clearAuthToken();
     setUser(null);
     setStoredUser(null);
-    handleToggleMode('HOME');
+    setActiveMode('HOME');
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   };
 
   const handleOpenAuth = (tabOrMode = 'ORDERS') => {

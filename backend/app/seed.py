@@ -133,6 +133,6 @@ def seed_initial_database(db: Session):
         db.add(admin)
         db.commit()
 
-    # Seed sample products for the default artisan
-    seed_sample_products(db, seller_id=artisan.id)
+    # Sample products are not auto-seeded on startup so user deletions are permanently preserved.
+    pass
 

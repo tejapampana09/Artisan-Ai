@@ -65,6 +65,14 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
   const [systemHealth, setSystemHealth] = useState(null);
 
   useEffect(() => {
+    if (!user || user.role !== 'ADMIN') {
+      setAdminUser(null);
+    } else {
+      setAdminUser(user);
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (user?.role === 'ADMIN' || adminUser || getAdminToken()) {
       fetchAllData();
     }
@@ -141,6 +149,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
 
   const handleLogout = () => {
     logoutAdmin();
+    setAdminUser(null);
     if (onLogout) {
       onLogout();
     } else {
