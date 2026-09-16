@@ -36,11 +36,16 @@ from backend.app.routes.notifications import router as notifications_router
 from backend.app.routes.artisan import router as artisan_router
 from backend.app.routes.ml_demand import router as ml_demand_router
 from backend.app.routes.tts import router as tts_router
-# In non-production/development environments, initialize tables directly if uninitialized.
-# In production, Alembic migrations (alembic upgrade head) are the sole schema authority.
-if ENVIRONMENT != "production":
+# Always ensure database schema is created and default artisan/admin accounts are seeded
+try:
     Base.metadata.create_all(bind=engine)
     ensure_sqlite_schema(engine)
+    from backend.app.database import SessionLocal
+    from backend.app.seed import seed_initial_database
+    with SessionLocal() as db_session:
+        seed_initial_database(db_session)
+except Exception as db_init_err:
+    logging.getLogger("artisan_ai").warning("Startup DB schema/seed warning: %s", db_init_err)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

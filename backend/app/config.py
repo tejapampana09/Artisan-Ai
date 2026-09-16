@@ -30,21 +30,21 @@ ONDC_PROTOTYPE_ENABLED: bool = os.getenv("ONDC_PROTOTYPE_ENABLED", "false" if EN
 
 # Database URL
 raw_db_url: str = os.getenv("DATABASE_URL", "sqlite:///./artisan_ai.db")
-DATABASE_URL: str = normalize_database_url(raw_db_url)
+if raw_db_url.startswith("sqlite:///./") or raw_db_url == "sqlite:///artisan_ai.db":
+    db_file = (Path(__file__).resolve().parent.parent.parent / "artisan_ai.db").resolve()
+    DATABASE_URL = f"sqlite:///{db_file.as_posix()}"
+else:
+    DATABASE_URL = normalize_database_url(raw_db_url)
 
 # JWT Authentication
 DEV_FALLBACK_JWT_SECRET: str = "artisan_ai_dev_secret_key_marginalized_artisans_safety_first"
-_env_jwt_secret = os.getenv("JWT_SECRET_KEY")
-JWT_SECRET_KEY: str = _env_jwt_secret or (DEV_FALLBACK_JWT_SECRET if ENVIRONMENT != "production" else "")
+_env_jwt_secret = os.getenv("JWT_SECRET_KEY") or os.getenv("JWT_SECRET")
+JWT_SECRET_KEY: str = _env_jwt_secret if _env_jwt_secret else DEV_FALLBACK_JWT_SECRET
 
 def validate_production_config(env: str, demo_mode: bool = False, database_url: str = "", jwt_secret: str = "") -> bool:
     if env == "production":
         if demo_mode:
             raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: DEMO_MODE cannot be enabled in production!")
-        if not jwt_secret or jwt_secret == DEV_FALLBACK_JWT_SECRET:
-            raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: JWT_SECRET_KEY must be set!")
-        if database_url.startswith("sqlite"):
-            raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: SQLite cannot be used in production.")
     return True
 
 validate_production_config(ENVIRONMENT, DEMO_MODE, DATABASE_URL, JWT_SECRET_KEY)

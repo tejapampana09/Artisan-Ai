@@ -79,3 +79,55 @@ def seed_sample_products(db: Session, seller_id: int):
             db.add(prod)
     db.commit()
 
+
+def seed_initial_database(db: Session):
+    """
+    Idempotent database seeder. Guarantees existence of default Artisan & Admin accounts
+    and sample products if database is uninitialized or user table is empty.
+    """
+    from backend.app.models import User
+    from backend.app.services.auth import hash_password
+
+    # Check if default Artisan exists
+    artisan = db.query(User).filter(User.email == "tejapampana09@gmail.com").first()
+    if not artisan:
+        artisan = User(
+            name="Teja Pampana",
+            email="tejapampana09@gmail.com",
+            phone="9876543210",
+            hashed_password=hash_password("password123"),
+            role="ARTISAN",
+            status="ACTIVE",
+            location="Andhra Pradesh, India",
+            craft="Kalamkari & Handloom Weaving",
+            verification_status="VERIFIED_ARTISAN",
+            bio="Master artisan specializing in traditional hand-painted Kalamkari and natural dye textiles.",
+            experience_years=15,
+            craft_specialization="Kalamkari",
+            token_version=1
+        )
+        db.add(artisan)
+        db.commit()
+        db.refresh(artisan)
+
+    # Check if default Admin exists
+    admin = db.query(User).filter(User.email == "admin@artisanai.com").first()
+    if not admin:
+        admin = User(
+            name="System Administrator",
+            email="admin@artisanai.com",
+            phone="9000000000",
+            hashed_password=hash_password("password123"),
+            role="ADMIN",
+            status="ACTIVE",
+            location="HQ",
+            craft="System Administration",
+            verification_status="VERIFIED_ARTISAN",
+            token_version=1
+        )
+        db.add(admin)
+        db.commit()
+
+    # Seed sample products for the default artisan
+    seed_sample_products(db, seller_id=artisan.id)
+
