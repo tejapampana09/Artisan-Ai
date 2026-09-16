@@ -120,6 +120,7 @@ def admin_create_seller(
             hashed_password=hash_password(payload.password),
             role="ARTISAN",
             status="ACTIVE",
+            active_mode="BUYER",
             location=payload.location or "India",
             craft=payload.craft or "Handicrafts",
             bio=payload.bio or f"Master artisan specializing in traditional {payload.craft or 'handicrafts'}.",

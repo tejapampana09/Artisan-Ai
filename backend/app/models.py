@@ -17,6 +17,7 @@ class User(Base):
     location = Column(String, nullable=True)
     craft = Column(String, nullable=True)
     token_version = Column(Integer, default=1, nullable=False)
+    active_mode = Column(String, default="BUYER", nullable=True)
     
     # Profile & Verification extensions
     avatar_url = Column(String, nullable=True)

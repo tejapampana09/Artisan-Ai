@@ -83,11 +83,8 @@ def ensure_schema_migrations(eng):
                     conn.execute(text("ALTER TABLE users ADD COLUMN experience_years INTEGER DEFAULT 0"))
                 if "verification_status" not in user_cols:
                     conn.execute(text("ALTER TABLE users ADD COLUMN verification_status VARCHAR DEFAULT 'UNVERIFIED'"))
-                if "active_mode" in user_cols:
-                    try:
-                        conn.execute(text("ALTER TABLE users DROP COLUMN active_mode"))
-                    except Exception as ex:
-                        logger.warning("Could not drop legacy active_mode column: %s", ex)
+                if "active_mode" not in user_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN active_mode VARCHAR DEFAULT 'BUYER'"))
 
             # Check products table columns
             res_prod = conn.execute(text("PRAGMA table_info(products)")).fetchall()
@@ -148,6 +145,11 @@ def ensure_schema_migrations(eng):
     elif "postgresql" in driver or "postgres" in driver:
         with eng.connect() as conn:
             conn.execute(text("ALTER TABLE draft_catalogs ADD COLUMN IF NOT EXISTS is_consumed BOOLEAN DEFAULT FALSE NOT NULL;"))
+            try:
+                conn.execute(text("ALTER TABLE users ALTER COLUMN active_mode DROP NOT NULL;"))
+                conn.execute(text("ALTER TABLE users ALTER COLUMN active_mode SET DEFAULT 'BUYER';"))
+            except Exception as e:
+                logger.warning("[Database] Could not adjust users.active_mode column: %s", e)
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'ACTIVE';"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT 1;"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR;"))
