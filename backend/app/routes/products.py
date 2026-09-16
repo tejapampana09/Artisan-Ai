@@ -1,7 +1,10 @@
+import logging
 from typing import List, Optional, cast
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from decimal import Decimal
+
+logger = logging.getLogger("artisan_ai")
 
 from backend.app.database import get_db
 from backend.app.models import (
@@ -237,11 +240,10 @@ def cascade_delete_product(db: Session, product: Product):
         db.commit()
     except Exception as exc:
         db.rollback()
-        import logging
-        logging.getLogger("artisan_ai").error("Failed to cascade delete product %s: %s", product.id, str(exc), exc_info=True)
+        logger.exception("Failed to cascade delete product %s: %s", getattr(product, "id", None), exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not delete product due to database constraint: {str(exc)}"
+            detail="Could not delete product at this time."
         )
 
 @router.patch("/{product_id}/status", response_model=ProductResponse)

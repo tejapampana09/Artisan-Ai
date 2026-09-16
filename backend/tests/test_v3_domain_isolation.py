@@ -14,9 +14,14 @@ Verifies:
   - Artisan cannot delete another artisan's product
 """
 import uuid
+from decimal import Decimal
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 from backend.app.main import app
+from backend.app.models import (
+    Product, Order, Payment, Review, Enquiry, Event, PricingDecision
+)
 from backend.tests.conftest import make_buyer, make_artisan_via_admin
 
 client = TestClient(app)
@@ -551,6 +556,198 @@ def test_product_publish_lifecycle_authorization(admin_headers):
     pub_res = client.patch(f"/api/admin/products/{pid}/publish", headers=admin_headers)
     assert pub_res.status_code == 200
     assert pub_res.json()["status"] == "PUBLISHED"
+
+
+def test_successful_product_deletion_artisan(admin_headers):
+    """Artisan can cleanly delete their own product."""
+    _, _, _, headers = make_artisan_via_admin(client, admin_headers)
+
+    create_res = client.post("/api/products", json={
+        "title": "Clay Flower Vase",
+        "category": "Pottery",
+        "price": 450.0,
+        "stock": 3
+    }, headers=headers)
+    assert create_res.status_code == 201
+    pid = create_res.json()["id"]
+
+    del_res = client.delete(f"/api/products/{pid}", headers=headers)
+    assert del_res.status_code == 204
+
+    # Product is gone
+    get_res = client.get(f"/api/products/{pid}", headers=headers)
+    assert get_res.status_code == 404
+
+
+def test_successful_product_deletion_admin(admin_headers):
+    """Admin can cleanly delete any product."""
+    _, _, _, headers = make_artisan_via_admin(client, admin_headers)
+
+    create_res = client.post("/api/products", json={
+        "title": "Admin Deletable Craft",
+        "category": "Woodwork",
+        "price": 750.0,
+        "stock": 2
+    }, headers=headers)
+    assert create_res.status_code == 201
+    pid = create_res.json()["id"]
+
+    del_res = client.delete(f"/api/admin/products/{pid}", headers=admin_headers)
+    assert del_res.status_code == 204
+
+    get_res = client.get(f"/api/products/{pid}", headers=admin_headers)
+    assert get_res.status_code == 404
+
+
+def test_cascade_deletion_removes_dependent_records(admin_headers, db):
+    """
+    Existing foreign-key cascade behavior:
+    Deleting a product cascades through PricingDecisions, Events, Enquiries,
+    Reviews, Orders, and Payments.
+    """
+    _, _, _, headers = make_artisan_via_admin(client, admin_headers)
+
+    create_res = client.post("/api/products", json={
+        "title": "Kalamkari Wall Hanging",
+        "category": "Textiles",
+        "price": 1200.0,
+        "stock": 5
+    }, headers=headers)
+    assert create_res.status_code == 201
+    pid = create_res.json()["id"]
+
+    # Seed related dependent records
+    pd = PricingDecision(
+        product_id=pid,
+        previous_price=Decimal("1000.00"),
+        recommended_price=Decimal("1200.00"),
+        applied_price=Decimal("1200.00"),
+        demand_factor=Decimal("1.0000"),
+        market_adjustment=Decimal("1.0000"),
+        decision="ACCEPT"
+    )
+    ev = Event(product_id=pid, event_type="VIEW")
+    enq = Enquiry(product_id=pid, buyer_name="Sita Devi", buyer_phone="9988776655", quantity=2)
+    order = Order(
+        product_id=pid,
+        buyer_name="Ramesh Kumar",
+        quantity=1,
+        unit_price=Decimal("1200.00"),
+        total_price=Decimal("1200.00"),
+        delivery_address="Hyderabad, Telangana"
+    )
+    db.add_all([pd, ev, enq, order])
+    db.commit()
+    db.refresh(order)
+
+    payment = Payment(order_id=order.id, provider="UPI_QR", amount=Decimal("1200.00"), status="VERIFIED")
+    review = Review(product_id=pid, order_id=order.id, buyer_name="Ramesh Kumar", rating=5, comment="Excellent craft")
+    db.add_all([payment, review])
+    db.commit()
+
+    order_id = order.id
+
+    # Verify all records exist prior to deletion
+    assert db.query(PricingDecision).filter(PricingDecision.product_id == pid).count() == 1
+    assert db.query(Event).filter(Event.product_id == pid).count() == 1
+    assert db.query(Enquiry).filter(Enquiry.product_id == pid).count() == 1
+    assert db.query(Order).filter(Order.product_id == pid).count() == 1
+    assert db.query(Payment).filter(Payment.order_id == order_id).count() == 1
+    assert db.query(Review).filter(Review.product_id == pid).count() == 1
+
+    # Execute delete
+    del_res = client.delete(f"/api/products/{pid}", headers=headers)
+    assert del_res.status_code == 204
+
+    # Verify all records are cascade deleted
+    assert db.query(Product).filter(Product.id == pid).first() is None
+    assert db.query(PricingDecision).filter(PricingDecision.product_id == pid).count() == 0
+    assert db.query(Event).filter(Event.product_id == pid).count() == 0
+    assert db.query(Enquiry).filter(Enquiry.product_id == pid).count() == 0
+    assert db.query(Review).filter(Review.product_id == pid).count() == 0
+    assert db.query(Order).filter(Order.product_id == pid).count() == 0
+    assert db.query(Payment).filter(Payment.order_id == order_id).count() == 0
+
+
+def test_cascade_deletion_unexpected_exception_masks_error_and_rolls_back(admin_headers, monkeypatch, db):
+    """
+    When cascade deletion encounters an unexpected exception:
+    - HTTP response is 500
+    - Raw exception text (SQL / table / column / stack trace) is NOT leaked
+    - Generic error message is returned
+    - Transaction rollback occurs (product is NOT deleted)
+    """
+    _, _, _, headers = make_artisan_via_admin(client, admin_headers)
+
+    create_res = client.post("/api/products", json={
+        "title": "Resilient Brass Statue",
+        "category": "Metalwork",
+        "price": 2500.0,
+        "stock": 1
+    }, headers=headers)
+    assert create_res.status_code == 201
+    pid = create_res.json()["id"]
+
+    secret_raw_exception = "SECRET_DATABASE_TABLE_OR_SQL_ERROR: foreign key constraint on table 'secret_table' column 'secret_col'"
+
+    orig_commit = Session.commit
+    def failing_commit(self):
+        raise RuntimeError(secret_raw_exception)
+
+    monkeypatch.setattr(Session, "commit", failing_commit)
+
+    del_res = client.delete(f"/api/products/{pid}", headers=headers)
+    assert del_res.status_code == 500
+
+    response_json = del_res.json()
+    assert response_json["detail"] == "Could not delete product at this time."
+
+    # Assert secret raw exception string is NOT present anywhere in the response
+    assert "SECRET_DATABASE_TABLE_OR_SQL_ERROR" not in del_res.text
+    assert "secret_table" not in del_res.text
+    assert "secret_col" not in del_res.text
+    assert "foreign key" not in del_res.text.lower()
+    assert "constraint" not in del_res.text.lower()
+
+    # Restore commit and verify rollback occurred (product still in database)
+    monkeypatch.setattr(Session, "commit", orig_commit)
+    prod_in_db = db.query(Product).filter(Product.id == pid).first()
+    assert prod_in_db is not None
+    assert prod_in_db.id == pid
+
+
+def test_admin_cascade_deletion_unexpected_exception_masks_error(admin_headers, monkeypatch, db):
+    """Admin product deletion also masks unexpected database errors with generic 500."""
+    _, _, _, headers = make_artisan_via_admin(client, admin_headers)
+
+    create_res = client.post("/api/products", json={
+        "title": "Admin Masked Error Product",
+        "category": "Woodwork",
+        "price": 1500.0,
+        "stock": 2
+    }, headers=headers)
+    assert create_res.status_code == 201
+    pid = create_res.json()["id"]
+
+    secret_raw_exception = "SECRET_DATABASE_TABLE_OR_SQL_ERROR: admin delete failed on column xyz"
+
+    orig_commit = Session.commit
+    def failing_commit(self):
+        raise RuntimeError(secret_raw_exception)
+
+    monkeypatch.setattr(Session, "commit", failing_commit)
+
+    del_res = client.delete(f"/api/admin/products/{pid}", headers=admin_headers)
+    assert del_res.status_code == 500
+
+    assert del_res.json()["detail"] == "Could not delete product at this time."
+    assert "SECRET_DATABASE_TABLE_OR_SQL_ERROR" not in del_res.text
+    assert "xyz" not in del_res.text
+
+    monkeypatch.setattr(Session, "commit", orig_commit)
+    prod_in_db = db.query(Product).filter(Product.id == pid).first()
+    assert prod_in_db is not None
+
 
 
 
