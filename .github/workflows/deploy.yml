@@ -79,7 +79,7 @@ jobs:
           aws cloudfront create-invalidation --distribution-id E8OV8X242WBXH --paths "/*"
 
   deploy-backend:
-    name: Package & Deploy Backend to Elastic Beanstalk
+    name: Package & Deploy Backend to Elastic Beanstalk (Mumbai)
     needs: test-backend
     runs-on: ubuntu-latest
     steps:
@@ -91,7 +91,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ap-south-1
 
       - name: Package Backend Zip Bundle
         run: |
@@ -102,18 +102,20 @@ jobs:
 
       - name: Upload Zip to S3
         run: |
-          aws s3 cp "deploy-${VERSION_LABEL}.zip" "s3://elasticbeanstalk-us-east-1-339954341605/deploy-${VERSION_LABEL}.zip"
+          aws s3 cp "deploy-${VERSION_LABEL}.zip" "s3://artisan-ai-eb-ap-south-1-339954341605/deploy-${VERSION_LABEL}.zip" --region ap-south-1
 
       - name: Create Elastic Beanstalk Application Version
         run: |
           aws elasticbeanstalk create-application-version \
             --application-name artisan-ai-backend \
             --version-label "${VERSION_LABEL}" \
-            --source-bundle S3Bucket="elasticbeanstalk-us-east-1-339954341605",S3Key="deploy-${VERSION_LABEL}.zip" \
-            --description "Auto-deploy commit ${{ github.sha }}"
+            --source-bundle S3Bucket="artisan-ai-eb-ap-south-1-339954341605",S3Key="deploy-${VERSION_LABEL}.zip" \
+            --description "Auto-deploy commit ${{ github.sha }}" \
+            --region ap-south-1
 
       - name: Update Elastic Beanstalk Environment
         run: |
           aws elasticbeanstalk update-environment \
             --environment-name artisan-ai-backend-prod \
-            --version-label "${VERSION_LABEL}"
+            --version-label "${VERSION_LABEL}" \
+            --region ap-south-1
