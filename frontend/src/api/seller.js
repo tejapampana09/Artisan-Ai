@@ -66,20 +66,28 @@ export async function adminCreateSeller(data) {
     return await apiRequest('/admin/artisans', {
       method: 'POST',
       body: JSON.stringify(data),
+      domain: 'ADMIN',
     });
   } catch (err) {
-    return await apiRequest('/artisan/admin/create-seller', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    if (err.status === 404) {
+      return await apiRequest('/artisan/admin/create-seller', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        domain: 'ADMIN',
+      });
+    }
+    throw err;
   }
 }
 
 export async function adminListSellers() {
   try {
-    return await apiRequest('/admin/artisans');
+    return await apiRequest('/admin/artisans', { domain: 'ADMIN' });
   } catch (err) {
-    return await apiRequest('/artisan/admin/sellers');
+    if (err.status === 404) {
+      return await apiRequest('/artisan/admin/sellers', { domain: 'ADMIN' });
+    }
+    throw err;
   }
 }
 
@@ -87,12 +95,14 @@ export async function adminResetArtisanPassword(artisanId, newPassword) {
   return await apiRequest(`/admin/artisans/${artisanId}/reset-password`, {
     method: 'POST',
     body: JSON.stringify({ new_password: newPassword }),
+    domain: 'ADMIN',
   });
 }
 
 export async function adminDeleteArtisan(artisanId) {
   return await apiRequest(`/admin/artisans/${artisanId}`, {
     method: 'DELETE',
+    domain: 'ADMIN',
   });
 }
 

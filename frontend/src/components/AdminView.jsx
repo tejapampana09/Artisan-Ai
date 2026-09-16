@@ -17,9 +17,10 @@ import {
   adminDeleteArtisan
 } from '../api/index.js';
 import { getAdminToken } from '../api/client.js';
+import { logoutAdmin } from '../api/auth.js';
 import { useNotification } from '../context/NotificationContext';
 
-export default function AdminView({ user, onAuthChange, onSelectMode }) {
+export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }) {
   const toast = useNotification();
   const [adminUser, setAdminUser] = useState(user?.role === 'ADMIN' ? user : null);
 
@@ -136,6 +137,17 @@ export default function AdminView({ user, onAuthChange, onSelectMode }) {
     } finally {
       setLoginLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    logoutAdmin();
+    if (onLogout) {
+      onLogout();
+    } else {
+      if (onAuthChange) onAuthChange(null);
+      if (onSelectMode) onSelectMode('HOME');
+    }
+    toast.info('Signed out of Admin Console');
   };
 
   const handleCreateSeller = async (e) => {
@@ -394,11 +406,12 @@ export default function AdminView({ user, onAuthChange, onSelectMode }) {
             <span>Refresh</span>
           </button>
           <button
-            onClick={() => onSelectMode('BUY')}
-            className="bg-white/10 hover:bg-white/20 text-stone-200 border border-white/20 text-xs font-semibold px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5"
+            onClick={handleLogout}
+            className="bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 shadow-xs"
+            title="Sign Out of Admin Console"
           >
-            <ShoppingBag className="w-3.5 h-3.5 text-amber-400" />
-            <span>Marketplace</span>
+            <LogOut className="w-3.5 h-3.5 text-rose-400" />
+            <span>Sign Out</span>
           </button>
         </div>
       </div>

@@ -112,23 +112,39 @@ def admin_create_seller(
                 detail="A seller profile with this email or phone number already exists."
             )
 
-    new_seller = User(
-        name=payload.name.strip(),
-        email=clean_email,
-        phone=clean_phone,
-        hashed_password=hash_password(payload.password),
-        role="ARTISAN",
-        status="ACTIVE",
-        location=payload.location or "India",
-        craft=payload.craft or "Handicrafts",
-        bio=payload.bio or f"Master artisan specializing in traditional {payload.craft or 'handicrafts'}.",
-        verification_status=payload.verification_status or "UNVERIFIED"
-    )
-    db.add(new_seller)
-    db.commit()
-    db.refresh(new_seller)
-
-    return new_seller
+    try:
+        new_seller = User(
+            name=payload.name.strip(),
+            email=clean_email,
+            phone=clean_phone,
+            hashed_password=hash_password(payload.password),
+            role="ARTISAN",
+            status="ACTIVE",
+            location=payload.location or "India",
+            craft=payload.craft or "Handicrafts",
+            bio=payload.bio or f"Master artisan specializing in traditional {payload.craft or 'handicrafts'}.",
+            verification_status=payload.verification_status or "UNVERIFIED"
+        )
+        db.add(new_seller)
+        db.commit()
+        db.refresh(new_seller)
+        return new_seller
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        import logging
+        logging.getLogger("artisan_ai").error("Failed to provision seller in artisan route: %s", str(exc), exc_info=True)
+        err_str = str(exc).lower()
+        if "unique" in err_str or "conflict" in err_str or "already exists" in err_str:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A seller profile with this email or phone number already exists."
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Could not provision seller profile: {str(exc)}"
+        )
 
 @router.get("/admin/sellers", response_model=List[UserResponse])
 def admin_list_sellers(

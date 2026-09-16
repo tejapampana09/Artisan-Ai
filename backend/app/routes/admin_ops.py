@@ -43,24 +43,40 @@ def admin_create_artisan(
             detail=f"{conflict_field} is already registered on the platform."
         )
 
-    seller = User(
-        name=payload.name.strip(),
-        email=clean_email,
-        phone=clean_phone,
-        hashed_password=hash_password(payload.password),
-        role="ARTISAN",
-        status="ACTIVE",
-        location=payload.location.strip() if payload.location else "India",
-        craft=payload.craft.strip() if payload.craft else "Handicrafts",
-        craft_specialization=payload.craft.strip() if payload.craft else "Handicrafts",
-        bio=getattr(payload, 'bio', None) or f"Master artisan specializing in traditional {payload.craft or 'handicrafts'}.",
-        verification_status=payload.verification_status or "GI_VERIFIED",
-        experience_years=getattr(payload, 'experience_years', 0) or 0
-    )
-    db.add(seller)
-    db.commit()
-    db.refresh(seller)
-    return seller
+    try:
+        seller = User(
+            name=payload.name.strip(),
+            email=clean_email,
+            phone=clean_phone,
+            hashed_password=hash_password(payload.password),
+            role="ARTISAN",
+            status="ACTIVE",
+            location=payload.location.strip() if payload.location else "India",
+            craft=payload.craft.strip() if payload.craft else "Handicrafts",
+            craft_specialization=payload.craft.strip() if payload.craft else "Handicrafts",
+            bio=getattr(payload, 'bio', None) or f"Master artisan specializing in traditional {payload.craft or 'handicrafts'}.",
+            verification_status=payload.verification_status or "GI_VERIFIED",
+            experience_years=getattr(payload, 'experience_years', 0) or 0
+        )
+        db.add(seller)
+        db.commit()
+        db.refresh(seller)
+        return seller
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        logging.getLogger("artisan_ai").error("Failed to provision artisan seller: %s", str(exc), exc_info=True)
+        err_str = str(exc).lower()
+        if "unique" in err_str or "conflict" in err_str or "already exists" in err_str:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An artisan or account with this email or phone number is already registered."
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Could not provision artisan profile: {str(exc)}"
+        )
 
 @admin_ops_router.get("/artisans", response_model=List[UserResponse])
 def admin_list_artisans(

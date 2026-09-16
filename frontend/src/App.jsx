@@ -9,7 +9,7 @@ import NotificationCenter from './components/NotificationCenter';
 import SplashScreen from './components/SplashScreen';
 import { OfflineProvider, useOffline } from './context/OfflineContext';
 import { NotificationProvider } from './context/NotificationContext';
-import { checkHealth, checkReady, getCurrentUser, getAuthToken, setAuthToken, clearAuthToken } from './api/index.js';
+import { checkHealth, checkReady, getCurrentUser, getAuthToken, setAuthToken, clearAuthToken, logoutUser } from './api/index.js';
 
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import LanguageSelectorModal from './components/LanguageSelectorModal';
@@ -156,6 +156,14 @@ function AppContent() {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  const handleLogout = () => {
+    logoutUser();
+    clearAuthToken();
+    setUser(null);
+    setStoredUser(null);
+    handleToggleMode('HOME');
+  };
+
   const handleOpenAuth = (tabOrMode = 'ORDERS') => {
     const target = typeof tabOrMode === 'string' ? tabOrMode : 'ORDERS';
     if (target === 'CART') {
@@ -195,6 +203,7 @@ function AppContent() {
             setSelectedProductFromSearch(prod);
             handleToggleMode('BUY');
           }}
+          onLogout={handleLogout}
         />
       )}
 
@@ -262,11 +271,7 @@ function AppContent() {
               onOpenAuth={handleOpenAuth} 
               onSwitchMode={handleToggleMode}
               onAuthChange={setUser}
-              onLogout={() => {
-                setUser(null);
-                setStoredUser(null);
-                handleToggleMode('HOME');
-              }}
+              onLogout={handleLogout}
               activeSellerTab={sellerTab}
               onSelectSellerTab={setSellerTab}
               key={`sell_${refreshTrigger}`} 
@@ -276,6 +281,7 @@ function AppContent() {
               user={user}
               onAuthChange={setUser}
               onSelectMode={handleToggleMode}
+              onLogout={handleLogout}
             />
           ) : (
             <BuyView 

@@ -23,7 +23,8 @@ export default function Navbar({
   onOpenDownloadApp,
   searchQuery = '',
   onSearchChange,
-  onSelectProduct
+  onSelectProduct,
+  onLogout
 }) {
   const { language, setIsSelectingLanguage, t } = useLanguage();
   const { isOffline, toggleOfflineMode, queueCount } = useOffline();
@@ -305,7 +306,13 @@ export default function Navbar({
           </div>
 
           {/* Desktop Center Header Navigation / Search Bar */}
-          {activeMode === 'HOME' ? (
+          {activeMode === 'ADMIN' ? (
+            <div className="hidden sm:flex items-center space-x-2">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-[#A6533B] bg-amber-50 border border-amber-200 px-3.5 py-1.5 rounded-full shadow-2xs">
+                🛡️ Platform Admin Console
+              </span>
+            </div>
+          ) : activeMode === 'HOME' ? (
             <div className="hidden sm:flex items-center">
               <button
                 onClick={() => onToggleMode('BUY')}
@@ -406,7 +413,7 @@ export default function Navbar({
               </button>
             )}
 
-            {activeMode !== 'HOME' && (
+            {activeMode !== 'HOME' && activeMode !== 'ADMIN' && (
               <button
                 onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
                 className="sm:hidden p-1.5 text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer"
@@ -428,8 +435,8 @@ export default function Navbar({
               </span>
             </button>
 
-            {/* Notifications Bell */}
-            {user && (
+            {/* Notifications Bell - Hidden in Admin Console */}
+            {user && activeMode !== 'ADMIN' && (
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
                 className="p-1.5 text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer relative"
@@ -444,26 +451,41 @@ export default function Navbar({
               </button>
             )}
 
-            <button
-              onClick={() => onOpenAuth('CART')}
-              className="p-1.5 text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer relative"
-              title="View Shopping Bag"
-            >
-              <ShoppingBag className="w-5 h-5" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#A6533B] text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs animate-in zoom-in-50">
-                  {cartCount > 99 ? '99+' : cartCount}
-                </span>
-              )}
-            </button>
+            {/* Shopping Bag / Cart - Hidden in Admin Console */}
+            {activeMode !== 'ADMIN' && (
+              <button
+                onClick={() => onOpenAuth('CART')}
+                className="p-1.5 text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer relative"
+                title="View Shopping Bag"
+              >
+                <ShoppingBag className="w-5 h-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[#A6533B] text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs animate-in zoom-in-50">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
+              </button>
+            )}
 
-            <button
-              onClick={() => onOpenAuth('PROFILE')}
-              className="p-1.5 text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer"
-              title="Account Settings"
-            >
-              <User className="w-5 h-5" />
-            </button>
+            {/* Sign Out for Admin, Profile for standard users */}
+            {activeMode === 'ADMIN' ? (
+              <button
+                onClick={onLogout}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                title="Sign Out of Admin Console"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                <span>Sign Out</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => onOpenAuth('PROFILE')}
+                className="p-1.5 text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer"
+                title="Account Settings"
+              >
+                <User className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
       </header>
