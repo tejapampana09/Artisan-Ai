@@ -1,3 +1,4 @@
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -49,11 +50,12 @@ def admin_create_artisan(
         hashed_password=hash_password(payload.password),
         role="ARTISAN",
         status="ACTIVE",
-        location=payload.location.strip() if payload.location else None,
-        craft=payload.craft.strip() if payload.craft else None,
-        craft_specialization=payload.craft.strip() if payload.craft else None,
-        verification_status=payload.verification_status,
-        experience_years=payload.experience_years
+        location=payload.location.strip() if payload.location else "India",
+        craft=payload.craft.strip() if payload.craft else "Handicrafts",
+        craft_specialization=payload.craft.strip() if payload.craft else "Handicrafts",
+        bio=getattr(payload, 'bio', None) or f"Master artisan specializing in traditional {payload.craft or 'handicrafts'}.",
+        verification_status=payload.verification_status or "GI_VERIFIED",
+        experience_years=getattr(payload, 'experience_years', 0) or 0
     )
     db.add(seller)
     db.commit()
@@ -180,7 +182,10 @@ def admin_delete_artisan(
         }
     except Exception as exc:
         db.rollback()
+        logging.getLogger("artisan_ai").error(
+            "Failed to delete artisan %d: %s", artisan_id, str(exc), exc_info=True
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete artisan due to database error: {str(exc)}"
+            detail="An internal error occurred while removing the artisan profile. Please try again."
         )

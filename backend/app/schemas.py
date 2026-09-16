@@ -40,7 +40,7 @@ class ArtisanFacts(BaseModel):
 class ReadyResponse(BaseModel):
     status: str
     database: str
-    user_count: int
+    user_count: Optional[int] = None
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -88,6 +88,7 @@ class AdminCreateSellerRequest(BaseModel):
     location: Optional[str] = "India"
     bio: Optional[str] = None
     verification_status: Optional[str] = "GI_VERIFIED"
+    experience_years: Optional[int] = 0
 
 class UserLogin(BaseModel):
     email_or_phone: str
