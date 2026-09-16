@@ -4,7 +4,10 @@ from sqlalchemy.orm import Session
 from decimal import Decimal
 
 from backend.app.database import get_db
-from backend.app.models import Product, User
+from backend.app.models import (
+    Product, User, Event, Review,
+    Order, Payment, PricingDecision, Enquiry
+)
 from backend.app.schemas import ProductCreate, ProductUpdate, ProductResponse
 from backend.app.services.auth import require_artisan, require_admin, get_optional_current_user
 
@@ -211,9 +214,35 @@ def delete_product(
             detail="You do not have permission to delete another artisan's product."
         )
 
-    db.delete(product)
-    db.commit()
+    cascade_delete_product(db, product)
     return None
+
+def cascade_delete_product(db: Session, product: Product):
+    """Safely cascades deletion of events, reviews, enquiries, pricing decisions, and orders before deleting product."""
+    try:
+        pid = product.id
+        db.query(PricingDecision).filter(PricingDecision.product_id == pid).delete(synchronize_session=False)
+        db.query(Event).filter(Event.product_id == pid).delete(synchronize_session=False)
+        db.query(Enquiry).filter(Enquiry.product_id == pid).delete(synchronize_session=False)
+        db.query(Review).filter(Review.product_id == pid).delete(synchronize_session=False)
+
+        prod_orders = db.query(Order).filter(Order.product_id == pid).all()
+        if prod_orders:
+            p_order_ids = [o.id for o in prod_orders]
+            db.query(Payment).filter(Payment.order_id.in_(p_order_ids)).delete(synchronize_session=False)
+            db.query(Review).filter(Review.order_id.in_(p_order_ids)).delete(synchronize_session=False)
+            db.query(Order).filter(Order.id.in_(p_order_ids)).delete(synchronize_session=False)
+
+        db.delete(product)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        import logging
+        logging.getLogger("artisan_ai").error("Failed to cascade delete product %s: %s", product.id, str(exc), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not delete product due to database constraint: {str(exc)}"
+        )
 
 @router.patch("/{product_id}/status", response_model=ProductResponse)
 def transition_product_status(
@@ -396,6 +425,5 @@ def domain_admin_delete_product(
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product with id {product_id} not found")
-    db.delete(product)
-    db.commit()
+    cascade_delete_product(db, product)
     return None

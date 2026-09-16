@@ -86,30 +86,34 @@ export async function estimateFairPrice(payload) {
 export async function adminListProducts(params = {}) {
   const query = new URLSearchParams(params).toString();
   const endpoint = query ? `/admin/products?${query}` : '/admin/products';
-  return await apiRequest(endpoint);
+  return await apiRequest(endpoint, { domain: 'ADMIN' });
 }
 
 export async function adminApproveProduct(id) {
   return await apiRequest(`/admin/products/${id}/approve`, {
     method: 'PATCH',
+    domain: 'ADMIN',
   });
 }
 
 export async function adminPublishProduct(id) {
   return await apiRequest(`/admin/products/${id}/publish`, {
     method: 'PATCH',
+    domain: 'ADMIN',
   });
 }
 
 export async function adminSuspendProduct(id) {
   return await apiRequest(`/admin/products/${id}/suspend`, {
     method: 'PATCH',
+    domain: 'ADMIN',
   });
 }
 
 export async function adminDeleteProduct(id) {
   return await apiRequest(`/admin/products/${id}`, {
     method: 'DELETE',
+    domain: 'ADMIN',
   });
 }
 
