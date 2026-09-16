@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from backend.app.database import get_db
-from backend.app.models import User
-from backend.app.schemas import AdminCreateSellerRequest, UserResponse
+from backend.app.models import User, Product, Event, PricingDecision
+from backend.app.schemas import AdminCreateSellerRequest, UserResponse, AdminResetArtisanPasswordRequest
 from backend.app.services.auth import require_admin, hash_password
 
 admin_ops_router = APIRouter(prefix="/api/admin", tags=["Admin Console Management"])
@@ -67,3 +67,76 @@ def admin_list_artisans(
 ):
     """Lists all registered artisan sellers. Strictly protected by require_admin."""
     return db.query(User).filter(User.role == "ARTISAN").all()
+
+@admin_ops_router.post("/artisans/{artisan_id}/reset-password")
+def admin_reset_artisan_password(
+    artisan_id: int,
+    payload: AdminResetArtisanPasswordRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """
+    Admin resets password for an artisan seller.
+    Immediately increments token_version to invalidate prior session tokens.
+    """
+    artisan = db.query(User).filter(User.id == artisan_id).first()
+    if not artisan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Artisan not found."
+        )
+    if artisan.role != "ARTISAN":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Target user account is not an artisan."
+        )
+
+    artisan.hashed_password = hash_password(payload.new_password)
+    artisan.token_version = (artisan.token_version or 1) + 1
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Password for artisan '{artisan.name}' has been reset successfully.",
+        "artisan_id": artisan.id
+    }
+
+@admin_ops_router.delete("/artisans/{artisan_id}")
+def admin_delete_artisan(
+    artisan_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """
+    Admin permanently deletes an artisan seller profile and associated catalog data.
+    """
+    artisan = db.query(User).filter(User.id == artisan_id).first()
+    if not artisan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Artisan not found."
+        )
+    if artisan.role != "ARTISAN":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Target user account is not an artisan."
+        )
+
+    artisan_name = artisan.name
+
+    # Dissociate or delete dependent records
+    db.query(Event).filter(Event.user_id == artisan.id).delete(synchronize_session=False)
+
+    products = db.query(Product).filter(Product.seller_id == artisan.id).all()
+    for prod in products:
+        db.query(PricingDecision).filter(PricingDecision.product_id == prod.id).delete(synchronize_session=False)
+        db.query(Event).filter(Event.product_id == prod.id).delete(synchronize_session=False)
+        db.delete(prod)
+
+    db.delete(artisan)
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Artisan '{artisan_name}' (ID: {artisan_id}) and catalog data removed successfully."
+    }

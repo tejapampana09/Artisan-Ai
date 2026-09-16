@@ -12,7 +12,9 @@ import {
   adminApproveProduct, 
   adminPublishProduct, 
   adminSuspendProduct, 
-  adminDeleteProduct 
+  adminDeleteProduct,
+  adminResetArtisanPassword,
+  adminDeleteArtisan
 } from '../api/index.js';
 import { getAdminToken } from '../api/client.js';
 import { useNotification } from '../context/NotificationContext';
@@ -45,6 +47,12 @@ export default function AdminView({ user, onAuthChange, onSelectMode }) {
   const [location, setLocation] = useState('');
   const [password, setPassword] = useState('');
   const [verificationStatus, setVerificationStatus] = useState('GI_VERIFIED');
+
+  // Artisan Management Actions state
+  const [resetModalArtisan, setResetModalArtisan] = useState(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [deletingArtisanId, setDeletingArtisanId] = useState(null);
 
   // Product Governance & Approval Queue state
   const [products, setProducts] = useState([]);
@@ -167,6 +175,42 @@ export default function AdminView({ user, onAuthChange, onSelectMode }) {
       setFormError(err.message || 'Failed to create seller profile.');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetModalArtisan || !resetPasswordValue || resetPasswordValue.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+    setResetLoading(true);
+    try {
+      await adminResetArtisanPassword(resetModalArtisan.id, resetPasswordValue);
+      toast.success(`Password for artisan "${resetModalArtisan.name}" reset successfully!`);
+      setResetModalArtisan(null);
+      setResetPasswordValue('');
+    } catch (err) {
+      toast.error(err.message || 'Failed to reset artisan password.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleDeleteArtisan = async (artisan) => {
+    const confirmMsg = `Are you sure you want to permanently remove artisan "${artisan.name}"?\nThis will delete their seller account and products.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setDeletingArtisanId(artisan.id);
+    try {
+      await adminDeleteArtisan(artisan.id);
+      toast.success(`Artisan "${artisan.name}" removed successfully.`);
+      fetchSellers();
+      fetchProducts();
+    } catch (err) {
+      toast.error(err.message || 'Failed to remove artisan.');
+    } finally {
+      setDeletingArtisanId(null);
     }
   };
 
@@ -724,8 +768,8 @@ export default function AdminView({ user, onAuthChange, onSelectMode }) {
               ) : (
                 <div className="divide-y divide-[#E8E5DF] max-h-96 overflow-y-auto pr-1">
                   {sellers.map((s) => (
-                    <div key={s.id} className="py-3 flex items-center justify-between">
-                      <div className="flex items-center space-x-3 overflow-hidden">
+                    <div key={s.id} className="py-3 flex items-center justify-between gap-2">
+                      <div className="flex items-center space-x-3 overflow-hidden min-w-0">
                         <div className="w-8 h-8 rounded-full bg-[#A6533B] text-white font-bold flex items-center justify-center text-xs shrink-0">
                           {s.name.charAt(0).toUpperCase()}
                         </div>
@@ -741,9 +785,32 @@ export default function AdminView({ user, onAuthChange, onSelectMode }) {
                           </p>
                         </div>
                       </div>
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
-                        Active Seller
-                      </span>
+
+                      <div className="flex items-center space-x-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResetModalArtisan(s);
+                            setResetPasswordValue('');
+                          }}
+                          className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-[#933D1E] border border-amber-200 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center space-x-1"
+                          title="Reset Artisan Password"
+                        >
+                          <KeyRound className="w-3.5 h-3.5 text-[#933D1E]" />
+                          <span>Reset</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteArtisan(s)}
+                          disabled={deletingArtisanId === s.id}
+                          className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center space-x-1 disabled:opacity-50"
+                          title="Remove Artisan Profile"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                          <span>{deletingArtisanId === s.id ? '...' : 'Remove'}</span>
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -802,6 +869,70 @@ export default function AdminView({ user, onAuthChange, onSelectMode }) {
               <li><strong>Admin Governance Domain (/api/admin/*)</strong>: Platform moderation & publication approval.</li>
               <li><strong>Publication Boundary</strong>: Artisans cannot directly self-publish unapproved products (`DRAFT` $\to$ `PUBLISHED` bypass blocked).</li>
             </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Artisan Reset Password Modal */}
+      {resetModalArtisan && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-[#E8E5DF] space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E8E5DF]">
+              <div className="flex items-center space-x-2 text-[#1C1C1C]">
+                <KeyRound className="w-5 h-5 text-[#A6533B]" />
+                <h3 className="font-bold text-base">Reset Artisan Password</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetModalArtisan(null);
+                  setResetPasswordValue('');
+                }}
+                className="text-[#6B6B6B] hover:text-[#1C1C1C] p-1 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-[#6B6B6B]">
+              Set a new temporary or permanent password for <strong className="text-[#1C1C1C]">{resetModalArtisan.name}</strong> ({resetModalArtisan.email || resetModalArtisan.phone}). Active login tokens will be immediately invalidated.
+            </p>
+
+            <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#1C1C1C] mb-1">New Password (min 6 characters)</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={resetPasswordValue}
+                  onChange={(e) => setResetPasswordValue(e.target.value)}
+                  placeholder="Enter new strong password"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#E8E5DF] text-xs focus:outline-hidden focus:border-[#A6533B] bg-[#FAF9F6]"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetModalArtisan(null);
+                    setResetPasswordValue('');
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-[#6B6B6B] hover:bg-gray-100 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetLoading || resetPasswordValue.length < 6}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-[#A6533B] hover:bg-[#933D1E] text-white shadow-sm transition-all cursor-pointer disabled:opacity-50 flex items-center space-x-1.5"
+                >
+                  {resetLoading ? <span>Saving...</span> : <span>Save New Password</span>}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

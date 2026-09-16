@@ -101,6 +101,9 @@ class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=6)
 
+class AdminResetArtisanPasswordRequest(BaseModel):
+    new_password: str = Field(..., min_length=6, description="New password for artisan seller account")
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

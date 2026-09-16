@@ -83,6 +83,19 @@ export async function adminListSellers() {
   }
 }
 
+export async function adminResetArtisanPassword(artisanId, newPassword) {
+  return await apiRequest(`/admin/artisans/${artisanId}/reset-password`, {
+    method: 'POST',
+    body: JSON.stringify({ new_password: newPassword }),
+  });
+}
+
+export async function adminDeleteArtisan(artisanId) {
+  return await apiRequest(`/admin/artisans/${artisanId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function downloadAnalyticsCSV() {
   const token = getAuthToken('STUDIO');
   if (!token) throw new Error('Authentication required');
