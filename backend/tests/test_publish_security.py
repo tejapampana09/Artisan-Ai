@@ -166,7 +166,7 @@ def test_publish_sanitizes_heritage_claims(artisan_headers):
     assert pub_fail.status_code == 400
     assert "unverified family heritage claim" in pub_fail.json()["detail"].lower()
 
-    # Clean text -> 201, forced PUBLISHED
+    # Clean text -> 201, forced PENDING_APPROVAL
     pub_ok = client.post("/api/ai/approve-and-publish", json={
         "draft_token": draft_token,
         "title": "Terracotta Pot",
@@ -180,7 +180,7 @@ def test_publish_sanitizes_heritage_claims(artisan_headers):
     }, headers=artisan_headers)
     assert pub_ok.status_code == 201
     prod = pub_ok.json()
-    assert prod["status"] == "PUBLISHED"
+    assert prod["status"] == "PENDING_APPROVAL"
 
 
 def test_postgresql_schema_migration_sql_compatibility():
@@ -229,3 +229,114 @@ def test_publish_persists_validated_artisan_facts_category(artisan_headers):
     assert pub_res.status_code == 201
     # ArtisanFacts.craft_type ("Woodwork") must override client "Electronics"
     assert pub_res.json()["category"] == "Woodwork"
+
+
+def test_buyer_token_rejected_by_ai_catalog_endpoints():
+    """BUYER token is rejected by /api/ai/process-catalog and /api/ai/approve-and-publish with 403."""
+    _, _, _, buyer_headers = make_buyer(client)
+
+    # 1. process-catalog
+    res_proc = client.post("/api/ai/process-catalog", json={
+        "voice_description": "Pottery craft",
+        "category_hint": "Pottery"
+    }, headers=buyer_headers)
+    assert res_proc.status_code == 403
+    assert "artisan studio session required" in res_proc.json()["detail"].lower()
+
+    # 2. approve-and-publish
+    res_pub = client.post("/api/ai/approve-and-publish", json={
+        "draft_token": "some_token",
+        "title": "Clay Pot",
+        "category": "Pottery",
+        "price": 250.0
+    }, headers=buyer_headers)
+    assert res_pub.status_code == 403
+    assert "artisan studio session required" in res_pub.json()["detail"].lower()
+
+
+def test_admin_token_rejected_by_ai_catalog_endpoints(admin_headers):
+    """ADMIN token is rejected by /api/ai/process-catalog and /api/ai/approve-and-publish with 403 (domain isolation)."""
+    # 1. process-catalog
+    res_proc = client.post("/api/ai/process-catalog", json={
+        "voice_description": "Pottery craft",
+        "category_hint": "Pottery"
+    }, headers=admin_headers)
+    assert res_proc.status_code == 403
+    assert "artisan studio session required" in res_proc.json()["detail"].lower()
+
+    # 2. approve-and-publish
+    res_pub = client.post("/api/ai/approve-and-publish", json={
+        "draft_token": "some_token",
+        "title": "Clay Pot",
+        "category": "Pottery",
+        "price": 250.0
+    }, headers=admin_headers)
+    assert res_pub.status_code == 403
+    assert "artisan studio session required" in res_pub.json()["detail"].lower()
+
+
+def test_publish_forces_pending_approval_status_ignoring_client_values(artisan_headers):
+    """Publishing forces status to PENDING_APPROVAL even if client specifies PUBLISHED or APPROVED."""
+    # Create draft
+    draft_res = client.post("/api/ai/process-catalog", json={
+        "artisan_facts": {
+            "product_name": "Brass Bell",
+            "craft_type": "Metalwork",
+            "materials": ["Brass"],
+            "handmade": True,
+            "making_time": "1 day",
+            "artisan_story": "Traditional temple bell maker",
+            "special_characteristics": "Resonant tone"
+        },
+        "material_cost": 300.0,
+        "labour_cost": 200.0
+    }, headers=artisan_headers)
+    assert draft_res.status_code == 200
+    draft_token = draft_res.json()["draft_token"]
+
+    # Attempt to publish directly with status=PUBLISHED
+    pub_res = client.post("/api/ai/approve-and-publish", json={
+        "draft_token": draft_token,
+        "title": "Brass Bell",
+        "category": "Metalwork",
+        "materials": "Brass",
+        "price": 800.0,
+        "status": "PUBLISHED"
+    }, headers=artisan_headers)
+    assert pub_res.status_code == 201
+    prod = pub_res.json()
+    assert prod["status"] == "PENDING_APPROVAL"
+
+
+def test_artisan_cannot_publish_other_artisan_draft(admin_headers):
+    """Artisan A cannot publish Artisan B's draft token."""
+    _, _, _, headers_a = make_artisan_via_admin(client, admin_headers)
+    _, _, _, headers_b = make_artisan_via_admin(client, admin_headers)
+
+    # Artisan A generates draft
+    draft_res = client.post("/api/ai/process-catalog", json={
+        "artisan_facts": {
+            "product_name": "Silk Scarf",
+            "craft_type": "Textiles",
+            "materials": ["Silk"],
+            "handmade": True,
+            "making_time": "2 days",
+            "artisan_story": "Silk weaving",
+            "special_characteristics": "Hand dyed"
+        },
+        "material_cost": 400.0,
+        "labour_cost": 300.0
+    }, headers=headers_a)
+    assert draft_res.status_code == 200
+    draft_token = draft_res.json()["draft_token"]
+
+    # Artisan B attempts to publish Artisan A's draft
+    pub_res = client.post("/api/ai/approve-and-publish", json={
+        "draft_token": draft_token,
+        "title": "Silk Scarf",
+        "category": "Textiles",
+        "materials": "Silk",
+        "price": 1200.0
+    }, headers=headers_b)
+    assert pub_res.status_code == 403
+    assert "draft does not belong to current user" in pub_res.json()["detail"].lower()

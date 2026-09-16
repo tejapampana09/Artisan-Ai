@@ -11,7 +11,7 @@ from backend.app.schemas import ProductResponse
 from backend.app.models import Product, User, DraftCatalog
 from backend.app.schemas import ProductResponse, ArtisanFacts
 from backend.app.services.ai_adapter import generate_catalog_draft, translate_craft_text, estimate_fair_price
-from backend.app.services.auth import get_current_user
+from backend.app.services.auth import get_current_user, require_artisan
 from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
 
 router = APIRouter(prefix="/api/ai", tags=["AI Cataloging"])
@@ -112,7 +112,7 @@ async def process_voice_and_image(
     req: AICatalogRequest,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_artisan)
 ):
     """
     Multimodal AI cataloging endpoint.
@@ -146,7 +146,7 @@ async def process_voice_and_image(
 def approve_and_publish_product(
     req: CatalogApproveRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_artisan)
 ):
     current_user_id = cast(int, current_user.id)
 
@@ -272,7 +272,7 @@ def approve_and_publish_product(
         auto_smart_pricing_enabled=req.auto_smart_pricing_enabled,
         image_url=req.image_url,
         enhanced_image_url=req.enhanced_image_url,
-        status=req.status if req.status in ["PENDING_APPROVAL", "APPROVED", "PUBLISHED"] else "PUBLISHED",
+        status="PENDING_APPROVAL",
         seller_id=current_user_id
     )
     draft_record.is_consumed = True

@@ -118,23 +118,18 @@ def test_scenario_5_selling_price_schema_and_validation():
     assert req.selling_price == 650.0
 
 
-@patch("backend.app.routes.ai_catalog.get_current_user")
 @patch("backend.app.services.catalog_orchestrator.generate_catalog_draft")
 @patch("backend.app.services.catalog_orchestrator.research_market")
 def test_scenario_6_e2e_selling_price_pipeline_reaches_pricing_engine(
     mock_research,
     mock_generate,
-    mock_user
+    artisan_headers
 ):
     """
     Full End-to-End API Integration Test:
     POST /api/ai/process-catalog with selling_price = 650.0
     Proves: selling_price -> AICatalogRequest -> process_full_catalog_pipeline -> pricing_engine!
     """
-    mock_user_obj = MagicMock()
-    mock_user_obj.id = 1
-    mock_user.return_value = mock_user_obj
-
     mock_generate.return_value = {
         "title": "Handcrafted Silk Shawl",
         "category": "Textiles",
@@ -173,7 +168,7 @@ def test_scenario_6_e2e_selling_price_pipeline_reaches_pricing_engine(
         "selling_price": 650.0
     }
 
-    response = client.post("/api/ai/process-catalog", json=payload)
+    response = client.post("/api/ai/process-catalog", json=payload, headers=artisan_headers)
     assert response.status_code == 200, f"Expected 200 OK, got {response.status_code}: {response.text}"
 
     data = response.json()
