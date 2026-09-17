@@ -185,3 +185,24 @@ def test_idempotency_tracker():
     # After TTL, expires
     time.sleep(2.1)
     assert tracker.is_duplicate("msg_100", "tx_1") is False
+
+
+def test_subscriber_registry_trusted_resolution():
+    """Registry resolves participant key from trusted list and caches it."""
+    from backend.app.integrations.ondc.registry import ONDCSubscriberRegistry
+    from backend.app.integrations.ondc.config import ONDCConfig
+
+    config = ONDCConfig(subscriber_id="my-bpp.com", public_key="my-pub-key")
+    reg = ONDCSubscriberRegistry(config=config, ttl_seconds=60)
+
+    # Resolve self
+    assert reg.get_cached_public_key("my-bpp.com", "any-key") == "my-pub-key"
+
+    # Unknown participant
+    assert reg.get_cached_public_key("unknown-bap.com", "key-1") is None
+
+    # Register trusted participant
+    pub_b64, priv_b64 = generate_keypair()
+    reg.register_trusted_participant("trusted-bap.com", "key-bap-1", pub_b64)
+    assert reg.get_cached_public_key("trusted-bap.com", "key-bap-1") == pub_b64
+

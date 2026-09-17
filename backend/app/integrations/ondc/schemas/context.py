@@ -7,7 +7,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 class ONDCContext(BaseModel):
-    domain: str = Field(..., description="ONDC domain code, e.g. ONDC:RET12 or nic2004:52110")
+    domain: str = Field(..., description="ONDC domain code, e.g. ONDC:RET12 (Fashion/Handloom) or ONDC:RET15 (Home & Decor/Handicrafts)")
     country: str = Field(default="IND", description="Country code (ISO 3166-1 alpha-3)")
     city: str = Field(default="std:080", description="City code (STD code format)")
     action: str = Field(..., description="Beckn action: search, on_search, select, on_select, etc.")

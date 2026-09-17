@@ -28,8 +28,10 @@ from backend.app.integrations.ondc.config import ondc_config, ONDCConfig
 from backend.app.integrations.ondc.status import ondc_status_tracker
 from backend.app.integrations.ondc.idempotency import ondc_idempotency
 from backend.app.integrations.ondc.client import get_ondc_client
+from backend.app.integrations.ondc.registry import ondc_registry
 from backend.app.integrations.ondc.signing import (
     verify_signature,
+    parse_authorization_header,
     ONDCSignatureVerificationError,
     ONDCTimestampExpiredError,
 )
@@ -40,6 +42,9 @@ from backend.app.integrations.ondc.schemas import (
     make_nack,
 )
 from backend.app.integrations.ondc.handlers import execute_ondc_search
+
+# Wire configuration to registry resolver
+ondc_registry.set_config(ondc_config)
 
 logger = logging.getLogger("artisan_ai.ondc.router")
 
@@ -81,35 +86,91 @@ async def _async_process_and_callback(
         db.close()
 
 
-def _verify_inbound_request_auth(request: Request, body_bytes: bytes, config: ONDCConfig):
-    """Validates inbound HTTP signature if configured or enforced."""
+async def _verify_inbound_request_auth(request: Request, body_bytes: bytes, config: ONDCConfig):
+    """
+    Validates inbound HTTP signature per ONDC participant specifications.
+    1. Extracts keyId (subscriber_id|unique_key_id|algorithm) from Authorization header.
+    2. Resolves participant public key from trusted cache or ONDC registry lookup.
+    3. If enforce_auth=True: strictly verifies Ed25519 signature and BLAKE-512 digest.
+    4. If enforce_auth=False: permissive development mode, logs verification result without blocking.
+    """
     auth_header = request.headers.get("Authorization")
-    if config.enforce_auth and not auth_header:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=make_nack("AUTH-ERROR", "10001", "Missing Authorization signature header")
-        )
-
-    if auth_header and config.public_key:
-        try:
-            verify_signature(
-                auth_header=auth_header,
-                method=request.method,
-                path=request.url.path,
-                body=body_bytes,
-                public_key_b64=config.public_key,
-                tolerance_seconds=config.auth_timestamp_tolerance_seconds
-            )
-        except ONDCTimestampExpiredError as exp_err:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=make_nack("CONTEXT-ERROR", "10002", str(exp_err))
-            )
-        except ONDCSignatureVerificationError as sig_err:
+    if not auth_header:
+        if config.enforce_auth:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=make_nack("AUTH-ERROR", "10003", str(sig_err))
+                detail=make_nack("AUTH-ERROR", "10001", "Missing Authorization signature header")
             )
+        else:
+            logger.debug("Inbound request without Authorization header accepted in permissive development mode")
+            return
+
+    # Auth header is present: parse participant key parameters
+    try:
+        header_params = parse_authorization_header(auth_header)
+    except Exception as parse_err:
+        if config.enforce_auth:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=make_nack("AUTH-ERROR", "10002", f"Malformed Authorization header: {parse_err}")
+            )
+        logger.warning("Permissive mode: Malformed Authorization header ignored: %s", parse_err)
+        return
+
+    key_id = header_params.get("keyId", "")
+    parts = key_id.split("|")
+    sender_subscriber_id = parts[0] if len(parts) > 0 else ""
+    sender_unique_key_id = parts[1] if len(parts) > 1 else ""
+
+    # Resolve sender's public key from registry or trusted cache
+    sender_public_key = await ondc_registry.lookup_public_key(
+        subscriber_id=sender_subscriber_id,
+        unique_key_id=sender_unique_key_id,
+        domain=config.domain
+    )
+
+    if not sender_public_key:
+        if config.enforce_auth:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=make_nack(
+                    "AUTH-ERROR",
+                    "10003",
+                    f"Unknown or unverified participant '{sender_subscriber_id}'. Public key could not be resolved from trusted list or registry."
+                )
+            )
+        logger.warning(
+            "Permissive mode: No public key found for participant '%s' (keyId '%s'). Skipping signature verification.",
+            sender_subscriber_id,
+            sender_unique_key_id
+        )
+        return
+
+    # Verify signature against the sender's public key
+    try:
+        verify_signature(
+            auth_header=auth_header,
+            method=request.method,
+            path=request.url.path,
+            body=body_bytes,
+            public_key_b64=sender_public_key,
+            tolerance_seconds=config.auth_timestamp_tolerance_seconds
+        )
+        logger.debug("Successfully verified inbound ONDC signature for subscriber '%s'", sender_subscriber_id)
+    except ONDCTimestampExpiredError as exp_err:
+        if config.enforce_auth:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=make_nack("CONTEXT-ERROR", "10004", str(exp_err))
+            )
+        logger.warning("Permissive mode: Inbound timestamp expired: %s", exp_err)
+    except ONDCSignatureVerificationError as sig_err:
+        if config.enforce_auth:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=make_nack("AUTH-ERROR", "10005", str(sig_err))
+            )
+        logger.warning("Permissive mode: Inbound signature verification failed: %s", sig_err)
 
 
 @router.post("/search", response_model=ONDCAckResponse)
@@ -129,7 +190,7 @@ async def ondc_search(
     4. Dispatches asynchronous task to query eligible products and post /on_search callback to bap_uri
     """
     body_bytes = await request.body()
-    _verify_inbound_request_auth(request, body_bytes, ondc_config)
+    await _verify_inbound_request_auth(request, body_bytes, ondc_config)
 
     ondc_status_tracker.record_search_received()
 

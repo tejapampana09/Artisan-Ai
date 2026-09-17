@@ -916,27 +916,36 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
               <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
-                <span className="text-[10px] font-bold text-[#6B6B6B] block">Environment</span>
+                <span className="text-[10px] font-bold text-[#6B6B6B] block">Environment & Auth</span>
                 <span className="font-bold text-[#1C1C1C] mt-0.5 block">{ondcStatus?.environment || 'DEVELOPMENT'}</span>
+                <span className="text-[10px] text-[#8C827A] mt-0.5 block">{ondcStatus?.auth_mode || 'Permissive Mode'}</span>
               </div>
               <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
                 <span className="text-[10px] font-bold text-[#6B6B6B] block">Participant ID (Subscriber)</span>
                 <span className="font-bold text-[#1C1C1C] mt-0.5 block truncate" title={ondcStatus?.subscriber_id || 'Not configured'}>
                   {ondcStatus?.subscriber_id || 'Pending Onboarding'}
                 </span>
+                <span className="text-[10px] text-[#8C827A] mt-0.5 block">Key: {ondcStatus?.signing_configured ? 'Ed25519 Active' : 'Keys Pending'}</span>
               </div>
               <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
-                <span className="text-[10px] font-bold text-[#6B6B6B] block">Signing Readiness</span>
-                <span className="font-bold text-[#1C1C1C] mt-0.5 block">
-                  {ondcStatus?.signing_configured ? 'Ed25519 Active' : 'Keys Pending'}
-                </span>
+                <span className="text-[10px] font-bold text-[#6B6B6B] block">Retail Domains</span>
+                <span className="font-bold text-[#1C1C1C] mt-0.5 block">{ondcStatus?.domain || 'ONDC:RET12'}</span>
+                <span className="text-[10px] text-[#8C827A] mt-0.5 block">Supports: RET12, RET15</span>
               </div>
               <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
-                <span className="text-[10px] font-bold text-[#6B6B6B] block">Gateway Endpoint</span>
+                <span className="text-[10px] font-bold text-[#6B6B6B] block">Gateway Routing</span>
                 <span className="font-bold text-[#1C1C1C] mt-0.5 block truncate">
-                  {ondcStatus?.gateway_configured ? 'Configured' : 'Local Standalone'}
+                  {ondcStatus?.gateway_configured ? 'Configured' : 'Pending Onboarding'}
                 </span>
+                <span className="text-[10px] text-[#8C827A] mt-0.5 block">{ondcStatus?.city || 'std:080'} (Beckn v1.2)</span>
               </div>
+            </div>
+
+            <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs text-amber-900">
+              <span className="font-bold block text-[11px] uppercase tracking-wider text-amber-800">Verification & Demo Status:</span>
+              <p className="mt-0.5 text-xs text-amber-950 font-medium">
+                {ondcStatus?.demo_statement || 'ONDC Retail seller-side discoverability foundation implemented; live network verification pending participant onboarding.'}
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">

@@ -542,8 +542,11 @@ The current code intentionally falls back to SQLite outside production when a re
 The ONDC Retail seller-side discoverability foundation is active:
 - Standard discovery endpoint (`POST /ondc/search` and `POST /api/ondc/search`) mapped to Beckn Protocol v1.2.
 - Dedicated integration package at `backend/app/integrations/ondc/`.
+- Official ONDC Retail domains: `ONDC:RET12` (Fashion / Handloom - Primary) and `ONDC:RET15` (Home & Decor / Handicrafts). (Note: `ONDC:RET10` is Grocery and is not applicable to Artisan AI).
+- Inbound HTTP Signature verification via participant public-key resolution (`ONDCSubscriberRegistry`) with permissive development mode (`ONDC_ENFORCE_AUTH=false`) and production-enforced mode (`ONDC_ENFORCE_AUTH=true`).
 - Strict product eligibility: only active artisan-owned, published, in-stock products with valid prices are exposed.
 - Status is honestly reported via `GET /api/ondc/status` as `CONFIGURED - NOT VERIFIED` (or `NOT CONFIGURED`) pending official ONDC staging network onboarding and live signed message verification.
+- **Accurate Demo Status**: *"ONDC Retail seller-side discoverability foundation implemented; live network verification pending participant onboarding."*
 - Order checkout, payments, settlement, and logistics remain strictly out of scope.
 
 ## 10. Running the Backend

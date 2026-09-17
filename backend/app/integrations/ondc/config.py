@@ -5,7 +5,7 @@ Provides safe environment defaults, parameter loading, and sanitized diagnostics
 """
 
 import os
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 
 class ONDCConfig(BaseModel):
@@ -15,12 +15,17 @@ class ONDCConfig(BaseModel):
     public_key: Optional[str] = Field(default=None)
     private_key: Optional[str] = Field(default=None)
     gateway_url: Optional[str] = Field(default=None)
+    registry_url: Optional[str] = Field(default=None)
     bpp_uri: str = Field(default="http://localhost:8000/ondc")
     bpp_name: str = Field(default="Artisan AI Marketplace")
     bpp_description: str = Field(
         default="Direct digital commerce gateway for authentic Indian artisans and master craftspersons"
     )
+    # Official ONDC Retail domains applicable to Artisan AI:
+    # - ONDC:RET12: Fashion (Handlooms, Textiles, Sarees, Apparel, Handcrafted Accessories)
+    # - ONDC:RET15: Home & Decor (Handicrafts, Pottery, Brass/Metalcraft, Wood Carving, Paintings)
     domain: str = Field(default="ONDC:RET12")
+    supported_domains: List[str] = Field(default_factory=lambda: ["ONDC:RET12", "ONDC:RET15"])
     country: str = Field(default="IND")
     city: str = Field(default="std:080")
     core_version: str = Field(default="1.2.0")
@@ -63,10 +68,12 @@ class ONDCConfig(BaseModel):
             "signing_configured": self.is_signing_configured,
             "gateway_configured": self.is_gateway_configured,
             "domain": self.domain,
+            "supported_domains": self.supported_domains,
             "country": self.country,
             "city": self.city,
             "core_version": self.core_version,
             "enforce_auth": self.enforce_auth,
+            "auth_mode": "ENFORCED (Staging/Production)" if self.enforce_auth else "PERMISSIVE (Local/Hackathon Development)",
             "bpp_uri": self.bpp_uri,
         }
 
@@ -79,6 +86,7 @@ def load_ondc_config() -> ONDCConfig:
     public_key = os.getenv("ONDC_PUBLIC_KEY", "").strip() or None
     private_key = os.getenv("ONDC_PRIVATE_KEY", "").strip() or None
     gateway_url = os.getenv("ONDC_GATEWAY_URL", "").strip() or None
+    registry_url = os.getenv("ONDC_REGISTRY_URL", "").strip() or None
     bpp_uri = os.getenv("ONDC_BPP_URI", "http://localhost:8000/ondc").strip()
     domain = os.getenv("ONDC_DOMAIN", "ONDC:RET12").strip()
     country = os.getenv("ONDC_COUNTRY", "IND").strip()
@@ -93,6 +101,7 @@ def load_ondc_config() -> ONDCConfig:
         public_key=public_key,
         private_key=private_key,
         gateway_url=gateway_url,
+        registry_url=registry_url,
         bpp_uri=bpp_uri,
         domain=domain,
         country=country,

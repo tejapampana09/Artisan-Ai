@@ -210,10 +210,70 @@ def test_ondc_status_endpoint_honest_reporting():
     assert status["environment"] in ("DEVELOPMENT", "STAGING", "PRODUCTION")
     assert status["verification_status"] in ("NOT CONFIGURED", "CONFIGURED - NOT VERIFIED")
     assert status["verified_live_interaction"] is False
+    assert "ONDC:RET12" in status["supported_domains"]
+    assert "ONDC:RET15" in status["supported_domains"]
+    assert "demo_statement" in status
+    assert "live network verification pending" in status["demo_statement"]
 
     # Security: No private keys leaked!
     assert "private_key" not in status
     assert "private_key_b64" not in status
+
+
+def test_ondc_search_with_ret15_domain(admin_headers, db: Session):
+    """POST /api/ondc/search accepts ONDC:RET15 (Home & Decor) domain."""
+    payload = {
+        "context": {
+            "domain": "ONDC:RET15",
+            "country": "IND",
+            "city": "std:080",
+            "action": "search",
+            "core_version": "1.2.0",
+            "bap_id": "buyer-app.staging.ondc.org",
+            "bap_uri": "https://buyer-app.staging.ondc.org/protocol/v1",
+            "transaction_id": "tx-ret15-search",
+            "message_id": f"msg-ret15-{int(time.time() * 1000)}",
+            "timestamp": "2026-09-18T00:00:00.000Z",
+        },
+        "message": {
+            "intent": {
+                "category": {
+                    "id": "Pottery"
+                }
+            }
+        }
+    }
+    res = client.post("/api/ondc/search", json=payload)
+    assert res.status_code == 200
+    assert res.json()["message"]["ack"]["status"] == "ACK"
+
+
+def test_ondc_enforce_auth_rejects_unauthorized_request(monkeypatch):
+    """When ONDC_ENFORCE_AUTH=True, requests without valid Authorization are rejected."""
+    from backend.app.routes import ondc as ondc_module
+
+    # Temporarily enable enforce_auth on config
+    orig_enforce = ondc_module.ondc_config.enforce_auth
+    try:
+        ondc_module.ondc_config.enforce_auth = True
+
+        payload = {
+            "context": {
+                "domain": "ONDC:RET12",
+                "action": "search",
+                "transaction_id": "tx-auth-fail",
+                "message_id": "msg-auth-fail",
+                "timestamp": "2026-09-18T00:00:00.000Z"
+            },
+            "message": {}
+        }
+        res = client.post("/api/ondc/search", json=payload)
+        assert res.status_code == 401
+        data = res.json()
+        assert data["detail"]["message"]["ack"]["status"] == "NACK"
+        assert data["detail"]["error"]["type"] == "AUTH-ERROR"
+    finally:
+        ondc_module.ondc_config.enforce_auth = orig_enforce
 
 
 def test_deprecated_prototype_endpoints_have_deprecation_header():
@@ -221,3 +281,4 @@ def test_deprecated_prototype_endpoints_have_deprecation_header():
     res_select = client.post("/api/ondc/select", json={"product_id": 99999, "quantity": 1})
     assert "X-Deprecated" in res_select.headers
     assert "Prototype-only" in res_select.headers["X-Deprecated"]
+

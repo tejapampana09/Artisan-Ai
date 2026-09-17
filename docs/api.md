@@ -126,9 +126,15 @@ Reconciles client-side offline queued operations (craft creations and pricing ap
 
 ## 🌐 ONDC Retail Seller-Side Integration (`/api/ondc` & `/ondc`)
 
-- `POST /ondc/search` & `POST /api/ondc/search`: Beckn v1.2 discovery endpoint. Returns immediate synchronous `ACK` and posts signed `/on_search` callback to `bap_uri`.
-- `POST /api/ondc/catalog/query`: Synchronous catalog search query for local diagnostic verification.
-- `GET /api/ondc/status`: Honest integration health, participant configuration, and verification state.
-- `POST /api/ondc/select`: [Deprecated Prototype] Quotation mock.
-- `POST /api/ondc/init`: [Deprecated Prototype] Order drafting mock.
-- `POST /api/ondc/confirm`: [Deprecated Prototype] Order confirmation mock.
+- **Protocol**: Beckn Protocol v1.2 (Retail)
+- **Supported Domains**: `ONDC:RET12` (Fashion / Handloom - Default Primary), `ONDC:RET15` (Home & Decor / Handicrafts)
+- **Inbound Security**: RFC 8032 Ed25519 signing + BLAKE-512 digest verification via `ONDCSubscriberRegistry`. `ONDC_ENFORCE_AUTH=false` for local development, `true` for staging/production.
+- **Endpoints**:
+  - `POST /ondc/search` & `POST /api/ondc/search`: Beckn v1.2 discovery endpoint. Returns immediate synchronous `ACK` and dispatches signed background `/on_search` callback to `bap_uri`.
+  - `POST /api/ondc/catalog/query`: Synchronous catalog search query for local diagnostic verification.
+  - `GET /api/ondc/status`: Honest integration health, supported domains, participant configuration, and verification state.
+  - `POST /api/ondc/select`: [Deprecated Prototype] Quotation mock.
+  - `POST /api/ondc/init`: [Deprecated Prototype] Order drafting mock.
+  - `POST /api/ondc/confirm`: [Deprecated Prototype] Order confirmation mock.
+- **Demo Status**: *"ONDC Retail seller-side discoverability foundation implemented; live network verification pending participant onboarding."*
+
