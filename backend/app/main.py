@@ -36,6 +36,7 @@ from backend.app.routes.notifications import router as notifications_router
 from backend.app.routes.artisan import router as artisan_router
 from backend.app.routes.ml_demand import router as ml_demand_router
 from backend.app.routes.tts import router as tts_router
+from backend.app.routes.ondc import router as ondc_router, ondc_network_router
 # Always ensure database schema is created and default artisan/admin accounts are seeded
 try:
     Base.metadata.create_all(bind=engine)
@@ -128,6 +129,8 @@ app.include_router(notifications_router)
 app.include_router(artisan_router)
 app.include_router(ml_demand_router)
 app.include_router(tts_router)
+app.include_router(ondc_router)
+app.include_router(ondc_network_router)
 
 
 @app.get("/api/health", response_model=HealthResponse)

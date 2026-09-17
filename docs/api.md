@@ -124,9 +124,11 @@ Reconciles client-side offline queued operations (craft creations and pricing ap
 
 ---
 
-## 🌐 ONDC Protocol Prototype (`/api/ondc`)
+## 🌐 ONDC Retail Seller-Side Integration (`/api/ondc` & `/ondc`)
 
-- `POST /api/ondc/search`: Beckn-compliant search query
-- `POST /api/ondc/select`: Item selection and stock check
-- `POST /api/ondc/init`: Order initialization
-- `POST /api/ondc/confirm`: Order confirmation
+- `POST /ondc/search` & `POST /api/ondc/search`: Beckn v1.2 discovery endpoint. Returns immediate synchronous `ACK` and posts signed `/on_search` callback to `bap_uri`.
+- `POST /api/ondc/catalog/query`: Synchronous catalog search query for local diagnostic verification.
+- `GET /api/ondc/status`: Honest integration health, participant configuration, and verification state.
+- `POST /api/ondc/select`: [Deprecated Prototype] Quotation mock.
+- `POST /api/ondc/init`: [Deprecated Prototype] Order drafting mock.
+- `POST /api/ondc/confirm`: [Deprecated Prototype] Order confirmation mock.

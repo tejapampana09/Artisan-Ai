@@ -105,7 +105,7 @@ Artisan AI is a production-grade digital marketplace, multimodal smart catalogin
 | **Exact Money Representation** | Currency represented as exact `NUMERIC(12, 2)` and Python `Decimal` arithmetic with non-negative constraints. | Zero IEEE-754 floating-point rounding drift. |
 | **Inventory Concurrency** | Atomic single-transaction conditional stock updates (`WHERE stock >= requested_quantity`). | Guaranteed zero overselling or negative stock. |
 | **Offline Resilience & PWA** | Client-side IndexedDB/localStorage caching for **0ms instant initial paint**; idempotent offline queue (`client_operation_id`) and batch synchronization (`POST /api/sync/batch`). | Seamless operation in low-connectivity rural handloom clusters. |
-| **ONDC & Digital Commerce** | Protocol adapter prototype for Open Network for Digital Commerce (`/api/ondc/search`, `/api/ondc/init`, `/api/ondc/confirm`). | Ready for national e-commerce discovery on Beckn protocol. |
+| **ONDC & Digital Commerce** | Protocol adapter foundation for Open Network for Digital Commerce Retail (Beckn Protocol v1.2, `/ondc/search`, `/api/ondc/search`, `/api/ondc/status`). | Standards-compliant seller-side product discoverability foundation for national e-commerce discovery (environment: Staging pending onboarding). |
 
 ---
 

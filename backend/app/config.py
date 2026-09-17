@@ -107,3 +107,16 @@ MAX_DEMAND_FACTOR: float = float(os.getenv("PRICING_MAX_DEMAND_FACTOR", "1.15"))
 # Payment Gateway Configuration
 RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "").strip()
 RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "").strip()
+
+# ONDC Retail Integration Configuration (Beckn Protocol v1.2)
+ONDC_ENVIRONMENT: str = os.getenv("ONDC_ENVIRONMENT", ENVIRONMENT).lower()
+ONDC_SUBSCRIBER_ID: str = os.getenv("ONDC_SUBSCRIBER_ID", "").strip()
+ONDC_UNIQUE_KEY_ID: str = os.getenv("ONDC_UNIQUE_KEY_ID", "").strip()
+ONDC_PUBLIC_KEY: str = os.getenv("ONDC_PUBLIC_KEY", "").strip()
+ONDC_PRIVATE_KEY: str = os.getenv("ONDC_PRIVATE_KEY", "").strip()
+ONDC_GATEWAY_URL: str = os.getenv("ONDC_GATEWAY_URL", "").strip()
+ONDC_BPP_URI: str = os.getenv("ONDC_BPP_URI", "http://localhost:8000/ondc").strip()
+ONDC_DOMAIN: str = os.getenv("ONDC_DOMAIN", "ONDC:RET12").strip()
+ONDC_CITY: str = os.getenv("ONDC_CITY", "std:080").strip()
+ONDC_COUNTRY: str = os.getenv("ONDC_COUNTRY", "IND").strip()
+

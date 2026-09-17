@@ -63,6 +63,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
 
   // System Health State
   const [systemHealth, setSystemHealth] = useState(null);
+  const [ondcStatus, setOndcStatus] = useState(null);
 
   useEffect(() => {
     if (!user || user.role !== 'ADMIN') {
@@ -82,6 +83,19 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
     fetchSellers();
     fetchProducts();
     checkSystemHealth();
+    fetchOndcStatus();
+  };
+
+  const fetchOndcStatus = async () => {
+    try {
+      const res = await fetch('/api/ondc/status');
+      if (res.ok) {
+        const data = await res.json();
+        setOndcStatus(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch ONDC status:', e);
+    }
   };
 
   const fetchSellers = async () => {
@@ -878,6 +892,80 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                 T+7 Model Loaded
               </span>
             </div>
+          </div>
+
+          {/* ONDC Integration Diagnostics */}
+          <div className="bg-[#FAF9F6] p-5 rounded-2xl border border-[#E8E5DF] space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Store className="w-4 h-4 text-[#A6533B]" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#1C1C1C]">
+                  ONDC Retail Network Integration (Beckn v1.2)
+                </h4>
+              </div>
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                ondcStatus?.verification_status === 'VERIFIED'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                  : ondcStatus?.verification_status === 'CONFIGURED - NOT VERIFIED'
+                  ? 'bg-amber-50 text-amber-800 border-amber-300'
+                  : 'bg-gray-100 text-gray-700 border-gray-300'
+              }`}>
+                {ondcStatus?.verification_status || 'NOT CONFIGURED'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
+                <span className="text-[10px] font-bold text-[#6B6B6B] block">Environment</span>
+                <span className="font-bold text-[#1C1C1C] mt-0.5 block">{ondcStatus?.environment || 'DEVELOPMENT'}</span>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
+                <span className="text-[10px] font-bold text-[#6B6B6B] block">Participant ID (Subscriber)</span>
+                <span className="font-bold text-[#1C1C1C] mt-0.5 block truncate" title={ondcStatus?.subscriber_id || 'Not configured'}>
+                  {ondcStatus?.subscriber_id || 'Pending Onboarding'}
+                </span>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
+                <span className="text-[10px] font-bold text-[#6B6B6B] block">Signing Readiness</span>
+                <span className="font-bold text-[#1C1C1C] mt-0.5 block">
+                  {ondcStatus?.signing_configured ? 'Ed25519 Active' : 'Keys Pending'}
+                </span>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
+                <span className="text-[10px] font-bold text-[#6B6B6B] block">Gateway Endpoint</span>
+                <span className="font-bold text-[#1C1C1C] mt-0.5 block truncate">
+                  {ondcStatus?.gateway_configured ? 'Configured' : 'Local Standalone'}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
+                <span className="text-[10px] font-bold text-[#6B6B6B] block">Last Protocol Interaction</span>
+                <span className="font-medium text-[#1C1C1C] mt-0.5 block">
+                  {ondcStatus?.last_protocol_interaction ? new Date(ondcStatus.last_protocol_interaction).toLocaleString() : 'No interactions recorded'}
+                </span>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
+                <span className="text-[10px] font-bold text-[#6B6B6B] block">Last Successful Search Discovery</span>
+                <span className="font-medium text-[#1C1C1C] mt-0.5 block">
+                  {ondcStatus?.last_successful_search ? new Date(ondcStatus.last_successful_search).toLocaleString() : 'None yet'}
+                </span>
+              </div>
+            </div>
+
+            {ondcStatus?.recent_errors && ondcStatus.recent_errors.length > 0 && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900">
+                <span className="font-bold block mb-1">Recent Diagnostics / Errors:</span>
+                <ul className="list-disc pl-4 space-y-0.5 text-[11px]">
+                  {ondcStatus.recent_errors.slice(0, 3).map((err, idx) => (
+                    <li key={idx} className="truncate">
+                      <span className="text-rose-700 font-mono">{new Date(err.timestamp).toLocaleTimeString()}:</span> {err.error}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-950 space-y-2 text-xs">

@@ -43,15 +43,18 @@ Artisan-AI/
 │   │   │   ├── pricing.py           # Explainable cost-plus pricing decisions
 │   │   │   ├── ai_catalog.py        # Multimodal Gemini catalog generation
 │   │   │   ├── intelligence.py      # Real-time category demand & copilot
-│   │   │   ├── ondc.py              # ONDC protocol integration prototype
+│   │   │   ├── ondc.py              # ONDC Beckn v1.2 discovery router
 │   │   │   └── sync.py              # Rural offline delta synchronization
+│   │   │
+│   │   ├── integrations/            # External protocol & channel adapters
+│   │   │   └── ondc/                # ONDC Retail v1.2 adapter (signing, schemas, handlers, client)
 │   │   │
 │   │   ├── services/                # Pure business logic layer
 │   │   │   ├── auth.py              # PBKDF2 hashing, JWT verification
 │   │   │   ├── ai_adapter.py        # Gemini multimodal integration & honest drafts
 │   │   │   ├── pricing_engine.py    # Cost breakdown & 20% margin floor
 │   │   │   ├── demand_engine.py     # Aggregated buyer behavior demand metrics
-│   │   │   ├── ondc_adapter.py      # ONDC Beckn schema transformation
+│   │   │   ├── ondc_adapter.py      # Backward compatibility ONDC delegation adapter
 │   │   │   └── rate_limiter.py      # Sliding-window rate limiter
 │   │   │
 │   │   ├── config.py                # Environment-driven configuration & CORS

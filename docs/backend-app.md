@@ -52,7 +52,7 @@ Important endpoints:
 - `GET /api/studio/auth/me`: authenticated Artisan profile details (Studio domain).
 - `GET /api/admin/auth/me`: authenticated Admin profile details (Admin domain).
 
-The ONDC router is intentionally not registered. Its source files remain in the repository, but ONDC endpoints are currently inactive.
+The ONDC router is registered at `/api/ondc` and `/ondc`, providing standards-compliant Beckn Protocol v1.2 seller-side product discoverability (`/search`, `/catalog/query`, `/status`). Order checkout, payments, settlement, and logistics remain strictly out of scope in this phase.
 
 ### `backend/app/config.py`
 
@@ -350,11 +350,14 @@ Responsibilities:
 
 ### `backend/app/routes/ondc.py`
 
-Retained ONDC/Beckn prototype router.
+ONDC Retail Seller-Side Integration Router (Beckn Protocol v1.2).
 
-It contains prototype search, select, init, and confirm endpoints, but `main.py` does not register this router. Therefore these endpoints are unreachable through the active app.
+Active discovery endpoints:
+- `POST /ondc/search` & `POST /api/ondc/search`: Standard asynchronous network discovery returning immediate synchronous `ACK` and dispatching signed background `on_search` callback to `bap_uri`.
+- `POST /api/ondc/catalog/query`: Synchronous catalog query diagnostic endpoint for local validation and testing.
+- `GET /api/ondc/status`: Honest integration health diagnostic endpoint reporting real connectivity and verification status.
 
-This file should be treated as dormant prototype code unless ONDC is intentionally reintroduced.
+Legacy prototype order endpoints (`/select`, `/init`, `/confirm`) are explicitly deprecated with `X-Deprecated` headers and do not claim live network integration.
 
 ## 6. Services
 
@@ -534,14 +537,14 @@ DEMO_MODE=false
 
 The current code intentionally falls back to SQLite outside production when a remote PostgreSQL connection is unavailable.
 
-## 9. Current Disabled Features
+## 9. ONDC Integration Scope & Status
 
-ONDC is currently disabled from the running application:
-
-- The ONDC router is not registered in `main.py`.
-- ONDC marketplace event endpoints were removed from the active events router.
-- ONDC is not listed as an active sales channel.
-- Prototype ONDC files remain only as dormant source code.
+The ONDC Retail seller-side discoverability foundation is active:
+- Standard discovery endpoint (`POST /ondc/search` and `POST /api/ondc/search`) mapped to Beckn Protocol v1.2.
+- Dedicated integration package at `backend/app/integrations/ondc/`.
+- Strict product eligibility: only active artisan-owned, published, in-stock products with valid prices are exposed.
+- Status is honestly reported via `GET /api/ondc/status` as `CONFIGURED - NOT VERIFIED` (or `NOT CONFIGURED`) pending official ONDC staging network onboarding and live signed message verification.
+- Order checkout, payments, settlement, and logistics remain strictly out of scope.
 
 ## 10. Running the Backend
 
