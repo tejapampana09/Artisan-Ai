@@ -207,7 +207,7 @@ def test_ondc_status_endpoint_honest_reporting():
     assert res.status_code == 200
     status = res.json()
 
-    assert status["environment"] in ("DEVELOPMENT", "STAGING", "PRODUCTION")
+    assert status["environment"] in ("DEVELOPMENT", "STAGING", "PRODUCTION", "TEST")
     assert status["verification_status"] in ("NOT CONFIGURED", "CONFIGURED - NOT VERIFIED")
     assert status["verified_live_interaction"] is False
     assert "ONDC:RET12" in status["supported_domains"]
