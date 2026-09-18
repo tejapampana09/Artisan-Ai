@@ -3,7 +3,7 @@ import {
   X, Sparkles, Tag, ShieldCheck, Edit3, Save, Trash2, 
   TrendingUp, ArrowRight, CheckCircle2, AlertCircle, Info, Lock
 } from 'lucide-react';
-import { getPriceRecommendation, submitPriceDecision } from '../api/index.js';
+import { getPriceRecommendation, submitPriceDecision, toggleSmartPricing, evaluateAutoPrice } from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
 import { useNotification } from '../context/NotificationContext';
 
@@ -357,14 +357,25 @@ export default function ProductDetailModal({ product, isOpen, onClose, onUpdated
                     <button
                       type="button"
                       onClick={async () => {
-                        const nextState = !formData.auto_smart_pricing_enabled;
-                        setFormData(prev => ({ ...prev, auto_smart_pricing_enabled: nextState }));
+                        setFormData(prev => ({ ...prev, auto_smart_pricing_enabled: !prev.auto_smart_pricing_enabled }));
                         try {
-                          await onUpdated(product.id, { auto_smart_pricing_enabled: nextState });
-                          notify.success(`Smart Pricing set to ${nextState ? 'ON (Autonomous)' : 'OFF (Manual)'}`);
-                          fetchPricing();
+                          // Call the dedicated toggle endpoint — it saves the flag AND runs pricing immediately
+                          const result = await toggleSmartPricing(product.id);
+                          const isNowEnabled = result?.auto_smart_pricing_enabled ?? !formData.auto_smart_pricing_enabled;
+                          setFormData(prev => ({ ...prev, auto_smart_pricing_enabled: isNowEnabled }));
+                          if (isNowEnabled) {
+                            notify.success(`Smart Pricing ENABLED — auto price update: ${result?.auto_pricing_applied ? `₹${result.applied_price}` : 'cooldown active, will apply on next demand event'}`);
+                          } else {
+                            notify.success('Smart Pricing DISABLED — you control the price manually.');
+                          }
+                          // Reload the pricing recommendation panel to reflect new state
+                          await fetchPricing();
+                          // Also refresh the product card in parent list
+                          if (onUpdated) await onUpdated(product.id, { auto_smart_pricing_enabled: isNowEnabled });
                         } catch (e) {
-                          notify.error('Failed to update Smart Pricing setting');
+                          // Rollback optimistic UI update on error
+                          setFormData(prev => ({ ...prev, auto_smart_pricing_enabled: formData.auto_smart_pricing_enabled }));
+                          notify.error('Failed to update Smart Pricing setting: ' + (e?.message || 'Server error'));
                         }
                       }}
                       className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-xs flex items-center space-x-1.5 shrink-0 ${

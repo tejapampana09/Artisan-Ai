@@ -66,6 +66,18 @@ export async function submitPriceDecision(productId, decision) {
   });
 }
 
+export async function toggleSmartPricing(productId) {
+  return await apiRequest(`/products/${productId}/toggle-smart-pricing`, {
+    method: 'PATCH',
+  });
+}
+
+export async function evaluateAutoPrice(productId) {
+  return await apiRequest(`/products/${productId}/evaluate-auto-pricing`, {
+    method: 'POST',
+  });
+}
+
 export async function sendBuyerCopilotMessage(payload) {
   return await apiRequest('/buyer/copilot-chat', {
     method: 'POST',
