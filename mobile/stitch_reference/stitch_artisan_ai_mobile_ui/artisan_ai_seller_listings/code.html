@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Artisan-Ai Seller Listings Manager</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "inverse-primary": "#ffb59c",
+            "on-tertiary-fixed-variant": "#474742",
+            "background": "#fcf9f8",
+            "surface-variant": "#e4e2e1",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-high": "#eae7e7",
+            "primary-container": "#bf542c",
+            "on-secondary-container": "#734a00",
+            "on-primary": "#ffffff",
+            "secondary-fixed-dim": "#feb956",
+            "surface-bright": "#fcf9f8",
+            "on-primary-fixed": "#390c00",
+            "primary": "#9f3c16",
+            "primary-fixed": "#ffdbcf",
+            "outline": "#8a726a",
+            "tertiary-fixed": "#e5e2db",
+            "error": "#ba1a1a",
+            "surface-dim": "#dcd9d9",
+            "on-tertiary-container": "#fdffdd",
+            "surface-container-highest": "#e4e2e1",
+            "on-error": "#ffffff",
+            "on-tertiary-fixed": "#1c1c18",
+            "surface": "#fcf9f8",
+            "tertiary-container": "#76756f",
+            "surface-tint": "#a23e18",
+            "secondary-container": "#feb956",
+            "outline-variant": "#dec0b7",
+            "on-secondary-fixed-variant": "#633f00",
+            "surface-container": "#f0eded",
+            "tertiary-fixed-dim": "#c9c6c0",
+            "primary-fixed-dim": "#ffb59c",
+            "on-primary-fixed-variant": "#822801",
+            "surface-container-low": "#f6f3f2",
+            "on-background": "#1b1c1c",
+            "on-secondary-fixed": "#291800",
+            "tertiary": "#5d5c57",
+            "inverse-surface": "#303030",
+            "on-error-container": "#93000a",
+            "on-secondary": "#ffffff",
+            "secondary": "#835500",
+            "error-container": "#ffdad6",
+            "secondary-fixed": "#ffddb4",
+            "on-tertiary": "#ffffff",
+            "on-primary-container": "#fffbff",
+            "on-surface": "#1b1c1c",
+            "inverse-on-surface": "#f3f0f0",
+            "on-surface-variant": "#57423b"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-lg": "24px",
+            "margin": "20px",
+            "gutter": "16px",
+            "space-sm": "8px",
+            "space-md": "16px",
+            "space-xl": "32px",
+            "space-xs": "4px"
+          },
+          "fontFamily": {
+            "headline-sm": ["Plus Jakarta Sans"],
+            "body-sm": ["Plus Jakarta Sans"],
+            "headline-lg": ["Plus Jakarta Sans"],
+            "label-md": ["Plus Jakarta Sans"],
+            "label-sm": ["Plus Jakarta Sans"],
+            "headline-md": ["Plus Jakarta Sans"],
+            "body-md": ["Plus Jakarta Sans"],
+            "headline-lg-mobile": ["Plus Jakarta Sans"],
+            "body-lg": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+            "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+            "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+            "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+            "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen pb-24">
+<!-- Top App Bar -->
+<header class="bg-surface text-primary font-headline-sm text-headline-sm shadow-sm sticky top-0 z-40 flex justify-between items-center w-full px-gutter py-space-md">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">storefront</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">My Creations</h1>
+</div>
+<div class="flex items-center gap-space-sm">
+<button aria-label="Search listings" class="p-2 rounded-full hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-on-surface-variant">search</span>
+</button>
+<button aria-label="Add new listing" class="p-2 rounded-full bg-primary text-on-primary hover:bg-primary-container transition-all shadow-sm">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</header>
+<main class="px-gutter py-space-md space-y-space-lg max-w-lg mx-auto">
+<!-- Filter Tabs -->
+<div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+<button class="px-4 py-2 rounded-full bg-primary text-on-primary font-label-md text-label-md shadow-sm whitespace-nowrap">All (12)</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md hover:bg-surface-variant transition-all whitespace-nowrap">Active (8)</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md hover:bg-surface-variant transition-all whitespace-nowrap">Drafts (2)</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md hover:bg-surface-variant transition-all whitespace-nowrap">Sold Out (2)</button>
+</div>
+<!-- Product Listing Cards -->
+<div class="space-y-space-md">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm border border-outline-variant/30 flex flex-col gap-space-md">
+<div class="flex gap-space-md items-start">
+<div class="w-20 h-20 rounded-lg bg-cover bg-center shrink-0" data-alt="A detailed macro photograph of a handcrafted ceramic tea bowl with an organic ash glaze. The piece exhibits subtle earthy tones of warm terracotta and cream, placed on a rustic wooden studio workbench bathed in soft morning light. The composition highlights the tactile texture of thrown clay, minimal aesthetic, and artisanal precision." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCjJ1zNoq1c3mTf4OlEzbHc3dezuwDHTurse8LYyTzl9-9oeWDWEn9Sh-qMrEWjz54rWuPfpX509JYh4-fzqw3PIJPpiU86A73IScHDPBXPZqtCAIjV39cRW63WKP7Yr2o4ATrM-KFyu8mqgfDfLhB0n_BCgQR0iNQ3o6j3Wocbx_Bv_3S_fPnbbQ7vfUlb4Q1Z1qj7oubWQQjMHpowe10TNvkFwlu2m40UFQbUn5Swd6O9uzIzTCWhRw')"></div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-fixed text-on-primary-fixed">Active</span>
+<span class="text-xs text-on-surface-variant">ID: #CR-8921</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate mt-1">Handmade Ceramic Tea Bowl</h2>
+<p class="text-body-sm text-on-surface-variant mt-0.5">Stoneware Clay • Natural Ash Glaze</p>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-variant/50">
+<div>
+<span class="text-body-sm text-on-surface-variant">Stock: </span>
+<span class="font-label-md text-on-surface">4 units</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-body-sm text-on-surface-variant">Price:</span>
+<span class="font-headline-sm text-primary">$48.00</span>
+</div>
+</div>
+<div class="flex gap-2 pt-1">
+<button class="flex-1 py-2 px-3 rounded-lg bg-surface-container text-on-surface font-label-sm hover:bg-surface-variant transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-sm">edit</span> Edit Listing
+          </button>
+<button aria-label="Pause listing" class="py-2 px-3 rounded-lg bg-surface-container text-on-surface-variant font-label-sm hover:bg-surface-variant transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-sm">pause</span> Pause
+          </button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm border border-outline-variant/30 flex flex-col gap-space-md">
+<div class="flex gap-space-md items-start">
+<div class="w-20 h-20 rounded-lg bg-cover bg-center shrink-0" data-alt="A beautifully woven minimalist wall hanging textile art piece made from organic cotton and raw wool yarns. The color palette incorporates terracotta, cream, and soft beige. It is displayed against a textured lime-washed wall in a sunlit artisan studio, exuding calm, tactile warmth and modern craftsmanship." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBCQMz_NTlCxZ4mqri73tOHBpfnXtNemSHUyRJLDajcYInjzsLlYSjny_bSAxirUibdZEhTAgU5Farn1PQotkQnpbz-6Lni19W0mAh73cM1DJ7QWYG9u_WoIW-4syfv_EOVXHkO9me1VfDOryw861Hha44GJEkSYXtbeArXdBDyiQKFFNXVYT7h0BFoX84miNyh8g0PLNpuwhm_G6uWdy9z_JicJ9HsPLl0B-tA2tthIp9BsBQuic96pA')"></div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-fixed text-on-primary-fixed">Active</span>
+<span class="text-xs text-on-surface-variant">ID: #CR-8922</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate mt-1">Woven Wall Tapestry</h2>
+<p class="text-body-sm text-on-surface-variant mt-0.5">Organic Cotton • Raw Wool</p>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-variant/50">
+<div>
+<span class="text-body-sm text-on-surface-variant">Stock: </span>
+<span class="font-label-md text-on-surface">1 unit</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-body-sm text-on-surface-variant">Price:</span>
+<span class="font-headline-sm text-primary">$120.00</span>
+</div>
+</div>
+<div class="flex gap-2 pt-1">
+<button class="flex-1 py-2 px-3 rounded-lg bg-surface-container text-on-surface font-label-sm hover:bg-surface-variant transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-sm">edit</span> Edit Listing
+          </button>
+<button aria-label="Pause listing" class="py-2 px-3 rounded-lg bg-surface-container text-on-surface-variant font-label-sm hover:bg-surface-variant transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-sm">pause</span> Pause
+          </button>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm border border-outline-variant/30 flex flex-col gap-space-md">
+<div class="flex gap-space-md items-start">
+<div class="w-20 h-20 rounded-lg bg-cover bg-center shrink-0" data-alt="An artisanal hand-poured beeswax candle in a minimalist terracotta vessel, placed on a reclaimed wooden table. The warm ambient light reflects a cozy, serene atmosphere with soft shadows, emphasizing sustainable craft and mindful living design aesthetics." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBEPTp74LdQ7fO9x0a7tcZdr1zi716WOP2FlaSRm8EDAwKbn0TtvbBfDGgSUYWA7Yn6X4DerKKf5qbDCnSfUQ6UeJzocNtCX4Ng5dCH8xnewRSMXB5zDr7iN2TTVWX2cExMI9Nrx1Ulh-T7lMEucyB8_-fjH0N55h6QPPmMchO7ZO6JluniDehwh77KtW0DhImUmkDX0FBypdUf2TIWdTqYdhXx1GIwobtKStK6Nto4NVDGP5ZcgBe2fw')"></div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-variant text-on-surface-variant">Draft</span>
+<span class="text-xs text-on-surface-variant">ID: #CR-8923</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate mt-1">Beeswax Pillar Candle</h2>
+<p class="text-body-sm text-on-surface-variant mt-0.5">Pure Beeswax • Cotton Wick</p>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-variant/50">
+<div>
+<span class="text-body-sm text-on-surface-variant">Stock: </span>
+<span class="font-label-md text-on-surface">12 units</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-body-sm text-on-surface-variant">Price:</span>
+<span class="font-headline-sm text-primary">$24.00</span>
+</div>
+</div>
+<div class="flex gap-2 pt-1">
+<button class="flex-1 py-2 px-3 rounded-lg bg-primary text-on-primary font-label-sm hover:bg-primary-container transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-sm">publish</span> Publish
+          </button>
+<button aria-label="Edit listing" class="py-2 px-3 rounded-lg bg-surface-container text-on-surface-variant font-label-sm hover:bg-surface-variant transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm border border-outline-variant/30 flex flex-col gap-space-md opacity-80">
+<div class="flex gap-space-md items-start">
+<div class="w-20 h-20 rounded-lg bg-cover bg-center shrink-0" data-alt="A collection of hand-carved olive wood kitchen spoons and spatulas arranged neatly on a smooth stone countertop. The warm wood grain, natural textures, and organic shapes highlight sustainable woodworking and traditional culinary craft." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAJI18a2l4YpgCbYvqmyvR6-vOgd3FqxMb7Xyd7vcy3jFeQe_hRJMfZVVmfUsbFXEaro1D5WBdce1bEQCMTjX5QqpiD1cSjdTktnnZbdV7VwWAiQyEoIQaSiVfYB8CJKx6l1dhhR452fua9tye63oBrqc--RomCMX1Hv569H_9Q1CHTmyPWrQxTwRaBCsZXko4xkdZ702FhGWUB9Rkuywz6ZiLCFbbAzbU7YKb2y6xLYehVOCwQrCw6GQ')"></div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-error-container text-on-error-container">Sold Out</span>
+<span class="text-xs text-on-surface-variant">ID: #CR-8919</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate mt-1">Carved Olive Wood Spoon Set</h2>
+<p class="text-body-sm text-on-surface-variant mt-0.5">Mediterranean Olive Wood • Beeswax Finish</p>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-variant/50">
+<div>
+<span class="text-body-sm text-on-surface-variant">Stock: </span>
+<span class="font-label-md text-error">0 units</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-body-sm text-on-surface-variant">Price:</span>
+<span class="font-headline-sm text-primary">$35.00</span>
+</div>
+</div>
+<div class="flex gap-2 pt-1">
+<button class="flex-1 py-2 px-3 rounded-lg bg-surface-container text-on-surface font-label-sm hover:bg-surface-variant transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-sm">add_circle</span> Restock
+          </button>
+<button aria-label="Edit listing" class="py-2 px-3 rounded-lg bg-surface-container text-on-surface-variant font-label-sm hover:bg-surface-variant transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-space-sm bg-surface shadow-lg">
+<!-- Inactive Item 1 -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<!-- Inactive Item 2 -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-label-sm text-label-sm">Explore</span>
+</a>
+<!-- Inactive Item 3 -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">shopping_bag</span>
+<span class="font-label-sm text-label-sm">Cart</span>
+</a>
+<!-- Active Item (Profile / Seller Hub) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm font-bold">Profile</span>
+</a>
+</nav>
+</body></html>

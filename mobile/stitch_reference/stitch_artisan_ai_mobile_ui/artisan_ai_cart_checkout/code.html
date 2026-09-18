@@ -1,0 +1,295 @@
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Artisan-Ai - Cart &amp; Checkout</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+              "on-tertiary-container": "#fdffdd",
+              "outline": "#8a726a",
+              "secondary-container": "#feb956",
+              "surface-variant": "#e4e2e1",
+              "tertiary-fixed": "#e5e2db",
+              "tertiary": "#5d5c57",
+              "background": "#fcf9f8",
+              "on-tertiary-fixed": "#1c1c18",
+              "on-primary-container": "#fffbff",
+              "surface-container-highest": "#e4e2e1",
+              "surface-dim": "#dcd9d9",
+              "on-error": "#ffffff",
+              "on-secondary-container": "#734a00",
+              "primary-container": "#bf542c",
+              "surface-container-low": "#f6f3f2",
+              "secondary-fixed-dim": "#feb956",
+              "surface-bright": "#fcf9f8",
+              "tertiary-fixed-dim": "#c9c6c0",
+              "inverse-surface": "#303030",
+              "inverse-primary": "#ffb59c",
+              "surface-tint": "#a23e18",
+              "on-primary-fixed": "#390c00",
+              "on-tertiary-fixed-variant": "#474742",
+              "primary-fixed": "#ffdbcf",
+              "secondary": "#835500",
+              "on-secondary-fixed": "#291800",
+              "on-secondary-fixed-variant": "#633f00",
+              "on-surface-variant": "#57423b",
+              "on-tertiary": "#ffffff",
+              "surface": "#fcf9f8",
+              "error-container": "#ffdad6",
+              "on-background": "#1b1c1c",
+              "surface-container-high": "#eae7e7",
+              "primary": "#9f3c16",
+              "tertiary-container": "#76756f",
+              "secondary-fixed": "#ffddb4",
+              "outline-variant": "#dec0b7",
+              "on-primary-fixed-variant": "#822801",
+              "on-secondary": "#ffffff",
+              "inverse-on-surface": "#f3f0f0",
+              "error": "#ba1a1a",
+              "surface-container-lowest": "#ffffff",
+              "surface-container": "#f0eded",
+              "on-surface": "#1b1c1c",
+              "on-error-container": "#93000a",
+              "on-primary": "#ffffff",
+              "primary-fixed-dim": "#ffb59c"
+            },
+            "borderRadius": {
+              "DEFAULT": "0.25rem",
+              "lg": "0.5rem",
+              "xl": "0.75rem",
+              "full": "9999px"
+            },
+            "spacing": {
+              "gutter": "16px",
+              "space-lg": "24px",
+              "space-xl": "32px",
+              "space-sm": "8px",
+              "space-md": "16px",
+              "margin": "20px",
+              "space-xs": "4px"
+            },
+            "fontFamily": {
+              "headline-md": ["Plus Jakarta Sans"],
+              "body-sm": ["Plus Jakarta Sans"],
+              "body-md": ["Plus Jakarta Sans"],
+              "headline-sm": ["Plus Jakarta Sans"],
+              "headline-lg-mobile": ["Plus Jakarta Sans"],
+              "body-lg": ["Plus Jakarta Sans"],
+              "label-md": ["Plus Jakarta Sans"],
+              "label-sm": ["Plus Jakarta Sans"],
+              "headline-lg": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+              "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+              "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+              "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+              "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+              "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+              "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+              "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+              "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+              "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased pb-28 selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-40 bg-surface dark:bg-inverse-surface shadow-sm">
+<div class="flex justify-between items-center w-full px-gutter py-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-headline-sm" data-icon="storefront">storefront</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">Artisan-Ai</span>
+</div>
+<button aria-label="Search" class="p-space-xs rounded-full hover:bg-surface-container transition-all active:scale-95 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="max-w-md mx-auto px-gutter py-space-md flex flex-col gap-space-lg">
+<!-- Screen Header -->
+<div class="flex flex-col gap-space-xs">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Your Cart &amp; Checkout</h1>
+<p class="font-body-sm text-on-surface-variant">Review your curated handmade items and complete your acquisition securely.</p>
+</div>
+<!-- Cart Items Section -->
+<section class="flex flex-col gap-space-md">
+<div class="flex justify-between items-center">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Cart Items (2)</h2>
+<span class="font-label-sm text-primary cursor-pointer hover:underline">Clear all</span>
+</div>
+<div class="flex flex-col gap-space-md">
+<!-- Item 1 -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex gap-space-md items-center border border-outline-variant/30">
+<div class="w-20 h-20 rounded-lg bg-cover bg-center shrink-0 overflow-hidden" data-alt="A meticulously handcrafted terracotta vase with organic textures, set against a warm neutral background with soft natural lighting, capturing an authentic artisanal aesthetic in earthy tones of rust and clay." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA-317vcsrkvf-VzaO7rfj2zgSKKjud39bxRnzqJfQlyfNqpbIBHBuP06VzjrpJVQrhaLo-nxhCnQN5LIPlVPuX2i2PKNNeP-Fl-DatBk99iz9Z9XUK7ZfoNzpjm3vV3-l2okFFC5HmPGLwxoqAegXSM18K1cyyspBc57rq8G-GhwVjZMsW0Fab1Zfq_rKiwRPTggGrOo_-VZ3UT5KWAYIxVwJ8S2c0M67YWITsekGgnzNko0BdzULPNw')"></div>
+<div class="flex flex-col flex-1 gap-space-xs">
+<div class="flex justify-between items-start">
+<h3 class="font-headline-sm text-headline-sm text-on-surface leading-tight">Sylvan Terracotta Vase</h3>
+<button aria-label="Remove item" class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
+</button>
+</div>
+<p class="font-body-sm text-on-surface-variant">Hand-thrown clay, matte finish</p>
+<div class="flex justify-between items-center mt-2">
+<span class="font-headline-sm text-primary">$120.00</span>
+<div class="flex items-center gap-space-sm bg-surface-container px-2 py-1 rounded-full">
+<button aria-label="Decrease quantity" class="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[14px]" data-icon="remove">remove</span>
+</button>
+<span class="font-label-md text-on-surface px-1">1</span>
+<button aria-label="Increase quantity" class="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[14px]" data-icon="add">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex gap-space-md items-center border border-outline-variant/30">
+<div class="w-20 h-20 rounded-lg bg-cover bg-center shrink-0 overflow-hidden" data-alt="A modern ceramic vase with ember glazed gradients, photographed in a sunlit artisanal workshop with rich tactile detail, highlighting warm terracotta and charcoal accents." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA3v13wRfdyKcSnrjrVjTrrfUsJp0iGN95dHb1QAaheAxUwZNmfhCfWtuUa3CLMbc2xXQtL5_eHRTWxXrIn7XfcDPtHXodE-ULq9zrFyIU8TVtQJunCcV1-XXLPulgjNZ1WIRVFBkoiAUeqcS6kDRSHhi_dg_OtZ88T9K5tfk0RArUQ6AJnA6jh3o2g32Bj1YLxPJiA15Hqt3ARcyGsuNeMe8392Uu2RUgrSLFTOekIfcifOPN7guNDUQ')"></div>
+<div class="flex flex-col flex-1 gap-space-xs">
+<div class="flex justify-between items-start">
+<h3 class="font-headline-sm text-headline-sm text-on-surface leading-tight">Ember Glazed Vase</h3>
+<button aria-label="Remove item" class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
+</button>
+</div>
+<p class="font-body-sm text-on-surface-variant">Raku fired ceramic, unique glaze</p>
+<div class="flex justify-between items-center mt-2">
+<span class="font-headline-sm text-primary">$128.00</span>
+<div class="flex items-center gap-space-sm bg-surface-container px-2 py-1 rounded-full">
+<button aria-label="Decrease quantity" class="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[14px]" data-icon="remove">remove</span>
+</button>
+<span class="font-label-md text-on-surface px-1">1</span>
+<button aria-label="Increase quantity" class="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[14px]" data-icon="add">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Shipping Address Selector -->
+<section class="flex flex-col gap-space-md">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Shipping Address</h2>
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-outline-variant/30 flex flex-col gap-space-sm">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary" data-icon="location_on">location_on</span>
+<div>
+<h4 class="font-label-md text-on-surface">Elena Rostova</h4>
+<p class="font-body-sm text-on-surface-variant">742 Evergreen Terrace, Craft District, Portland, OR 97201</p>
+</div>
+</div>
+<button class="font-label-sm text-primary hover:underline">Change</button>
+</div>
+</div>
+</section>
+<!-- Payment Method Section -->
+<section class="flex flex-col gap-space-md">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Payment Method</h2>
+<div class="flex flex-col gap-space-sm">
+<!-- Credit Card Option -->
+<label class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-primary flex items-center justify-between cursor-pointer">
+<div class="flex items-center gap-space-md">
+<span class="material-symbols-outlined text-primary" data-icon="credit_card">credit_card</span>
+<div>
+<span class="font-label-md text-on-surface block">Credit Card</span>
+<span class="font-body-sm text-on-surface-variant">MasterCard ending in •••• 4892</span>
+</div>
+</div>
+<input checked="" class="text-primary focus:ring-primary h-4 w-4" name="payment" type="radio"/>
+</label>
+<!-- Apple Pay Option -->
+<label class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-outline-variant/30 flex items-center justify-between cursor-pointer">
+<div class="flex items-center gap-space-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="phone_iphone">phone_iphone</span>
+<div>
+<span class="font-label-md text-on-surface block">Apple Pay</span>
+<span class="font-body-sm text-on-surface-variant">Quick &amp; secure biometric pay</span>
+</div>
+</div>
+<input class="text-primary focus:ring-primary h-4 w-4" name="payment" type="radio"/>
+</label>
+<!-- Cash on Delivery Option -->
+<label class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-outline-variant/30 flex items-center justify-between cursor-pointer">
+<div class="flex items-center gap-space-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="payments">payments</span>
+<div>
+<span class="font-label-md text-on-surface block">Cash on Delivery</span>
+<span class="font-body-sm text-on-surface-variant">Pay upon doorstep inspection</span>
+</div>
+</div>
+<input class="text-primary focus:ring-primary h-4 w-4" name="payment" type="radio"/>
+</label>
+</div>
+</section>
+<!-- Order Summary Breakdown -->
+<section class="bg-surface-container-low p-space-lg rounded-xl flex flex-col gap-space-md">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Order Summary</h2>
+<div class="flex flex-col gap-space-sm font-body-md text-on-surface-variant">
+<div class="flex justify-between">
+<span>Subtotal</span>
+<span class="text-on-surface font-medium">$248.00</span>
+</div>
+<div class="flex justify-between">
+<span>Shipping</span>
+<span class="text-on-surface font-medium">$15.00</span>
+</div>
+<div class="flex justify-between">
+<span>Estimated Tax</span>
+<span class="text-on-surface font-medium">$19.84</span>
+</div>
+<div class="border-t border-outline-variant/30 pt-space-sm flex justify-between items-center text-on-surface">
+<span class="font-headline-sm">Total</span>
+<span class="font-headline-lg-mobile text-primary">$282.84</span>
+</div>
+</div>
+</section>
+<!-- Prominent CTA Button -->
+<button class="w-full bg-primary text-on-primary py-4 px-space-lg rounded-xl font-headline-sm text-center shadow-lg hover:bg-primary-container transition-all active:scale-95 flex items-center justify-center gap-space-sm">
+<span>Place Order • $282.84</span>
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-space-sm bg-surface dark:bg-inverse-surface shadow-lg">
+<!-- Home (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<!-- Explore (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="explore">explore</span>
+<span class="font-label-sm text-label-sm">Explore</span>
+</a>
+<!-- Cart (Active) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_bag" style="font-variation-settings: 'FILL' 1;">shopping_bag</span>
+<span class="font-label-sm text-label-sm">Cart</span>
+</a>
+<!-- Profile (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+</body></html>

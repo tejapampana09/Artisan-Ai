@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Artisan-Ai Order Confirmation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-tint": "#a23e18",
+            "inverse-surface": "#303030",
+            "tertiary-fixed-dim": "#c9c6c0",
+            "on-primary": "#ffffff",
+            "surface-dim": "#dcd9d9",
+            "on-primary-fixed-variant": "#822801",
+            "on-tertiary-fixed-variant": "#474742",
+            "surface-container-lowest": "#ffffff",
+            "surface-variant": "#e4e2e1",
+            "on-tertiary-container": "#fdffdd",
+            "secondary-fixed-dim": "#feb956",
+            "secondary-fixed": "#ffddb4",
+            "on-surface-variant": "#57423b",
+            "error-container": "#ffdad6",
+            "surface-container-high": "#eae7e7",
+            "on-error": "#ffffff",
+            "surface-bright": "#fcf9f8",
+            "on-error-container": "#93000a",
+            "primary": "#9f3c16",
+            "primary-container": "#bf542c",
+            "surface-container-highest": "#e4e2e1",
+            "surface-container": "#f0eded",
+            "outline-variant": "#dec0b7",
+            "surface": "#fcf9f8",
+            "error": "#ba1a1a",
+            "surface-container-low": "#f6f3f2",
+            "on-secondary-fixed": "#291800",
+            "tertiary-fixed": "#e5e2db",
+            "on-tertiary-fixed": "#1c1c18",
+            "on-surface": "#1b1c1c",
+            "secondary-container": "#feb956",
+            "primary-fixed-dim": "#ffb59c",
+            "secondary": "#835500",
+            "outline": "#8a726a",
+            "on-secondary-fixed-variant": "#633f00",
+            "inverse-on-surface": "#f3f0f0",
+            "on-background": "#1b1c1c",
+            "tertiary": "#5d5c57",
+            "on-primary-container": "#fffbff",
+            "on-tertiary": "#ffffff",
+            "on-secondary-container": "#734a00",
+            "background": "#fcf9f8",
+            "inverse-primary": "#ffb59c",
+            "on-primary-fixed": "#390c00",
+            "tertiary-container": "#76756f",
+            "on-secondary": "#ffffff",
+            "primary-fixed": "#ffdbcf"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-xl": "32px",
+            "space-sm": "8px",
+            "space-md": "16px",
+            "space-lg": "24px",
+            "gutter": "16px",
+            "space-xs": "4px",
+            "margin": "20px"
+          },
+          "fontFamily": {
+            "headline-sm": ["Plus Jakarta Sans"],
+            "headline-md": ["Plus Jakarta Sans"],
+            "headline-lg-mobile": ["Plus Jakarta Sans"],
+            "label-sm": ["Plus Jakarta Sans"],
+            "body-lg": ["Plus Jakarta Sans"],
+            "body-md": ["Plus Jakarta Sans"],
+            "label-md": ["Plus Jakarta Sans"],
+            "body-sm": ["Plus Jakarta Sans"],
+            "headline-lg": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+            "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+            "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+            "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+            "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased pb-28">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-inverse-surface shadow-sm sticky top-0 z-40 flex justify-between items-center w-full px-gutter py-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary" data-icon="storefront">storefront</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">Artisan-Ai</h1>
+</div>
+<button aria-label="Search" class="text-on-surface-variant hover:bg-surface-container p-2 rounded-full Active:scale-95 transition-all">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="max-w-md mx-auto px-gutter py-space-lg flex flex-col gap-space-lg">
+<!-- Success Badge & Heading -->
+<section class="flex flex-col items-center text-center mt-space-sm">
+<div class="w-20 h-20 rounded-full bg-secondary-container flex items-center justify-center shadow-lg mb-space-md relative">
+<div class="absolute inset-0 rounded-full bg-primary-fixed-dim opacity-40 animate-ping"></div>
+<span class="material-symbols-outlined text-on-secondary-container text-4xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-space-xs">Order Placed Successfully!</h2>
+<p class="font-body-md text-on-surface-variant max-w-xs">Thank you, Elena! Your handcrafted pieces are being prepared by Master Ramesh.</p>
+</section>
+<!-- Order Reference Details Card -->
+<section class="bg-surface-container-low rounded-xl p-space-md shadow-sm border border-outline-variant/30 flex flex-col gap-space-md">
+<div class="flex justify-between items-center pb-space-sm border-b border-outline-variant/20">
+<div>
+<span class="font-label-sm text-on-surface-variant block">Order Reference</span>
+<span class="font-headline-sm text-primary">#ART-84922</span>
+</div>
+<div class="text-right">
+<span class="font-label-sm text-on-surface-variant block">Date</span>
+<span class="font-body-sm text-on-surface">Oct 24, 2023</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-space-md">
+<div>
+<span class="font-label-sm text-on-surface-variant block mb-1">Estimated Delivery</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="local_shipping">local_shipping</span>
+<span class="font-body-md font-medium text-on-surface">Nov 04, 2023</span>
+</div>
+</div>
+<div>
+<span class="font-label-sm text-on-surface-variant block mb-1">Shipping Address</span>
+<p class="font-body-sm text-on-surface leading-tight">742 Evergreen Terrace, Apt 4B, Springfield</p>
+</div>
+</div>
+</section>
+<!-- Item Summary List -->
+<section class="flex flex-col gap-space-md">
+<h3 class="font-headline-sm text-on-surface">Purchased Items (2)</h3>
+<div class="flex flex-col gap-space-sm">
+<!-- Item 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex items-center gap-space-md border border-outline-variant/20">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center shrink-0" data-alt="A detailed close-up shot of a handcrafted Sylvan Terracotta Vase featuring organic earthy textures, warm terracotta clay finish, subtle hand-carved botanical patterns, displayed against a soft cream background with gentle warm lighting highlighting the artisanal craftsmanship." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD0TVCuQAatpdchraWLoyBTBiQ5tAmPn9BH9oTvp00c1N06dRNqQQNu3vhFFiGHf-xph2im470V0eVuCV1wNanQ4AOzQfKAQct6KeHSdPa2dXisTmQhNQIurW7YNiXootjF7uFipAGiAjunlBtg1_WlhBARj1qZSqCRc_wFTskYs3pnFlT-htUxZEIu3N4IdAVvF9_yNgqlOw4alHMou6n0aODc4L4RjYZNb5x26FBcGXq-itWSc91wRg')"></div>
+<div class="flex-1 min-w-0">
+<h4 class="font-headline-sm text-on-surface truncate">Sylvan Terracotta Vase</h4>
+<p class="font-body-sm text-on-surface-variant">Qty: 1 · Hand-thrown clay</p>
+</div>
+<div class="text-right">
+<span class="font-headline-sm text-primary">$128.00</span>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex items-center gap-space-md border border-outline-variant/20">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center shrink-0" data-alt="A detailed shot of an Ember Glazed Vase showcasing a rich gradient of amber, terracotta, and deep charcoal ceramic glaze with a glossy finish, captured in bright warm lighting on a minimalist wooden artisan studio surface." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD2VAjZekSi-iCRWpoQ-6ZJ-iCaPgfF70Aqu1wr8rAYsSJz76M-L3Zo0dEjOW_UY8iqKVmOrZcgPicgrKrGauusAujivAvaPFem7L6z7gIB1p_er0iB62SJq2Iqnh0GAgAZKmLb7uV5YNXhb19jZRmfeHh4LizDfoRb9OSQurdKoS6HH5wPgD8ZAcKNaxcaU8thu2br8vw9Y14U1mgsTtVUEdxQ7sz_xhi46r3cPXDCO6fJ97RSzPnAMA')"></div>
+<div class="flex-1 min-w-0">
+<h4 class="font-headline-sm text-on-surface truncate">Ember Glazed Vase</h4>
+<p class="font-body-sm text-on-surface-variant">Qty: 1 · Glazed ceramic</p>
+</div>
+<div class="text-right">
+<span class="font-headline-sm text-primary">$95.00</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Pricing Breakdown -->
+<section class="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-xs text-body-md text-on-surface-variant">
+<div class="flex justify-between">
+<span>Subtotal</span>
+<span class="text-on-surface">$223.00</span>
+</div>
+<div class="flex justify-between">
+<span>Master Artisan Shipping</span>
+<span class="text-on-surface">$15.00</span>
+</div>
+<div class="flex justify-between font-headline-sm text-on-surface pt-space-xs border-t border-outline-variant/20 mt-space-xs">
+<span>Total Paid</span>
+<span class="text-primary">$238.00</span>
+</div>
+</section>
+<!-- Action Buttons -->
+<section class="flex flex-col gap-space-md mt-space-sm">
+<button class="w-full bg-primary text-on-primary py-3 px-space-lg rounded-xl font-headline-sm shadow-md hover:bg-primary-container Active:scale-95 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="visibility">visibility</span>
+        View Order Status
+      </button>
+<button class="w-full bg-surface-container text-on-surface py-3 px-space-lg rounded-xl font-headline-sm hover:bg-surface-variant Active:scale-95 transition-all flex items-center justify-center gap-2 border border-outline-variant/40">
+<span class="material-symbols-outlined text-sm" data-icon="shopping_bag">shopping_bag</span>
+        Continue Shopping
+      </button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-space-sm bg-surface dark:bg-inverse-surface shadow-lg">
+<!-- Home Inactive -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary Active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<!-- Explore Inactive -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary Active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="explore">explore</span>
+<span class="font-label-sm text-label-sm">Explore</span>
+</a>
+<!-- Cart Active -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 Active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_bag" style="font-variation-settings: 'FILL' 1;">shopping_bag</span>
+<span class="font-label-sm text-label-sm font-semibold">Cart</span>
+</a>
+<!-- Profile Inactive -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary Active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+</body></html>

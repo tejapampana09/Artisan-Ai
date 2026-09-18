@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Artisan-Ai - My Orders</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "secondary": "#835500",
+            "surface-dim": "#dcd9d9",
+            "outline": "#8a726a",
+            "tertiary": "#5d5c57",
+            "inverse-on-surface": "#f3f0f0",
+            "tertiary-fixed-dim": "#c9c6c0",
+            "on-surface-variant": "#57423b",
+            "secondary-fixed-dim": "#feb956",
+            "on-tertiary-fixed-variant": "#474742",
+            "on-secondary-fixed-variant": "#633f00",
+            "surface-variant": "#e4e2e1",
+            "error-container": "#ffdad6",
+            "background": "#fcf9f8",
+            "on-error": "#ffffff",
+            "primary-container": "#bf542c",
+            "secondary-container": "#feb956",
+            "secondary-fixed": "#ffddb4",
+            "on-primary-fixed": "#390c00",
+            "tertiary-fixed": "#e5e2db",
+            "on-error-container": "#93000a",
+            "on-primary": "#ffffff",
+            "primary-fixed-dim": "#ffb59c",
+            "on-secondary-container": "#734a00",
+            "inverse-surface": "#303030",
+            "on-primary-container": "#fffbff",
+            "surface-container-low": "#f6f3f2",
+            "on-tertiary-fixed": "#1c1c18",
+            "surface-container": "#f0eded",
+            "surface-tint": "#a23e18",
+            "surface-container-high": "#eae7e7",
+            "on-primary-fixed-variant": "#822801",
+            "on-secondary-fixed": "#291800",
+            "surface-bright": "#fcf9f8",
+            "on-background": "#1b1c1c",
+            "on-tertiary": "#ffffff",
+            "surface-container-highest": "#e4e2e1",
+            "tertiary-container": "#76756f",
+            "on-surface": "#1b1c1c",
+            "primary-fixed": "#ffdbcf",
+            "surface-container-lowest": "#ffffff",
+            "on-secondary": "#ffffff",
+            "on-tertiary-container": "#fdffdd",
+            "surface": "#fcf9f8",
+            "outline-variant": "#dec0b7",
+            "primary": "#9f3c16",
+            "error": "#ba1a1a",
+            "inverse-primary": "#ffb59c"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-md": "16px",
+            "gutter": "16px",
+            "margin": "20px",
+            "space-lg": "24px",
+            "space-sm": "8px",
+            "space-xl": "32px",
+            "space-xs": "4px"
+          },
+          "fontFamily": {
+            "label-md": ["Plus Jakarta Sans"],
+            "headline-lg-mobile": ["Plus Jakarta Sans"],
+            "body-lg": ["Plus Jakarta Sans"],
+            "headline-sm": ["Plus Jakarta Sans"],
+            "headline-lg": ["Plus Jakarta Sans"],
+            "body-md": ["Plus Jakarta Sans"],
+            "label-sm": ["Plus Jakarta Sans"],
+            "body-sm": ["Plus Jakarta Sans"],
+            "headline-md": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+            "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+            "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+            "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+            "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+            "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen pb-24">
+<!-- TopAppBar Component -->
+<header class="sticky top-0 z-40 bg-surface dark:bg-inverse-surface shadow-sm">
+<div class="flex justify-between items-center w-full px-gutter py-space-md">
+<div class="flex items-center space-x-3">
+<button class="text-primary hover:bg-surface-container p-1 rounded-full transition-all active:scale-95">
+<span class="material-symbols-outlined">storefront</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">Artisan-Ai</h1>
+</div>
+<button class="text-on-surface-variant hover:bg-surface-container p-2 rounded-full transition-all active:scale-95">
+<span class="material-symbols-outlined">search</span>
+</button>
+</div>
+</header>
+<!-- Main Content Container -->
+<main class="px-gutter pt-space-md max-w-lg mx-auto">
+<!-- Screen Header -->
+<div class="mb-space-md">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background mb-space-xs">My Orders</h2>
+<p class="font-body-md text-on-surface-variant">Track your bespoke creations and handcrafted deliveries.</p>
+</div>
+<!-- Tabs Container -->
+<div class="flex space-x-2 border-b border-outline-variant mb-space-lg">
+<button class="pb-space-sm font-headline-sm text-headline-sm text-primary border-b-2 border-primary transition-all" id="tab-active" onclick="switchTab('active')">
+        Active Orders (2)
+      </button>
+<button class="pb-space-sm font-headline-sm text-headline-sm text-on-surface-variant hover:text-primary transition-all" id="tab-past" onclick="switchTab('past')">
+        Past Orders
+      </button>
+</div>
+<!-- Active Orders Section -->
+<div class="space-y-space-md" id="content-active">
+<!-- Order Card 1 (#ART-84922) -->
+<div class="bg-surface-container-low rounded-xl p-space-md shadow-sm border border-outline-variant/30 flex flex-col space-y-space-md">
+<div class="flex justify-between items-start">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Order ID</span>
+<h3 class="font-headline-sm text-headline-sm text-on-background">#ART-84922</h3>
+</div>
+<!-- Status Badge: In Transit -->
+<div class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full flex items-center space-x-1">
+<span class="material-symbols-outlined text-sm">local_shipping</span>
+<span class="font-label-sm text-label-sm font-semibold">In Transit</span>
+</div>
+</div>
+<!-- Item Row -->
+<div class="flex items-center space-x-space-md bg-surface-container-lowest p-space-sm rounded-lg">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center flex-shrink-0" data-alt="A detailed macro photograph of a handcrafted artisanal ceramic vase with rustic terracotta glaze and subtle earthy textures, showcased against a soft warm neutral background with gentle natural lighting highlighting its organic shape and refined craftsmanship." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBGImlbv-ixOE9Sz08PzwyAfZXgcuGMm5_7CA2-ZskozGqZ8xABVDIe-P4y6sE_RjgwWIQ6n_FnGTwttQ2IZZUCWwKp1GlEMoH791WMcr2QoDtvrc4qgjr-ij9HxeRRPAo4t1Sl2rCLEHOTfJyjPrAhavorrxm5tz51HnKGKzFSwtGW741nAAxHuoEooWiPono3DMtniEUDDs8oa_NfRe-ARuODof-2ktzW_Hih9S5QtthIu1C3IBjOXQ')"></div>
+<div class="flex-1 min-w-0">
+<h4 class="font-headline-sm text-headline-sm text-on-background truncate">Handmade Terracotta Vase</h4>
+<p class="font-body-sm text-on-surface-variant">Custom Glaze Finish • Qty: 1</p>
+<p class="font-body-sm text-primary font-medium mt-1">$148.00</p>
+</div>
+</div>
+<!-- Delivery estimate -->
+<div class="flex items-center text-on-surface-variant text-body-sm space-x-2">
+<span class="material-symbols-outlined text-base">event</span>
+<span>Estimated delivery: <strong class="text-on-background">Oct 24, 2023</strong></span>
+</div>
+<!-- Action Buttons -->
+<div class="flex space-x-space-sm pt-2 border-t border-outline-variant/20">
+<button class="flex-1 bg-primary text-on-primary py-2 px-4 rounded-lg font-label-md text-label-md flex items-center justify-center space-x-1 shadow-sm active:scale-95 transition-all">
+<span class="material-symbols-outlined text-sm">location_searching</span>
+<span>Track Order</span>
+</button>
+<button class="bg-surface-container-high text-on-surface hover:bg-surface-variant py-2 px-4 rounded-lg font-label-md text-label-md transition-all active:scale-95">
+            View Details
+          </button>
+</div>
+</div>
+<!-- Order Card 2 (#ART-83190) -->
+<div class="bg-surface-container-low rounded-xl p-space-md shadow-sm border border-outline-variant/30 flex flex-col space-y-space-md">
+<div class="flex justify-between items-start">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Order ID</span>
+<h3 class="font-headline-sm text-headline-sm text-on-background">#ART-83190</h3>
+</div>
+<!-- Status Badge: Processing -->
+<div class="bg-tertiary-fixed text-on-tertiary-fixed px-3 py-1 rounded-full flex items-center space-x-1">
+<span class="material-symbols-outlined text-sm">hourglass_top</span>
+<span class="font-label-sm text-label-sm font-semibold">Processing</span>
+</div>
+</div>
+<!-- Item Row -->
+<div class="flex items-center space-x-space-md bg-surface-container-lowest p-space-sm rounded-lg">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center flex-shrink-0" data-alt="A detailed product shot of a bespoke woven wool wall hanging featuring a minimalist geometric pattern in warm terracotta, cream, and charcoal tones, beautifully displayed against a textured lime-washed wall with soft diffused lighting." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAJxqxXqEc1afqCDQHRsUFKyPaONOoD1aRUTMkWlew3tz8qumDHAzKGmqWQ7uztqyDdiAcaO_TUzTtyzpJRMBdhdPnZFJrzMYN6aOuDUsnrBm3C484rebaYlLXjMCu9AlBmAddAw6f0dPLnsz3SmJOQMbWCu_IYFmCYs78nSfTzhOEvvENLnYDGMSTA505iwV00eFac6uYBZTwLFx5Cw-zayzZihfInIfjC3vsWdz_T7bogdfE53BYY2A')"></div>
+<div class="flex-1 min-w-0">
+<h4 class="font-headline-sm text-headline-sm text-on-background truncate">Woven Tapestry Wall Art</h4>
+<p class="font-body-sm text-on-surface-variant">Natural Fiber • Qty: 1</p>
+<p class="font-body-sm text-primary font-medium mt-1">$220.00</p>
+</div>
+</div>
+<!-- Delivery estimate -->
+<div class="flex items-center text-on-surface-variant text-body-sm space-x-2">
+<span class="material-symbols-outlined text-base">event</span>
+<span>Estimated crafting completion: <strong class="text-on-background">Oct 28, 2023</strong></span>
+</div>
+<!-- Action Buttons -->
+<div class="flex space-x-space-sm pt-2 border-t border-outline-variant/20">
+<button class="flex-1 bg-surface-container-high text-on-surface hover:bg-surface-variant py-2 px-4 rounded-lg font-label-md text-label-md transition-all active:scale-95">
+            View Details
+          </button>
+</div>
+</div>
+</div>
+<!-- Past Orders Section (Hidden by default) -->
+<div class="space-y-space-md hidden" id="content-past">
+<!-- Order Card 3 (#ART-81044 - Delivered) -->
+<div class="bg-surface-container-low rounded-xl p-space-md shadow-sm border border-outline-variant/30 flex flex-col space-y-space-md opacity-90">
+<div class="flex justify-between items-start">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Order ID</span>
+<h3 class="font-headline-sm text-headline-sm text-on-background">#ART-81044</h3>
+</div>
+<!-- Status Badge: Delivered -->
+<div class="bg-surface-container-high text-on-surface px-3 py-1 rounded-full flex items-center space-x-1 border border-outline-variant/40">
+<span class="material-symbols-outlined text-sm text-primary">check_circle</span>
+<span class="font-label-sm text-label-sm font-semibold">Delivered</span>
+</div>
+</div>
+<!-- Item Row -->
+<div class="flex items-center space-x-space-md bg-surface-container-lowest p-space-sm rounded-lg">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center flex-shrink-0" data-alt="A close-up studio shot of a handcrafted ceramic coffee mug with a speckled cream glaze and exposed terracotta base, set on a warm wooden tabletop with morning sunlight casting soft shadows." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBRRXktAR2uKWOEd0tVyrfbNQWAwI4v5U0OQjuW09XuGwXwWBymOGq2Jl2HjipOsnUPL4Mefvm73XJGNK4lCCwTpOcn3XiXEMPGrvubZVL0FNFa49978x8F3BUWff7Vtufmp-YBNWRgL_eCi2QVu5abahUGaQFqJp8F4OGBe4S8BPbqdHXbuomlWwoS1XuqObMF03-AkN4jxpocvdUYQdyDL8HerpgITyrb5aAYBM5qeo55Nx0hNXIG8g')"></div>
+<div class="flex-1 min-w-0">
+<h4 class="font-headline-sm text-headline-sm text-on-background truncate">Speckled Ceramic Mug Set</h4>
+<p class="font-body-sm text-on-surface-variant">Set of 4 • Qty: 1</p>
+<p class="font-body-sm text-primary font-medium mt-1">$85.00</p>
+</div>
+</div>
+<!-- Delivery estimate -->
+<div class="flex items-center text-on-surface-variant text-body-sm space-x-2">
+<span class="material-symbols-outlined text-base">done_all</span>
+<span>Delivered on <strong class="text-on-background">Sep 12, 2023</strong></span>
+</div>
+<!-- Action Buttons -->
+<div class="flex space-x-space-sm pt-2 border-t border-outline-variant/20">
+<button class="flex-1 bg-primary text-on-primary py-2 px-4 rounded-lg font-label-md text-label-md flex items-center justify-center space-x-1 shadow-sm active:scale-95 transition-all">
+<span class="material-symbols-outlined text-sm">refresh</span>
+<span>Reorder</span>
+</button>
+<button class="bg-surface-container-high text-on-surface hover:bg-surface-variant py-2 px-4 rounded-lg font-label-md text-label-md transition-all active:scale-95">
+            View Details
+          </button>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar Component (Profile Tab Active per instructions) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-space-sm bg-surface dark:bg-inverse-surface shadow-lg">
+<!-- Home Inactive -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<!-- Explore Inactive -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-label-sm text-label-sm">Explore</span>
+</a>
+<!-- Cart Inactive -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined">shopping_bag</span>
+<span class="font-label-sm text-label-sm">Cart</span>
+</a>
+<!-- Profile Active -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-95 transition-all shadow-sm" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+<!-- Simple Tab Interactivity Script -->
+<script>
+    function switchTab(tab) {
+      const activeTabBtn = document.getElementById('tab-active');
+      const pastTabBtn = document.getElementById('tab-past');
+      const activeContent = document.getElementById('content-active');
+      const pastContent = document.getElementById('content-past');
+
+      if (tab === 'active') {
+        activeTabBtn.className = "pb-space-sm font-headline-sm text-headline-sm text-primary border-b-2 border-primary transition-all";
+        pastTabBtn.className = "pb-space-sm font-headline-sm text-headline-sm text-on-surface-variant hover:text-primary transition-all";
+        activeContent.classList.remove('hidden');
+        pastContent.classList.add('hidden');
+      } else {
+        pastTabBtn.className = "pb-space-sm font-headline-sm text-headline-sm text-primary border-b-2 border-primary transition-all";
+        activeTabBtn.className = "pb-space-sm font-headline-sm text-headline-sm text-on-surface-variant hover:text-primary transition-all";
+        pastContent.classList.remove('hidden');
+        activeContent.classList.add('hidden');
+      }
+    }
+  </script>
+</body></html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Artisan-Ai - Product Detail</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "primary-fixed-dim": "#ffb59c",
+            "secondary-container": "#feb956",
+            "on-surface": "#1b1c1c",
+            "on-primary-fixed-variant": "#822801",
+            "surface-dim": "#dcd9d9",
+            "surface-container-low": "#f6f3f2",
+            "inverse-on-surface": "#f3f0f0",
+            "on-tertiary-fixed": "#1c1c18",
+            "surface-bright": "#fcf9f8",
+            "on-secondary-fixed-variant": "#633f00",
+            "on-tertiary": "#ffffff",
+            "on-tertiary-container": "#fdffdd",
+            "on-surface-variant": "#57423b",
+            "surface-container-high": "#eae7e7",
+            "on-background": "#1b1c1c",
+            "surface-container-highest": "#e4e2e1",
+            "error-container": "#ffdad6",
+            "on-tertiary-fixed-variant": "#474742",
+            "on-secondary-fixed": "#291800",
+            "primary-container": "#bf542c",
+            "surface-container": "#f0eded",
+            "surface": "#fcf9f8",
+            "surface-tint": "#a23e18",
+            "on-error-container": "#93000a",
+            "error": "#ba1a1a",
+            "tertiary": "#5d5c57",
+            "outline-variant": "#dec0b7",
+            "primary-fixed": "#ffdbcf",
+            "secondary-fixed-dim": "#feb956",
+            "on-primary": "#ffffff",
+            "primary": "#9f3c16",
+            "inverse-surface": "#303030",
+            "surface-variant": "#e4e2e1",
+            "tertiary-container": "#76756f",
+            "on-secondary-container": "#734a00",
+            "surface-container-lowest": "#ffffff",
+            "tertiary-fixed-dim": "#c9c6c0",
+            "secondary-fixed": "#ffddb4",
+            "secondary": "#835500",
+            "on-secondary": "#ffffff",
+            "on-primary-container": "#fffbff",
+            "on-primary-fixed": "#390c00",
+            "tertiary-fixed": "#e5e2db",
+            "background": "#fcf9f8",
+            "on-error": "#ffffff",
+            "inverse-primary": "#ffb59c",
+            "outline": "#8a726a"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "gutter": "16px",
+            "space-xs": "4px",
+            "space-md": "16px",
+            "space-xl": "32px",
+            "space-sm": "8px",
+            "space-lg": "24px",
+            "margin": "20px"
+          },
+          "fontFamily": {
+            "headline-lg-mobile": ["Plus Jakarta Sans"],
+            "headline-sm": ["Plus Jakarta Sans"],
+            "body-sm": ["Plus Jakarta Sans"],
+            "body-md": ["Plus Jakarta Sans"],
+            "headline-lg": ["Plus Jakarta Sans"],
+            "headline-md": ["Plus Jakarta Sans"],
+            "label-sm": ["Plus Jakarta Sans"],
+            "label-md": ["Plus Jakarta Sans"],
+            "body-lg": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+            "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+            "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+            "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased pb-28">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-40 bg-surface dark:bg-inverse-surface shadow-sm">
+<div class="flex justify-between items-center w-full px-gutter py-space-md">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-primary dark:text-inverse-primary" data-icon="storefront">storefront</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">Artisan-Ai</span>
+</div>
+<div class="flex items-center space-x-3">
+<button class="p-2 hover:bg-surface-container rounded-full active:scale-95 transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="px-gutter py-space-md max-w-xl mx-auto space-y-space-xl">
+<!-- High-Res Product Photo Gallery -->
+<section class="space-y-space-sm">
+<div class="w-full h-80 rounded-xl overflow-hidden shadow-md bg-surface-container-high relative">
+<div class="w-full h-full bg-cover bg-center" data-alt="A high-resolution studio photograph of a magnificent handmade terracotta vase, showcased against a neutral warm beige textured wall with soft natural lighting highlighting its porous clay texture and minimalist organic curves. The scene evokes a calm, grounded, tactile aesthetic characteristic of Artisan-Ai high-end handmade crafts." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC1z-ZOzkWAU0G1iUqqRQSLNmv6lp--12JFrjLkIRH9jX5G3pys-CfwBm5EOU9IRZj946okX43ze9m2mb-MHEnKDXuSkdvV38ldQzh1AZTLF-anW-EJokRMY88PcR0P82rNOsCpnSZNR_7fyINceQmGFnDPruzJU_ADARHdf2qc9XD_GGolUFLgX5JYYPolIjx6dq-Ke_HuPlARApoEFh2vPPOZq95HMNwEXQ45JezDZavi5Cs7ef_BDg')"></div>
+<button class="absolute top-4 right-4 p-2.5 rounded-full bg-surface/80 backdrop-blur-md text-primary shadow-sm hover:bg-surface transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="favorite" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+</div>
+<div class="grid grid-cols-3 gap-3">
+<div class="h-20 rounded-lg overflow-hidden border-2 border-primary cursor-pointer shadow-sm">
+<div class="w-full h-full bg-cover bg-center" data-alt="A detailed close-up product photograph of the handmade terracotta vase showing the intricate hand-carved earthy patterns and natural clay finish under warm directional lighting, maintaining a cohesive minimalist lifestyle aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDiQwG4Ns-okdBUcpFy3pT6Yjo_cQx31ntKbJSVbvRVf0RXf2pMsK7sDoWCN-JQQcWTq7KXFpKH-36cYCkdGeYQAT3dXTLw61sFSLYsJIs_qfSsyKFYr4rBIlqTkpA3Z-_vlOFMhXr8Hl-qS-1gHgwfr3GRxHUDEfSWIVb-qndbr4r1P3stdQ5caNWcVSwJGMTmH0tygAzKFRr63y7iggNKjudTnTYpXUAvJ5xKK3nUs7KwhdSQNRXFZw')"></div>
+</div>
+<div class="h-20 rounded-lg overflow-hidden opacity-70 hover:opacity-100 cursor-pointer transition-opacity border border-outline-variant">
+<div class="w-full h-full bg-cover bg-center" data-alt="An angled studio shot of the artisan terracotta vase displaying its elegant silhouette and textured surface, set against a soft creamy background with gentle shadows." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCRRyLaiHkePHYnByVg5ucz2rUXe_ejRIh9HuWjRu5gQ7iGH95bUPsj5Z8PS400ErvajCwOcWtFa5Nhp9P0lX6Un7dianu12Eq24ZEeXYD02rahCH9bHXpKEdtEstbn140JAbDiIxXQcoUi3h3fu_VD4IEeIoLA20am9rM9ENxpcEYh8BAgMDmy12rCGXzA-piO6VqJn7JtdweDwIpLl0l9aRs0r5HqAoPmtnEO4HtvNzRG-KwJM6_kxw')"></div>
+</div>
+<div class="h-20 rounded-lg overflow-hidden opacity-70 hover:opacity-100 cursor-pointer transition-opacity border border-outline-variant">
+<div class="w-full h-full bg-cover bg-center" data-alt="A lifestyle product photo featuring the handmade terracotta vase placed on a rustic wooden console table with minimal dried botanicals, illuminated by soft morning light." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAfTrohTYcrZ_1FEPPePvGNNfUwdtEK5haD-tyFhLc8jjvZa1EtNxckSBOXgOzj4qaeFfbMKZ2FvFUmGhNsxTTL8TTyJKgNKD1CQHp354n--BrmuzvC0rwIsNb_2VM_SQmLxU_gDZdmq7Wl0uwyHGrZ33Rib2552cMYOtJipYWFFmnS__ZT04WTSEvm0yOytgfmGAleggGnMIsPGm-fGMxcv5H3zMSGFrJeLvdLIRuEwI8AVU05ek9DQw')"></div>
+</div>
+</div>
+</section>
+<!-- Product Header & Price -->
+<section class="space-y-space-xs">
+<div class="flex justify-between items-start">
+<div>
+<span class="text-xs uppercase tracking-wider text-outline font-label-sm">Handcrafted Ceramic</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mt-1">Sylvan Terracotta Vase</h1>
+</div>
+<div class="text-right">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold">$120</span>
+</div>
+</div>
+<div class="flex items-center space-x-1 text-sm text-on-surface-variant pt-1">
+<div class="flex text-secondary-container">
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star_half" style="font-variation-settings: 'FILL' 1;">star_half</span>
+</div>
+<span class="font-label-sm text-on-surface">(4.8 / 42 reviews)</span>
+</div>
+</section>
+<!-- Quantity & Actions Section -->
+<section class="bg-surface-container-low p-space-md rounded-xl space-y-space-md border border-outline-variant/30 shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-on-surface">Quantity</span>
+<div class="flex items-center bg-surface border border-outline-variant rounded-lg overflow-hidden">
+<button class="px-3 py-1 text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="remove">remove</span>
+</button>
+<span class="px-4 font-headline-sm text-on-surface">1</span>
+<button class="px-3 py-1 text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<button class="w-full py-3 px-4 bg-surface-container border border-outline text-primary font-label-md rounded-xl hover:bg-surface-container-high transition-all active:scale-95 flex items-center justify-center space-x-2 shadow-sm">
+<span class="material-symbols-outlined text-sm" data-icon="shopping_bag">shopping_bag</span>
+<span>Add to Cart</span>
+</button>
+<button class="w-full py-3 px-4 bg-primary text-on-primary font-label-md rounded-xl hover:bg-primary-container transition-all active:scale-95 flex items-center justify-center space-x-2 shadow-md">
+<span class="material-symbols-outlined text-sm" data-icon="bolt">bolt</span>
+<span>Buy Now</span>
+</button>
+</div>
+</section>
+<!-- Artisan Story Section -->
+<section class="bg-surface-container-low rounded-xl p-space-lg space-y-space-md border border-outline-variant/30 shadow-sm">
+<div class="flex items-center space-x-3">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-container-high">
+<div class="w-full h-full bg-cover bg-center" data-alt="An intimate portrait of master artisan Ramesh working in his traditional clay studio in Rajasthan, smiling warmly while shaping pottery on a traditional wheel with soft natural light." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD0HJSqMN-FzlHubYaEugTsq_7-Y8eyGuD89-JYjOazIfQzb9iKXqkCSoY6jkNtGX2pm8TWWeKj_r6mP2bgE_oRGYdABLHBxshsPY_zwKeNc1uA_2o8i_Ll-0uSiTt0FRGm-51bkiMLyyXd0VO-ABHtMroBHnu7rVbBzVP5uRO2_nmKlTR-CBuNCQdNZ1dTVJxNOoK99f-ZHq1_iawZ0T4eCzo5PvwCVMR27yrby194tEZyT0kWIY2H6g')"></div>
+</div>
+<div>
+<span class="text-xs text-primary font-label-sm uppercase tracking-wider">Master Artisan</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Crafted by Master Ramesh in Rajasthan</h3>
+</div>
+</div>
+<p class="font-body-md text-on-surface-variant leading-relaxed">
+        Each vase is individually hand-thrown using locally sourced terracotta clay from the riverbeds of Rajasthan. Master Ramesh brings over 35 years of generational expertise, blending ancient pottery techniques with contemporary minimalist design to create an authentic tactile masterpiece for your home.
+      </p>
+</section>
+<!-- Material Details -->
+<section class="space-y-space-sm">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Material & Specifications</h3>
+<div class="bg-surface-container-low rounded-xl p-space-md divide-y divide-outline-variant/30 border border-outline-variant/30">
+<div class="flex justify-between py-2.5">
+<span class="text-on-surface-variant font-body-sm">Material</span>
+<span class="text-on-surface font-label-md">Natural Terracotta Clay</span>
+</div>
+<div class="flex justify-between py-2.5">
+<span class="text-on-surface-variant font-body-sm">Dimensions</span>
+<span class="text-on-surface font-label-md">12" Height x 8" Diameter</span>
+</div>
+<div class="flex justify-between py-2.5">
+<span class="text-on-surface-variant font-body-sm">Finish</span>
+<span class="text-on-surface font-label-md">Matte porous natural clay</span>
+</div>
+<div class="flex justify-between py-2.5">
+<span class="text-on-surface-variant font-body-sm">Origin</span>
+<span class="text-on-surface font-label-md">Jaipur, India</span>
+</div>
+</div>
+</section>
+<!-- Customer Reviews -->
+<section class="space-y-space-md">
+<div class="flex justify-between items-center">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Customer Reviews</h3>
+<button class="text-primary font-label-sm hover:underline">View All</button>
+</div>
+<div class="space-y-space-md">
+<div class="bg-surface-container-low p-space-md rounded-xl space-y-2 border border-outline-variant/30">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-on-surface">Elena Rostova</span>
+<div class="flex text-secondary-container">
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+<p class="font-body-sm text-on-surface-variant">The texture and weight of this vase are incredible. You can truly feel the artisanal care put into every inch. It anchors our living room decor beautifully.</p>
+<span class="text-xs text-outline font-body-sm">2 days ago</span>
+</div>
+<div class="bg-surface-container-low p-space-md rounded-xl space-y-2 border border-outline-variant/30">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-on-surface">Marcus Chen</span>
+<div class="flex text-secondary-container">
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+<p class="font-body-sm text-on-surface-variant">Stunning craftsmanship! Shipping was secure and fast. Master Ramesh's story makes owning this piece feel truly special.</p>
+<span class="text-xs text-outline font-body-sm">1 week ago</span>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-space-sm bg-surface dark:bg-inverse-surface shadow-lg">
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="explore">explore</span>
+<span class="font-label-sm text-label-sm">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-label-sm text-label-sm">Cart</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Artisan-Ai - Account &amp; App Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "secondary": "#835500",
+            "surface-dim": "#dcd9d9",
+            "outline": "#8a726a",
+            "tertiary": "#5d5c57",
+            "inverse-on-surface": "#f3f0f0",
+            "tertiary-fixed-dim": "#c9c6c0",
+            "on-surface-variant": "#57423b",
+            "secondary-fixed-dim": "#feb956",
+            "on-tertiary-fixed-variant": "#474742",
+            "on-secondary-fixed-variant": "#633f00",
+            "surface-variant": "#e4e2e1",
+            "error-container": "#ffdad6",
+            "background": "#fcf9f8",
+            "on-error": "#ffffff",
+            "primary-container": "#bf542c",
+            "secondary-container": "#feb956",
+            "secondary-fixed": "#ffddb4",
+            "on-primary-fixed": "#390c00",
+            "tertiary-fixed": "#e5e2db",
+            "on-error-container": "#93000a",
+            "on-primary": "#ffffff",
+            "primary-fixed-dim": "#ffb59c",
+            "on-secondary-container": "#734a00",
+            "inverse-surface": "#303030",
+            "on-primary-container": "#fffbff",
+            "surface-container-low": "#f6f3f2",
+            "on-tertiary-fixed": "#1c1c18",
+            "surface-container": "#f0eded",
+            "surface-tint": "#a23e18",
+            "surface-container-high": "#eae7e7",
+            "on-primary-fixed-variant": "#822801",
+            "on-secondary-fixed": "#291800",
+            "surface-bright": "#fcf9f8",
+            "on-background": "#1b1c1c",
+            "on-tertiary": "#ffffff",
+            "surface-container-highest": "#e4e2e1",
+            "tertiary-container": "#76756f",
+            "on-surface": "#1b1c1c",
+            "primary-fixed": "#ffdbcf",
+            "surface-container-lowest": "#ffffff",
+            "on-secondary": "#ffffff",
+            "on-tertiary-container": "#fdffdd",
+            "surface": "#fcf9f8",
+            "outline-variant": "#dec0b7",
+            "primary": "#9f3c16",
+            "error": "#ba1a1a",
+            "inverse-primary": "#ffb59c"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-md": "16px",
+            "gutter": "16px",
+            "margin": "20px",
+            "space-lg": "24px",
+            "space-sm": "8px",
+            "space-xl": "32px",
+            "space-xs": "4px"
+          },
+          "fontFamily": {
+            "label-md": ["Plus Jakarta Sans"],
+            "headline-lg-mobile": ["Plus Jakarta Sans"],
+            "body-lg": ["Plus Jakarta Sans"],
+            "headline-sm": ["Plus Jakarta Sans"],
+            "headline-lg": ["Plus Jakarta Sans"],
+            "body-md": ["Plus Jakarta Sans"],
+            "label-sm": ["Plus Jakarta Sans"],
+            "body-sm": ["Plus Jakarta Sans"],
+            "headline-md": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+            "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+            "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+            "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+            "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+            "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased selection:bg-primary-container selection:text-on-primary-container pb-28">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-40 bg-surface dark:bg-inverse-surface shadow-sm">
+<div class="flex justify-between items-center w-full px-gutter py-space-md">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="storefront">storefront</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">Account &amp; App Settings</h1>
+</div>
+<button aria-label="Search settings" class="p-2 rounded-full hover:bg-surface-container transition-all active:scale-95 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="max-w-md mx-auto px-gutter py-space-lg space-y-space-lg">
+<!-- Profile Header Card -->
+<div class="bg-surface-container-low p-space-md rounded-xl shadow-sm flex items-center gap-4">
+<div class="w-16 h-16 rounded-full bg-surface-variant bg-cover bg-center flex-shrink-0 overflow-hidden relative" data-alt="A warm, earthy portrait of a professional artisan creator with gentle lighting, soft terracotta and cream color tones, showcasing a calm and welcoming atmosphere inside a sunlit ceramic studio." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCnyrR8MTmLHx3sm6wlS0qyAlC1kQCwtj7MensGZVaV4sZPdc8k703euz2zyaSpZR1pTb1Tr3SqBm-E5FzkcWZTPP5SCIQk2ncQHjqc-5pDj7RcuhOS9RTYLWj1q593uQiCEYikfGfItIt0gk5ZlQ7krbveMFty6l9nlQFNLLMBET_x9E4GoQ4bnGhIHg1-psgO9l6q8G5Efn4heAkQNHks3iIUaAqMud7U-YXNfgxdg1LvuolfP-ezDw')">
+</div>
+<div class="flex-1 min-w-0">
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate">Eleanor Vance</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">eleanor.crafts@artisan.ai</p>
+<span class="inline-block mt-1 px-2.5 py-0.5 bg-secondary-fixed text-on-secondary-fixed-variant rounded-full font-label-sm text-label-sm">Pro Creator</span>
+</div>
+</div>
+<!-- Section 1: Account & Profile -->
+<div class="space-y-space-sm">
+<h3 class="font-headline-sm text-headline-sm text-on-surface-variant px-1">Account</h3>
+<div class="bg-surface-container-low rounded-xl overflow-hidden shadow-sm divide-y divide-surface-container">
+<a class="flex items-center justify-between p-space-md hover:bg-surface-container transition-colors active:scale-[0.99]" href="#account">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="person">person</span>
+<span class="font-body-lg text-body-lg text-on-surface">Account Information</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-space-md hover:bg-surface-container transition-colors active:scale-[0.99]" href="#shipping">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="local_shipping">local_shipping</span>
+<span class="font-body-lg text-body-lg text-on-surface">Shipping Addresses</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-space-md hover:bg-surface-container transition-colors active:scale-[0.99]" href="#payment">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="credit_card">credit_card</span>
+<span class="font-body-lg text-body-lg text-on-surface">Payment Methods</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Section 2: Preferences & App -->
+<div class="space-y-space-sm">
+<h3 class="font-headline-sm text-headline-sm text-on-surface-variant px-1">Preferences</h3>
+<div class="bg-surface-container-low rounded-xl overflow-hidden shadow-sm divide-y divide-surface-container">
+<a class="flex items-center justify-between p-space-md hover:bg-surface-container transition-colors active:scale-[0.99]" href="#notifications">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="notifications">notifications</span>
+<span class="font-body-lg text-body-lg text-on-surface">Notifications</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-space-md hover:bg-surface-container transition-colors active:scale-[0.99]" href="#currency">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="payments">payments</span>
+<span class="font-body-lg text-body-lg text-on-surface">Currency &amp; Region</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant">USD ($)</span>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</div>
+</a>
+<!-- Dark/Light Mode Toggle Item -->
+<div class="flex items-center justify-between p-space-md hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="dark_mode">dark_mode</span>
+<span class="font-body-lg text-body-lg text-on-surface">Dark/Light Mode</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" id="theme-toggle" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-outline after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+<!-- Section 3: Security & Support -->
+<div class="space-y-space-sm">
+<h3 class="font-headline-sm text-headline-sm text-on-surface-variant px-1">Support &amp; Privacy</h3>
+<div class="bg-surface-container-low rounded-xl overflow-hidden shadow-sm divide-y divide-surface-container">
+<a class="flex items-center justify-between p-space-md hover:bg-surface-container transition-colors active:scale-[0.99]" href="#privacy">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="lock">lock</span>
+<span class="font-body-lg text-body-lg text-on-surface">Privacy &amp; Security</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-space-md hover:bg-surface-container transition-colors active:scale-[0.99]" href="#help">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="help">help</span>
+<span class="font-body-lg text-body-lg text-on-surface">Help &amp; Support</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Sign Out Action -->
+<div class="pt-space-sm">
+<button class="w-full py-3 px-space-md rounded-xl bg-error-container text-on-error-container font-headline-sm text-headline-sm flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.99]">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+        Sign Out
+      </button>
+<p class="text-center font-body-sm text-body-sm text-on-surface-variant mt-3">Artisan-Ai v2.4.1 (Craft Edition)</p>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-space-sm bg-surface dark:bg-inverse-surface shadow-lg">
+<!-- Inactive Item: Home -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm mt-1">Home</span>
+</a>
+<!-- Inactive Item: Explore -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="explore">explore</span>
+<span class="font-label-sm text-label-sm mt-1">Explore</span>
+</a>
+<!-- Inactive Item: Cart -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-label-sm text-label-sm mt-1">Cart</span>
+</a>
+<!-- Active Item: Profile -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm mt-1">Profile</span>
+</a>
+</nav>
+<script>
+    // Simple toggle interactivity for theme checkbox
+    const themeToggle = document.getElementById('theme-toggle');
+    themeToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    });
+  </script>
+</body></html>

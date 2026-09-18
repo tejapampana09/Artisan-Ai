@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Artisan AI",
+    "slug": "artisan-ai-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "artisanai",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/clean-logo-mark.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FBF8F3"
+    },
+    "android": {
+      "package": "com.artisanai.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F8F2E8"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-image-picker",
+      "expo-audio",
+      "expo-font",
+      "expo-asset",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

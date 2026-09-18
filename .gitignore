@@ -16,6 +16,20 @@ frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 
+# Mobile / React Native / Expo
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/android/.gradle/
+mobile/android/.kotlin/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/app/.cxx/
+mobile/android/local.properties
+mobile/*.jks
+mobile/*.keystore
+!mobile/android/app/debug.keystore
+
 # Logs & Environment
 *.log
 .env
@@ -28,5 +42,6 @@ git.cmd
 scratch_*
 cf_*.json
 *.apk
+
 
 

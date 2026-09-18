@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Artisan Companion - Artisan-Ai</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "secondary": "#835500",
+            "surface-dim": "#dcd9d9",
+            "outline": "#8a726a",
+            "tertiary": "#5d5c57",
+            "inverse-on-surface": "#f3f0f0",
+            "tertiary-fixed-dim": "#c9c6c0",
+            "on-surface-variant": "#57423b",
+            "secondary-fixed-dim": "#feb956",
+            "on-tertiary-fixed-variant": "#474742",
+            "on-secondary-fixed-variant": "#633f00",
+            "surface-variant": "#e4e2e1",
+            "error-container": "#ffdad6",
+            "background": "#fcf9f8",
+            "on-error": "#ffffff",
+            "primary-container": "#bf542c",
+            "secondary-container": "#feb956",
+            "secondary-fixed": "#ffddb4",
+            "on-primary-fixed": "#390c00",
+            "tertiary-fixed": "#e5e2db",
+            "on-error-container": "#93000a",
+            "on-primary": "#ffffff",
+            "primary-fixed-dim": "#ffb59c",
+            "on-secondary-container": "#734a00",
+            "inverse-surface": "#303030",
+            "on-primary-container": "#fffbff",
+            "surface-container-low": "#f6f3f2",
+            "on-tertiary-fixed": "#1c1c18",
+            "surface-container": "#f0eded",
+            "surface-tint": "#a23e18",
+            "surface-container-high": "#eae7e7",
+            "on-primary-fixed-variant": "#822801",
+            "on-secondary-fixed": "#291800",
+            "surface-bright": "#fcf9f8",
+            "on-background": "#1b1c1c",
+            "on-tertiary": "#ffffff",
+            "surface-container-highest": "#e4e2e1",
+            "tertiary-container": "#76756f",
+            "on-surface": "#1b1c1c",
+            "primary-fixed": "#ffdbcf",
+            "surface-container-lowest": "#ffffff",
+            "on-secondary": "#ffffff",
+            "on-tertiary-container": "#fdffdd",
+            "surface": "#fcf9f8",
+            "outline-variant": "#dec0b7",
+            "primary": "#9f3c16",
+            "error": "#ba1a1a",
+            "inverse-primary": "#ffb59c"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-md": "16px",
+            "gutter": "16px",
+            "margin": "20px",
+            "space-lg": "24px",
+            "space-sm": "8px",
+            "space-xl": "32px",
+            "space-xs": "4px"
+          },
+          "fontFamily": {
+            "label-md": ["Plus Jakarta Sans"],
+            "headline-lg-mobile": ["Plus Jakarta Sans"],
+            "body-lg": ["Plus Jakarta Sans"],
+            "headline-sm": ["Plus Jakarta Sans"],
+            "headline-lg": ["Plus Jakarta Sans"],
+            "body-md": ["Plus Jakarta Sans"],
+            "label-sm": ["Plus Jakarta Sans"],
+            "body-sm": ["Plus Jakarta Sans"],
+            "headline-md": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+            "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+            "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+            "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+            "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+            "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col pb-24">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-inverse-surface shadow-sm sticky top-0 z-40 flex justify-between items-center w-full px-gutter py-space-md">
+<div class="flex items-center space-x-3">
+<button aria-label="Go back" class="text-primary hover:bg-surface-container p-2 rounded-full transition-all active:scale-95">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-primary" data-icon="storefront" style="font-variation-settings: 'FILL' 1;">storefront</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">Artisan-Ai</h1>
+</div>
+</div>
+<div class="flex items-center space-x-1">
+<button aria-label="Information" class="text-on-surface-variant hover:bg-surface-container p-2 rounded-full transition-all active:scale-95">
+<span class="material-symbols-outlined">info</span>
+</button>
+<button aria-label="Search" class="text-on-surface-variant hover:bg-surface-container p-2 rounded-full transition-all active:scale-95">
+<span class="material-symbols-outlined">search</span>
+</button>
+</div>
+</header>
+<!-- Main Chat Content Container -->
+<main class="flex-1 w-full max-w-xl mx-auto px-gutter py-space-md flex flex-col space-y-space-lg">
+<!-- Date Divider -->
+<div class="flex justify-center my-2">
+<span class="bg-surface-container px-3 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant">Today</span>
+</div>
+<!-- AI Greeting Message -->
+<div class="flex items-end space-x-2 max-w-[85%]">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center flex-shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-sm">smart_toy</span>
+</div>
+<div class="bg-surface-container-low p-4 rounded-xl rounded-bl-sm shadow-sm border border-outline-variant/30 flex flex-col space-y-2">
+<p class="font-body-md text-on-surface">Hello! I'm your Artisan Companion. I can help you design custom pottery pieces, explore organic glaze recipes, or track your handcrafted orders. What are we creating today?</p>
+<span class="font-body-sm text-on-surface-variant text-right">10:42 AM</span>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex items-end justify-end space-x-2 self-end max-w-[85%]">
+<div class="bg-primary-container text-on-primary-container p-4 rounded-xl rounded-br-sm shadow-sm flex flex-col space-y-2">
+<p class="font-body-md text-on-primary-container">I'm looking to commission a custom terracotta vase with an earthy textured finish and ribbed neck. Can we discuss material options?</p>
+<span class="font-body-sm text-on-primary-container/80 text-right">10:44 AM</span>
+</div>
+<div class="w-8 h-8 rounded-full bg-secondary text-on-secondary flex items-center justify-center flex-shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-sm">person</span>
+</div>
+</div>
+<!-- AI Expert Response with Embedded Product Suggestion -->
+<div class="flex items-end space-x-2 max-w-[90%]">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center flex-shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-sm">smart_toy</span>
+</div>
+<div class="bg-surface-container-low p-4 rounded-xl rounded-bl-sm shadow-sm border border-outline-variant/30 flex flex-col space-y-3">
+<p class="font-body-md text-on-surface">That sounds like a wonderful project! For an organic, earthy textured finish, I highly recommend using a grogged red earthenware clay body paired with a semi-matte white tin glaze that breaks to warm terracotta tones along the ribbed edges.</p>
+<!-- Card Asset inside chat -->
+<div class="bg-surface rounded-lg p-3 border border-outline-variant/50 flex items-center space-x-3">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center flex-shrink-0" data-alt="Close-up photograph of a handmade ceramic vase showcasing textured terracotta clay and natural cream glaze highlights, set against a warm neutral studio background with soft natural side lighting." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCGkhlppV13aaMngfSjIx0U5Ar-FIDO1Vk2tWrjQJ9RhwHHlEUUj1I1wyg7MYzlaDEMiQp-PxwBrEVgeCHm-vAUX9DmJebMCFsgOrAR4CRoYBF6aYssSaupfFgVDLbOOlGVebAbZ83pOjbX3c1muoCLXUw1ICYd0tfzMDyWFvbkuQcrvKGhqME0xvI7zWC4tqhc6SNNQ5HyZPHzAhIyBdSn3qsU5gatNJnO0lGo6UiDvERpQpzJIcuhYQ')"></div>
+<div class="flex-1">
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Ribbed Earthenware Study</h4>
+<p class="font-body-sm text-on-surface-variant">Custom Material Profile #A-402</p>
+</div>
+<button class="bg-secondary text-on-secondary p-2 rounded-lg hover:opacity-90 transition-all active:scale-95">
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<span class="font-body-sm text-on-surface-variant text-right">10:46 AM</span>
+</div>
+</div>
+<!-- User Follow-up -->
+<div class="flex items-end justify-end space-x-2 self-end max-w-[85%]">
+<div class="bg-primary-container text-on-primary-container p-4 rounded-xl rounded-br-sm shadow-sm flex flex-col space-y-2">
+<p class="font-body-md text-on-primary-container">That glaze combination is gorgeous. How do I proceed with ordering this custom piece?</p>
+<span class="font-body-sm text-on-primary-container/80 text-right">10:48 AM</span>
+</div>
+<div class="w-8 h-8 rounded-full bg-secondary text-on-secondary flex items-center justify-center flex-shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-sm">person</span>
+</div>
+</div>
+<!-- AI Typing Indicator / Response -->
+<div class="flex items-end space-x-2 max-w-[85%]">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center flex-shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-sm">smart_toy</span>
+</div>
+<div class="bg-surface-container-low p-4 rounded-xl rounded-bl-sm shadow-sm border border-outline-variant/30 flex flex-col space-y-2">
+<p class="font-body-md text-on-surface">I can instantly generate a secure commission specification form for you right here. Would you like me to lock in these material choices?</p>
+<span class="font-body-sm text-on-surface-variant text-right">10:49 AM</span>
+</div>
+</div>
+</main>
+<!-- Suggested Quick Chips Container -->
+<div class="fixed bottom-20 left-0 w-full px-gutter z-30 pointer-events-none">
+<div class="max-w-xl mx-auto flex space-x-2 overflow-x-auto no-scrollbar pointer-events-auto py-1">
+<button class="bg-surface-container-high border border-outline-variant text-on-surface hover:bg-secondary-container hover:text-on-secondary-container px-4 py-2 rounded-full font-label-md transition-all whitespace-nowrap shadow-sm active:scale-95">
+        Custom Vase Inquiry
+      </button>
+<button class="bg-surface-container-high border border-outline-variant text-on-surface hover:bg-secondary-container hover:text-on-secondary-container px-4 py-2 rounded-full font-label-md transition-all whitespace-nowrap shadow-sm active:scale-95">
+        Glaze Recipes
+      </button>
+<button class="bg-surface-container-high border border-outline-variant text-on-surface hover:bg-secondary-container hover:text-on-secondary-container px-4 py-2 rounded-full font-label-md transition-all whitespace-nowrap shadow-sm active:scale-95">
+        Shipping Status
+      </button>
+</div>
+</div>
+<!-- Bottom Chat Input Bar -->
+<div class="fixed bottom-16 left-0 w-full bg-surface dark:bg-inverse-surface border-t border-surface-variant/40 px-gutter py-3 z-40">
+<div class="max-w-xl mx-auto flex items-center space-x-2">
+<button aria-label="Attach file" class="text-on-surface-variant hover:bg-surface-container p-2 rounded-full transition-all active:scale-95 flex-shrink-0">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<div class="flex-1 bg-surface-container-low rounded-full px-4 py-2 flex items-center border border-outline-variant/50 focus-within:border-primary transition-all">
+<input class="w-full bg-transparent border-none focus:outline-none font-body-md text-on-surface placeholder:text-on-surface-variant/70" placeholder="Message Artisan Companion..." type="text"/>
+</div>
+<button aria-label="Send message" class="bg-primary text-on-primary hover:opacity-90 p-2.5 rounded-full transition-all active:scale-95 flex-shrink-0 shadow-sm">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-space-sm bg-surface dark:bg-inverse-surface shadow-lg">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined text-xl">home</span>
+<span class="font-label-sm text-label-sm mt-0.5">Home</span>
+</a>
+<!-- Explore -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined text-xl">explore</span>
+<span class="font-label-sm text-label-sm mt-0.5">Explore</span>
+</a>
+<!-- Cart -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined text-xl">shopping_bag</span>
+<span class="font-label-sm text-label-sm mt-0.5">Cart</span>
+</a>
+<!-- Profile (Active) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 transition-all active:scale-95 shadow-sm" href="#">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm mt-0.5">Profile</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,249 @@
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Track Order - Artisan-Ai</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+              "secondary": "#835500",
+              "surface-dim": "#dcd9d9",
+              "outline": "#8a726a",
+              "tertiary": "#5d5c57",
+              "inverse-on-surface": "#f3f0f0",
+              "tertiary-fixed-dim": "#c9c6c0",
+              "on-surface-variant": "#57423b",
+              "secondary-fixed-dim": "#feb956",
+              "on-tertiary-fixed-variant": "#474742",
+              "on-secondary-fixed-variant": "#633f00",
+              "surface-variant": "#e4e2e1",
+              "error-container": "#ffdad6",
+              "background": "#fcf9f8",
+              "on-error": "#ffffff",
+              "primary-container": "#bf542c",
+              "secondary-container": "#feb956",
+              "secondary-fixed": "#ffddb4",
+              "on-primary-fixed": "#390c00",
+              "tertiary-fixed": "#e5e2db",
+              "on-error-container": "#93000a",
+              "on-primary": "#ffffff",
+              "primary-fixed-dim": "#ffb59c",
+              "on-secondary-container": "#734a00",
+              "inverse-surface": "#303030",
+              "on-primary-container": "#fffbff",
+              "surface-container-low": "#f6f3f2",
+              "on-tertiary-fixed": "#1c1c18",
+              "surface-container": "#f0eded",
+              "surface-tint": "#a23e18",
+              "surface-container-high": "#eae7e7",
+              "on-primary-fixed-variant": "#822801",
+              "on-secondary-fixed": "#291800",
+              "surface-bright": "#fcf9f8",
+              "on-background": "#1b1c1c",
+              "on-tertiary": "#ffffff",
+              "surface-container-highest": "#e4e2e1",
+              "tertiary-container": "#76756f",
+              "on-surface": "#1b1c1c",
+              "primary-fixed": "#ffdbcf",
+              "surface-container-lowest": "#ffffff",
+              "on-secondary": "#ffffff",
+              "on-tertiary-container": "#fdffdd",
+              "surface": "#fcf9f8",
+              "outline-variant": "#dec0b7",
+              "primary": "#9f3c16",
+              "error": "#ba1a1a",
+              "inverse-primary": "#ffb59c"
+            },
+            "borderRadius": {
+              "DEFAULT": "0.25rem",
+              "lg": "0.5rem",
+              "xl": "0.75rem",
+              "full": "9999px"
+            },
+            "spacing": {
+              "space-md": "16px",
+              "gutter": "16px",
+              "margin": "20px",
+              "space-lg": "24px",
+              "space-sm": "8px",
+              "space-xl": "32px",
+              "space-xs": "4px"
+            },
+            "fontFamily": {
+              "label-md": ["Plus Jakarta Sans"],
+              "headline-lg-mobile": ["Plus Jakarta Sans"],
+              "body-lg": ["Plus Jakarta Sans"],
+              "headline-sm": ["Plus Jakarta Sans"],
+              "headline-lg": ["Plus Jakarta Sans"],
+              "body-md": ["Plus Jakarta Sans"],
+              "label-sm": ["Plus Jakarta Sans"],
+              "body-sm": ["Plus Jakarta Sans"],
+              "headline-md": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+              "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+              "headline-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+              "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+              "headline-sm": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+              "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+              "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+              "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+              "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+              "headline-md": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}]}
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased pb-24">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-inverse-surface shadow-sm flex justify-between items-center w-full px-gutter py-space-md sticky top-0 z-40">
+<div class="flex items-center gap-3">
+<button class="text-primary hover:bg-surface-container p-2 rounded-full transition-all">
+<span class="material-symbols-outlined">storefront</span>
+</button>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">Artisan-Ai</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="text-on-surface-variant hover:bg-surface-container p-2 rounded-full transition-all">
+<span class="material-symbols-outlined">search</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="px-margin pt-space-md pb-space-xl max-w-lg mx-auto">
+<!-- Order Summary Header -->
+<section class="bg-surface-container-low rounded-xl p-space-md shadow-sm mb-space-lg">
+<div class="flex justify-between items-start mb-space-sm">
+<div>
+<span class="text-label-sm font-label-sm text-outline uppercase tracking-wider">Order #ART-84922</span>
+<h1 class="font-headline-md text-headline-md text-on-background mt-1">Handcrafted Ceramic Vase</h1>
+</div>
+<span class="bg-secondary-fixed text-on-secondary-fixed-variant px-3 py-1 rounded-full text-label-sm font-label-sm">In Transit</span>
+</div>
+<div class="flex items-center gap-4 my-space-md pt-space-sm border-t border-outline-variant/3k">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center shrink-0 shadow-inner" data-alt="A beautifully crafted ceramic vase with warm terracotta and cream glaze finishes, showcased in a sunlit artisanal studio setting with soft natural light highlighting its tactile texture and smooth curves, embodying a minimalist and organic aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB-i0EJ-NePlpzeuAEbC1if3QStHvtm9EXp47dKJQlgD3kedWfQsCIOsbj8oSHtjNwAlmRC-T2-QvstWuAtjbfy3hEA_QS-lOtyF7x_UDzTlv_wcuGw1HmY4UtWtwvyGvinoe-FagiEHLXeb95T2TG_2C9YiIM-G6yvlgRUJHfucqLAxfhTDZ8I4-Jq4PrmFYiDyQSgGPAQDw_dQOYHfnAq2ibFBuJiQQZOYO11qilpRp0P4AWOUnQK4w')"></div>
+<div>
+<p class="text-body-sm text-on-surface-variant">Estimated Delivery</p>
+<p class="font-headline-sm text-headline-sm text-primary">Nov 04, 2023</p>
+</div>
+</div>
+</section>
+<!-- Vertical Timeline Section -->
+<section class="bg-surface-container-low rounded-xl p-space-md shadow-sm mb-space-lg">
+<h2 class="font-headline-sm text-headline-sm mb-space-md text-on-background">Milestones</h2>
+<div class="relative pl-6 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-outline-variant">
+<!-- Milestone 1 -->
+<div class="relative flex items-start gap-4">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-background">Order Placed</p>
+<p class="text-body-sm text-on-surface-variant">Oct 28, 2023 - 10:42 AM</p>
+</div>
+</div>
+<!-- Milestone 2 -->
+<div class="relative flex items-start gap-4">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-background">Crafted by Master Ramesh</p>
+<p class="text-body-sm text-on-surface-variant">Oct 30, 2023 - 02:15 PM</p>
+</div>
+</div>
+<!-- Milestone 3 -->
+<div class="relative flex items-start gap-4">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-background">Fired & Glazed</p>
+<p class="text-body-sm text-on-surface-variant">Nov 01, 2023 - 09:00 AM</p>
+</div>
+</div>
+<!-- Milestone 4 -->
+<div class="relative flex items-start gap-4">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-background">Quality Inspection</p>
+<p class="text-body-sm text-on-surface-variant">Nov 02, 2023 - 11:30 AM</p>
+</div>
+</div>
+<!-- Milestone 5 -->
+<div class="relative flex items-start gap-4">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-background">Shipped via Master Artisan Freight</p>
+<p class="text-body-sm text-on-surface-variant">Nov 03, 2023 - 08:00 AM</p>
+</div>
+</div>
+<!-- Milestone 6 (Active) -->
+<div class="relative flex items-start gap-4">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shadow-md animate-pulse">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-primary font-semibold">Out for Delivery</p>
+<p class="text-body-sm text-on-surface-variant">Expected today by 4:00 PM</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Courier Contact Details -->
+<section class="bg-surface-container-low rounded-xl p-space-md shadow-sm mb-space-lg flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-primary-container/20 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined">local_shipping</span>
+</div>
+<div>
+<p class="text-body-sm text-on-surface-variant">Courier Partner</p>
+<p class="font-headline-sm text-headline-sm text-on-background">Master Artisan Freight</p>
+<p class="text-body-sm text-outline">Driver: Suresh K. (+91 98765 43210)</p>
+</div>
+</div>
+<button class="bg-secondary-container text-on-secondary-container p-3 rounded-full hover:scale-95 transition-all shadow-sm">
+<span class="material-symbols-outlined">call</span>
+</button>
+</section>
+<!-- Bottom Action Button -->
+<div class="flex gap-4">
+<button class="flex-1 bg-primary text-on-primary py-3 px-4 rounded-xl font-label-md text-label-md shadow-md hover:bg-primary-container transition-all text-center">
+                Contact Courier
+            </button>
+<button class="flex-1 bg-surface-container-high text-on-surface py-3 px-4 rounded-xl font-label-md text-label-md shadow-sm hover:bg-surface-variant transition-all text-center">
+                Support
+            </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-space-sm bg-surface dark:bg-inverse-surface shadow-lg">
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-label-sm text-label-sm">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">shopping_bag</span>
+<span class="font-label-sm text-label-sm">Cart</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 transition-all shadow-sm" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+</body></html>

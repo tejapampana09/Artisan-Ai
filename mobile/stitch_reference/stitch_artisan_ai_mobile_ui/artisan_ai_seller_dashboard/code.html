@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Artisan-Ai Seller Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "inverse-primary": "#ffb59c",
+            "on-tertiary-fixed-variant": "#474742",
+            "background": "#fcf9f8",
+            "surface-variant": "#e4e2e1",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-high": "#eae7e7",
+            "primary-container": "#bf542c",
+            "on-secondary-container": "#734a00",
+            "on-primary": "#ffffff",
+            "secondary-fixed-dim": "#feb956",
+            "surface-bright": "#fcf9f8",
+            "on-primary-fixed": "#390c00",
+            "primary": "#9f3c16",
+            "primary-fixed": "#ffdbcf",
+            "outline": "#8a726a",
+            "tertiary-fixed": "#e5e2db",
+            "error": "#ba1a1a",
+            "surface-dim": "#dcd9d9",
+            "on-tertiary-container": "#fdffdd",
+            "surface-container-highest": "#e4e2e1",
+            "on-error": "#ffffff",
+            "on-tertiary-fixed": "#1c1c18",
+            "surface": "#fcf9f8",
+            "tertiary-container": "#76756f",
+            "surface-tint": "#a23e18",
+            "secondary-container": "#feb956",
+            "outline-variant": "#dec0b7",
+            "on-secondary-fixed-variant": "#633f00",
+            "surface-container": "#f0eded",
+            "tertiary-fixed-dim": "#c9c6c0",
+            "primary-fixed-dim": "#ffb59c",
+            "on-primary-fixed-variant": "#822801",
+            "surface-container-low": "#f6f3f2",
+            "on-background": "#1b1c1c",
+            "on-secondary-fixed": "#291800",
+            "tertiary": "#5d5c57",
+            "inverse-surface": "#303030",
+            "on-error-container": "#93000a",
+            "on-secondary": "#ffffff",
+            "secondary": "#835500",
+            "error-container": "#ffdad6",
+            "secondary-fixed": "#ffddb4",
+            "on-tertiary": "#ffffff",
+            "on-primary-container": "#fffbff",
+            "on-surface": "#1b1c1c",
+            "inverse-on-surface": "#f3f0f0",
+            "on-surface-variant": "#57423b"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-lg": "24px",
+            "margin": "20px",
+            "gutter": "16px",
+            "space-sm": "8px",
+            "space-md": "16px",
+            "space-xl": "32px",
+            "space-xs": "4px"
+          },
+          "fontFamily": {
+            "headline-sm": ["Plus Jakarta Sans"],
+            "body-sm": ["Plus Jakarta Sans"],
+            "headline-lg": ["Plus Jakarta Sans"],
+            "label-md": ["Plus Jakarta Sans"],
+            "label-sm": ["Plus Jakarta Sans"],
+            "headline-md": ["Plus Jakarta Sans"],
+            "body-md": ["Plus Jakarta Sans"],
+            "headline-lg-mobile": ["Plus Jakarta Sans"],
+            "body-lg": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+            "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+            "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+            "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+            "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased selection:bg-primary-fixed">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-inverse-surface shadow-sm sticky top-0 z-40 flex justify-between items-center w-full px-gutter py-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary dark:text-inverse-primary text-2xl">storefront</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">Artisan Studio</h1>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-container-high transition-all active:scale-95">
+<span class="material-symbols-outlined text-xl">notifications</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="max-w-md mx-auto px-margin pb-28 pt-space-md space-y-space-lg">
+<!-- Creator Greeting Section -->
+<section class="flex items-center justify-between bg-surface-container-low p-space-md rounded-xl shadow-sm">
+<div class="flex items-center gap-space-md">
+<div class="w-14 h-14 rounded-full bg-cover bg-center border-2 border-primary" data-alt="A warm, professional portrait photograph of artisan creator Eleanor Vance smiling gently in a sunlit ceramic studio, surrounded by handcrafted pottery and warm terracotta tones, high quality, soft focus background." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB7KT3UQeUNcuOAfjBVgrpiHknd-VpokAYLmAOGLWLZ79Ng1y-znij7fPQp4nSQG4zE6dE9YRFb0DgcLdlNAXFaucuvFZtjAyqmgnj9IglG9s00wdSlZwvLMNvLTw9sNCaYcfHH9NQn7SjLFB-8EKne0jEiJvft8LtMgcsqWr6-0EmTjsPGKSN43_h2LSLJLgpz7G73AqvGHTAoJ9zfsv2wYCXncXlnCFBaLjfxz0Kbl4Jb4RzvN9x-pg')"></div>
+<div>
+<span class="inline-block px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed text-label-sm font-semibold mb-1">Pro Creator</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Eleanor Vance</h2>
+</div>
+</div>
+<button class="text-primary hover:text-primary-container p-2 rounded-full hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</section>
+<!-- Summary Metric Cards (Bento/Asymmetric Grid) -->
+<section class="grid grid-cols-2 gap-space-sm">
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between border border-surface-variant">
+<div class="flex justify-between items-start text-on-surface-variant">
+<span class="text-label-sm">Total Earnings</span>
+<span class="material-symbols-outlined text-primary text-xl">payments</span>
+</div>
+<div class="mt-space-md">
+<span class="font-headline-md text-headline-md text-on-surface">$12,450</span>
+<p class="text-body-sm text-primary mt-0.5">+14% this month</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between border border-surface-variant">
+<div class="flex justify-between items-start text-on-surface-variant">
+<span class="text-label-sm">Active Listings</span>
+<span class="material-symbols-outlined text-primary text-xl">inventory_2</span>
+</div>
+<div class="mt-space-md">
+<span class="font-headline-md text-headline-md text-on-surface">18</span>
+<p class="text-body-sm text-on-surface-variant mt-0.5">3 in draft</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between border border-surface-variant">
+<div class="flex justify-between items-start text-on-surface-variant">
+<span class="text-label-sm">Pending Commissions</span>
+<span class="material-symbols-outlined text-secondary text-xl">palette</span>
+</div>
+<div class="mt-space-md">
+<span class="font-headline-md text-headline-md text-on-surface">3</span>
+<p class="text-body-sm text-secondary mt-0.5">Action required</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between border border-surface-variant">
+<div class="flex justify-between items-start text-on-surface-variant">
+<span class="text-label-sm">Avg Rating</span>
+<span class="material-symbols-outlined text-secondary-fixed-dim text-xl" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<div class="mt-space-md">
+<span class="font-headline-md text-headline-md text-on-surface">4.8</span>
+<p class="text-body-sm text-on-surface-variant mt-0.5">From 142 reviews</p>
+</div>
+</div>
+</section>
+<!-- Quick Actions -->
+<section class="space-y-space-sm">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Quick Actions</h3>
+<div class="grid grid-cols-3 gap-space-sm">
+<button class="bg-primary text-on-primary p-space-md rounded-xl flex flex-col items-center justify-center text-center gap-space-xs hover:bg-primary-container transition-all active:scale-95 shadow-sm">
+<span class="material-symbols-outlined text-2xl">add_box</span>
+<span class="text-label-sm font-medium">Add New Piece</span>
+</button>
+<button class="bg-surface-container-low text-on-surface p-space-md rounded-xl flex flex-col items-center justify-center text-center gap-space-xs hover:bg-surface-container transition-all active:scale-95 border border-surface-variant">
+<span class="material-symbols-outlined text-primary text-2xl">forum</span>
+<span class="text-label-sm font-medium">View Commissions</span>
+</button>
+<button class="bg-surface-container-low text-on-surface p-space-md rounded-xl flex flex-col items-center justify-center text-center gap-space-xs hover:bg-surface-container transition-all active:scale-95 border border-surface-variant">
+<span class="material-symbols-outlined text-primary text-2xl">account_balance_wallet</span>
+<span class="text-label-sm font-medium">Payouts</span>
+</button>
+</div>
+</section>
+<!-- Recent Incoming Orders List -->
+<section class="space-y-space-sm">
+<div class="flex justify-between items-center">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Recent Incoming Orders</h3>
+<a class="text-label-sm text-primary font-semibold hover:underline" href="#">View All</a>
+</div>
+<div class="space-y-space-sm">
+<!-- Order Card 1 -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-variant flex items-center justify-between">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-lg bg-cover bg-center shrink-0" data-alt="A detailed product photograph of a handcrafted terracotta ceramic vase with organic textures, set against a neutral warm cream background with soft natural lighting, high-end artisan craft aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBJY3RjLRbc9lv-AYoPNMG6SL5qDdtl4xU76snM6DJ8Rv8khPRtwr7zexCtdPqXP3nCBqRgHyVQdVD1sejmzNnYCXTU1zFC488rS95j3KKkuVJFLzzV5TmnEVyiYLFLAOB1c5I__Gpt2gAtV60-6lZOjJ_CGlNEquTYSHMaUFGc5YZHoQQJ_vK1SsEFANWQ3D9Muc0WJAyXrtyONjafJxKRTwZkaNcjONFaPPH7V24EvEVoiJCoaqWVvg')"></div>
+<div>
+<h4 class="font-label-md text-on-surface font-semibold">Terracotta Ribbed Vase</h4>
+<p class="text-body-sm text-on-surface-variant">Ordered by Marcus L. • $240</p>
+</div>
+</div>
+<div class="text-right">
+<span class="inline-block px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed text-label-sm font-medium">Processing</span>
+<span class="block text-body-sm text-on-surface-variant mt-1">2h ago</span>
+</div>
+</div>
+<!-- Order Card 2 -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-variant flex items-center justify-between">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-lg bg-cover bg-center shrink-0" data-alt="A detailed product photograph of a custom hand-thrown stoneware bowl with glaze drips, displayed on a wooden creator workbench, warm atmospheric lighting, artisan aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBJ0DDuQZMCUi3VRDI_55D3IBHLBduRKMKTZUBoNJCNa_Oa80IWZVeUZzQkennFxoIRVb-dYkwusT8oObkafdOXcT161-LLKXtTOJMkysUvjd6G8dqekgswWYrDxPDMgXihrrTmPGKow_qRIGDZdFbojgmJreVJUoSDMNOsJGmu_oJkOzLC0Dg64g_sm-VNJtirBLlB9rVF46cMVTFejyi4qAgjXUwaphAWEWrd6NHo2_ygwN3vkct2dQ')"></div>
+<div>
+<h4 class="font-label-md text-on-surface font-semibold">Custom Stoneware Bowl</h4>
+<p class="text-body-sm text-on-surface-variant">Ordered by Sarah K. • $185</p>
+</div>
+</div>
+<div class="text-right">
+<span class="inline-block px-2.5 py-1 rounded-full bg-primary-fixed text-on-primary-fixed text-label-sm font-medium">Shipped</span>
+<span class="block text-body-sm text-on-surface-variant mt-1">1d ago</span>
+</div>
+</div>
+<!-- Order Card 3 -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-variant flex items-center justify-between">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-lg bg-cover bg-center shrink-0" data-alt="A detailed product photograph of a minimalist glazed ceramic mug set in a warm cream studio setting, handcrafted artisan pottery, soft directional lighting." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBQ-yhNkYykgjTozywTroLidPcfoqyW8zwvugYqJ4jMgKvKKMYYSlCAjuAJ1h8W7kLljwn_UT8aWjR5-6Mg2BKvETf0RRdzS7Oe_NepH28dEAza8es2gAdrm8EfNvzMISgCS-vfckwOWo7x9Tz6626cLfn2i5kVKU62wZ2CyR08hz0LkowOn6VjOfu4nAbiA8JHgtY7wBWXNJTSP2fWD5kBtWbzlFd3HwZY_jd-C_2_rGXu8n8XBPBf9Q')"></div>
+<div>
+<h4 class="font-label-md text-on-surface font-semibold">Glazed Espresso Set (4pc)</h4>
+<p class="text-body-sm text-on-surface-variant">Ordered by David M. • $120</p>
+</div>
+</div>
+<div class="text-right">
+<span class="inline-block px-2.5 py-1 rounded-full bg-surface-variant text-on-surface text-label-sm font-medium">Completed</span>
+<span class="block text-body-sm text-on-surface-variant mt-1">3d ago</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Tailored for Sellers) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter py-space-sm bg-surface dark:bg-inverse-surface shadow-lg">
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label-sm text-label-sm">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">inventory_2</span>
+<span class="font-label-sm text-label-sm">Listings</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">palette</span>
+<span class="font-label-sm text-label-sm">Commissions</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">analytics</span>
+<span class="font-label-sm text-label-sm">Analytics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:text-primary active:scale-95 transition-all" href="#">
+<span class="material-symbols-outlined text-xl">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+</body></html>
