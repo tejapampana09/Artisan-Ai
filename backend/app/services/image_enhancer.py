@@ -15,16 +15,18 @@ from importlib import import_module
 from typing import Tuple, Optional
 import httpx
 import numpy as np
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 logger = logging.getLogger("artisan_ai")
 
 STUDIO_BACKDROP_PALETTES = {
-    "royal_silk": ((112, 26, 117), (46, 16, 101)),       # Royal Purple Silk Spotlight
-    "teak_wood": ((120, 53, 15), (69, 26, 3)),           # Teak Wood Warm Dark Brown
-    "marble_pedestal": ((248, 250, 252), (203, 213, 225)),   # Marble Slate Light Grey
-    "courtyard": ((154, 52, 18), (194, 65, 12))          # Heritage Terracotta Red
+    "marble_pedestal": ((255, 255, 255), (241, 245, 249)),   # Clean E-Commerce Studio Slate / Pure White (Default)
+    "neutral_warm": ((255, 251, 235), (245, 239, 230)),      # Warm Artisan Studio Cream
+    "royal_silk": ((112, 26, 117), (46, 16, 101)),            # Royal Purple Silk
+    "teak_wood": ((120, 53, 15), (69, 26, 3)),                # Teak Wood Warm Dark Brown
+    "courtyard": ((154, 52, 18), (194, 65, 12))               # Heritage Terracotta Red
 }
+DEFAULT_BACKDROP = "marble_pedestal"
 
 _REMBG_SESSION = None
 
@@ -46,45 +48,25 @@ def get_rembg_session():
             logger.info("[ImageEnhancer] Initialized rembg u2net session")
         return _REMBG_SESSION
     except Exception as e:
-        logger.warning("[ImageEnhancer] rembg session initialization failed: %s", e)
+        logger.info("[ImageEnhancer] rembg session unavailable: %s", e)
         return None
 
 def remove_cluttered_background_fallback(img_rgba: Image.Image) -> Image.Image:
     """
-    Fallback background removal using multi-point boundary color sampling and adaptive color distance thresholding.
-    Masks out background clutter colors (table surfaces, floors, walls) while preserving craft foreground object.
+    Safe fallback for background handling when deep-learning AI segmentation is unavailable.
+    Guarantees zero destructive color bleeding onto subject/faces while preserving full alpha fidelity.
     """
     arr = np.array(img_rgba)
-    h, w, c = arr.shape
-    rgb = arr[:, :, :3].astype(np.float32)
-    
-    # Sample edge pixels along top, bottom, left, right borders representing background
-    boundary_samples = np.concatenate([
-        rgb[0:8, :].reshape(-1, 3),        # top edge
-        rgb[h-8:h, :].reshape(-1, 3),      # bottom edge
-        rgb[:, 0:8].reshape(-1, 3),        # left edge
-        rgb[:, w-8:w].reshape(-1, 3)       # right edge
-    ], axis=0)
-    
-    bg_color = np.median(boundary_samples, axis=0)
-    
-    # Euclidean color distance from background color
-    dist = np.sqrt(np.sum((rgb - bg_color) ** 2, axis=2))
-    
-    # Tapered smooth alpha mask transition (transparency threshold)
-    alpha = np.clip((dist - 20.0) / 40.0, 0.0, 1.0) * 255.0
-    
-    # Apply subtle blur smoothing on alpha mask to soften edges
-    alpha_img = Image.fromarray(alpha.astype(np.uint8), mode="L")
-    alpha_smoothed = alpha_img.filter(ImageFilter.GaussianBlur(radius=1))
-    
-    arr[:, :, 3] = np.array(alpha_smoothed)
+    if arr.shape[2] != 4:
+        h, w = arr.shape[:2]
+        alpha = np.full((h, w, 1), 255, dtype=np.uint8)
+        arr = np.concatenate([arr[:, :, :3], alpha], axis=2)
     return Image.fromarray(arr, mode="RGBA")
 
-def remove_cluttered_background(img: Image.Image) -> Image.Image:
+def remove_cluttered_background(img: Image.Image) -> Tuple[Image.Image, bool]:
     """
-    Segments the craft product subject and removes background clutter (tables, floor, room background).
-    Uses cached AI rembg segmentation with post_process_mask=True, falling back to adaptive boundary thresholding.
+    Segments the craft product subject and removes background clutter.
+    Returns: (segmented_rgba_img, is_segmented_bool)
     """
     img_rgba = img.convert("RGBA")
     
@@ -104,11 +86,13 @@ def remove_cluttered_background(img: Image.Image) -> Image.Image:
             
         output_img = Image.open(io.BytesIO(output_bytes)).convert("RGBA")
         if output_img.width > 0 and output_img.height > 0:
-            return output_img
+            alpha_data = np.array(output_img.split()[3])
+            if np.mean(alpha_data < 200) > 0.05:
+                return output_img, True
     except BaseException as e:
-        logger.info("[ImageEnhancer] rembg AI segmentation fallback triggered: %s", str(e))
+        logger.debug("[ImageEnhancer] rembg AI segmentation skipped: %s", str(e))
         
-    return remove_cluttered_background_fallback(img_rgba)
+    return remove_cluttered_background_fallback(img_rgba), False
 
 def create_radial_gradient_background(width: int, height: int, color1: Tuple[int, int, int], color2: Tuple[int, int, int]) -> Image.Image:
     """Creates a smooth radial studio backdrop canvas with center spotlight effect (vectorized with NumPy)."""
@@ -127,81 +111,72 @@ def create_radial_gradient_background(width: int, height: int, color1: Tuple[int
     composite = Image.composite(spotlight, base, mask)
     return composite
 
-def enhance_image_bytes(image_bytes: bytes, backdrop_id: str = "royal_silk") -> bytes:
+def enhance_image_bytes(image_bytes: bytes, backdrop_id: str = DEFAULT_BACKDROP) -> bytes:
     """
-    1. Segments craft product subject and removes background clutter.
-    2. Applies studio lighting, contrast, saturation, and sharpness normalization.
-    3. Composes subject onto studio spotlight backdrop with soft drop-shadow.
+    1. Applies high-fidelity lighting, contrast, white-balance, and clarity normalization.
+    2. Segments craft product if AI model is available, placing onto studio backdrop with soft drop-shadow.
+    3. If segmentation is unavailable, applies clean studio lighting enhancement directly without color-bleeding.
     Returns enhanced JPEG image bytes.
     """
     with Image.open(io.BytesIO(image_bytes)) as raw_img:
-        if raw_img.width > 1024 or raw_img.height > 1024:
-            raw_img.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
-        # 1. Automatic Background Removal & Product Segmentation
-        product_rgba = remove_cluttered_background(raw_img)
+        if raw_img.width > 1200 or raw_img.height > 1200:
+            raw_img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
+            
+        orig_rgb = raw_img.convert("RGB")
         
-        # 2. Extract RGB channels for Lighting & Color Normalization
-        r, g, b, alpha = product_rgba.split()
-        product_rgb = Image.merge("RGB", (r, g, b))
+        # --- Studio Lighting & Color Normalization ---
+        try:
+            enhanced_rgb = ImageOps.autocontrast(orig_rgb, cutoff=0.5)
+        except Exception:
+            enhanced_rgb = orig_rgb
+            
+        enhanced_rgb = ImageEnhance.Brightness(enhanced_rgb).enhance(1.05)
+        enhanced_rgb = ImageEnhance.Color(enhanced_rgb).enhance(1.08)
+        enhanced_rgb = ImageEnhance.Contrast(enhanced_rgb).enhance(1.06)
+        enhanced_rgb = ImageEnhance.Sharpness(enhanced_rgb).enhance(1.20)
         
-        enhancer = ImageEnhance.Contrast(product_rgb)
-        product_rgb = enhancer.enhance(1.18)
+        # --- Background Handling ---
+        product_rgba, has_segmentation = remove_cluttered_background(enhanced_rgb)
         
-        enhancer = ImageEnhance.Brightness(product_rgb)
-        product_rgb = enhancer.enhance(1.06)
-        
-        enhancer = ImageEnhance.Color(product_rgb)
-        product_rgb = enhancer.enhance(1.12)
-        
-        enhancer = ImageEnhance.Sharpness(product_rgb)
-        product_rgb = enhancer.enhance(1.30)
-        
-        # Re-merge enhanced RGB with subject transparency alpha mask
-        r2, g2, b2 = product_rgb.split()
-        product_rgba = Image.merge("RGBA", (r2, g2, b2, alpha))
-        
-        # 3. Studio Backdrop & Drop Shadow Composition
-        orig_w, orig_h = product_rgba.size
-        target_w, target_h = max(600, orig_w), max(600, orig_h)
-        
-        colors = STUDIO_BACKDROP_PALETTES.get(backdrop_id, STUDIO_BACKDROP_PALETTES["royal_silk"])
-        bg = create_radial_gradient_background(target_w, target_h, colors[0], colors[1])
-        
-        # Fit craft subject into studio frame with margin
-        margin = int(min(target_w, target_h) * 0.08)
-        max_craft_w = target_w - (2 * margin)
-        max_craft_h = target_h - (2 * margin)
-        
-        scale = min(max_craft_w / float(orig_w), max_craft_h / float(orig_h))
-        new_w = max(1, int(orig_w * scale))
-        new_h = max(1, int(orig_h * scale))
-        
-        resized_product = product_rgba.resize((new_w, new_h), Image.Resampling.LANCZOS)
-        
-        # Create soft drop-shadow from subject alpha mask
-        shadow_mask = resized_product.split()[3].filter(ImageFilter.GaussianBlur(radius=12))
-        shadow = Image.new("RGBA", (new_w, new_h), (0, 0, 0, 110))
-        
-        offset_x = (target_w - new_w) // 2
-        offset_y = (target_h - new_h) // 2
-        
-        # Paste drop shadow slightly offset
-        bg.paste(shadow, (offset_x + 4, offset_y + 8), shadow_mask)
-        
-        # Paste segmented product subject onto studio backdrop spotlight
-        bg.paste(resized_product, (offset_x, offset_y), resized_product)
-        
-        final_rgb = bg.convert("RGB")
+        if has_segmentation:
+            orig_w, orig_h = product_rgba.size
+            target_w, target_h = max(600, orig_w), max(600, orig_h)
+            
+            colors = STUDIO_BACKDROP_PALETTES.get(backdrop_id, STUDIO_BACKDROP_PALETTES[DEFAULT_BACKDROP])
+            bg = create_radial_gradient_background(target_w, target_h, colors[0], colors[1])
+            
+            margin = int(min(target_w, target_h) * 0.08)
+            max_craft_w = target_w - (2 * margin)
+            max_craft_h = target_h - (2 * margin)
+            
+            scale = min(max_craft_w / float(orig_w), max_craft_h / float(orig_h))
+            new_w = max(1, int(orig_w * scale))
+            new_h = max(1, int(orig_h * scale))
+            
+            resized_product = product_rgba.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            
+            shadow_mask = resized_product.split()[3].filter(ImageFilter.GaussianBlur(radius=10))
+            shadow = Image.new("RGBA", (new_w, new_h), (0, 0, 0, 70))
+            
+            offset_x = (target_w - new_w) // 2
+            offset_y = (target_h - new_h) // 2
+            
+            bg.paste(shadow, (offset_x + 3, offset_y + 6), shadow_mask)
+            bg.paste(resized_product, (offset_x, offset_y), resized_product)
+            final_img = bg.convert("RGB")
+        else:
+            final_img = enhanced_rgb
+            
         output_buffer = io.BytesIO()
-        final_rgb.save(output_buffer, format="JPEG", quality=92)
+        final_img.save(output_buffer, format="JPEG", quality=92, optimize=True)
         return output_buffer.getvalue()
 
 async def enhance_studio_image(
     image_url_or_data: Optional[str],
-    backdrop_id: str = "royal_silk"
+    backdrop_id: str = DEFAULT_BACKDROP
 ) -> Tuple[str, bool, str]:
     """
-    Asynchronously removes background clutter and enhances a product photo for the studio.
+    Asynchronously enhances a product photo for the studio.
     Returns: (enhanced_url_or_data_uri, is_enhanced, notice_message)
     """
     if not image_url_or_data or not image_url_or_data.strip():
@@ -227,8 +202,8 @@ async def enhance_studio_image(
         encoded_str = base64.b64encode(enhanced_bytes).decode("utf-8")
         data_uri = f"data:image/jpeg;base64,{encoded_str}"
         
-        return data_uri, True, "AI Studio background clutter removal, subject segmentation & lighting normalization applied."
+        return data_uri, True, "AI Studio lighting normalization & clarity enhancement applied."
         
     except Exception as e:
-        logger.warning("[ImageEnhancer] Studio background removal fallback triggered: %s", str(e))
+        logger.warning("[ImageEnhancer] Studio enhancement fallback triggered: %s", str(e))
         return raw, False, "Photo enhancement unavailable. Original photo saved."

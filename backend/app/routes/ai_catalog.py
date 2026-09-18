@@ -107,6 +107,33 @@ class TranslateProductResponse(BaseModel):
     craft_story: str
     target_language: str
 
+class EnhanceImageRequest(BaseModel):
+    image_url: str = Field(..., description="Base64 data URI or HTTP image URL to enhance")
+    backdrop_id: Optional[str] = Field("marble_pedestal", description="Studio backdrop palette identifier")
+
+class EnhanceImageResponse(BaseModel):
+    enhanced_image_url: str
+    is_enhanced: bool
+    notice: str
+
+@router.post("/enhance-image", response_model=EnhanceImageResponse)
+async def enhance_image_endpoint(
+    req: EnhanceImageRequest,
+    current_user: User = Depends(require_artisan)
+):
+    """
+    Dedicated studio image enhancement endpoint.
+    Applies lighting normalization, contrast/vibrancy balance, and clean studio backdrop composition.
+    """
+    from backend.app.services.image_enhancer import enhance_studio_image, DEFAULT_BACKDROP
+    backdrop = req.backdrop_id or DEFAULT_BACKDROP
+    enhanced_data, is_enh, msg = await enhance_studio_image(req.image_url, backdrop_id=backdrop)
+    return EnhanceImageResponse(
+        enhanced_image_url=enhanced_data or req.image_url,
+        is_enhanced=is_enh,
+        notice=msg
+    )
+
 @router.post("/process-catalog", response_model=AICatalogDraftResponse)
 async def process_voice_and_image(
     req: AICatalogRequest,

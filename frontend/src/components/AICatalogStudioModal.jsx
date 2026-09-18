@@ -4,7 +4,7 @@ import {
   Layers, Volume2, Globe, ShieldCheck, ArrowRight, RefreshCw, Wand2,
   Camera, Upload, Trash2, AlertTriangle, Zap
 } from 'lucide-react';
-import { processAICatalog, approveAndPublishAICatalog, getApiBase } from '../api/index.js';
+import { processAICatalog, approveAndPublishAICatalog, enhanceProductImage, getApiBase } from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
 import { useNotification } from '../context/NotificationContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -53,9 +53,10 @@ const LANGUAGES = [
 ];
 
 const STUDIO_BACKDROPS = [
+  { id: 'marble_pedestal', name: 'Studio Slate White', style: 'radial-gradient(circle at center, #ffffff 0%, #f1f5f9 100%)', label: '🏛️ Slate White' },
+  { id: 'neutral_warm', name: 'Artisan Warm Cream', style: 'radial-gradient(circle at center, #fffbeb 0%, #fef3c7 100%)', label: '✨ Warm Cream' },
   { id: 'royal_silk', name: 'Royal Silk', style: 'radial-gradient(circle at center, #701a75 0%, #2e1065 100%)', label: '👑 Royal Silk' },
   { id: 'teak_wood', name: 'Teak Wood Table', style: 'linear-gradient(to bottom, #78350f, #451a03)', label: '🪵 Teak Wood' },
-  { id: 'marble_pedestal', name: 'Marble Pedestal', style: 'radial-gradient(circle at center, #ffffff 0%, #cbd5e1 100%)', label: '🏛️ Marble' },
   { id: 'courtyard', name: 'Heritage Courtyard', style: 'linear-gradient(to right, #9a3412, #c2410c)', label: '🌺 Courtyard' }
 ];
 
@@ -254,14 +255,16 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const [voiceText, setVoiceText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [audioUrl, setAudioUrl] = useState(null);
-  const [selectedBackdrop, setSelectedBackdrop] = useState('royal_silk');
+  const [selectedBackdrop, setSelectedBackdrop] = useState('marble_pedestal');
   const [costs, setCosts] = useState({ material: '', labour: '', packaging: '', other: '', selling_price: '' });
   const [aiDraft, setAiDraft] = useState(null);
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [imgErrorOriginal, setImgErrorOriginal] = useState(false);
   const [imgErrorEnhanced, setImgErrorEnhanced] = useState(false);
+  const [isEnhancingImage, setIsEnhancingImage] = useState(false);
+  const [enhancedImageUrl, setEnhancedImageUrl] = useState('');
+  const [chosenImageOption, setChosenImageOption] = useState('enhanced');
   
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -448,6 +451,24 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     });
   };
 
+  const triggerImageEnhancement = async (imgData, backdropId = selectedBackdrop) => {
+    if (!imgData) return;
+    setIsEnhancingImage(true);
+    setImgErrorEnhanced(false);
+    try {
+      const res = await enhanceProductImage(imgData, backdropId);
+      if (res?.enhanced_image_url) {
+        setEnhancedImageUrl(res.enhanced_image_url);
+        setAiDraft((prev) => prev ? { ...prev, enhanced_image_url: res.enhanced_image_url } : null);
+      }
+    } catch (err) {
+      console.warn('Immediate studio enhancement error:', err);
+      setEnhancedImageUrl(imgData);
+    } finally {
+      setIsEnhancingImage(false);
+    }
+  };
+
   const handleImageFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -457,6 +478,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     setSelectedPhoto(null);
     setImgErrorOriginal(false);
     setImgErrorEnhanced(false);
+    setChosenImageOption('enhanced');
     if (aiDraft) {
       setAiDraft((prev) => ({
         ...prev,
@@ -465,6 +487,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       }));
     }
     if (e.target) e.target.value = '';
+    // Trigger immediate AI Studio Enhancement
+    triggerImageEnhancement(dataUrl);
   };
 
   // Sync sample prompt when photo or language changes
@@ -472,13 +496,17 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     if (selectedPhoto?.name === p.name) {
       setSelectedPhoto(null);
       setCustomImageUrl('');
+      setEnhancedImageUrl('');
     } else {
       setSelectedPhoto(p);
       setCustomImageUrl(p.url);
+      setChosenImageOption('enhanced');
       const sample = p[selectedLang] || p.en;
       if (!voiceText.trim()) {
         setVoiceText(sample);
       }
+      // Trigger immediate AI Studio Enhancement
+      triggerImageEnhancement(p.url);
     }
   };
 
@@ -867,8 +895,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         other_cost: aiDraft.other_cost || 0.0,
         min_margin_pct: 0.20,
         auto_smart_pricing_enabled: Boolean(aiDraft.auto_smart_pricing_enabled),
-        image_url: aiDraft.image_url,
-        enhanced_image_url: aiDraft.enhanced_image_url,
+        image_url: chosenImageOption === 'original' ? aiDraft.image_url : (aiDraft.enhanced_image_url || aiDraft.image_url),
+        enhanced_image_url: chosenImageOption === 'original' ? aiDraft.image_url : (aiDraft.enhanced_image_url || aiDraft.image_url),
         status: 'DRAFT'
       });
       onPublished(`Saved "${pubTitle}" to local device queue (Pending Cloud Sync)!`);
@@ -879,6 +907,10 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     }
 
     try {
+      const selectedImgToPublish = chosenImageOption === 'original'
+        ? aiDraft.image_url
+        : (aiDraft.enhanced_image_url || aiDraft.image_url);
+
       await approveAndPublishAICatalog({
         draft_token: aiDraft.draft_token,
         title: pubTitle,
@@ -898,8 +930,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
         other_cost: aiDraft.other_cost || 0.0,
         min_margin_pct: 0.20,
         auto_smart_pricing_enabled: Boolean(aiDraft.auto_smart_pricing_enabled),
-        image_url: aiDraft.image_url,
-        enhanced_image_url: aiDraft.enhanced_image_url,
+        image_url: selectedImgToPublish,
+        enhanced_image_url: selectedImgToPublish,
         status: 'PENDING_APPROVAL'
       });
       onPublished(`Successfully submitted "${pubTitle}" for Admin Approval!`);
@@ -1045,44 +1077,99 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
 
                 {/* Photo Preview / Capture Options */}
                 {customImageUrl ? (
-                  <div className="p-4 rounded-2xl border-2 border-amber-300 bg-amber-50/60 flex items-center justify-between gap-3">
-                    <div className="flex items-center space-x-3.5 overflow-hidden">
-                      <img
-                        src={customImageUrl}
-                        alt="Selected Craft"
-                        className="w-20 h-20 rounded-xl object-cover border border-[#933D1E]/30 shrink-0 shadow-sm"
-                        onError={() => setImgErrorOriginal(true)}
-                      />
-                      <div className="truncate">
-                        <div className="flex items-center space-x-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span className="text-xs font-extrabold text-[#2A1E17]">
-                            {selectedPhoto ? selectedPhoto.name : 'Photo Attached Successfully'}
-                          </span>
+                  <div className="p-4 rounded-2xl border-2 border-amber-300 bg-amber-50/60 flex flex-col gap-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center space-x-3.5 overflow-hidden">
+                        <div className="relative shrink-0">
+                          <img
+                            src={chosenImageOption === 'enhanced' && enhancedImageUrl ? enhancedImageUrl : customImageUrl}
+                            alt="Selected Craft"
+                            className="w-20 h-20 rounded-xl object-cover border border-[#933D1E]/30 shadow-sm"
+                            onError={() => setImgErrorOriginal(true)}
+                          />
+                          {isEnhancingImage && (
+                            <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center backdrop-blur-2xs">
+                              <div className="w-5 h-5 border-2 border-white border-t-amber-400 rounded-full animate-spin" />
+                            </div>
+                          )}
                         </div>
-                        <p className="text-[11px] text-[#6B5B51] mt-1">
-                          Ready for AI Multimodal Vision Analysis & Studio Background Lighting.
-                        </p>
+                        <div className="truncate">
+                          <div className="flex items-center space-x-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className="text-xs font-extrabold text-[#2A1E17]">
+                              {selectedPhoto ? selectedPhoto.name : 'Photo Attached Successfully'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#6B5B51] mt-1">
+                            {isEnhancingImage 
+                              ? 'AI Studio is enhancing photo lighting & clarity...'
+                              : (enhancedImageUrl 
+                                  ? 'AI Studio enhancement ready. You can switch preview mode below.'
+                                  : 'Ready for AI Multimodal Vision Analysis.')
+                            }
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col space-y-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => cameraInputRef.current?.click()}
+                          className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#EADFCF] text-[#2A1E17] hover:bg-[#FAF7F2] shadow-2xs cursor-pointer"
+                        >
+                          <Camera className="w-3.5 h-3.5 text-[#933D1E]" />
+                          <span>Camera</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#EADFCF] text-[#2A1E17] hover:bg-[#FAF7F2] shadow-2xs cursor-pointer"
+                        >
+                          <Upload className="w-3.5 h-3.5 text-[#933D1E]" />
+                          <span>Upload</span>
+                        </button>
                       </div>
                     </div>
-                    <div className="flex flex-col space-y-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => cameraInputRef.current?.click()}
-                        className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#EADFCF] text-[#2A1E17] hover:bg-[#FAF7F2] shadow-2xs cursor-pointer"
-                      >
-                        <Camera className="w-3.5 h-3.5 text-[#933D1E]" />
-                        <span>Camera</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#EADFCF] text-[#2A1E17] hover:bg-[#FAF7F2] shadow-2xs cursor-pointer"
-                      >
-                        <Upload className="w-3.5 h-3.5 text-[#933D1E]" />
-                        <span>Upload</span>
-                      </button>
-                    </div>
+
+                    {/* Interactive Enhancement Toggle & Status */}
+                    {isEnhancingImage ? (
+                      <div className="flex items-center space-x-2 text-[11px] text-amber-900 bg-amber-100/80 px-3 py-2 rounded-xl border border-amber-300 animate-pulse">
+                        <Sparkles className="w-4 h-4 text-[#933D1E] animate-spin shrink-0" />
+                        <span>Applying studio lighting, contrast normalization & crisp craft textures...</span>
+                      </div>
+                    ) : enhancedImageUrl ? (
+                      <div className="flex items-center justify-between pt-2 border-t border-amber-200">
+                        <span className="text-[11px] font-bold text-[#6B5B51] flex items-center space-x-1">
+                          <Wand2 className="w-3.5 h-3.5 text-[#933D1E]" />
+                          <span>Preview Mode:</span>
+                        </span>
+                        <div className="inline-flex rounded-lg p-0.5 bg-white border border-[#EADFCF] shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={() => setChosenImageOption('enhanced')}
+                            className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer flex items-center space-x-1 ${
+                              chosenImageOption === 'enhanced'
+                                ? 'bg-[#933D1E] text-white shadow-2xs'
+                                : 'text-[#6B5B51] hover:text-[#2A1E17]'
+                            }`}
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            <span>AI Studio Enhanced</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setChosenImageOption('original')}
+                            className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer flex items-center space-x-1 ${
+                              chosenImageOption === 'original'
+                                ? 'bg-[#933D1E] text-white shadow-2xs'
+                                : 'text-[#6B5B51] hover:text-[#2A1E17]'
+                            }`}
+                          >
+                            <Camera className="w-3 h-3" />
+                            <span>Original Photo</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
@@ -1495,18 +1582,32 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
           </div>
         )}
 
-        {/* STEP 2: Loading State */}
+        {/* STEP 2: Progressive Multimodal AI Loading State */}
         {step === 'PROCESSING' && (
-          <div className="py-16 text-center space-y-4">
+          <div className="py-16 text-center space-y-5">
             <div className="relative w-16 h-16 mx-auto">
-              <div className="w-16 h-16 border-4 border-[#933D1E]/30 border-t-amber-600 rounded-full animate-spin"></div>
+              <div className="w-16 h-16 border-4 border-[#933D1E]/30 border-t-[#933D1E] rounded-full animate-spin"></div>
               <Sparkles className="w-6 h-6 text-[#933D1E] absolute inset-0 m-auto animate-pulse" />
             </div>
             <div>
-              <h4 className="font-bold text-[#2A1E17] text-sm">Orchestrating Multimodal AI Pipeline...</h4>
-              <p className="text-xs text-[#6B5B51] mt-1 max-w-sm mx-auto">
-                Transcribing voice note, analyzing craft attributes, generating heritage story & studio image enhancement...
+              <h4 className="font-bold text-[#2A1E17] text-base">Running Multimodal AI Catalog Pipeline...</h4>
+              <p className="text-xs text-[#6B5B51] mt-1 max-w-md mx-auto">
+                Analyzing craft photo, heritage materials, transcribing voice description, and computing fair pricing.
               </p>
+            </div>
+            <div className="max-w-xs mx-auto space-y-2 text-left bg-white p-3.5 rounded-xl border border-[#EADFCF] shadow-2xs">
+              <div className="flex items-center space-x-2 text-xs font-semibold text-emerald-700">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Photo lighting & studio enhancement ready</span>
+              </div>
+              <div className="flex items-center space-x-2 text-xs font-semibold text-amber-800 animate-pulse">
+                <Sparkles className="w-4 h-4 text-[#933D1E] shrink-0" />
+                <span>Multimodal Gemini vision analyzing craft details...</span>
+              </div>
+              <div className="flex items-center space-x-2 text-xs font-semibold text-[#9E8E83]">
+                <div className="w-4 h-4 rounded-full border border-[#D5C7B5] shrink-0" />
+                <span>Generating bilingual story & fair pricing floor...</span>
+              </div>
             </div>
           </div>
         )}
@@ -1578,10 +1679,25 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="border border-[#EADFCF] rounded-xl overflow-hidden relative bg-[#FAF7F2]">
-                    <span className="absolute top-2 left-2 z-10 bg-slate-900/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
-                      Original Capture
-                    </span>
+                  <div
+                    onClick={() => setChosenImageOption('original')}
+                    className={`border-2 rounded-xl overflow-hidden relative bg-[#FAF7F2] cursor-pointer transition-all ${
+                      chosenImageOption === 'original'
+                        ? 'border-[#933D1E] shadow-md ring-2 ring-[#933D1E]/30'
+                        : 'border-[#EADFCF] opacity-80 hover:opacity-100'
+                    }`}
+                  >
+                    <div className="absolute top-2 left-2 z-10 flex items-center space-x-1">
+                      <span className="bg-slate-900/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
+                        Original Capture
+                      </span>
+                      {chosenImageOption === 'original' && (
+                        <span className="bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center space-x-0.5 shadow-xs">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          <span>Selected</span>
+                        </span>
+                      )}
+                    </div>
                     {!imgErrorOriginal ? (
                       <img
                         src={aiDraft.image_url}
@@ -1597,14 +1713,27 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       </div>
                     )}
                   </div>
-                  <div 
-                    className="border-2 border-amber-500/50 rounded-xl overflow-hidden relative shadow-xs p-1 transition-all"
+                  <div
+                    onClick={() => setChosenImageOption('enhanced')}
+                    className={`border-2 rounded-xl overflow-hidden relative shadow-xs p-1 transition-all cursor-pointer ${
+                      chosenImageOption === 'enhanced'
+                        ? 'border-[#933D1E] shadow-md ring-2 ring-[#933D1E]/30'
+                        : 'border-amber-500/40 opacity-80 hover:opacity-100'
+                    }`}
                     style={{ background: STUDIO_BACKDROPS.find(b => b.id === selectedBackdrop)?.style || STUDIO_BACKDROPS[0].style }}
                   >
-                    <span className="absolute top-2 left-2 z-10 bg-gradient-to-r from-[#933D1E] to-[#A84320] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center space-x-1">
-                      <Sparkles className="w-2.5 h-2.5" />
-                      <span>Studio ({STUDIO_BACKDROPS.find(b => b.id === selectedBackdrop)?.name})</span>
-                    </span>
+                    <div className="absolute top-2 left-2 z-10 flex items-center space-x-1">
+                      <span className="bg-gradient-to-r from-[#933D1E] to-[#A84320] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center space-x-1">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        <span>Studio ({STUDIO_BACKDROPS.find(b => b.id === selectedBackdrop)?.name})</span>
+                      </span>
+                      {chosenImageOption === 'enhanced' && (
+                        <span className="bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center space-x-0.5 shadow-xs">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          <span>Selected</span>
+                        </span>
+                      )}
+                    </div>
                     {!imgErrorEnhanced ? (
                       <img
                         src={aiDraft.enhanced_image_url || aiDraft.image_url}
@@ -1632,7 +1761,12 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       <button
                         key={b.id}
                         type="button"
-                        onClick={() => setSelectedBackdrop(b.id)}
+                        onClick={() => {
+                          setSelectedBackdrop(b.id);
+                          if (aiDraft?.image_url) {
+                            triggerImageEnhancement(aiDraft.image_url, b.id);
+                          }
+                        }}
                         className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
                           selectedBackdrop === b.id
                             ? 'bg-[#933D1E] text-white border-amber-700 shadow-2xs scale-105'

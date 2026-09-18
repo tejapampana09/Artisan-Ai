@@ -31,6 +31,14 @@ export async function deleteProduct(id) {
   return true;
 }
 
+export async function enhanceProductImage(imageUrl, backdropId = 'marble_pedestal') {
+  return await apiRequest('/ai/enhance-image', {
+    method: 'POST',
+    body: JSON.stringify({ image_url: imageUrl, backdrop_id: backdropId }),
+    timeoutMs: 30000,
+  });
+}
+
 export async function processAICatalog(data) {
   return await apiRequest('/ai/process-catalog', {
     method: 'POST',
