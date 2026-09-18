@@ -253,6 +253,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
     }
   }, [activeLanguage, isOpen]);
   const [voiceText, setVoiceText] = useState('');
+  const [audioUrl, setAudioUrl] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [selectedBackdrop, setSelectedBackdrop] = useState('marble_pedestal');
