@@ -27,6 +27,6 @@ git.cmd
 *.zip
 scratch_*
 cf_*.json
-ci_test.db
+*.apk
 
 
