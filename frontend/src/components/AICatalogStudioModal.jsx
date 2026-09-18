@@ -768,12 +768,20 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       });
       // A server-generated recommendation is the initial selling price, while
       // still leaving the artisan free to edit it before publishing.
-      const recommendedPrice = Number(res?.price_recommendation?.recommended_price ?? res?.suggested_price);
-      const hydratedDraft = Number.isFinite(recommendedPrice) && recommendedPrice > 0 && !Number(res?.suggested_price)
-        ? { ...res, suggested_price: recommendedPrice }
-        : res;
-      if (Number.isFinite(recommendedPrice) && recommendedPrice > 0) {
-        setCosts((prev) => ({ ...prev, selling_price: String(recommendedPrice) }));
+      const rawPrice = (
+        res?.suggested_price ??
+        res?.price_recommendation?.recommended_price ??
+        res?.market_summary?.median_price ??
+        costs.selling_price
+      );
+      const recommendedPrice = Number(rawPrice);
+      const validPrice = (Number.isFinite(recommendedPrice) && recommendedPrice > 0) ? recommendedPrice : null;
+      const hydratedDraft = {
+        ...res,
+        suggested_price: validPrice ?? res?.suggested_price ?? null
+      };
+      if (validPrice) {
+        setCosts((prev) => ({ ...prev, selling_price: String(validPrice) }));
       }
       setAiDraft(hydratedDraft);
       setStep('REVIEW');
@@ -825,6 +833,9 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
           updated.translations = JSON.stringify(transObj);
         } catch (e) {}
       }
+      if (field === 'suggested_price') {
+        setCosts((c) => ({ ...c, selling_price: String(val ?? '') }));
+      }
       return updated;
     });
   };
@@ -854,12 +865,22 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   };
 
   const handleApproveAndPublish = async () => {
-    const finalPrice = Number(aiDraft.suggested_price);
+    const candidatePrice = (
+      aiDraft.suggested_price ??
+      aiDraft.market_summary?.median_price ??
+      aiDraft.price_recommendation?.recommended_price ??
+      costs.selling_price
+    );
+    const finalPrice = Number(candidatePrice);
     const minFair = Number(aiDraft.min_fair_price || 0);
 
-    if (!finalPrice || finalPrice <= 0) {
+    if (!finalPrice || finalPrice <= 0 || Number.isNaN(finalPrice)) {
       notify.warning('Please enter a valid selling price before publishing.');
       return;
+    }
+
+    if (!aiDraft.suggested_price) {
+      setAiDraft((prev) => prev ? { ...prev, suggested_price: finalPrice } : null);
     }
 
     if (minFair > 0 && finalPrice < minFair) {
@@ -2067,7 +2088,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       <input
                         type="number"
                         placeholder="e.g. 1200"
-                        value={aiDraft.suggested_price ?? ''}
+                        value={aiDraft.suggested_price ?? (aiDraft.market_summary?.median_price || '')}
                         onChange={(e) => handleDraftChange('suggested_price', e.target.value === '' ? '' : parseFloat(e.target.value))}
                         className="w-28 text-xs font-bold border border-amber-300 rounded-lg px-2 py-1 text-[#1C1C1C] bg-white text-right focus:ring-1 focus:ring-amber-500"
                       />
