@@ -10,6 +10,7 @@ from backend.app.services.catalog_validator import validate_catalog_draft, has_v
 from backend.app.services.market_research import research_market
 from backend.app.services.market_research_provider import BaseMarketResearchProvider
 from backend.app.services.pricing_engine import calculate_price_recommendation_from_inputs
+from backend.app.services.ml_demand_engine import MLDemandEngine
 
 def _run_coro_sync(coro):
     try:
@@ -121,7 +122,24 @@ async def process_full_catalog_pipeline(
     market_currency = market_response.summary.currency if market_response.summary else "INR"
     market_is_reliable = market_response.summary.is_reliable if market_response.summary else False
 
-    # 5. Pure Market-Aware Pricing Calculation (No DB Product required)
+    # 5. ML Demand Engine prediction using draft inputs (no DB Product row required)
+    ml_engine = MLDemandEngine()
+    ml_pred = ml_engine.predict_from_inputs(
+        category=validated_catalog.get("category") or category_hint,
+        material_cost=float(material_cost or 0.0),
+        labour_cost=float(labour_cost or 0.0),
+        packaging_cost=float(packaging_cost or 0.0),
+        other_cost=float(other_cost or 0.0),
+        selling_price=float(selling_price or 0.0),
+        db=db
+    )
+    ml_demand_multiplier = float(ml_pred.get("ml_demand_multiplier", 1.0))
+    ml_demand_label = ml_pred.get("demand_level", "NORMAL")
+    # Compute demand_pct from ML score (0-100 → 0-100 percentage proxy)
+    ml_demand_score = float(ml_pred.get("predicted_demand_score", 0.0))
+    ml_demand_pct = round(ml_demand_score, 1)
+
+    # Pure Market-Aware Pricing Calculation (No DB Product required)
     pricing_rec = calculate_price_recommendation_from_inputs(
         title=validated_catalog.get("title", ""),
         category=validated_catalog.get("category", "Handcrafted"),
@@ -134,7 +152,11 @@ async def process_full_catalog_pipeline(
         market_median=raw_market_median,
         market_currency=market_currency,
         market_is_reliable=market_is_reliable,
-        product_currency="INR"
+        product_currency="INR",
+        demand_factor=ml_demand_multiplier,
+        demand_label=f"{ml_demand_label} DEMAND",
+        demand_pct=ml_demand_pct,
+        ml_info=ml_pred
     )
 
     # Clean catalog payload structure
@@ -235,7 +257,14 @@ async def process_full_catalog_pipeline(
         "artisan_facts": canonical_facts.model_dump(),
         "market_summary": market_summary_dict,
         "market_research": market_response.model_dump(),
-        "price_recommendation": pricing_rec
+        "price_recommendation": pricing_rec,
+        "ml_demand_info": {
+            "model_source": ml_pred.get("model_source", "RULE_BASED_FALLBACK"),
+            "predicted_demand_score": ml_pred.get("predicted_demand_score", 0.0),
+            "demand_level": ml_pred.get("demand_level", "NORMAL"),
+            "ml_demand_multiplier": ml_pred.get("ml_demand_multiplier", 1.0),
+            "model_info": ml_pred.get("model_info", {})
+        }
     }
 
 def process_full_catalog_pipeline_sync(*args, **kwargs) -> Dict[str, Any]:

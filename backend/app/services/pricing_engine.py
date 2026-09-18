@@ -260,6 +260,27 @@ def calculate_price_recommendation_from_inputs(
             reasoning.append(f"Your price (₹{float(curr_price):,.0f}) is inside the competitive market range. Preserving your price.")
 
     # -------------------------------------------------------------------------
+    # ML DEMAND FACTOR APPLICATION
+    # Apply demand multiplier ONLY when price is AI/market-derived (not artisan's own price).
+    # Artisan's own price (Cases 3 & 4) is preserved as-is; we never silently inflate it.
+    # -------------------------------------------------------------------------
+    if raw_recommended is not None and demand_factor != 1.0:
+        _df = Decimal(str(demand_factor))
+        _applies_to = (not has_artisan_price) or (pricing_case == "CASE_2_BELOW_MARKET")
+        if _applies_to:
+            raw_recommended = (raw_recommended * _df).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if demand_factor > 1.0:
+                reasoning.append(
+                    f"ML demand multiplier {float(demand_factor):.3f}x applied to AI-recommended price "
+                    f"(demand score {ml_info.get('predicted_demand_score', 0.0) if ml_info else 0:.0f}/100)."
+                )
+            elif demand_factor < 1.0:
+                reasoning.append(
+                    f"ML demand softening {float(demand_factor):.3f}x applied (low demand signal) "
+                    f"to keep price competitive."
+                )
+
+    # -------------------------------------------------------------------------
     # COST FLOOR ENFORCEMENT & FINAL PRICE CALCULATION
     # -------------------------------------------------------------------------
     if raw_recommended is not None:
@@ -269,6 +290,7 @@ def calculate_price_recommendation_from_inputs(
                 reasoning.append(f"Protected minimum fair price floor applied (₹{float(minimum_fair_price):,.0f}) to guarantee your configured {int(float(margin_pct) * 100)}% profit margin above cost basis.")
         else:
             final_recommended = raw_recommended
+
 
         if has_artisan_price and (pricing_case in ["CASE_3_INSIDE_MARKET", "CASE_4_ABOVE_MARKET"]):
             rounded_price = final_recommended

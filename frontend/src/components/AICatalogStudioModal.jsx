@@ -2053,6 +2053,29 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     </div>
                   </div>
 
+                  {/* ML Demand Engine Badge */}
+                  {aiDraft.ml_demand_info?.model_source === 'TRAINED_ML_MODEL' && (
+                    <div className="flex flex-wrap items-center gap-2 bg-violet-50 border border-violet-300 rounded-xl px-3 py-2">
+                      <span className="text-xs font-extrabold text-violet-900 flex items-center gap-1.5">
+                        🤖 <span>RandomForest ML Demand Engine Active</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-violet-700 bg-violet-100 border border-violet-200 rounded-full px-2 py-0.5">
+                        Demand Score: {Math.round(aiDraft.ml_demand_info.predicted_demand_score ?? 0)}/100
+                      </span>
+                      <span className="text-[10px] font-bold text-violet-700 bg-violet-100 border border-violet-200 rounded-full px-2 py-0.5">
+                        Multiplier: {(aiDraft.ml_demand_info.ml_demand_multiplier ?? 1).toFixed(3)}×
+                      </span>
+                      <span className="text-[10px] font-bold text-violet-700 bg-violet-100 border border-violet-200 rounded-full px-2 py-0.5">
+                        {aiDraft.ml_demand_info.demand_level ?? 'NORMAL'} DEMAND
+                      </span>
+                      {aiDraft.ml_demand_info.model_info?.r2_score != null && (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                          R² = {aiDraft.ml_demand_info.model_info.r2_score}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Explainable Pricing Reasoning Bullets */}
                   {Array.isArray(aiDraft.price_recommendation?.reasoning) && aiDraft.price_recommendation.reasoning.length > 0 && (
                     <div className="bg-white/90 p-3 rounded-xl border border-emerald-200/90 space-y-1.5">
