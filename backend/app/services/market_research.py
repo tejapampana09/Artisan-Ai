@@ -43,7 +43,7 @@ def build_market_query(
         raw_q = "handicraft artisan craft"
 
     if "price" not in raw_q.lower():
-        return f"{raw_q} handicraft price buy India".strip()
+        return f"{raw_q} handicraft price buy online India IndiaHandmade Mystore".strip()
     return raw_q.strip()
 
 async def research_market(
@@ -119,6 +119,16 @@ async def research_market(
         elif obs_at is None:
             obs_at = datetime.now(timezone.utc)
 
+        domain = ""
+        if item.get("url"):
+            try:
+                from urllib.parse import urlparse
+                domain = urlparse(item["url"]).netloc.lower()
+            except Exception:
+                domain = ""
+        if not domain:
+            domain = str(item.get("source") or "").lower()
+
         listing_model = MarketListing(
             title=title,
             price=parsed_price,
@@ -140,13 +150,19 @@ async def research_market(
     def _is_domestic_indian_source(listing: MarketListing) -> int:
         url = (listing.url or "").lower()
         src = (listing.source or "").lower()
+        official_artisan_domains = [
+            "indiahandmade", "mystore", "ondc", "tribesindia", "khadiindia",
+            "craftmaestros", "itokri", "jaypore", "craftsvilla", "exclusivelane"
+        ]
+        if any(dom in url or dom in src for dom in official_artisan_domains):
+            return 3  # Highest priority: Authentic Indian artisan & government craft portals
         indian_craft_domains = [
-            ".in", "jaypore", "craftsvilla", "exclusivelane", "itokri", "tjori",
-            "indiamart", "amazon.in", "flipkart", "meesho", "zapvi", "cosmoslayers",
-            "myntra", "nykaa", "ajio", "tatacliq", "pepperfry", "woodenstreet", "engrave"
+            ".in", "indiamart", "amazon.in", "flipkart", "meesho", "zapvi",
+            "cosmoslayers", "myntra", "nykaa", "ajio", "tatacliq", "pepperfry",
+            "woodenstreet", "engrave"
         ]
         if any(dom in url or dom in src for dom in indian_craft_domains):
-            return 2  # Highest priority: local Indian handicraft seller & marketplace
+            return 2  # High priority: domestic Indian marketplace
         if any(exp in url or exp in src for exp in ["etsy.com", "ebay.com", "amazon.com"]):
             return 0  # Lower priority: cross-border international platform (USD conversion)
         return 1  # Standard priority

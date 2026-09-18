@@ -221,8 +221,10 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
         research_prompt = (
             f"You are an expert Indian retail and handicraft market research analyst. "
             f"Search the live web for currently available comparable handmade or artisan products in India for: \"{clean_q}\". "
+            f"Prioritize authentic Indian artisan marketplaces and ONDC channels such as India Handmade (indiahandmade.com), Mystore (mystore.in), iTokri, Craftsvilla, Jaypore, Tribes India (tribesindia.com), and Khadi India (khadiindia.gov.in). "
             f"The attached craft photo is the primary visual reference; use its shape, material, pattern, craft style, and finish to reject text-only lookalikes. " if image_url else
             f"You are an expert Indian retail and handicraft market research analyst. Search the live web for currently available comparable handmade or artisan products in India for: \"{clean_q}\". "
+            f"Prioritize authentic Indian artisan marketplaces and ONDC channels such as India Handmade (indiahandmade.com), Mystore (mystore.in), iTokri, Craftsvilla, Jaypore, Tribes India (tribesindia.com), and Khadi India (khadiindia.gov.in). "
         ) + (
             f"Find up to {fetch_count} actual observed prices in INR from real grounded web search results on platforms in India. "
             f"Reply in plain research notes, one listing at a time, with its title, observed price, marketplace, "
@@ -633,7 +635,8 @@ class SearXNGMarketResearchProvider(BaseMarketResearchProvider):
 
         extraction_prompt = (
             f"You are an expert market analyst extracting product pricing for handmade/artisan items in India. "
-            f"Analyze these real web search results from SearXNG for query: \"{clean_q}\".\n\n"
+            f"Analyze these real web search results from SearXNG for query: \"{clean_q}\".\n"
+            f"Prioritize authentic Indian artisan marketplaces and ONDC channels like India Handmade (indiahandmade.com), Mystore (mystore.in), iTokri, Jaypore, Tribes India, Craftsvilla.\n\n"
             f"SearXNG Search Results:\n{json.dumps(sources, ensure_ascii=False, indent=2)}\n\n"
             f"Return a JSON array of up to {min(limit, len(sources))} objects. Each object MUST include:\n"
             f"- source_index (integer matching source_index above)\n"
@@ -644,7 +647,7 @@ class SearXNGMarketResearchProvider(BaseMarketResearchProvider):
             f"- description (string)\n"
             f"- category (string)\n"
             f"- materials (list of strings)\n"
-            f"Do not invent a price. If the snippet does not show an explicit price, set price and price_evidence to null."
+            f"Do not invent a price or mock products. If the snippet does not show an explicit price, set price and price_evidence to null."
         )
 
         extraction_payload = {
