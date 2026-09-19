@@ -1,6 +1,8 @@
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { resetNotificationHistory } from "./notifications";
+
 const STUDIO_TOKEN_KEY = "artisan_ai_studio_token";
 const MARKETPLACE_TOKEN_KEY = "artisan_ai_marketplace_token";
 const ACTIVE_DOMAIN_KEY = "artisan_ai_active_domain";
@@ -20,6 +22,7 @@ export async function saveSession(
   domain: AuthDomain,
   user: unknown
 ): Promise<void> {
+  resetNotificationHistory();
   if (domain === "STUDIO") {
     // Purge any opposing marketplace/buyer session (strict mutual exclusion)
     await SecureStore.deleteItemAsync(MARKETPLACE_TOKEN_KEY).catch(() => {});
@@ -66,6 +69,7 @@ export async function setActiveDomain(domain: AuthDomain): Promise<void> {
 }
 
 export async function clearSession(domain?: AuthDomain): Promise<void> {
+  resetNotificationHistory();
   if (!domain || domain === "STUDIO") {
     await SecureStore.deleteItemAsync(STUDIO_TOKEN_KEY).catch(() => {});
     await AsyncStorage.removeItem(STUDIO_USER_KEY).catch(() => {});

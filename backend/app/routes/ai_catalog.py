@@ -339,7 +339,10 @@ async def translate_product(
                     if target_lang in trans_map:
                         cached = trans_map[target_lang]
                         c_title = cached.get("title", "")
-                        has_devanagari = any('\u0900' <= ch <= '\u097f' for ch in c_title)
+                        c_desc = cached.get("description", "")
+                        c_story = cached.get("craft_story", "")
+                        combined_text = f"{c_title} {c_desc} {c_story}"
+                        has_devanagari = any('\u0900' <= ch <= '\u097f' for ch in combined_text)
                         if not (target_lang in ("te", "ta", "bn") and has_devanagari):
                             return TranslateProductResponse(
                                 title=cached.get("title", title),

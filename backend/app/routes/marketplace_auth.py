@@ -198,17 +198,11 @@ def google_auth_buyer(payload: GoogleAuthRequest, request: Request, db: Session 
             logger.warning("Google tokeninfo check failed: %s", e)
 
     if not verified_email:
-        from backend.app.config import DEMO_MODE, ENVIRONMENT
-        if (DEMO_MODE or ENVIRONMENT != "production") and payload.email and "@" in payload.email:
-            verified_email = payload.email.strip().lower()
-            verified_name = payload.name or payload.email.split("@")[0]
-            verified_google_id = payload.google_id or f"dev_google_{payload.email}"
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Google authentication failed: Valid Google access_token or id_token required.",
-                headers={"WWW-Authenticate": "Bearer"}
-            )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google authentication failed: Cryptographically verified Google id_token or access_token required.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
 
     email = verified_email.strip().lower()
     name = (verified_name or email.split("@")[0]).strip()

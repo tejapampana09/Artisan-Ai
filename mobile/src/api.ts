@@ -130,9 +130,6 @@ export const api = {
   async googleLoginBuyer(payload: {
     access_token?: string;
     token?: string;
-    email?: string;
-    name?: string;
-    google_id?: string;
   }) {
     return request<any>(
       "/marketplace/auth/google",

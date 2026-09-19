@@ -861,16 +861,7 @@ async def translate_craft_text(
     }
 
 
-CATEGORY_MARKET_BENCHMARKS = {
-    "Kalamkari": {"suggested": Decimal("2400.00"), "min": Decimal("1800.00")},
-    "Wooden Toys": {"suggested": Decimal("1250.00"), "min": Decimal("850.00")},
-    "Blue Pottery": {"suggested": Decimal("950.00"), "min": Decimal("650.00")},
-    "Bidriware": {"suggested": Decimal("2800.00"), "min": Decimal("2000.00")},
-    "Pochampally Ikat": {"suggested": Decimal("3200.00"), "min": Decimal("2200.00")},
-    "Terracotta": {"suggested": Decimal("650.00"), "min": Decimal("450.00")},
-    "Handloom": {"suggested": Decimal("2200.00"), "min": Decimal("1500.00")},
-    "Other": {"suggested": Decimal("1500.00"), "min": Decimal("1000.00")},
-}
+
 
 async def estimate_fair_price(
     title: str = "",
@@ -952,12 +943,6 @@ async def estimate_fair_price(
             pass
 
     # Do not invent a category price when neither live market data nor artisan
-    # costs are available. The caller must show pricing as unavailable.
-    matched_benchmark = None
-    for cat_key, bench in CATEGORY_MARKET_BENCHMARKS.items():
-        if cat_key.lower() in clean_cat.lower() or cat_key.lower() in clean_title.lower():
-            matched_benchmark = bench
-            break
     return {
         "suggested_price": None,
         "min_fair_price": None,

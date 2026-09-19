@@ -38,27 +38,69 @@ Notifications.setNotificationHandler({
 // Listeners for in-app reactive updates
 type NotificationListener = (items: NotificationItem[], unreadCount: number) => void;
 let listeners: NotificationListener[] = [];
-let cachedNotifications: NotificationItem[] = [];
-let cachedUnreadCount = 0;
-let knownIds = new Set<number>();
-let hasInitializedHistory = false;
+let activeDomain: AuthDomain = "MARKETPLACE";
+
+interface DomainCache {
+  items: NotificationItem[];
+  unreadCount: number;
+  knownIds: Set<number>;
+  hasInitializedHistory: boolean;
+}
+
+const domainCaches: Record<AuthDomain, DomainCache> = {
+  STUDIO: {
+    items: [],
+    unreadCount: 0,
+    knownIds: new Set<number>(),
+    hasInitializedHistory: false
+  },
+  MARKETPLACE: {
+    items: [],
+    unreadCount: 0,
+    knownIds: new Set<number>(),
+    hasInitializedHistory: false
+  }
+};
+
 let pollingTimer: ReturnType<typeof setInterval> | null = null;
 let appStateSubscription: any = null;
+
+export function resetNotificationHistory(targetDomain?: AuthDomain): void {
+  if (targetDomain) {
+    domainCaches[targetDomain] = {
+      items: [],
+      unreadCount: 0,
+      knownIds: new Set<number>(),
+      hasInitializedHistory: false
+    };
+  } else {
+    for (const d of ["STUDIO", "MARKETPLACE"] as AuthDomain[]) {
+      domainCaches[d] = {
+        items: [],
+        unreadCount: 0,
+        knownIds: new Set<number>(),
+        hasInitializedHistory: false
+      };
+    }
+  }
+  notifyListeners();
+}
 
 export function subscribeNotifications(listener: NotificationListener) {
   listeners.push(listener);
   // Immediately dispatch current cache to new listener
-  listener(cachedNotifications, cachedUnreadCount);
+  const current = domainCaches[activeDomain];
+  listener(current.items, current.unreadCount);
   return () => {
     listeners = listeners.filter((l) => l !== listener);
   };
 }
 
 function notifyListeners() {
-  cachedUnreadCount = cachedNotifications.filter((n) => !n.is_read).length;
+  const current = domainCaches[activeDomain];
   for (const listener of listeners) {
     try {
-      listener(cachedNotifications, cachedUnreadCount);
+      listener(current.items, current.unreadCount);
     } catch (e) {
       console.warn("Notification listener error:", e);
     }
@@ -73,6 +115,17 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("default", {
         name: "Artisan AI Alerts",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#9F3C16",
+        sound: "default",
+        enableVibrate: true,
+        showBadge: true,
+        enableLights: true
+      });
+
+      await Notifications.setNotificationChannelAsync("orders_channel", {
+        name: "Orders & Enquiries",
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: "#9F3C16",
@@ -147,7 +200,9 @@ export async function sendLocalNotification(
         vibrate: [0, 250, 250, 250],
         priority: Notifications.AndroidNotificationPriority.MAX
       },
-      trigger: null // triggers immediately
+      trigger: {
+        channelId: "orders_channel"
+      }
     });
   } catch (err) {
     console.warn("Could not schedule local notification:", err);
@@ -162,19 +217,25 @@ export async function fetchNotifications(domainOverride?: AuthDomain): Promise<N
     let domain = domainOverride;
     if (!domain) {
       const session = await getSession();
+      if (!session || !session.token) {
+        return domainCaches[activeDomain].items;
+      }
       domain = session.domain || "MARKETPLACE";
     }
+    activeDomain = domain;
+    const cache = domainCaches[domain];
 
     const res = await api.notifications(domain);
     if (Array.isArray(res)) {
       // Check if new unread items appeared compared to previous cache
-      const newlyReceived = res.filter((n) => !n.is_read && !knownIds.has(n.id));
+      const newlyReceived = res.filter((n) => !n.is_read && !cache.knownIds.has(n.id));
 
-      cachedNotifications = res;
+      cache.items = res;
+      cache.unreadCount = res.filter((n) => !n.is_read).length;
       notifyListeners();
 
       // Trigger native notifications for new arrivals if session is already active
-      if (hasInitializedHistory && newlyReceived.length > 0) {
+      if (cache.hasInitializedHistory && newlyReceived.length > 0) {
         for (const item of newlyReceived) {
           let allowLocal = true;
           try {
@@ -206,37 +267,40 @@ export async function fetchNotifications(domainOverride?: AuthDomain): Promise<N
 
       // Mark all current IDs as known
       for (const item of res) {
-        knownIds.add(item.id);
+        cache.knownIds.add(item.id);
       }
-      hasInitializedHistory = true;
+      cache.hasInitializedHistory = true;
 
-      await AsyncStorage.setItem(NOTIFICATIONS_CACHE_KEY, JSON.stringify(res));
+      await AsyncStorage.setItem(`${NOTIFICATIONS_CACHE_KEY}_${domain.toLowerCase()}`, JSON.stringify(res));
       return res;
     }
-    return cachedNotifications;
+    return cache.items;
   } catch (err) {
+    const cache = domainCaches[activeDomain];
     // Return cached list if offline
-    if (cachedNotifications.length === 0) {
+    if (cache.items.length === 0) {
       try {
-        const local = await AsyncStorage.getItem(NOTIFICATIONS_CACHE_KEY);
+        const local = await AsyncStorage.getItem(`${NOTIFICATIONS_CACHE_KEY}_${activeDomain.toLowerCase()}`);
         if (local) {
-          cachedNotifications = JSON.parse(local);
-          for (const item of cachedNotifications) {
-            knownIds.add(item.id);
+          cache.items = JSON.parse(local);
+          cache.unreadCount = cache.items.filter((n) => !n.is_read).length;
+          for (const item of cache.items) {
+            cache.knownIds.add(item.id);
           }
-          hasInitializedHistory = true;
+          cache.hasInitializedHistory = true;
           notifyListeners();
         }
       } catch {}
     }
-    return cachedNotifications;
+    return cache.items;
   }
 }
 
 /**
- * Start periodic real-time polling for notifications while the app is running
+ * Start periodic real-time polling for notifications while the app is running (foreground & background)
+ * Defaults to 20s fallback polling rate, with immediate fetch on app active events.
  */
-export function startNotificationPolling(intervalMs: number = 4000): () => void {
+export function startNotificationPolling(intervalMs: number = 20000): () => void {
   // Initial immediate fetch
   fetchNotifications().catch(() => {});
 
@@ -250,19 +314,15 @@ export function startNotificationPolling(intervalMs: number = 4000): () => void 
 
   if (!appStateSubscription) {
     appStateSubscription = AppState.addEventListener("change", (nextState: AppStateStatus) => {
+      // Immediate fetch when app transitions to active
       if (nextState === "active") {
         fetchNotifications().catch(() => {});
-        if (!pollingTimer) {
-          pollingTimer = setInterval(() => {
-            fetchNotifications().catch(() => {});
-          }, intervalMs);
-        }
-      } else if (nextState === "background") {
-        // Clear tight interval while in background to save battery
-        if (pollingTimer) {
-          clearInterval(pollingTimer);
-          pollingTimer = null;
-        }
+      }
+      // Ensure continuous polling across background & active so background updates are delivered in real time
+      if (!pollingTimer) {
+        pollingTimer = setInterval(() => {
+          fetchNotifications().catch(() => {});
+        }, intervalMs);
       }
     });
   }
@@ -291,17 +351,19 @@ export async function markAsRead(notificationId: number, domainOverride?: AuthDo
     let domain = domainOverride;
     if (!domain) {
       const session = await getSession();
-      domain = session.domain || "MARKETPLACE";
+      domain = session.domain || activeDomain;
     }
+    const cache = domainCaches[domain];
 
-    // Optimistically update in memory
-    cachedNotifications = cachedNotifications.map((item) =>
+    // Optimistically update in domain cache
+    cache.items = cache.items.map((item) =>
       item.id === notificationId ? { ...item, is_read: true } : item
     );
+    cache.unreadCount = cache.items.filter((n) => !n.is_read).length;
     notifyListeners();
 
     await api.markNotificationRead(notificationId, domain);
-    await AsyncStorage.setItem(NOTIFICATIONS_CACHE_KEY, JSON.stringify(cachedNotifications));
+    await AsyncStorage.setItem(`${NOTIFICATIONS_CACHE_KEY}_${domain.toLowerCase()}`, JSON.stringify(cache.items));
     return true;
   } catch (err) {
     console.warn("Failed to mark notification read:", err);
@@ -313,16 +375,24 @@ export async function markAsRead(notificationId: number, domainOverride?: AuthDo
  * Mark all notifications as read
  */
 export async function markAllAsRead(domainOverride?: AuthDomain): Promise<void> {
-  const unreadItems = cachedNotifications.filter((n) => !n.is_read);
+  let domain = domainOverride;
+  if (!domain) {
+    const session = await getSession();
+    domain = session.domain || activeDomain;
+  }
+  const cache = domainCaches[domain];
+  const unreadItems = cache.items.filter((n) => !n.is_read);
+
   // Optimistically set all to read
-  cachedNotifications = cachedNotifications.map((n) => ({ ...n, is_read: true }));
+  cache.items = cache.items.map((n) => ({ ...n, is_read: true }));
+  cache.unreadCount = 0;
   notifyListeners();
 
   await Promise.allSettled(
-    unreadItems.map((item) => markAsRead(item.id, domainOverride))
+    unreadItems.map((item) => markAsRead(item.id, domain))
   );
 }
 
 export function getCachedUnreadCount(): number {
-  return cachedUnreadCount;
+  return domainCaches[activeDomain].unreadCount;
 }

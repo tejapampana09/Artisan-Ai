@@ -58,7 +58,12 @@ def create_payment(
         if existing_pmt:
             return existing_pmt
 
-    provider = (payload.provider or "RAZORPAY").upper().strip()
+    provider = (payload.provider or "COD").upper().strip()
+    if provider not in ["COD", "RAZORPAY"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Online payments are not enabled yet. Please choose Cash on Delivery (COD)."
+        )
     provider_order_id = f"order_{provider.lower()}_{uuid.uuid4().hex[:14]}"
 
     payment = Payment(
@@ -191,12 +196,10 @@ def verify_payment(
             # In test/dev environments without real Razorpay secret, accept test signatures
             verified = True
     elif provider in ["UPI_QR", "UPI", "CARD", "NETBANKING"]:
-        if not payload.provider_payment_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"{provider} payment verification requires provider_payment_id."
-            )
-        verified = True
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Online payments are not enabled yet."
+        )
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

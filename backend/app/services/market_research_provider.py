@@ -181,111 +181,48 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
         # provider from a genuine "no comparable products" search result.
         self.last_failure_reason: Optional[str] = None
 
-    async def _query_gemini_multimodal_vision(
-        self, query: str, image_part: Optional[Dict[str, Any]], limit: int, models_to_try: List[str]
-    ) -> List[Dict[str, Any]]:
+    async def _identify_craft_from_image(
+        self, query: str, image_part: Dict[str, Any], models_to_try: List[str]
+    ) -> Optional[str]:
         """
-        Multimodal Vision & Market Intelligence analyzer.
-        Analyzes the craft photo directly to identify craft type, materials, weave/carving/pottery technique,
-        and finds real comparable Indian artisan products with observed prices and valid purchase links.
+        Multimodal Visual Craft Identification.
+        Uses Gemini Vision strictly for visual identification (craft type, materials, weave/carving technique).
+        Does NOT generate or hallucinate market listings or prices.
+        Outputs an enriched, precise search phrase that is then passed to the grounded web search pipeline.
         """
-        has_image = bool(image_part)
         vision_prompt = (
-            f"You are an expert Indian retail and handicraft market research analyst.\n"
-            + (f"Analyze the attached handcrafted product photo and identify the craft type, materials, weave/carving/pottery technique, and artisan design style.\n" if has_image else "")
-            + f"Based on this authentic craft analysis and search query: \"{query}\", find up to {limit} real comparable handcrafted artisan products sold on major Indian e-commerce marketplaces "
-            f"(such as Amazon India, iTokri, Jaypore, India Handmade, Craftsvilla, Flipkart, or Etsy India).\n"
-            f"For each comparable product, return:\n"
-            f"1. 'title': Clear, authentic product title\n"
-            f"2. 'price': Realistic observed market price in INR as a positive number (no currency symbols, e.g. 850)\n"
-            f"3. 'currency': 'INR'\n"
-            f"4. 'source': Specific marketplace name (e.g., 'Amazon India', 'iTokri', 'Jaypore', 'India Handmade', 'Flipkart')\n"
-            f"5. 'url': A direct search or product purchase link in India (e.g., https://www.amazon.in/s?k=... or https://www.google.com/search?q=buy+...)\n"
-            f"6. 'description': Brief explanation of why this matches the artisan's craft style, materials, and form\n"
-            f"7. 'category': Craft category\n"
-            f"8. 'materials': List of primary materials (array of strings)\n\n"
-            f"CRITICAL: Do NOT invent arbitrary or placeholder numbers. Base prices on authentic current Indian artisan market rates. "
-            f"Return ONLY a valid JSON array of objects conforming to this schema."
+            f"You are an expert Indian handicrafts curator and technical textile/material analyst.\n"
+            f"Analyze the attached handcrafted product photo and user description: \"{query}\".\n"
+            f"Identify the visual craft type, materials, artisan technique, and regional tradition.\n"
+            f"Return a concise, specific search phrase (under 10 words) optimized for finding this exact handmade product in Indian marketplaces.\n"
+            f"Example: Handcrafted Blue Pottery ceramic floral vase Jaipur\n"
+            f"Return ONLY the search phrase text. Do NOT include prices, JSON, or formatting."
         )
-
-        parts: List[Dict[str, Any]] = [{"text": vision_prompt}]
-        if image_part:
-            parts.append(image_part)
-
         payload = {
-            "contents": [{"parts": parts}],
+            "contents": [{"parts": [image_part, {"text": vision_prompt}]}],
             "generationConfig": {
-                "temperature": 0.2,
-                "maxOutputTokens": 4096,
-                "responseMimeType": "application/json",
+                "temperature": 0.1,
+                "maxOutputTokens": 100,
             }
         }
-
         for model in models_to_try:
             try:
-                api_url = (
-                    f"https://generativelanguage.googleapis.com/v1beta/models/"
-                    f"{model}:generateContent?key={self.api_key}"
-                )
-                async with httpx.AsyncClient(timeout=15.0) as client:
+                api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
+                async with httpx.AsyncClient(timeout=10.0) as client:
                     resp = await client.post(api_url, json=payload, headers={"Content-Type": "application/json"})
-
-                if resp.status_code != 200:
-                    logger.warning("[Market] Gemini Vision model %s returned HTTP %s", model, resp.status_code)
-                    continue
-
-                res_json = resp.json()
-                candidates = res_json.get("candidates") or []
-                if not candidates:
-                    continue
-                candidate_parts = candidates[0].get("content", {}).get("parts", [])
-                text_out = "".join(p.get("text", "") for p in candidate_parts if isinstance(p, dict))
-                parsed_array = _extract_json_array(text_out)
-                if not parsed_array:
-                    continue
-
-                results = []
-                for item in parsed_array:
-                    if not isinstance(item, dict):
-                        continue
-                    title = str(item.get("title") or "").strip()
-                    if not title:
-                        continue
-                    raw_p = item.get("price")
-                    parsed_price = None
-                    if raw_p is not None:
-                        try:
-                            p_val = float(str(raw_p).replace(",", "").replace("₹", "").strip())
-                            if p_val > 0:
-                                parsed_price = round(p_val, 2)
-                        except (ValueError, TypeError):
-                            pass
-
-                    source = str(item.get("source") or "Indian Marketplace").strip()
-                    raw_url = str(item.get("url") or "").strip()
-                    final_url = _clean_or_build_url(raw_url, title, source)
-
-                    results.append({
-                        "title": title,
-                        "price": parsed_price,
-                        "currency": "INR",
-                        "source": source,
-                        "url": final_url,
-                        "description": str(item.get("description") or ""),
-                        "category": str(item.get("category") or query),
-                        "materials": item.get("materials") or [],
-                        "observed_at": datetime.now(timezone.utc)
-                    })
-
-                if results:
-                    logger.info("[Market] Gemini Vision on %s returned %d comparable products for '%s'", model, len(results), query)
-                    return results[:limit]
-
+                if resp.status_code == 200:
+                    res_json = resp.json()
+                    candidates = res_json.get("candidates") or []
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        text_out = "".join(p.get("text", "") for p in parts if isinstance(p, dict)).strip()
+                        if text_out and len(text_out) > 3:
+                            logger.info("[Market Vision] Visual identification result: '%s' -> '%s'", query, text_out)
+                            return text_out
             except Exception as err:
-                logger.warning("[Market] Gemini Vision error on %s: %s", model, err)
+                logger.warning("[Market Vision] Identification error on %s: %s", model, err)
                 continue
-
-        return []
+        return None
 
     async def search_comparable_products(
         self, query: str, limit: int = 10, image_url: Optional[str] = None
@@ -339,17 +276,16 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
             except Exception as img_err:
                 logger.warning("[Market] Craft image could not be prepared: %s", img_err)
 
-        # 1. Multimodal Vision: If craft photo is present, analyze directly with Gemini Vision
+        search_query = clean_q
         if image_part:
-            logger.info("[Market] Executing Gemini Multimodal Vision analysis for craft image: '%s'", clean_q)
-            vision_results = await self._query_gemini_multimodal_vision(clean_q, image_part, fetch_count, models_to_try)
-            if vision_results:
-                set_market_cache(clean_q, vision_results, image_url)
-                return vision_results[:limit]
+            logger.info("[Market] Running Gemini Vision visual craft identification for: '%s'", clean_q)
+            visual_query = await self._identify_craft_from_image(clean_q, image_part, models_to_try)
+            if visual_query:
+                search_query = visual_query
 
         research_prompt = (
             f"You are an expert Indian retail and handicraft market research analyst. "
-            f"Search the live web for currently available comparable handmade or artisan products in India for: \"{clean_q}\". "
+            f"Search the live web for currently available comparable handmade or artisan products in India for: \"{search_query}\". "
             f"Prioritize authentic Indian artisan marketplaces and ONDC channels such as India Handmade (indiahandmade.com), Mystore (mystore.in), iTokri, Craftsvilla, Jaypore, Tribes India (tribesindia.com), and Khadi India (khadiindia.gov.in). "
         ) + (
             f"Find up to {fetch_count} actual observed prices in INR from real grounded web search results on platforms in India. "
@@ -668,10 +604,24 @@ class SearXNGMarketResearchProvider(BaseMarketResearchProvider):
         if cached_res is not None:
             return cached_res[:limit]
 
+        search_query = clean_q
+        if image_url and self.api_key:
+            from backend.app.services.ai_adapter import prepare_image_part
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as image_client:
+                    image_part = await prepare_image_part(image_url, image_client)
+                    if image_part:
+                        vision_ident = GeminiSearchMarketResearchProvider(self.api_key)
+                        visual_q = await vision_ident._identify_craft_from_image(clean_q, image_part, ["gemini-3.1-flash-lite", "gemini-2.5-flash"])
+                        if visual_q:
+                            search_query = visual_q
+            except Exception as img_err:
+                logger.warning("[Market SearXNG] Craft image identification error: %s", img_err)
+
         # Step 1: Query SearXNG JSON API
         searxng_endpoint = f"{self.searxng_url}/search"
         params = {
-            "q": clean_q,
+            "q": search_query,
             "format": "json",
             "categories": "general",
             "language": "en-IN"

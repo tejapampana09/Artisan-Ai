@@ -85,7 +85,10 @@ export default function ProductDetail() {
       })
       .then((res) => {
         if (res?.title || res?.craft_story || res?.description) {
-          const hasDevanagari = /[\u0900-\u097F]/.test(res?.title || "") || /[\u0900-\u097F]/.test(res?.craft_story || "");
+          const hasDevanagari =
+            /[\u0900-\u097F]/.test(res?.title || "") ||
+            /[\u0900-\u097F]/.test(res?.description || "") ||
+            /[\u0900-\u097F]/.test(res?.craft_story || "");
           if ((targetLang === "te" || targetLang === "ta" || targetLang === "bn") && hasDevanagari) {
             console.warn("Devanagari script detected in", targetLang, "translation, skipping invalid payload");
             return;
@@ -99,19 +102,26 @@ export default function ProductDetail() {
 
   useEffect(() => {
     if (product) {
+      let hasValidCached = false;
       if (language !== "en" && product.translations) {
         try {
           const tMap = typeof product.translations === "string" ? JSON.parse(product.translations) : product.translations;
           if (tMap && tMap[language]) {
             const cached = tMap[language];
-            const hasDev = /[\u0900-\u097F]/.test(cached.title || "") || /[\u0900-\u097F]/.test(cached.craft_story || "");
+            const hasDev =
+              /[\u0900-\u097F]/.test(cached.title || "") ||
+              /[\u0900-\u097F]/.test(cached.description || "") ||
+              /[\u0900-\u097F]/.test(cached.craft_story || "");
             if (!((language === "te" || language === "ta" || language === "bn") && hasDev)) {
               setTranslatedData(cached);
+              hasValidCached = true;
             }
           }
         } catch {}
       }
-      fetchTranslation(language);
+      if (!hasValidCached) {
+        fetchTranslation(language);
+      }
     }
   }, [product?.id, language]);
 

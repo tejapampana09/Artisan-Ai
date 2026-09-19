@@ -402,12 +402,15 @@ export default function SellerAICatalogStudio() {
 
     const effectiveCat = categoryHint.trim() || "Handicraft";
     const parsedMaterials = qnaAnswers.q2_materials
-      ? qnaAnswers.q2_materials.split(",").map((s) => s.trim()).filter(Boolean)
-      : ["Natural materials"];
+      ? qnaAnswers.q2_materials
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
 
     const combinedVoiceText = [
       qnaAnswers.q1_title ? `Product Name: ${qnaAnswers.q1_title}` : "",
-      qnaAnswers.q2_materials ? `Handmade & Materials: ${qnaAnswers.q2_materials}` : "",
+      qnaAnswers.q2_materials ? `Materials: ${qnaAnswers.q2_materials}` : "",
       qnaAnswers.q3_story ? `Craft Process & Lineage: ${qnaAnswers.q3_story}` : ""
     ].filter(Boolean).join("\n");
 
@@ -415,8 +418,8 @@ export default function SellerAICatalogStudio() {
       product_name: qnaAnswers.q1_title.trim(),
       craft_type: effectiveCat.trim(),
       materials: parsedMaterials,
-      handmade: true,
-      making_time: "7-10 days",
+      handmade: null,
+      making_time: "",
       artisan_story: qnaAnswers.q3_story.trim(),
       special_characteristics: combinedVoiceText
     };
