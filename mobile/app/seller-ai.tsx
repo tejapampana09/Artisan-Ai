@@ -169,6 +169,7 @@ export default function SellerAICatalogStudio() {
   // Audio Recording State
   const [isRecordingPermissionGranted, setIsRecordingPermissionGranted] = useState(false);
   const [audioUri, setAudioUri] = useState<string | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder);
 
@@ -273,7 +274,7 @@ export default function SellerAICatalogStudio() {
     Alert.alert("Sample Loaded", `Loaded authentic details for "${sample.name}". You can customize them or proceed directly.`);
   };
 
-  // ─── Audio Recording Handlers ───
+  // ─── Audio Recording Handlers (Speech to Text) ───
   const handleToggleRecord = async () => {
     try {
       if (!isRecordingPermissionGranted) {
@@ -289,12 +290,27 @@ export default function SellerAICatalogStudio() {
         if (recorder.uri) {
           setAudioUri(recorder.uri);
           const activeQ = QNA_QUESTIONS[activeQnaIndex];
-          setQnaAnswers((prev) => ({
-            ...prev,
-            [activeQ.id]: prev[activeQ.id as keyof typeof prev]
-              ? `${prev[activeQ.id as keyof typeof prev]} (Voice recorded)`
-              : `Voice recorded description in ${selectedLang.toUpperCase()}`
-          }));
+          setIsTranscribing(true);
+          try {
+            const resp = await api.transcribeAudio(recorder.uri, selectedLang);
+            const transcribedText = (resp?.text || "").trim();
+            if (transcribedText) {
+              setQnaAnswers((prev) => {
+                const currentVal = (prev[activeQ.id as keyof typeof prev] || "").trim();
+                return {
+                  ...prev,
+                  [activeQ.id]: currentVal ? `${currentVal} ${transcribedText}` : transcribedText
+                };
+              });
+            } else {
+              Alert.alert("Voice Notice", "No clear speech detected. Please speak closer to the microphone and try again.");
+            }
+          } catch (transErr: any) {
+            console.warn("Speech transcription failed:", transErr);
+            Alert.alert("Transcription Notice", "Could not transcribe audio. Please verify your connection or type directly.");
+          } finally {
+            setIsTranscribing(false);
+          }
         }
       } else {
         await recorder.prepareToRecordAsync();
@@ -719,22 +735,26 @@ export default function SellerAICatalogStudio() {
                     onChangeText={(txt) => setQnaAnswers((prev) => ({ ...prev, [activeQuestion.id]: txt }))}
                   />
 
-                  {/* Voice Record Button */}
+                  {/* Voice Record Button (Speech to Text) */}
                   <Pressable
                     style={[
                       styles.voiceBtn,
-                      recorderState.isRecording && styles.voiceBtnRecording
+                      recorderState.isRecording && styles.voiceBtnRecording,
+                      isTranscribing && { backgroundColor: "#B45309" }
                     ]}
                     onPress={handleToggleRecord}
+                    disabled={isTranscribing}
                   >
                     <Ionicons
-                      name={recorderState.isRecording ? "stop-circle" : "mic"}
+                      name={isTranscribing ? "hourglass-outline" : recorderState.isRecording ? "stop-circle" : "mic"}
                       size={20}
                       color="#FFFFFF"
                     />
                     <Text style={styles.voiceBtnText}>
-                      {recorderState.isRecording
-                        ? `Recording (${Math.round(recorderState.durationMillis / 1000)}s) - Tap to Save`
+                      {isTranscribing
+                        ? "Transcribing voice to text..."
+                        : recorderState.isRecording
+                        ? `Listening (${Math.round(recorderState.durationMillis / 1000)}s) - Tap to Stop & Transcribe`
                         : "Speak Your Answer"}
                     </Text>
                   </Pressable>

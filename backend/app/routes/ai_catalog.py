@@ -1,7 +1,7 @@
 import json
 from decimal import Decimal
 from typing import Optional, List, Dict, Any, cast
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File, Form
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -427,3 +427,64 @@ async def estimate_product_price(
         other_cost=req.other_cost,
     )
     return PriceEstimateResponse(**res)
+
+
+class TranscribeResponse(BaseModel):
+    text: str
+
+
+@router.post("/transcribe", response_model=TranscribeResponse)
+async def transcribe_speech(
+    file: UploadFile = File(...),
+    language: str = Form("auto"),
+    request: Request = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Transcribes artisan voice speech into text using Gemini multimodal audio.
+    Supports Telugu, Hindi, Tamil, English, and all major Indian languages.
+    """
+    user_id = cast(Optional[int], current_user.id)
+    rate_limiter.check_rate_limit(
+        f"transcribe:{get_client_identifier(request, user_id)}",
+        max_requests=30,
+        window_seconds=60,
+    )
+
+    audio_bytes = await file.read()
+    if not audio_bytes or len(audio_bytes) < 100:
+        return TranscribeResponse(text="")
+
+    try:
+        from google import genai
+        from google.genai import types
+        from backend.app.config import GEMINI_API_KEY
+
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        mime = file.content_type or "audio/m4a"
+        if "audio" not in mime:
+            mime = "audio/m4a"
+
+        audio_part = types.Part.from_bytes(
+            data=audio_bytes,
+            mime_type=mime
+        )
+
+        prompt = (
+            f"You are a speech-to-text transcriber for Indian artisans speaking in {language} or English. "
+            "Transcribe this audio recording verbatim into text in the spoken language. "
+            "Do NOT translate into English unless the speaker spoke in English. "
+            "Do NOT add any commentary, conversational filler, quotation marks, or prefixes. "
+            "Output ONLY the transcribed words."
+        )
+
+        res = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=[audio_part, prompt]
+        )
+        transcribed_text = (res.text or "").strip()
+        return TranscribeResponse(text=transcribed_text)
+    except Exception as e:
+        import logging
+        logging.getLogger("artisan_ai").error(f"Speech transcription failed: {e}")
+        return TranscribeResponse(text="")

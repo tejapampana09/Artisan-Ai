@@ -253,6 +253,26 @@ export const api = {
     );
   },
 
+  async transcribeAudio(audioUri: string, language: string = "te") {
+    const formData = new FormData();
+    formData.append("file", {
+      uri: audioUri,
+      name: "recording.m4a",
+      type: "audio/m4a"
+    } as any);
+    formData.append("language", language);
+
+    return request<{ text: string }>(
+      "/ai/transcribe",
+      {
+        method: "POST",
+        body: formData,
+        timeoutMs: 30000
+      },
+      "STUDIO"
+    );
+  },
+
   async submitCatalogForApproval(payload: Record<string, unknown>) {
     return request<any>(
       "/ai/approve-and-publish",
