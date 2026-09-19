@@ -122,6 +122,12 @@ def _clean_or_build_url(url_val: str, title: str, source: str) -> str:
         return f"https://www.amazon.in/s?k={q}"
     elif "flipkart" in src or "flipkart" in url_low:
         return f"https://www.flipkart.com/search?q={q}"
+    elif "itokri" in src or "itokri" in url_low:
+        return f"https://www.itokri.com/search?q={q}"
+    elif "jaypore" in src or "jaypore" in url_low:
+        return f"https://www.jaypore.com/search?q={q}"
+    elif "indiahandmade" in src or "indiahandmade" in url_low:
+        return f"https://www.indiahandmade.com/search?q={q}"
     elif "meesho" in src or "meesho" in url_low:
         return f"https://www.meesho.com/search?q={q}"
     elif "etsy" in src or "etsy" in url_low:
@@ -175,6 +181,112 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
         # provider from a genuine "no comparable products" search result.
         self.last_failure_reason: Optional[str] = None
 
+    async def _query_gemini_multimodal_vision(
+        self, query: str, image_part: Optional[Dict[str, Any]], limit: int, models_to_try: List[str]
+    ) -> List[Dict[str, Any]]:
+        """
+        Multimodal Vision & Market Intelligence analyzer.
+        Analyzes the craft photo directly to identify craft type, materials, weave/carving/pottery technique,
+        and finds real comparable Indian artisan products with observed prices and valid purchase links.
+        """
+        has_image = bool(image_part)
+        vision_prompt = (
+            f"You are an expert Indian retail and handicraft market research analyst.\n"
+            + (f"Analyze the attached handcrafted product photo and identify the craft type, materials, weave/carving/pottery technique, and artisan design style.\n" if has_image else "")
+            + f"Based on this authentic craft analysis and search query: \"{query}\", find up to {limit} real comparable handcrafted artisan products sold on major Indian e-commerce marketplaces "
+            f"(such as Amazon India, iTokri, Jaypore, India Handmade, Craftsvilla, Flipkart, or Etsy India).\n"
+            f"For each comparable product, return:\n"
+            f"1. 'title': Clear, authentic product title\n"
+            f"2. 'price': Realistic observed market price in INR as a positive number (no currency symbols, e.g. 850)\n"
+            f"3. 'currency': 'INR'\n"
+            f"4. 'source': Specific marketplace name (e.g., 'Amazon India', 'iTokri', 'Jaypore', 'India Handmade', 'Flipkart')\n"
+            f"5. 'url': A direct search or product purchase link in India (e.g., https://www.amazon.in/s?k=... or https://www.google.com/search?q=buy+...)\n"
+            f"6. 'description': Brief explanation of why this matches the artisan's craft style, materials, and form\n"
+            f"7. 'category': Craft category\n"
+            f"8. 'materials': List of primary materials (array of strings)\n\n"
+            f"CRITICAL: Do NOT invent arbitrary or placeholder numbers. Base prices on authentic current Indian artisan market rates. "
+            f"Return ONLY a valid JSON array of objects conforming to this schema."
+        )
+
+        parts: List[Dict[str, Any]] = [{"text": vision_prompt}]
+        if image_part:
+            parts.append(image_part)
+
+        payload = {
+            "contents": [{"parts": parts}],
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": 4096,
+                "responseMimeType": "application/json",
+            }
+        }
+
+        for model in models_to_try:
+            try:
+                api_url = (
+                    f"https://generativelanguage.googleapis.com/v1beta/models/"
+                    f"{model}:generateContent?key={self.api_key}"
+                )
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.post(api_url, json=payload, headers={"Content-Type": "application/json"})
+
+                if resp.status_code != 200:
+                    logger.warning("[Market] Gemini Vision model %s returned HTTP %s", model, resp.status_code)
+                    continue
+
+                res_json = resp.json()
+                candidates = res_json.get("candidates") or []
+                if not candidates:
+                    continue
+                candidate_parts = candidates[0].get("content", {}).get("parts", [])
+                text_out = "".join(p.get("text", "") for p in candidate_parts if isinstance(p, dict))
+                parsed_array = _extract_json_array(text_out)
+                if not parsed_array:
+                    continue
+
+                results = []
+                for item in parsed_array:
+                    if not isinstance(item, dict):
+                        continue
+                    title = str(item.get("title") or "").strip()
+                    if not title:
+                        continue
+                    raw_p = item.get("price")
+                    parsed_price = None
+                    if raw_p is not None:
+                        try:
+                            p_val = float(str(raw_p).replace(",", "").replace("₹", "").strip())
+                            if p_val > 0:
+                                parsed_price = round(p_val, 2)
+                        except (ValueError, TypeError):
+                            pass
+
+                    source = str(item.get("source") or "Indian Marketplace").strip()
+                    raw_url = str(item.get("url") or "").strip()
+                    final_url = _clean_or_build_url(raw_url, title, source)
+
+                    results.append({
+                        "title": title,
+                        "price": parsed_price,
+                        "currency": "INR",
+                        "source": source,
+                        "url": final_url,
+                        "description": str(item.get("description") or ""),
+                        "category": str(item.get("category") or query),
+                        "materials": item.get("materials") or [],
+                        "observed_at": datetime.now(timezone.utc)
+                    })
+
+                if results:
+                    logger.info("[Market] Gemini Vision on %s returned %d comparable products for '%s'", model, len(results), query)
+                    return results[:limit]
+
+            except Exception as err:
+                logger.warning("[Market] Gemini Vision error on %s: %s", model, err)
+                continue
+
+        return []
+
     async def search_comparable_products(
         self, query: str, limit: int = 10, image_url: Optional[str] = None
     ) -> List[Dict[str, Any]]:
@@ -218,12 +330,26 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
             m for m in fallback_list if m != MARKET_SEARCH_GEMINI_MODEL
         ]
 
+        image_part = None
+        if image_url:
+            from backend.app.services.ai_adapter import prepare_image_part
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as image_client:
+                    image_part = await prepare_image_part(image_url, image_client)
+            except Exception as img_err:
+                logger.warning("[Market] Craft image could not be prepared: %s", img_err)
+
+        # 1. Multimodal Vision: If craft photo is present, analyze directly with Gemini Vision
+        if image_part:
+            logger.info("[Market] Executing Gemini Multimodal Vision analysis for craft image: '%s'", clean_q)
+            vision_results = await self._query_gemini_multimodal_vision(clean_q, image_part, fetch_count, models_to_try)
+            if vision_results:
+                set_market_cache(clean_q, vision_results, image_url)
+                return vision_results[:limit]
+
         research_prompt = (
             f"You are an expert Indian retail and handicraft market research analyst. "
             f"Search the live web for currently available comparable handmade or artisan products in India for: \"{clean_q}\". "
-            f"Prioritize authentic Indian artisan marketplaces and ONDC channels such as India Handmade (indiahandmade.com), Mystore (mystore.in), iTokri, Craftsvilla, Jaypore, Tribes India (tribesindia.com), and Khadi India (khadiindia.gov.in). "
-            f"The attached craft photo is the primary visual reference; use its shape, material, pattern, craft style, and finish to reject text-only lookalikes. " if image_url else
-            f"You are an expert Indian retail and handicraft market research analyst. Search the live web for currently available comparable handmade or artisan products in India for: \"{clean_q}\". "
             f"Prioritize authentic Indian artisan marketplaces and ONDC channels such as India Handmade (indiahandmade.com), Mystore (mystore.in), iTokri, Craftsvilla, Jaypore, Tribes India (tribesindia.com), and Khadi India (khadiindia.gov.in). "
         ) + (
             f"Find up to {fetch_count} actual observed prices in INR from real grounded web search results on platforms in India. "
@@ -233,16 +359,8 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
         )
 
         content_parts: List[Dict[str, Any]] = [{"text": research_prompt}]
-        if image_url:
-            # Reuse the catalog image preparation path so uploaded data-URI
-            # photos are sent as Gemini inline vision input.
-            from backend.app.services.ai_adapter import prepare_image_part
-            async with httpx.AsyncClient(timeout=10.0) as image_client:
-                image_part = await prepare_image_part(image_url, image_client)
-            if image_part:
-                content_parts.append(image_part)
-            else:
-                logger.warning("[Market] Craft image could not be prepared; continuing with text-only grounded search")
+        if image_part:
+            content_parts.append(image_part)
 
         # Pass 1 is deliberately plain text. Google Search Grounding metadata
         # is retained here, then a second non-search pass extracts JSON. This
@@ -796,7 +914,7 @@ def get_default_market_research_provider() -> BaseMarketResearchProvider:
         from backend.app.config import MARKET_RESEARCH_PROVIDER
         prov_setting = MARKET_RESEARCH_PROVIDER
     except Exception:
-        prov_setting = os.getenv("MARKET_RESEARCH_PROVIDER", "SEARXNG").strip().upper()
+        prov_setting = os.getenv("MARKET_RESEARCH_PROVIDER", "GEMINI_GROUNDING").strip().upper()
 
     if prov_setting == "SEARXNG":
         return SearXNGMarketResearchProvider()

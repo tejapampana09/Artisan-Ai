@@ -89,7 +89,7 @@ MARKET_SEARCH_GEMINI_FALLBACK_MODELS: List[str] = [m.strip() for m in _raw_marke
 AI_REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "10.0"))
 
 # Market Research API & Search Strategy configuration
-MARKET_RESEARCH_PROVIDER: str = os.getenv("MARKET_RESEARCH_PROVIDER", "SEARXNG").strip().upper()
+MARKET_RESEARCH_PROVIDER: str = os.getenv("MARKET_RESEARCH_PROVIDER", "GEMINI_GROUNDING").strip().upper()
 MARKET_RESEARCH_API_KEY: str = os.getenv("MARKET_RESEARCH_API_KEY", "").strip()
 MARKET_SEARCH_COUNTRY: str = os.getenv("MARKET_SEARCH_COUNTRY", "IN").strip()
 MARKET_SEARCH_LANGUAGE: str = os.getenv("MARKET_SEARCH_LANGUAGE", "en").strip()

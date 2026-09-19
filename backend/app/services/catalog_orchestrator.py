@@ -144,7 +144,7 @@ async def process_full_catalog_pipeline(
         market_response = await research_market(
             artisan_facts=canonical_facts,
             provider=provider,
-            title_hint=validated_catalog.get("title") or validated_catalog.get("title_en"),
+            title_hint=validated_catalog.get("title_en") or validated_catalog.get("title"),
             category_hint=validated_catalog.get("category") or category_hint,
             image_url=image_url
         )
@@ -173,16 +173,61 @@ async def process_full_catalog_pipeline(
     cat_name = validated_catalog.get("category") or category_hint or "Handcrafted"
     benchmark_low = None
     benchmark_high = None
+    db_similar_products = []
+
+    # 1. Search database for similar published products matching craft, title, or materials
     if db is not None:
         try:
+            import re
+            import statistics
             from backend.app.models import Product
-            from sqlalchemy import func
-            row = db.query(func.min(Product.price), func.max(Product.price)).filter(
-                Product.status == "PUBLISHED", Product.category.ilike(f"%{cat_name}%")
-            ).first()
-            if row and row[0] is not None and row[1] is not None:
-                benchmark_low = float(row[0])
-                benchmark_high = float(row[1])
+            from sqlalchemy import or_
+
+            tokens = set()
+            for text in [cat_name, validated_catalog.get("title_en") or "", validated_catalog.get("title") or "", validated_catalog.get("materials") or ""]:
+                for tok in re.split(r'[\s&,/-]+', text):
+                    tok_clean = tok.strip().lower()
+                    if len(tok_clean) >= 3 and tok_clean not in ["handcrafted", "authentic", "natural", "product", "craft", "item"]:
+                        tokens.add(tok_clean)
+
+            conditions = []
+            for tok in tokens:
+                conditions.append(Product.category.ilike(f"%{tok}%"))
+                conditions.append(Product.title.ilike(f"%{tok}%"))
+                conditions.append(Product.materials.ilike(f"%{tok}%"))
+
+            if conditions:
+                matched_prods = db.query(Product).filter(
+                    Product.status == "PUBLISHED",
+                    or_(*conditions)
+                ).all()
+                if matched_prods:
+                    db_similar_products = matched_prods
+                    prices = [float(p.price) for p in matched_prods if p.price and float(p.price) > 0]
+                    if prices:
+                        benchmark_low = min(prices)
+                        benchmark_high = max(prices)
+                        if not raw_market_median:
+                            raw_market_median = float(statistics.median(prices))
+                            market_is_reliable = True
+        except Exception:
+            pass
+
+    # 2. If neither web search nor DB returned market prices, dynamically query Gemini AI for fair market evaluation
+    if raw_market_median is None and (benchmark_low is None or benchmark_high is None):
+        try:
+            from backend.app.services.ai_adapter import estimate_fair_price
+            ai_eval = await estimate_fair_price(
+                title=validated_catalog.get("title_en") or validated_catalog.get("title", ""),
+                category=validated_catalog.get("category", "Handcrafted"),
+                materials=validated_catalog.get("materials", ""),
+                description=validated_catalog.get("description_en") or validated_catalog.get("description", "")
+            )
+            if ai_eval and ai_eval.get("suggested_price"):
+                raw_market_median = float(ai_eval["suggested_price"])
+                market_is_reliable = True
+                benchmark_low = float(ai_eval.get("min_fair_price") or (raw_market_median * 0.75))
+                benchmark_high = round(raw_market_median * 1.30, 2)
         except Exception:
             pass
 
@@ -232,6 +277,30 @@ async def process_full_catalog_pipeline(
         "max_price": None,
         "currency": "INR"
     }
+
+    if market_summary_dict.get("median_price") is None and raw_market_median is not None:
+        market_summary_dict["median_price"] = raw_market_median
+        market_summary_dict["min_price"] = benchmark_low
+        market_summary_dict["max_price"] = benchmark_high
+
+    market_research_dict = market_response.model_dump()
+    if not market_research_dict.get("results") and db_similar_products:
+        market_research_dict["results"] = [
+            {
+                "title": p.title,
+                "price": float(p.price) if p.price else None,
+                "currency": "INR",
+                "source": "Catalog Similar Product",
+                "url": p.image_url or "",
+                "description": p.description or "",
+                "category": p.category or "",
+                "materials": [p.materials] if p.materials else [],
+                "match_tier": "GOOD"
+            }
+            for p in db_similar_products[:5]
+        ]
+        market_summary_dict["comparable_count"] = len(market_research_dict["results"])
+        market_summary_dict["priced_comparable_count"] = len([p for p in db_similar_products[:5] if p.price])
 
     min_fair = Decimal(str(pricing_rec["minimum_fair_price"])) if (pricing_rec.get("minimum_fair_price") and pricing_rec["minimum_fair_price"] > 0) else None
     rec_price = Decimal(str(pricing_rec["recommended_price"])) if (pricing_rec.get("recommended_price") is not None and pricing_rec["recommended_price"] > 0) else None
@@ -305,7 +374,7 @@ async def process_full_catalog_pipeline(
         "catalog": catalog_fields,
         "artisan_facts": canonical_facts.model_dump(),
         "market_summary": market_summary_dict,
-        "market_research": market_response.model_dump(),
+        "market_research": market_research_dict,
         "price_recommendation": pricing_rec,
         "ml_demand_info": {
             "model_source": ml_pred.get("model_source", "RULE_BASED_FALLBACK"),

@@ -7,7 +7,7 @@ import { theme } from "../src/theme";
 import { I18nProvider } from "../src/i18n";
 import {
   registerForPushNotificationsAsync,
-  fetchNotifications,
+  startNotificationPolling,
   addNotificationResponseReceivedListener
 } from "../src/notifications";
 
@@ -15,7 +15,9 @@ export default function Layout() {
   useEffect(() => {
     // Register push notification permissions & Android channels
     registerForPushNotificationsAsync().catch(() => {});
-    fetchNotifications().catch(() => {});
+    
+    // Start real-time notification polling (every 4s)
+    const stopPolling = startNotificationPolling(4000);
 
     // Listen for user interaction with notifications (taps)
     const responseSubscription = addNotificationResponseReceivedListener((response) => {
@@ -36,6 +38,7 @@ export default function Layout() {
     });
 
     return () => {
+      stopPolling();
       responseSubscription.remove();
     };
   }, []);

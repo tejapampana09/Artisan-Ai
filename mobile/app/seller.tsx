@@ -29,6 +29,7 @@ import {
   LanguageSelectorModal
 } from "../src/components";
 import { useI18n } from "../src/i18n";
+import { subscribeNotifications } from "../src/notifications";
 
 export default function SellerDashboard() {
   const { language, t, getCategory } = useI18n();
@@ -38,9 +39,15 @@ export default function SellerDashboard() {
   const [readiness, setReadiness] = useState<any>(null);
   const [opportunities, setOpportunities] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    const unsub = subscribeNotifications((_, count) => setUnreadNotifs(count));
+    return () => unsub();
+  }, []);
 
   const loadData = async () => {
     setErrorMessage("");
@@ -140,6 +147,22 @@ export default function SellerDashboard() {
               accessibilityLabel="Switch to Buyer View"
             >
               <Text style={styles.switchModeText}>{t("buyerView")}</Text>
+            </Pressable>
+            <Pressable
+              style={styles.iconBtn}
+              onPress={() => router.push("/notifications")}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Notifications"
+            >
+              <Ionicons name="notifications-outline" size={18} color={theme.colors.ink} />
+              {unreadNotifs > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>
+                    {unreadNotifs > 99 ? "99+" : unreadNotifs}
+                  </Text>
+                </View>
+              )}
             </Pressable>
             <Pressable
               style={styles.iconBtn}
@@ -441,6 +464,25 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     alignItems: "center",
     justifyContent: "center"
+  },
+  notifBadge: {
+    position: "absolute",
+    top: -2,
+    right: -4,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 9,
+    minWidth: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: "#FAF9F6"
+  },
+  notifBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "800"
   },
   loadingContainer: {
     marginTop: theme.spacing.md

@@ -466,7 +466,8 @@ export default function SellerAICatalogStudio() {
       const rawPrice =
         res.suggested_price ??
         res.price_recommendation?.recommended_price ??
-        res.market_summary?.median_price;
+        res.market_summary?.median_price ??
+        res.market_summary?.min_price;
       setEditPrice(rawPrice && Number(rawPrice) > 0 ? String(Math.round(Number(rawPrice))) : "");
 
       setStep("REVIEW");
@@ -1046,7 +1047,9 @@ export default function SellerAICatalogStudio() {
                     <View style={styles.pricingHeaderRow}>
                       <View>
                         <Text style={styles.pricingBadge}>AI FAIR-WAGE PRICING</Text>
-                        <Text style={styles.pricingValue}>₹{editPrice}</Text>
+                        <Text style={styles.pricingValue}>
+                          {editPrice ? `₹${editPrice}` : (aiDraft?.suggested_price ? `₹${aiDraft.suggested_price}` : "Awaiting calculation")}
+                        </Text>
                       </View>
                       <View style={styles.fairRatioBox}>
                         <Text style={styles.fairRatioLabel}>Fair Wage Margin</Text>
@@ -1055,9 +1058,19 @@ export default function SellerAICatalogStudio() {
                     </View>
 
                     <View style={styles.pricingBreakdown}>
-                      <Text style={styles.breakdownText}>
-                        • Cost Floor: Materials ₹{materialCost} | Labour ₹{labourCost} | Packaging ₹{packagingCost}
-                      </Text>
+                      {Boolean(
+                        (materialCost && Number(materialCost) > 0) ||
+                        (labourCost && Number(labourCost) > 0) ||
+                        (packagingCost && Number(packagingCost) > 0)
+                      ) ? (
+                        <Text style={styles.breakdownText}>
+                          • Cost Floor: Materials ₹{materialCost || "0"} | Labour ₹{labourCost || "0"} | Packaging ₹{packagingCost || "0"}
+                        </Text>
+                      ) : (
+                        <Text style={styles.breakdownText}>
+                          • Cost Floor: Derived dynamically from craft standards and living wage guidelines
+                        </Text>
+                      )}
                       {aiDraft?.price_recommendation?.demand_label && (
                         <Text style={styles.breakdownText}>
                           • Buyer Demand Signal: {aiDraft.price_recommendation.demand_label}
@@ -1117,15 +1130,23 @@ export default function SellerAICatalogStudio() {
                           onPress={() => listing.url && Linking.openURL(listing.url).catch(() => {})}
                           disabled={!listing.url}
                         >
-                          <View style={{ flex: 1 }}>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
                             <Text style={styles.marketListingTitle} numberOfLines={2}>{listing.title}</Text>
                             <Text style={styles.marketListingSource}>
                               {listing.source || "External marketplace"} · {listing.match_tier || "MATCH"}
+                              {listing.url ? " ↗" : ""}
                             </Text>
                           </View>
-                          <Text style={styles.marketListingPrice}>
-                            {listing.price != null ? `₹${Math.round(listing.price)}` : "Price N/A"}
-                          </Text>
+                          <View style={{ alignItems: "flex-end" }}>
+                            <Text style={styles.marketListingPrice}>
+                              {listing.price != null ? `₹${Math.round(listing.price)}` : "Price N/A"}
+                            </Text>
+                            {listing.url && (
+                              <Text style={{ fontSize: 10, color: "#16a34a", fontWeight: "600", marginTop: 2 }}>
+                                View Item ↗
+                              </Text>
+                            )}
+                          </View>
                         </Pressable>
                       ))}
                     </>

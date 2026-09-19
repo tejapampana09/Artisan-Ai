@@ -57,6 +57,18 @@ def build_market_query(
     if craft and any(g in craft.lower() for g in generic_categories):
         craft = ""
 
+    # Ensure search query is ASCII-friendly so search engines find products with prices on Indian marketplaces
+    if any(ord(c) > 127 for c in base_name):
+        cat_ascii = (category_hint or "").strip()
+        if cat_ascii and not any(ord(c) > 127 for c in cat_ascii) and not any(g in cat_ascii.lower() for g in generic_categories):
+            base_name = cat_ascii
+        else:
+            ascii_tokens = [w for w in base_name.split() if not any(ord(c) > 127 for c in w)]
+            if ascii_tokens:
+                base_name = " ".join(ascii_tokens)
+            else:
+                base_name = craft or "handicraft"
+
     if base_name:
         if craft and craft.lower() not in base_name.lower() and len(base_name.split()) < 3:
             raw_q = f"{craft} {base_name}".strip()
@@ -69,12 +81,12 @@ def build_market_query(
 
     # Include explicit materials in the query so a Kalamkari saree is not
     # benchmarked against unrelated Kalamkari decor or accessories.
-    materials = " ".join((m or "").strip() for m in artisan_facts.materials if (m or "").strip())
+    materials = " ".join((m or "").strip() for m in artisan_facts.materials if (m or "").strip() and not any(ord(c) > 127 for c in (m or "")))
     if materials:
         raw_q = f"{raw_q} {materials}".strip()
 
     if "price" not in raw_q.lower():
-        return f"{raw_q} handicraft price buy online India IndiaHandmade Mystore".strip()
+        return f"{raw_q} handcrafted price buy online India".strip()
     return raw_q.strip()
 
 async def research_market(

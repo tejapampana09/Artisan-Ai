@@ -1,5 +1,5 @@
 import "./init";
-import { Platform } from "react-native";
+import { Platform, AppState, AppStateStatus } from "react-native";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
@@ -40,6 +40,10 @@ type NotificationListener = (items: NotificationItem[], unreadCount: number) => 
 let listeners: NotificationListener[] = [];
 let cachedNotifications: NotificationItem[] = [];
 let cachedUnreadCount = 0;
+let knownIds = new Set<number>();
+let hasInitializedHistory = false;
+let pollingTimer: ReturnType<typeof setInterval> | null = null;
+let appStateSubscription: any = null;
 
 export function subscribeNotifications(listener: NotificationListener) {
   listeners.push(listener);
@@ -71,7 +75,11 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         name: "Artisan AI Alerts",
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#9F3C16"
+        lightColor: "#9F3C16",
+        sound: "default",
+        enableVibrate: true,
+        showBadge: true,
+        enableLights: true
       });
     }
 
@@ -109,7 +117,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 }
 
 /**
- * Send an immediate local notification (e.g. for order dispatch or inquiry reply)
+ * Send an immediate local notification with heads-up banner, sound, and vibration
  */
 export async function sendLocalNotification(
   title: string,
@@ -122,7 +130,9 @@ export async function sendLocalNotification(
         title,
         body,
         data: data || {},
-        sound: true
+        sound: "default",
+        vibrate: [0, 250, 250, 250],
+        priority: Notifications.AndroidNotificationPriority.MAX
       },
       trigger: null // triggers immediately
     });
@@ -145,38 +155,47 @@ export async function fetchNotifications(domainOverride?: AuthDomain): Promise<N
     const res = await api.notifications(domain);
     if (Array.isArray(res)) {
       // Check if new unread items appeared compared to previous cache
-      const previousIds = new Set(cachedNotifications.map((n) => n.id));
-      const newlyReceived = res.filter((n) => !n.is_read && !previousIds.has(n.id));
+      const newlyReceived = res.filter((n) => !n.is_read && !knownIds.has(n.id));
 
       cachedNotifications = res;
       notifyListeners();
 
-      // Trigger native notification for the freshest item if received during active session and enabled in settings
-      if (newlyReceived.length > 0) {
-        const topItem = newlyReceived[0];
-        let allowLocal = true;
-        try {
-          const rawSettings = await AsyncStorage.getItem("artisan_notifications_settings");
-          if (rawSettings) {
-            const settings = JSON.parse(rawSettings);
-            const t = (topItem.type || "").toUpperCase();
-            if ((t.includes("ORDER") || t.includes("STATUS")) && settings.order === false) {
-              allowLocal = false;
-            } else if ((t.includes("TIP") || t.includes("PRICE") || t.includes("OPPORTUNITY")) && settings.aiTips === false) {
-              allowLocal = false;
-            } else if (t.includes("PROMO") && settings.promo === false) {
-              allowLocal = false;
+      // Trigger native notifications for new arrivals if session is already active
+      if (hasInitializedHistory && newlyReceived.length > 0) {
+        for (const item of newlyReceived) {
+          let allowLocal = true;
+          try {
+            const rawSettings = await AsyncStorage.getItem("artisan_notifications_settings");
+            if (rawSettings) {
+              const settings = JSON.parse(rawSettings);
+              const t = (item.type || "").toUpperCase();
+              if ((t.includes("ORDER") || t.includes("STATUS")) && settings.order === false) {
+                allowLocal = false;
+              } else if (
+                (t.includes("TIP") || t.includes("PRICE") || t.includes("OPPORTUNITY")) &&
+                settings.aiTips === false
+              ) {
+                allowLocal = false;
+              } else if (t.includes("PROMO") && settings.promo === false) {
+                allowLocal = false;
+              }
             }
-          }
-        } catch {}
+          } catch {}
 
-        if (allowLocal) {
-          await sendLocalNotification(topItem.title, topItem.message, {
-            id: topItem.id,
-            type: topItem.type
-          });
+          if (allowLocal) {
+            await sendLocalNotification(item.title, item.message, {
+              id: item.id,
+              type: item.type
+            });
+          }
         }
       }
+
+      // Mark all current IDs as known
+      for (const item of res) {
+        knownIds.add(item.id);
+      }
+      hasInitializedHistory = true;
 
       await AsyncStorage.setItem(NOTIFICATIONS_CACHE_KEY, JSON.stringify(res));
       return res;
@@ -189,11 +208,65 @@ export async function fetchNotifications(domainOverride?: AuthDomain): Promise<N
         const local = await AsyncStorage.getItem(NOTIFICATIONS_CACHE_KEY);
         if (local) {
           cachedNotifications = JSON.parse(local);
+          for (const item of cachedNotifications) {
+            knownIds.add(item.id);
+          }
+          hasInitializedHistory = true;
           notifyListeners();
         }
       } catch {}
     }
     return cachedNotifications;
+  }
+}
+
+/**
+ * Start periodic real-time polling for notifications while the app is running
+ */
+export function startNotificationPolling(intervalMs: number = 4000): () => void {
+  // Initial immediate fetch
+  fetchNotifications().catch(() => {});
+
+  if (pollingTimer) {
+    clearInterval(pollingTimer);
+  }
+
+  pollingTimer = setInterval(() => {
+    fetchNotifications().catch(() => {});
+  }, intervalMs);
+
+  if (!appStateSubscription) {
+    appStateSubscription = AppState.addEventListener("change", (nextState: AppStateStatus) => {
+      if (nextState === "active") {
+        fetchNotifications().catch(() => {});
+        if (!pollingTimer) {
+          pollingTimer = setInterval(() => {
+            fetchNotifications().catch(() => {});
+          }, intervalMs);
+        }
+      } else if (nextState === "background") {
+        // Clear tight interval while in background to save battery
+        if (pollingTimer) {
+          clearInterval(pollingTimer);
+          pollingTimer = null;
+        }
+      }
+    });
+  }
+
+  return () => {
+    stopNotificationPolling();
+  };
+}
+
+export function stopNotificationPolling(): void {
+  if (pollingTimer) {
+    clearInterval(pollingTimer);
+    pollingTimer = null;
+  }
+  if (appStateSubscription) {
+    appStateSubscription.remove();
+    appStateSubscription = null;
   }
 }
 
