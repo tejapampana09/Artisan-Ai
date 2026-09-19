@@ -11,6 +11,8 @@ import {
   addNotificationResponseReceivedListener
 } from "../src/notifications";
 
+let lastHandledNotificationId: string | number | null = null;
+
 export default function Layout() {
   useEffect(() => {
     // Register push notification permissions & Android channels
@@ -22,15 +24,21 @@ export default function Layout() {
     // Listen for user interaction with notifications (taps)
     const responseSubscription = addNotificationResponseReceivedListener((response) => {
       try {
-        const data: any = response.notification.request.content.data;
-        const type = (data?.type || "").toUpperCase();
+        const data: any = response?.notification?.request?.content?.data;
+        if (!data || !data.type) return;
 
+        // Deduplicate handling of the exact same notification response
+        const notifId = data.id || response.notification.request.identifier;
+        if (notifId && notifId === lastHandledNotificationId) {
+          return;
+        }
+        lastHandledNotificationId = notifId;
+
+        const type = String(data.type).toUpperCase();
         if (type.includes("ENQUIRY")) {
           router.push("/seller-enquiries");
         } else if (type.includes("ORDER")) {
           router.push("/seller-orders");
-        } else {
-          router.push("/notifications");
         }
       } catch (err) {
         console.warn("Notification navigation error:", err);
