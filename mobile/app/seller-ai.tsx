@@ -358,12 +358,12 @@ export default function SellerAICatalogStudio() {
     ].filter(Boolean).join("\n");
 
     const artisanFacts = {
-      product_name: qnaAnswers.q1_title.trim() || "Handcrafted Heritage Piece",
-      craft_type: effectiveCat,
+      product_name: qnaAnswers.q1_title.trim(),
+      craft_type: effectiveCat.trim(),
       materials: parsedMaterials,
       handmade: true,
       making_time: "7-10 days",
-      artisan_story: qnaAnswers.q3_story.trim() || "Handcrafted using traditional lineage techniques.",
+      artisan_story: qnaAnswers.q3_story.trim(),
       special_characteristics: combinedVoiceText
     };
 
@@ -371,7 +371,7 @@ export default function SellerAICatalogStudio() {
     const lab = parseFloat(labourCost) || 0;
     const pkg = parseFloat(packagingCost) || 0;
     const oth = parseFloat(otherCost) || 0;
-    const targetPrice = parseFloat(targetSellingPrice) || (mat + lab + pkg + oth) * 1.35;
+    const targetPrice = parseFloat(targetSellingPrice) || 0;
 
     try {
       const res = await api.processCatalog({
@@ -993,7 +993,9 @@ export default function SellerAICatalogStudio() {
                       )}
                       <Text style={styles.breakdownText}>
                         {market.min_price != null && market.max_price != null
-                          ? `• External Comparable Benchmark: ₹${Math.round(market.min_price)} – ₹${Math.round(market.max_price)} (Observed)`
+                          ? Math.round(market.min_price) !== Math.round(market.max_price)
+                            ? `• External Comparable Benchmark: ₹${Math.round(market.min_price)} – ₹${Math.round(market.max_price)} (Observed)`
+                            : `• External Comparable Benchmark: ₹${Math.round(market.min_price)} (Single listing observed)`
                           : "• External Comparable Benchmark: Awaiting external market matches"}
                       </Text>
                     </View>
@@ -1017,7 +1019,9 @@ export default function SellerAICatalogStudio() {
                           <Text style={styles.marketStatLabel}>Observed range</Text>
                           <Text style={styles.marketStatValue}>
                             {market.min_price != null && market.max_price != null
-                              ? `₹${Math.round(market.min_price)} - ₹${Math.round(market.max_price)}`
+                              ? Math.round(market.min_price) !== Math.round(market.max_price)
+                                ? `₹${Math.round(market.min_price)} - ₹${Math.round(market.max_price)}`
+                                : `₹${Math.round(market.min_price)}`
                               : "Unavailable"}
                           </Text>
                         </View>

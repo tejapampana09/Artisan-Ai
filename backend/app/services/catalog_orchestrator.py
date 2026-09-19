@@ -57,6 +57,31 @@ async def process_full_catalog_pipeline(
         category_hint=category_hint
     )
 
+    GENERIC_TITLES = {
+        "handcrafted heritage piece",
+        "heritage piece",
+        "handcrafted piece",
+        "handicraft piece",
+        "artisan product",
+        "handcrafted item",
+        "handicraft",
+        "handicrafts",
+        "heritage handicrafts",
+        "indian handicraft items",
+        "handicraft items",
+        "handcrafted heritage item",
+        "handcrafted art",
+    }
+    raw_prod = (canonical_facts.product_name or "").strip().lower()
+    if raw_prod in GENERIC_TITLES:
+        canonical_facts.product_name = None
+
+    raw_craft = (canonical_facts.craft_type or "").strip().lower()
+    if raw_craft in {"handcrafted", "handicraft", "heritage piece", "general"}:
+        canonical_facts.craft_type = None
+
+    has_specific_product = bool(canonical_facts.product_name and canonical_facts.product_name.strip())
+
     has_user_input = has_verified_artisan_input(
         artisan_facts=artisan_facts,
         qna_answers=qna_answers,
@@ -64,8 +89,12 @@ async def process_full_catalog_pipeline(
         category_hint=category_hint
     )
 
-    # 2 & 3. Concurrently generate Gemini catalog draft AND market research when artisan input is present
-    if has_user_input:
+    # 2 & 3. If a photo is uploaded but NO specific product name is known,
+    # visual inference MUST run first to derive the true craft title from the photo!
+    # Run concurrently ONLY when the user explicitly specified a concrete product name.
+    run_concurrent = has_user_input and (not image_url or has_specific_product)
+
+    if run_concurrent:
         draft_coro = generate_catalog_draft(
             artisan_facts=canonical_facts,
             voice_description=voice_description,
