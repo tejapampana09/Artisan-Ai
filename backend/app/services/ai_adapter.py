@@ -782,23 +782,41 @@ async def translate_craft_text(
         "ta": "Tamil",
         "bn": "Bengali"
     }
+    script_names = {
+        "en": "English / Latin alphabet",
+        "te": "Telugu script (తెలుగు లిపి) only",
+        "hi": "Devanagari script (देवनागरी लिपि) only",
+        "ta": "Tamil script (தமிழ் எழுத்துக்கள்) only",
+        "bn": "Bengali script (বাংলা লিপি) only"
+    }
     target_name = lang_names.get(target_language, "English")
+    target_script = script_names.get(target_language, "English / Latin alphabet")
+
+    def has_devanagari(txt: str) -> bool:
+        return any('\u0900' <= ch <= '\u097f' for ch in (txt or ""))
 
     if GEMINI_API_KEY:
         try:
             prompt = f"""
-            You are a expert translator for traditional Indian artisan crafts.
+            You are an expert native translator for traditional Indian artisan crafts.
             Translate the following product information into {target_name} ({target_language}).
-            Preserve craft technical terms and traditional artisan style.
+
+            CRITICAL SCRIPT & LANGUAGE RULES:
+            - You MUST write the translation exclusively in {target_script}.
+            - FOR TELUGU (te): NEVER output Devanagari or Hindi letters (अ, आ, क, etc.). You MUST write strictly in pure Telugu letters (అ, ఆ, క, మొదలైనవి).
+            - FOR BENGALI (bn): NEVER output Devanagari or Hindi letters. You MUST write strictly in pure Bengali script (বাংলা লিপি).
+            - FOR TAMIL (ta): NEVER output Devanagari or Hindi letters. You MUST write strictly in pure Tamil script (தமிழ் எழுத்துக்கள்).
+            - Use authentic regional vocabulary (e.g., in Telugu use 'చేనేత' for handloom, 'నూలు / కాటన్' for cotton, 'సాంప్రదాయ' for traditional).
+            - Output natural, fluent, culturally respectful phrasing.
 
             Title: "{title or ''}"
             Description: "{description or ''}"
             Craft Story: "{craft_story or ''}"
 
             Return a valid JSON object with:
-            - title: Translated title in {target_name}
-            - description: Translated description in {target_name}
-            - craft_story: Translated craft story in {target_name}
+            - title: Translated title in {target_name} using {target_script}
+            - description: Translated description in {target_name} using {target_script}
+            - craft_story: Translated craft story in {target_name} using {target_script}
             """
             models_to_try = get_models_to_try()
             async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
@@ -816,10 +834,18 @@ async def translate_craft_text(
                             data = resp.json()
                             content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
                             parsed = extract_json_payload(content)
+                            res_title = parsed.get("title") or title
+                            res_desc = parsed.get("description") or description
+                            res_story = parsed.get("craft_story") or craft_story
+
+                            # Strict rejection of Devanagari leakage into Telugu, Tamil, Bengali
+                            if target_language in ("te", "ta", "bn") and has_devanagari(res_title):
+                                continue
+
                             return {
-                                "title": parsed.get("title") or title,
-                                "description": parsed.get("description") or description,
-                                "craft_story": parsed.get("craft_story") or craft_story,
+                                "title": res_title,
+                                "description": res_desc,
+                                "craft_story": res_story,
                                 "target_language": target_language
                             }
                     except Exception:

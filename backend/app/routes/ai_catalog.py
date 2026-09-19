@@ -338,12 +338,15 @@ async def translate_product(
                     trans_map = json.loads(stored_translations)
                     if target_lang in trans_map:
                         cached = trans_map[target_lang]
-                        return TranslateProductResponse(
-                            title=cached.get("title", title),
-                            description=cached.get("description", description),
-                            craft_story=cached.get("craft_story", craft_story),
-                            target_language=target_lang,
-                        )
+                        c_title = cached.get("title", "")
+                        has_devanagari = any('\u0900' <= ch <= '\u097f' for ch in c_title)
+                        if not (target_lang in ("te", "ta", "bn") and has_devanagari):
+                            return TranslateProductResponse(
+                                title=cached.get("title", title),
+                                description=cached.get("description", description),
+                                craft_story=cached.get("craft_story", craft_story),
+                                target_language=target_lang,
+                            )
                 except Exception:
                     pass
 

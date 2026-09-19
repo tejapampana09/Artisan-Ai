@@ -41,7 +41,11 @@ function getLocalizedProductTitle(item: any, lang: string): string {
     try {
       const trans = typeof item.translations === "string" ? JSON.parse(item.translations) : item.translations;
       if (trans && trans[lang] && trans[lang].title) {
-        return trans[lang].title;
+        const title = trans[lang].title;
+        const hasDevanagari = /[\u0900-\u097F]/.test(title);
+        if (!((lang === "te" || lang === "ta" || lang === "bn") && hasDevanagari)) {
+          return title;
+        }
       }
     } catch {}
   }

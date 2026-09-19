@@ -85,6 +85,11 @@ export default function ProductDetail() {
       })
       .then((res) => {
         if (res?.title || res?.craft_story || res?.description) {
+          const hasDevanagari = /[\u0900-\u097F]/.test(res?.title || "") || /[\u0900-\u097F]/.test(res?.craft_story || "");
+          if ((targetLang === "te" || targetLang === "ta" || targetLang === "bn") && hasDevanagari) {
+            console.warn("Devanagari script detected in", targetLang, "translation, skipping invalid payload");
+            return;
+          }
           setTranslatedData(res);
         }
       })
