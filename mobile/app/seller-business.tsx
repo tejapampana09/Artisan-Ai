@@ -24,8 +24,10 @@ import {
   Chip
 } from "../src/components";
 import { syncOfflineQueue, getQueueCount } from "../src/offlineQueue";
+import { useRoleGuard } from "../src/authGuard";
 
 export default function SellerBusinessScreen() {
+  useRoleGuard("seller");
   const [loading, setLoading] = useState(true);
   const [copilot, setCopilot] = useState<any>(null);
   const [readiness, setReadiness] = useState<any>(null);

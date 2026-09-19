@@ -21,8 +21,10 @@ import { theme } from "../src/theme";
 import { getCart, updateQuantity, removeFromCart, clearCart, CartItem } from "../src/cart";
 import { api } from "../src/api";
 import { getSession } from "../src/storage";
+import { useRoleGuard } from "../src/authGuard";
 
 export default function BuyerCart() {
+  useRoleGuard("buyer");
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [ordering, setOrdering] = useState(false);

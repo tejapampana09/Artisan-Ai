@@ -18,8 +18,10 @@ import {
   StatusBadge,
   EmptyState
 } from "../src/components";
+import { useRoleGuard } from "../src/authGuard";
 
 export default function BuyerEnquiriesScreen() {
+  useRoleGuard("buyer");
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 

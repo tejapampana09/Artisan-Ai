@@ -23,8 +23,10 @@ import {
 } from "../src/components";
 import { getWishlist, removeFromWishlist, subscribeWishlist } from "../src/wishlist";
 import { addToCart } from "../src/cart";
+import { useRoleGuard } from "../src/authGuard";
 
 export default function BuyerWishlistScreen() {
+  useRoleGuard("buyer");
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 

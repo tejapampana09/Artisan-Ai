@@ -19,6 +19,7 @@ import * as Speech from "expo-speech";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
 import { useI18n } from "../src/i18n";
+import { useRoleGuard } from "../src/authGuard";
 
 interface ProductCardData {
   id: number;
@@ -48,6 +49,7 @@ const SUGGESTIONS = [
 ];
 
 export default function BuyerAssistant() {
+  useRoleGuard("buyer");
   const { language } = useI18n();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {

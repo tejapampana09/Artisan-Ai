@@ -20,8 +20,10 @@ import {
   PrimaryButton,
   SecondaryButton
 } from "../src/components";
+import { useRoleGuard } from "../src/authGuard";
 
 export default function SellerChannelsScreen() {
+  useRoleGuard("seller");
   const [loading, setLoading] = useState(true);
   const [ondc, setOndc] = useState<any>(null);
   const [channels, setChannels] = useState<any[]>([]);

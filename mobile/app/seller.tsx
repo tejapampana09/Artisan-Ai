@@ -31,8 +31,10 @@ import {
 } from "../src/components";
 import { useI18n } from "../src/i18n";
 import { subscribeNotifications } from "../src/notifications";
+import { useRoleGuard } from "../src/authGuard";
 
 export default function SellerDashboard() {
+  useRoleGuard("seller");
   const { language, t, getCategory } = useI18n();
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [user, setUser] = useState<any>(null);

@@ -28,8 +28,10 @@ import {
   PriceCard,
   PrimaryButton
 } from "../src/components";
+import { useRoleGuard } from "../src/authGuard";
 
 export default function SellerProducts() {
+  useRoleGuard("seller");
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

@@ -24,6 +24,7 @@ import {
   SecondaryButton,
   OutlineButton
 } from "../src/components";
+import { useRoleGuard } from "../src/authGuard";
 
 const ORDER_STATUSES = [
   { label: "Confirmed", value: "CONFIRMED", icon: "checkmark-circle-outline", color: theme.colors.info },
@@ -34,6 +35,7 @@ const ORDER_STATUSES = [
 ];
 
 export default function SellerOrders() {
+  useRoleGuard("seller");
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"ALL" | "PENDING" | "SHIPPED" | "DELIVERED">("ALL");

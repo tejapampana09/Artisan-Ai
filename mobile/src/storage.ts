@@ -21,9 +21,17 @@ export async function saveSession(
   user: unknown
 ): Promise<void> {
   if (domain === "STUDIO") {
+    // Purge any opposing marketplace/buyer session (strict mutual exclusion)
+    await SecureStore.deleteItemAsync(MARKETPLACE_TOKEN_KEY).catch(() => {});
+    await AsyncStorage.removeItem(MARKETPLACE_USER_KEY).catch(() => {});
+
     await SecureStore.setItemAsync(STUDIO_TOKEN_KEY, token);
     await AsyncStorage.setItem(STUDIO_USER_KEY, JSON.stringify(user ?? null));
   } else {
+    // Purge any opposing studio/seller session (strict mutual exclusion)
+    await SecureStore.deleteItemAsync(STUDIO_TOKEN_KEY).catch(() => {});
+    await AsyncStorage.removeItem(STUDIO_USER_KEY).catch(() => {});
+
     await SecureStore.setItemAsync(MARKETPLACE_TOKEN_KEY, token);
     await AsyncStorage.setItem(MARKETPLACE_USER_KEY, JSON.stringify(user ?? null));
   }
@@ -73,5 +81,51 @@ export async function clearSession(domain?: AuthDomain): Promise<void> {
     if (activeDomain === domain) {
       await AsyncStorage.removeItem(ACTIVE_DOMAIN_KEY).catch(() => {});
     }
+  }
+}
+
+/**
+ * Strict role and view boundary enforcement:
+ * - When targetRole is "seller":
+ *   - Auto-logouts any buyer/marketplace session.
+ *   - Checks for active, valid STUDIO token with ARTISAN/ADMIN role.
+ *   - If not authenticated, redirects strictly to /login?role=seller.
+ * - When targetRole is "buyer":
+ *   - Auto-logouts any active STUDIO/seller session on view change.
+ */
+export async function enforceRoleBoundary(
+  targetRole: "seller" | "buyer",
+  routerInstance: any
+): Promise<boolean> {
+  try {
+    if (targetRole === "seller") {
+      // Auto logout any buyer session
+      await clearSession("MARKETPLACE");
+
+      const studioSess = await getSession("STUDIO");
+      if (!studioSess.token) {
+        routerInstance.replace({ pathname: "/login", params: { role: "seller" } });
+        return false;
+      }
+
+      const role = (studioSess.user?.role || "").toUpperCase();
+      if (role && role !== "ARTISAN" && role !== "ADMIN" && role !== "SELLER") {
+        await clearSession("STUDIO");
+        routerInstance.replace({ pathname: "/login", params: { role: "seller" } });
+        return false;
+      }
+      return true;
+    } else {
+      // Auto logout any seller session when switching to buyer view
+      const studioSess = await getSession("STUDIO");
+      if (studioSess.token) {
+        console.log("[RoleBoundary] Switched to buyer view: auto-logging out seller session");
+        await clearSession("STUDIO");
+      }
+      return true;
+    }
+  } catch (err) {
+    console.warn("[RoleBoundary] Error enforcing role boundary:", err);
+    return true;
   }
 }

@@ -19,8 +19,10 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
+import { useRoleGuard } from "../src/authGuard";
 
 export default function BuyerOrders() {
+  useRoleGuard("buyer");
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

@@ -38,6 +38,7 @@ import {
   Chip
 } from "../src/components";
 import { useI18n, AppLanguage } from "../src/i18n";
+import { useRoleGuard } from "../src/authGuard";
 
 // ─── 1. SAMPLE CRAFTS (Exact match to Web AICatalogStudioModal) ───
 const SAMPLE_PHOTOS = [
@@ -146,6 +147,7 @@ const QNA_QUESTIONS = [
 ];
 
 export default function SellerAICatalogStudio() {
+  useRoleGuard("seller");
   // Main workflow steps: 'INPUT' (1) -> 'PROCESSING' (2) -> 'REVIEW' (3)
   const [step, setStep] = useState<"INPUT" | "PROCESSING" | "REVIEW">("INPUT");
 

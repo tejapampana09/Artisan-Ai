@@ -25,6 +25,7 @@ import { getWishlist, subscribeWishlist, toggleWishlist } from "../src/wishlist"
 import { BottomNavigation, LanguageSelectorModal } from "../src/components";
 import { subscribeNotifications } from "../src/notifications";
 import { useI18n } from "../src/i18n";
+import { useRoleGuard } from "../src/authGuard";
 
 const CACHE_KEY = "artisan_cached_marketplace_products";
 const CATEGORIES = [
@@ -53,6 +54,7 @@ function getLocalizedProductTitle(item: any, lang: string): string {
 }
 
 export default function BuyerScreen() {
+  useRoleGuard("buyer");
   const { language, t, getCategory } = useI18n();
   const [langModalVisible, setLangModalVisible] = useState(false);
   const params = useLocalSearchParams<{ category?: string; search?: string }>();

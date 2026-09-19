@@ -25,8 +25,10 @@ import {
   SecondaryButton,
   OutlineButton
 } from "../src/components";
+import { useRoleGuard } from "../src/authGuard";
 
 export default function SellerEnquiries() {
+  useRoleGuard("seller");
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEnquiry, setSelectedEnquiry] = useState<any | null>(null);

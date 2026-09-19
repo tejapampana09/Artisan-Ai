@@ -433,8 +433,13 @@ def update_order_status(
     if not prod:
         raise HTTPException(status_code=404, detail="Product not found")
 
+    raw_status = (payload.status or "").upper().strip()
+    if raw_status in ("COMPLETED", "COMPLETE"):
+        new_status = "DELIVERED"
+    else:
+        new_status = raw_status
+
     allowed_statuses = ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"]
-    new_status = payload.status.upper().strip()
     if new_status not in allowed_statuses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -516,6 +521,24 @@ def update_order_status(
                 type="ORDER",
                 data={"order_id": order.id, "status": new_status}
             )
+
+        # Also notify artisan/seller of successful delivery or status change
+        if prod.seller_id and is_seller:
+            seller_title = f"🎉 Order #{order.id} Delivered!" if new_status == "DELIVERED" else f"Order #{order.id}: {new_status}"
+            seller_msg = (
+                f"Order #{order.id} for '{prod.title}' was marked as DELIVERED to {order.buyer_name or 'customer'}."
+                if new_status == "DELIVERED"
+                else f"Order #{order.id} for '{prod.title}' status updated to {new_status}."
+            )
+            create_and_dispatch_notification(
+                db=db,
+                user_id=prod.seller_id,
+                title=seller_title,
+                message=seller_msg,
+                type="ORDER",
+                data={"order_id": order.id, "status": new_status}
+            )
+
         # Notify seller when buyer cancels
         if new_status == "CANCELLED" and is_buyer and prod.seller_id:
             create_and_dispatch_notification(
