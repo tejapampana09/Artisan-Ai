@@ -25,10 +25,14 @@ import {
   EmptyState,
   ErrorState,
   SkeletonBox,
-  SectionHeader
+  SectionHeader,
+  LanguageSelectorModal
 } from "../src/components";
+import { useI18n } from "../src/i18n";
 
 export default function SellerDashboard() {
+  const { language, t, getCategory } = useI18n();
+  const [langModalVisible, setLangModalVisible] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [dashboard, setDashboard] = useState<any>(null);
   const [readiness, setReadiness] = useState<any>(null);
@@ -73,7 +77,7 @@ export default function SellerDashboard() {
     loadData();
   };
 
-  const artisanName = user?.name || "Verified Artisan";
+  const artisanName = user?.name || t("verifiedMasterArtisan");
   const craftSpecialty = user?.craft || user?.craft_specialization || "Authentic Handcrafted Heritage";
   const avatarUrl =
     user?.avatar_url ||
@@ -105,13 +109,27 @@ export default function SellerDashboard() {
       withBottomNavPadding
       contentContainerStyle={styles.container}
     >
+      <LanguageSelectorModal
+        visible={langModalVisible}
+        onClose={() => setLangModalVisible(false)}
+      />
+
       {/* Header */}
       <Header
-        title="Artisan Studio"
-        subtitle="Sovereign Rural Craft Commerce"
+        title={t("artisanStudio")}
+        subtitle={t("ruralCommerce")}
         roleBadge="ARTISAN"
         rightAction={
           <View style={styles.headerActions}>
+            <Pressable
+              style={styles.langPill}
+              onPress={() => setLangModalVisible(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Change Language"
+            >
+              <Text style={styles.langPillText}>🌐 {language.toUpperCase()}</Text>
+            </Pressable>
             <Pressable
               style={styles.switchModeBtn}
               onPress={async () => {
@@ -121,7 +139,7 @@ export default function SellerDashboard() {
               accessibilityRole="button"
               accessibilityLabel="Switch to Buyer View"
             >
-              <Text style={styles.switchModeText}>🛍️ Buyer View</Text>
+              <Text style={styles.switchModeText}>{t("buyerView")}</Text>
             </Pressable>
             <Pressable
               style={styles.iconBtn}
@@ -154,7 +172,7 @@ export default function SellerDashboard() {
             <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" />
             <View style={styles.profileInfo}>
               <View style={styles.verifiedRow}>
-                <Text style={styles.verifiedBadge}>VERIFIED MASTER ARTISAN</Text>
+                <Text style={styles.verifiedBadge}>{t("verifiedMasterArtisan")}</Text>
               </View>
               <Text style={styles.artisanName} numberOfLines={1}>
                 {artisanName}
@@ -175,17 +193,17 @@ export default function SellerDashboard() {
           {/* Key Metrics Grid */}
           <View style={styles.metricsGrid}>
             <StatCard
-              label="Total Revenue"
+              label={t("totalRevenue")}
               value={`₹${totalRevenue.toLocaleString("en-IN")}`}
-              subtitle={`${unitsSold} items fulfilled`}
+              subtitle={`${unitsSold} ${t("itemsFulfilled")}`}
               icon="wallet-outline"
               iconColor={theme.colors.primary}
               style={{ flex: 1 }}
             />
             <StatCard
-              label="Pending Orders"
+              label={t("pendingOrders")}
               value={pendingOrders.length}
-              subtitle={pendingOrders.length > 0 ? "Requires Dispatch" : "All orders dispatched"}
+              subtitle={pendingOrders.length > 0 ? t("requiresDispatch") : t("allDispatched")}
               icon="cube-outline"
               iconColor={theme.colors.accentDark}
               onPress={() => router.push("/seller-orders")}
@@ -195,18 +213,18 @@ export default function SellerDashboard() {
 
           <View style={styles.metricsGrid}>
             <StatCard
-              label="Buyer Enquiries"
+              label={t("buyerEnquiries")}
               value={totalEnquiries}
-              subtitle="Direct artisan leads"
+              subtitle={t("directLeads")}
               icon="chatbubbles-outline"
               iconColor={theme.colors.info}
               onPress={() => router.push("/seller-enquiries")}
               style={{ flex: 1 }}
             />
             <StatCard
-              label="Catalog Views"
+              label={t("catalogViews")}
               value={totalViews}
-              subtitle="Consumer interest"
+              subtitle={t("consumerInterest")}
               icon="eye-outline"
               iconColor={theme.colors.success}
               style={{ flex: 1 }}
@@ -223,7 +241,7 @@ export default function SellerDashboard() {
                   </Text>
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.readinessTitle}>Catalogue Readiness</Text>
+                  <Text style={styles.readinessTitle}>{t("catalogueReadiness")}</Text>
                   <Text style={styles.readinessSub}>
                     {readiness.next_best_action || "List products to boost discoverability."}
                   </Text>
@@ -241,7 +259,7 @@ export default function SellerDashboard() {
           )}
 
           {/* Quick Actions Grid */}
-          <SectionHeader title="Quick Actions" />
+          <SectionHeader title={t("quickActions")} />
           <View style={styles.quickGrid}>
             <Pressable
               style={styles.quickActionPrimary}
@@ -251,8 +269,8 @@ export default function SellerDashboard() {
               <View style={styles.quickActionIconCircle}>
                 <Ionicons name="sparkles" size={20} color="#FFFFFF" />
               </View>
-              <Text style={styles.quickActionPrimaryTitle}>Create with AI</Text>
-              <Text style={styles.quickActionPrimarySub}>Photo & Voice Story</Text>
+              <Text style={styles.quickActionPrimaryTitle}>{t("createWithAi")}</Text>
+              <Text style={styles.quickActionPrimarySub}>{t("photoVoiceStory")}</Text>
             </Pressable>
 
             <Pressable
@@ -261,8 +279,8 @@ export default function SellerDashboard() {
               accessibilityRole="button"
             >
               <Ionicons name="add-circle-outline" size={22} color={theme.colors.primary} />
-              <Text style={styles.quickActionSecondaryTitle}>Add Craft</Text>
-              <Text style={styles.quickActionSecondarySub}>Manual Form</Text>
+              <Text style={styles.quickActionSecondaryTitle}>{t("addCraft")}</Text>
+              <Text style={styles.quickActionSecondarySub}>{t("manualForm")}</Text>
             </Pressable>
 
             <Pressable
@@ -271,8 +289,8 @@ export default function SellerDashboard() {
               accessibilityRole="button"
             >
               <Ionicons name="trending-up" size={22} color={theme.colors.accentDark} />
-              <Text style={styles.quickActionSecondaryTitle}>Intelligence</Text>
-              <Text style={styles.quickActionSecondarySub}>Market & ML</Text>
+              <Text style={styles.quickActionSecondaryTitle}>{t("marketIntelligence")}</Text>
+              <Text style={styles.quickActionSecondarySub}>{t("marketAndMl")}</Text>
             </Pressable>
           </View>
 
@@ -284,33 +302,33 @@ export default function SellerDashboard() {
           >
             <View style={styles.heroBadge}>
               <Ionicons name="sparkles" size={12} color="#FFFFFF" />
-              <Text style={styles.heroBadgeText}>VOICE-FIRST MULTIMODAL AI</Text>
+              <Text style={styles.heroBadgeText}>{t("voiceFirstAi")}</Text>
             </View>
             <Text style={styles.heroTitle}>
-              Turn your craft photos & stories into live catalog listings
+              {t("heroAiTitle")}
             </Text>
             <Text style={styles.heroDesc}>
-              Upload a picture, speak in your native language, enhance studio backdrops, and get instant fair-price evaluations.
+              {t("heroAiDesc")}
             </Text>
             <View style={styles.heroButtonRow}>
-              <Text style={styles.heroButtonText}>Launch AI Catalog Studio ›</Text>
+              <Text style={styles.heroButtonText}>{t("launchAiStudio")}</Text>
             </View>
           </Pressable>
 
           {/* Live Order Dispatch Pipeline */}
           <SectionHeader
-            title="Order Dispatch Pipeline"
-            subtitle={`${orders.length} total customer orders`}
-            actionLabel="View All Orders"
+            title={t("orderDispatchPipeline")}
+            subtitle={`${orders.length} ${t("totalOrdersSubtitle")}`}
+            actionLabel={t("viewAllOrders")}
             onAction={() => router.push("/seller-orders")}
           />
 
           {orders.length === 0 ? (
             <EmptyState
               icon="receipt-outline"
-              title="No Orders Yet"
-              description="When buyers purchase your pieces through Artisan AI or ONDC, they will appear here."
-              actionLabel="Add a New Craft"
+              title={t("noOrdersYet")}
+              description={t("noOrdersDesc")}
+              actionLabel={t("addNewCraft")}
               onAction={() => router.push("/seller-ai")}
             />
           ) : (
@@ -323,7 +341,7 @@ export default function SellerDashboard() {
                 >
                   <View style={styles.orderTopRow}>
                     <View>
-                      <Text style={styles.orderId}>Order #{ord.id}</Text>
+                      <Text style={styles.orderId}>{t("orderNumber")}{ord.id}</Text>
                       <Text style={styles.orderProduct} numberOfLines={1}>
                         {ord.product_title || `Product #${ord.product_id}`}
                       </Text>
@@ -332,7 +350,7 @@ export default function SellerDashboard() {
                   </View>
                   <View style={styles.orderBottomRow}>
                     <Text style={styles.buyerName}>
-                      Buyer: {ord.buyer_name || "Verified Customer"} (×{ord.quantity || 1})
+                      {t("buyer")}: {ord.buyer_name || "Verified Customer"} (×{ord.quantity || 1})
                     </Text>
                     <Text style={styles.orderAmount}>
                       ₹{Number(ord.total_price || 0).toLocaleString("en-IN")}
@@ -347,7 +365,7 @@ export default function SellerDashboard() {
           {opportunities && opportunities.high_demand_categories && (
             <>
               <SectionHeader
-                title="Market Demand Opportunities"
+                title={t("marketDemandOpportunities")}
                 subtitle="Live category intelligence"
                 actionLabel="Explore"
                 onAction={() => router.push("/seller-business" as any)}
@@ -398,6 +416,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     color: theme.colors.ink
+  },
+  langPill: {
+    backgroundColor: "#F4EBE1",
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: "#EADFCF",
+    flexDirection: "row",
+    alignItems: "center"
+  },
+  langPillText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#8B4513"
   },
   iconBtn: {
     width: 32,

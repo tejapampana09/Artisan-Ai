@@ -37,6 +37,7 @@ import {
   SecondaryButton,
   Chip
 } from "../src/components";
+import { useI18n, AppLanguage } from "../src/i18n";
 
 // ─── 1. SAMPLE CRAFTS (Exact match to Web AICatalogStudioModal) ───
 const SAMPLE_PHOTOS = [
@@ -153,7 +154,15 @@ export default function SellerAICatalogStudio() {
   const [activeQnaIndex, setActiveQnaIndex] = useState(0);
 
   // Core Form State
-  const [selectedLang, setSelectedLang] = useState("te");
+  const { language: appLanguage, setLanguage: setAppLanguage } = useI18n();
+  const [selectedLang, setSelectedLang] = useState<string>(appLanguage || "te");
+
+  useEffect(() => {
+    if (appLanguage) {
+      setSelectedLang(appLanguage);
+    }
+  }, [appLanguage]);
+
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imagePreviewUri, setImagePreviewUri] = useState<string | null>(null);
   const [categoryHint, setCategoryHint] = useState("");
@@ -592,7 +601,7 @@ export default function SellerAICatalogStudio() {
               >
                 <Ionicons name="camera-outline" size={14} color={inputSubStep === "PHOTO" ? theme.accent : theme.muted} />
                 <Text style={[styles.subStepTabText, inputSubStep === "PHOTO" && styles.subStepTabTextActive]}>
-                  1. Photo & Craft
+                  {selectedLang === "te" ? "1. ఫోటో & భాష" : selectedLang === "hi" ? "1. फोटो व भाषा" : "1. Photo & Language"}
                 </Text>
               </Pressable>
 
@@ -602,7 +611,7 @@ export default function SellerAICatalogStudio() {
               >
                 <Ionicons name="chatbubbles-outline" size={14} color={inputSubStep === "QNA" ? theme.accent : theme.muted} />
                 <Text style={[styles.subStepTabText, inputSubStep === "QNA" && styles.subStepTabTextActive]}>
-                  2. Voice Q&A
+                  {selectedLang === "te" ? "2. వాయిస్ సమాధానాలు" : selectedLang === "hi" ? "2. आवाज प्रश्नोत्तर" : "2. Voice Q&A"}
                 </Text>
               </Pressable>
 
@@ -612,7 +621,7 @@ export default function SellerAICatalogStudio() {
               >
                 <Ionicons name="cash-outline" size={14} color={inputSubStep === "COSTS" ? theme.accent : theme.muted} />
                 <Text style={[styles.subStepTabText, inputSubStep === "COSTS" && styles.subStepTabTextActive]}>
-                  3. Costing
+                  {selectedLang === "te" ? "3. ఖర్చులు & ధర" : selectedLang === "hi" ? "3. लागत व मूल्य" : "3. Costing"}
                 </Text>
               </Pressable>
             </View>
@@ -629,7 +638,12 @@ export default function SellerAICatalogStudio() {
                         key={l.code}
                         label={l.label}
                         selected={selectedLang === l.code}
-                        onPress={() => setSelectedLang(l.code)}
+                        onPress={() => {
+                          setSelectedLang(l.code);
+                          if (l.code === "en" || l.code === "te" || l.code === "hi" || l.code === "ta" || l.code === "bn") {
+                            setAppLanguage(l.code as AppLanguage);
+                          }
+                        }}
                       />
                     ))}
                   </ScrollView>
@@ -743,7 +757,9 @@ export default function SellerAICatalogStudio() {
                         color={theme.accent}
                       />
                       <Text style={styles.speakerBtnText}>
-                        {speakingQId === activeQuestion.id ? "Speaking…" : "Read Aloud"}
+                        {speakingQId === activeQuestion.id
+                          ? (selectedLang === "te" ? "మాట్లాడుతోంది…" : selectedLang === "hi" ? "बोल रहा है…" : "Speaking…")
+                          : (selectedLang === "te" ? "ప్రశ్న వినండి" : selectedLang === "hi" ? "प्रश्न सुनें" : "Read Aloud")}
                       </Text>
                     </Pressable>
                   </View>
@@ -777,7 +793,23 @@ export default function SellerAICatalogStudio() {
                     />
                     <Text style={styles.voiceBtnText}>
                       {isRecognizing
-                        ? "Listening... Tap to Finish"
+                        ? selectedLang === "te"
+                          ? "వింటోంది... ఆపడానికి నొక్కండి"
+                          : selectedLang === "hi"
+                          ? "सुन रहा है... समाप्त करने के लिए टैप करें"
+                          : selectedLang === "ta"
+                          ? "கேட்கிறது... முடிக்க தட்டவும்"
+                          : selectedLang === "bn"
+                          ? "শুনছে... শেষ করতে ট্যাপ করুন"
+                          : "Listening... Tap to Finish"
+                        : selectedLang === "te"
+                        ? "సమాధానం చెప్పండి"
+                        : selectedLang === "hi"
+                        ? "उत्तर बोलें"
+                        : selectedLang === "ta"
+                        ? "பதிலை பேசவும்"
+                        : selectedLang === "bn"
+                        ? "উত্তর বলুন"
                         : "Speak Answer"}
                     </Text>
                   </Pressable>

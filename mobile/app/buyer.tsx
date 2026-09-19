@@ -22,8 +22,9 @@ import { theme } from "../src/theme";
 import { clearSession } from "../src/storage";
 import { addToCart, getCartCount, subscribeCart } from "../src/cart";
 import { getWishlist, subscribeWishlist, toggleWishlist } from "../src/wishlist";
-import { BottomNavigation } from "../src/components";
+import { BottomNavigation, LanguageSelectorModal } from "../src/components";
 import { subscribeNotifications } from "../src/notifications";
+import { useI18n } from "../src/i18n";
 
 const CACHE_KEY = "artisan_cached_marketplace_products";
 const CATEGORIES = [
@@ -36,6 +37,8 @@ const CATEGORIES = [
 ];
 
 export default function BuyerScreen() {
+  const { language, t, getCategory } = useI18n();
+  const [langModalVisible, setLangModalVisible] = useState(false);
   const params = useLocalSearchParams<{ category?: string; search?: string }>();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,7 +118,7 @@ export default function BuyerScreen() {
 
   const handleQuickAdd = async (product: any) => {
     await addToCart(product, 1);
-    setAddedToast("Added to Bag");
+    setAddedToast(t("addedToBag"));
     setTimeout(() => setAddedToast(""), 2200);
   };
 
@@ -194,7 +197,7 @@ export default function BuyerScreen() {
           {/* Category Tag on Image */}
           <View style={styles.categoryBadge}>
             <Text style={styles.categoryBadgeText} numberOfLines={1}>
-              {item.category || "Handloom"}
+              {getCategory(item.category || "Handloom")}
             </Text>
           </View>
         </View>
@@ -220,17 +223,17 @@ export default function BuyerScreen() {
 
             {item.stock > 0 ? (
               <View style={styles.stockBadge}>
-                <Text style={styles.stockBadgeText}>{item.stock} in stock</Text>
+                <Text style={styles.stockBadgeText}>{item.stock} {t("inStock")}</Text>
               </View>
             ) : (
               <View style={styles.outOfStockBadge}>
-                <Text style={styles.outOfStockText}>Pre-Order</Text>
+                <Text style={styles.outOfStockText}>{t("preOrder")}</Text>
               </View>
             )}
           </View>
 
           {/* Direct Delivery Info */}
-          <Text style={styles.shippingText}>🚚 Direct Artisan Delivery</Text>
+          <Text style={styles.shippingText}>{t("directArtisanDelivery")}</Text>
         </View>
 
         {/* Add to Cart Button */}
@@ -242,7 +245,7 @@ export default function BuyerScreen() {
           }}
         >
           <Ionicons name="bag-handle-outline" size={14} color="#fff" style={{ marginRight: 6 }} />
-          <Text style={styles.addToCartText}>Add to Cart</Text>
+          <Text style={styles.addToCartText}>{t("addToCart")}</Text>
         </Pressable>
       </Pressable>
     );
@@ -251,6 +254,11 @@ export default function BuyerScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF9F6" />
+
+      <LanguageSelectorModal
+        visible={langModalVisible}
+        onClose={() => setLangModalVisible(false)}
+      />
 
       {/* Top Navbar */}
       <View style={styles.topBar}>
@@ -261,12 +269,22 @@ export default function BuyerScreen() {
             resizeMode="contain"
           />
           <View>
-            <Text style={styles.brandTitle}>ARTISAN AI</Text>
-            <Text style={styles.brandTag}>Rural Craft Commerce & Intelligence</Text>
+            <Text style={styles.brandTitle}>{t("artisanAi")}</Text>
+            <Text style={styles.brandTag}>{t("ruralCommerce")}</Text>
           </View>
         </View>
 
         <View style={styles.topActions}>
+          <Pressable
+            style={styles.langPill}
+            onPress={() => setLangModalVisible(true)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Change Language"
+          >
+            <Text style={styles.langPillText}>🌐 {language.toUpperCase()}</Text>
+          </Pressable>
+
           <Pressable
             style={styles.topIconBtn}
             onPress={() => router.push("/notifications")}
@@ -297,7 +315,7 @@ export default function BuyerScreen() {
       <View style={styles.modePillContainer}>
         <Pressable style={[styles.modePill, styles.modePillActive]}>
           <Ionicons name="bag-handle" size={14} color="#fff" style={{ marginRight: 6 }} />
-          <Text style={styles.modePillTextActive}>Buy Crafts</Text>
+          <Text style={styles.modePillTextActive}>{t("buyCrafts")}</Text>
         </Pressable>
 
         <Pressable
@@ -308,7 +326,7 @@ export default function BuyerScreen() {
           }}
         >
           <Ionicons name="storefront-outline" size={14} color={theme.muted} style={{ marginRight: 6 }} />
-          <Text style={styles.modePillText}>Sell as Artisan 🎨</Text>
+          <Text style={styles.modePillText}>{t("sellAsArtisan")}</Text>
         </Pressable>
       </View>
 
@@ -339,7 +357,7 @@ export default function BuyerScreen() {
               <Ionicons name="search-outline" size={18} color="#8C7A6B" style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search sarees, lacquer toys, pottery, brass…"
+                placeholder={t("searchCraftsPlaceholder")}
                 placeholderTextColor="#9E9E9E"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -367,7 +385,7 @@ export default function BuyerScreen() {
                     style={[styles.categoryChip, active && styles.categoryChipActive]}
                   >
                     <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>
-                      {cat}
+                      {getCategory(cat)}
                     </Text>
                   </Pressable>
                 );
@@ -376,14 +394,14 @@ export default function BuyerScreen() {
 
             {/* Sort & Price Filter Row */}
             <View style={styles.sortBar}>
-              <Text style={styles.sortLabel}>Sort:</Text>
+              <Text style={styles.sortLabel}>{t("sort")}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
                 {(
                   [
-                    { id: "POPULAR", label: "Popular" },
-                    { id: "PRICE_LOW", label: "₹ Low to High" },
-                    { id: "PRICE_HIGH", label: "₹ High to Low" },
-                    { id: "UNDER_2000", label: "Under ₹2,000" }
+                    { id: "POPULAR", label: t("popular") },
+                    { id: "PRICE_LOW", label: t("lowToHigh") },
+                    { id: "PRICE_HIGH", label: t("highToLow") },
+                    { id: "UNDER_2000", label: t("under2000") }
                   ] as const
                 ).map((s) => {
                   const isCurrent = sortBy === s.id;
@@ -408,9 +426,9 @@ export default function BuyerScreen() {
                 <View style={styles.trendingHeader}>
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
                     <Text style={{ fontSize: 16, marginRight: 6 }}>🔥</Text>
-                    <Text style={styles.trendingTitle}>Trending Across India</Text>
+                    <Text style={styles.trendingTitle}>{t("trendingAcrossIndia")}</Text>
                   </View>
-                  <Text style={styles.trendingSub}>High Artisan Demand</Text>
+                  <Text style={styles.trendingSub}>{t("highArtisanDemand")}</Text>
                 </View>
 
                 <ScrollView
@@ -513,6 +531,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8
+  },
+  langPill: {
+    backgroundColor: "#F4EBE1",
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#EADFCF",
+    flexDirection: "row",
+    alignItems: "center"
+  },
+  langPillText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#8B4513"
   },
   topIconBtn: {
     width: 36,
