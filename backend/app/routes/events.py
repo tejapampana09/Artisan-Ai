@@ -327,6 +327,7 @@ def place_order(
             created_at=datetime.now(timezone.utc)
         )
         db.add(order_record)
+        db.flush()
 
         # 2. Public analytics event with operational info
         sanitized_meta = f"Quantity: {order.quantity} | Total: ₹{float(total_price):,.0f} | Payment: not required | Status: CONFIRMED"
@@ -349,7 +350,7 @@ def place_order(
                 title="🛍️ New Order Placed!",
                 message=f"{buyer_name} placed an order for '{product.title}' × {order.quantity} unit(s) (₹{float(total_price):,.0f}). Check your orders tab.",
                 type="ORDER",
-                data={"order_id": order.id, "product_id": product.id}
+                data={"order_id": order_record.id, "product_id": product.id}
             )
 
         db.commit()
