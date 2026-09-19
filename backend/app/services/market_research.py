@@ -42,6 +42,12 @@ def build_market_query(
     else:
         raw_q = "handicraft artisan craft"
 
+    # Include explicit materials in the query so a Kalamkari saree is not
+    # benchmarked against unrelated Kalamkari decor or accessories.
+    materials = " ".join((m or "").strip() for m in artisan_facts.materials if (m or "").strip())
+    if materials:
+        raw_q = f"{raw_q} {materials}".strip()
+
     if "price" not in raw_q.lower():
         return f"{raw_q} handicraft price buy online India IndiaHandmade Mystore".strip()
     return raw_q.strip()
@@ -190,7 +196,20 @@ async def research_market(
         l for l in retained_listings 
         if l.price is not None and l.price > 0 and _is_valid_url(l.url)
     ]
-    valid_prices = [l.price for l in priced_listings if l.price is not None]
+
+    # Weak matches remain visible to the artisan but must not influence the
+    # benchmark when enough product/category matches are available.
+    strong_priced_listings = [l for l in priced_listings if l.match_tier in ("STRONG", "GOOD")]
+    benchmark_listings = strong_priced_listings if len(strong_priced_listings) >= 3 else priced_listings
+    valid_prices = [l.price for l in benchmark_listings if l.price is not None]
+
+    # Remove extreme luxury/discount outliers before computing the median.
+    # This is deliberately applied only with a useful sample size.
+    if len(valid_prices) >= 5:
+        quartiles = statistics.quantiles(valid_prices, n=4, method="inclusive")
+        lower_fence = quartiles[0] - (1.5 * (quartiles[2] - quartiles[0]))
+        upper_fence = quartiles[2] + (1.5 * (quartiles[2] - quartiles[0]))
+        valid_prices = [price for price in valid_prices if lower_fence <= price <= upper_fence]
 
     summary_currency = priced_listings[0].currency if priced_listings else (retained_listings[0].currency if retained_listings else "INR")
 
