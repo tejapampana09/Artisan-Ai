@@ -13,6 +13,7 @@ from backend.app.schemas import (
 )
 from backend.app.services.auth import get_current_user, get_optional_current_user
 from backend.app.services.pricing_engine import trigger_auto_pricing
+from backend.app.services.push_notifications import create_and_dispatch_notification
 
 router = APIRouter(prefix="/api", tags=["Events & Marketplace"])
 
@@ -146,12 +147,14 @@ def submit_enquiry(
 
     # Notify seller of new enquiry
     if product.seller_id:
-        db.add(Notification(
+        create_and_dispatch_notification(
+            db=db,
             user_id=product.seller_id,
             title="📩 New Buyer Enquiry!",
             message=f"{buyer_name} enquired about '{product.title}' × {enquiry.quantity} unit(s). Check your enquiries tab.",
-            type="ENQUIRY"
-        ))
+            type="ENQUIRY",
+            data={"product_id": product.id}
+        )
         db.commit()
 
     trigger_auto_pricing(product, db)
@@ -234,12 +237,14 @@ def reply_enquiry(
 
     # Notify buyer that artisan replied
     if enquiry.user_id:
-        db.add(Notification(
+        create_and_dispatch_notification(
+            db=db,
             user_id=enquiry.user_id,
             title="💬 Artisan Replied to Your Enquiry!",
             message=f"The artisan replied to your enquiry on '{prod.title}': \"{payload.artisan_reply.strip()[:120]}\"",
-            type="ENQUIRY"
-        ))
+            type="ENQUIRY",
+            data={"product_id": prod.id if prod else enquiry.product_id}
+        )
         db.commit()
 
     return EnquiryResponse(
@@ -336,14 +341,16 @@ def place_order(
         )
         db.add(evt)
 
-        # Notify seller of new incoming order
+        # Notify seller of new incoming order & dispatch push alert
         if product.seller_id:
-            db.add(Notification(
+            create_and_dispatch_notification(
+                db=db,
                 user_id=product.seller_id,
                 title="🛍️ New Order Placed!",
                 message=f"{buyer_name} placed an order for '{product.title}' × {order.quantity} unit(s) (₹{float(total_price):,.0f}). Check your orders tab.",
-                type="ORDER"
-            ))
+                type="ORDER",
+                data={"order_id": order.id, "product_id": product.id}
+            )
 
         db.commit()
         db.refresh(evt)
@@ -487,20 +494,24 @@ def update_order_status(
 
         # Strictly notify dedicated buyer on all seller-driven status changes
         if target_buyer_id is not None and is_seller:
-            db.add(Notification(
+            create_and_dispatch_notification(
+                db=db,
                 user_id=target_buyer_id,
                 title=title_tpl,
                 message=msg_tpl.format(**label),
-                type="ORDER"
-            ))
+                type="ORDER",
+                data={"order_id": order.id, "status": new_status}
+            )
         # Notify seller when buyer cancels
         if new_status == "CANCELLED" and is_buyer and prod.seller_id:
-            db.add(Notification(
+            create_and_dispatch_notification(
+                db=db,
                 user_id=prod.seller_id,
                 title="⚠️ Order Cancelled by Buyer",
                 message=f"{order.buyer_name} cancelled the order for '{prod.title}' × {order.quantity} unit(s). Stock has been restored.",
-                type="ORDER"
-            ))
+                type="ORDER",
+                data={"order_id": order.id, "product_id": prod.id}
+            )
         db.commit()
 
     return OrderResponse(

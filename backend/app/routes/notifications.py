@@ -48,3 +48,25 @@ def mark_notification_read(
     notif.is_read = 1
     db.commit()
     return {"status": "ok", "message": "Notification marked as read"}
+
+from pydantic import BaseModel
+from typing import Optional
+
+class PushTokenRegisterRequest(BaseModel):
+    push_token: str
+    device_platform: Optional[str] = "android"
+
+@router.post("/push-token")
+def register_push_token(
+    payload: PushTokenRegisterRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Registers an Expo Push Token or FCM Device Token for the current user in AWS RDS."""
+    token = (payload.push_token or "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="Invalid push token")
+
+    current_user.push_token = token
+    db.commit()
+    return {"status": "ok", "message": "Push token registered successfully", "user_id": current_user.id}

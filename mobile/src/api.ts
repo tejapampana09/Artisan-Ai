@@ -490,6 +490,18 @@ export const api = {
     );
   },
 
+  async registerPushToken(pushToken: string, domain?: AuthDomain) {
+    return request<{ status: string; message: string; user_id?: number }>(
+      "/notifications/push-token",
+      {
+        method: "POST",
+        body: JSON.stringify({ push_token: pushToken }),
+        headers: { "Content-Type": "application/json" }
+      },
+      domain
+    );
+  },
+
   // -------------------------------------------------------------
   // ARTISAN PROFILE
   // -------------------------------------------------------------

@@ -85,6 +85,8 @@ def ensure_schema_migrations(eng):
                     conn.execute(text("ALTER TABLE users ADD COLUMN verification_status VARCHAR DEFAULT 'UNVERIFIED'"))
                 if "active_mode" not in user_cols:
                     conn.execute(text("ALTER TABLE users ADD COLUMN active_mode VARCHAR DEFAULT 'BUYER'"))
+                if "push_token" not in user_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN push_token VARCHAR"))
 
             # Check products table columns
             res_prod = conn.execute(text("PRAGMA table_info(products)")).fetchall()
@@ -158,6 +160,11 @@ def ensure_schema_migrations(eng):
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS craft_specialization VARCHAR;"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS experience_years INTEGER DEFAULT 0;"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_status VARCHAR DEFAULT 'UNVERIFIED';"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token VARCHAR(512);"))
+            try:
+                conn.execute(text("CREATE INDEX IF NOT EXISTS idx_users_push_token ON users(push_token);"))
+            except Exception:
+                pass
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'DRAFT';"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS craft_process TEXT;"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS region_of_origin VARCHAR;"))

@@ -5,6 +5,7 @@ from sqlalchemy import func
 
 from backend.app.database import get_db
 from backend.app.models import Review, Product, Order, User, Notification
+from backend.app.services.push_notifications import create_and_dispatch_notification
 from backend.app.schemas import ReviewCreate, ReviewResponse
 from backend.app.services.auth import require_buyer
 
@@ -103,15 +104,16 @@ def create_product_review(
     db.commit()
     db.refresh(review)
 
-    # Trigger notification for seller
+    # Trigger notification and push alert for seller
     if product.seller_id:
-        notif = Notification(
+        create_and_dispatch_notification(
+            db=db,
             user_id=product.seller_id,
             title="⭐ New Verified Craft Review!",
             message=f"{current_user.name} rated '{product.title}' {req.rating}/5 stars: '{req.comment or 'Great craft!'}'",
-            type="REVIEW"
+            type="REVIEW",
+            data={"product_id": product.id, "order_id": review.order_id}
         )
-        db.add(notif)
         db.commit()
 
     return ReviewResponse(

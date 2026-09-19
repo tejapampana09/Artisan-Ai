@@ -25,6 +25,7 @@ class User(Base):
     craft_specialization = Column(String, nullable=True)
     experience_years = Column(Integer, default=0, nullable=False)
     verification_status = Column(String, default="UNVERIFIED", nullable=False) # "UNVERIFIED", "PROFILE_COMPLETE", "VERIFIED_ARTISAN"
+    push_token = Column(String(512), index=True, nullable=True)
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

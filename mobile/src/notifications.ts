@@ -95,18 +95,31 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       return null;
     }
 
-    // Try fetching device push token if supported (not in Expo Go on Android)
+    // Try fetching push token (Expo Push Token or native Device/FCM Token)
+    let token: string | null = null;
     try {
-      const { isRunningInExpoGo } = require("expo");
-      if (!isRunningInExpoGo()) {
-        const tokenData = await Notifications.getDevicePushTokenAsync();
-        if (tokenData?.data) {
-          await AsyncStorage.setItem(PUSH_TOKEN_KEY, tokenData.data);
-          return tokenData.data;
-        }
+      const expoToken = await Notifications.getExpoPushTokenAsync();
+      if (expoToken?.data) {
+        token = expoToken.data;
       }
     } catch {
-      // Benign fallback on emulators or development environments
+      try {
+        const deviceToken = await Notifications.getDevicePushTokenAsync();
+        if (deviceToken?.data) {
+          token = String(deviceToken.data);
+        }
+      } catch {}
+    }
+
+    if (token) {
+      await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+      try {
+        await api.registerPushToken(token);
+        console.log("[Push] Registered device push token with AWS RDS backend:", token);
+      } catch (regErr) {
+        console.warn("[Push] Could not sync push token with backend:", regErr);
+      }
+      return token;
     }
 
     return null;

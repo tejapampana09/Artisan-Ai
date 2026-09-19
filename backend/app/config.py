@@ -108,6 +108,10 @@ MAX_DEMAND_FACTOR: float = float(os.getenv("PRICING_MAX_DEMAND_FACTOR", "1.15"))
 RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "").strip()
 RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "").strip()
 
+# Push Notification & FCM Configuration
+FCM_SERVER_KEY: str = os.getenv("FCM_SERVER_KEY", "").strip()
+FIREBASE_PROJECT_ID: str = os.getenv("FIREBASE_PROJECT_ID", "").strip()
+
 # ONDC Retail Integration Configuration (Beckn Protocol v1.2)
 ONDC_ENVIRONMENT: str = os.getenv("ONDC_ENVIRONMENT", ENVIRONMENT).lower()
 ONDC_SUBSCRIBER_ID: str = os.getenv("ONDC_SUBSCRIBER_ID", "").strip()

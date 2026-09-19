@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
 from backend.app.models import Order, Payment, Product, User, Notification
+from backend.app.services.push_notifications import create_and_dispatch_notification
 from backend.app.schemas import (
     PaymentCreateRequest,
     PaymentVerifyRequest,
@@ -223,21 +224,25 @@ def verify_payment(
     db.refresh(payment)
     db.refresh(order)
 
-    # Dispatch confirmation notifications
+    # Dispatch confirmation notifications & push alerts
     product = order.product
     if product and product.seller_id:
-        db.add(Notification(
+        create_and_dispatch_notification(
+            db=db,
             user_id=product.seller_id,
             title="🛒 New Verified Order Received!",
             message=f"{order.buyer_name} ordered '{product.title}' × {order.quantity} unit(s) (₹{float(order.total_price):,.0f}). Payment verified.",
-            type="ORDER"
-        ))
-    db.add(Notification(
+            type="ORDER",
+            data={"order_id": order.id, "product_id": product.id}
+        )
+    create_and_dispatch_notification(
+        db=db,
         user_id=current_buyer.id,
         title="✅ Order Confirmed & Paid!",
         message=f"Your order for '{product.title if product else 'Artisan Craft'}' × {order.quantity} (₹{float(order.total_price):,.0f}) is confirmed and paid.",
-        type="ORDER"
-    ))
+        type="ORDER",
+        data={"order_id": order.id}
+    )
     db.commit()
 
     return payment
