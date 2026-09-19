@@ -36,6 +36,18 @@ const CATEGORIES = [
   "Pochampally Ikat"
 ];
 
+function getLocalizedProductTitle(item: any, lang: string): string {
+  if (lang !== "en" && item?.translations) {
+    try {
+      const trans = typeof item.translations === "string" ? JSON.parse(item.translations) : item.translations;
+      if (trans && trans[lang] && trans[lang].title) {
+        return trans[lang].title;
+      }
+    } catch {}
+  }
+  return item?.title || "Handcrafted Product";
+}
+
 export default function BuyerScreen() {
   const { language, t, getCategory } = useI18n();
   const [langModalVisible, setLangModalVisible] = useState(false);
@@ -209,7 +221,7 @@ export default function BuyerScreen() {
           </Text>
 
           <Text style={styles.cardTitle} numberOfLines={2}>
-            {item.title || "Handcrafted Product"}
+            {getLocalizedProductTitle(item, language)}
           </Text>
 
           {/* Price & Stock Row */}
@@ -320,9 +332,8 @@ export default function BuyerScreen() {
 
         <Pressable
           style={styles.modePill}
-          onPress={async () => {
-            await clearSession("MARKETPLACE");
-            router.replace({ pathname: "/login", params: { role: "seller", redirect: "/seller" } });
+          onPress={() => {
+            router.push({ pathname: "/login", params: { role: "seller" } });
           }}
         >
           <Ionicons name="storefront-outline" size={14} color={theme.muted} style={{ marginRight: 6 }} />

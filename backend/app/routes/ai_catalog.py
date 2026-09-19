@@ -11,7 +11,7 @@ from backend.app.schemas import ProductResponse
 from backend.app.models import Product, User, DraftCatalog
 from backend.app.schemas import ProductResponse, ArtisanFacts
 from backend.app.services.ai_adapter import generate_catalog_draft, translate_craft_text, estimate_fair_price
-from backend.app.services.auth import get_current_user, require_artisan
+from backend.app.services.auth import get_current_user, require_artisan, get_optional_current_user
 from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
 
 router = APIRouter(prefix="/api/ai", tags=["AI Cataloging"])
@@ -312,7 +312,7 @@ def approve_and_publish_product(
 async def translate_product(
     req: TranslateProductRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """
     Dynamically translates product title, description, and craft story into any target language.

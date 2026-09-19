@@ -183,6 +183,23 @@ export const api = {
     return request<any>(`/products/${id}`);
   },
 
+  async translateProduct(payload: {
+    product_id?: number;
+    target_language: string;
+    title?: string;
+    description?: string;
+    craft_story?: string;
+  }) {
+    return request<any>(
+      "/ai/translate-product",
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      },
+      "MARKETPLACE"
+    );
+  },
+
   async sellerProduct(id: number) {
     return request<any>(`/products/${id}`, {}, "STUDIO");
   },

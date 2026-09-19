@@ -53,8 +53,13 @@ export default function SellerDashboard() {
   const loadData = async () => {
     setErrorMessage("");
     try {
-      const [sess, dash, read, opps, ords] = await Promise.all([
-        getSession("STUDIO"),
+      const sess = await getSession("STUDIO");
+      if (!sess.token) {
+        router.replace({ pathname: "/login", params: { role: "seller" } });
+        return;
+      }
+
+      const [dash, read, opps, ords] = await Promise.all([
         api.sellerDashboard().catch(() => null),
         api.sellerReadiness().catch(() => null),
         api.sellerOpportunities().catch(() => null),

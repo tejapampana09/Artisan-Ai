@@ -37,7 +37,14 @@ export type TranslationKey =
   // AI Studio
   | "yourCraftLanguage" | "uploadPhotos" | "craftQuestions" | "fairPricing"
   | "reviewAndPublish" | "speakAnswer" | "listeningTapFinish"
-  | "generatingListing" | "submitListing" | "viewCatalog";
+  | "generatingListing" | "submitListing" | "viewCatalog"
+  // Product Detail & Specifications
+  | "craftedBy" | "viewArtisanProfile" | "askArtisan" | "craftStoryTitle"
+  | "listenAudio" | "stopAudio" | "authenticitySpecs" | "craftCategory"
+  | "materialsUsed" | "originCluster" | "fairTradePolicy" | "fairTradeProtected"
+  | "verifiedBuyerReviews" | "buyNow" | "translating" | "translatedBadge"
+  | "translateButton" | "craftNotFound" | "returnToMarketplace" | "loadingCraftDetails"
+  | "inquirySent" | "viewInquiries" | "writeQuestion" | "sendInquiry" | "close";
 
 export const CATEGORY_TRANSLATIONS: Record<string, Record<AppLanguage, string>> = {
   "All Crafts": {
@@ -95,6 +102,62 @@ export const CATEGORY_TRANSLATIONS: Record<string, Record<AppLanguage, string>> 
     hi: "हथकरघा",
     ta: "கைத்தறி",
     bn: "তাঁত"
+  },
+  "Handicraft": {
+    en: "Handicraft",
+    te: "హస్తకళ",
+    hi: "हस्तशिल्प",
+    ta: "கைவினைப்பொருள்",
+    bn: "হস্তশিল্প"
+  },
+  "Natural materials": {
+    en: "Natural materials",
+    te: "సహజ సిద్ధమైన పదార్థాలు",
+    hi: "प्राकृतिक सामग्री",
+    ta: "இயற்கை மூலப்பொருட்கள்",
+    bn: "প্রাকৃতিক উপাদান"
+  },
+  "India": {
+    en: "India",
+    te: "భారతదేశం",
+    hi: "भारत",
+    ta: "இந்தியா",
+    bn: "ভারত"
+  },
+  "Fair-Trade Protected": {
+    en: "Fair-Trade Protected",
+    te: "ఫెయిర్-ట్రేడ్ రక్షితం",
+    hi: "फेयर-ट्रेड संरक्षित",
+    ta: "நியாய வர்த்தக பாதுகாப்பு",
+    bn: "ন্যায্য-বাণিজ্য সুরক্ষিত"
+  },
+  "Pottery": {
+    en: "Pottery",
+    te: "కుండలు & మట్టిపాత్రలు",
+    hi: "मिट्टी के बर्तन",
+    ta: "மட்பாண்டங்கள்",
+    bn: "মৃৎশিল্প"
+  },
+  "Jewelry": {
+    en: "Jewelry",
+    te: "ఆభరణాలు",
+    hi: "आभूषण",
+    ta: "நகைகள்",
+    bn: "গহনা"
+  },
+  "Paintings": {
+    en: "Paintings",
+    te: "చిత్రలేఖనాలు",
+    hi: "चित्रकला",
+    ta: "ஓவியங்கள்",
+    bn: "চিত্রকর্ম"
+  },
+  "Textiles": {
+    en: "Textiles",
+    te: "వస్త్రాలు",
+    hi: "वस्त्र",
+    ta: "ஜவுளி",
+    bn: "বস্ত্র"
   }
 };
 
@@ -102,6 +165,12 @@ export function getCategoryTranslation(categoryName: string, lang: AppLanguage):
   if (!categoryName) return categoryName;
   const match = CATEGORY_TRANSLATIONS[categoryName];
   if (match && match[lang]) return match[lang];
+  const lower = categoryName.toLowerCase();
+  for (const [key, map] of Object.entries(CATEGORY_TRANSLATIONS)) {
+    if (key.toLowerCase() === lower && map[lang]) {
+      return map[lang];
+    }
+  }
   return categoryName;
 }
 
@@ -150,7 +219,16 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     fairPricing: "3. Fair Pricing & Cost", reviewAndPublish: "4. Review & Publish",
     speakAnswer: "Speak Answer", listeningTapFinish: "Listening... Tap to Finish",
     generatingListing: "AI is analyzing your craft & preparing fair pricing...",
-    submitListing: "Publish Craft to Marketplace", viewCatalog: "View Creations"
+    submitListing: "Publish Craft to Marketplace", viewCatalog: "View Creations",
+    craftedBy: "Crafted by", viewArtisanProfile: "View Artisan Profile ›", askArtisan: "Ask Artisan",
+    craftStoryTitle: "Craft Story & Artisan Heritage", listenAudio: "Listen", stopAudio: "Stop Voice",
+    authenticitySpecs: "AUTHENTICITY SPECIFICATIONS", craftCategory: "Craft Category",
+    materialsUsed: "Materials Used", originCluster: "Origin Cluster", fairTradePolicy: "Fair Trade Policy",
+    fairTradeProtected: "Fair-Trade Protected", verifiedBuyerReviews: "VERIFIED BUYER REVIEWS",
+    buyNow: "Buy Now", translating: "Translating with AI...", translatedBadge: "AI Translated",
+    translateButton: "Translate", craftNotFound: "Craft not found", returnToMarketplace: "‹ Return to Marketplace",
+    loadingCraftDetails: "Loading authentic craft details…", inquirySent: "Inquiry Sent",
+    viewInquiries: "View Inquiries", writeQuestion: "Write your question...", sendInquiry: "Send Inquiry", close: "Close"
   },
   te: {
     settings: "సెట్టింగ్స్", preferences: "ప్రాధాన్యతలు", appLanguage: "యాప్ భాష",
@@ -196,7 +274,16 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     fairPricing: "3. న్యాయమైన ధర & ఖర్చులు", reviewAndPublish: "4. పరిశీలించి ప్రచురించండి",
     speakAnswer: "సమాధానం చెప్పండి", listeningTapFinish: "వింటోంది... ఆపడానికి నొక్కండి",
     generatingListing: "AI మీ క్రాఫ్ట్‌ను విశ్లేషించి ధరను లెక్కిస్తోంది...",
-    submitListing: "మార్కెట్‌ప్లేస్‌లో ప్రచురించండి", viewCatalog: "సృష్టులు చూడండి"
+    submitListing: "మార్కెట్‌ప్లేస్‌లో ప్రచురించండి", viewCatalog: "సృష్టులు చూడండి",
+    craftedBy: "రూపొందించిన వారు", viewArtisanProfile: "ఆర్టిసాన్ ప్రొఫైల్ చూడండి ›", askArtisan: "ఆర్టిసాన్‌ను అడగండి",
+    craftStoryTitle: "కళా వారసత్వం & కథ", listenAudio: "వినండి", stopAudio: "వాయిస్ ఆపండి",
+    authenticitySpecs: "ప్రామాణిక వివరాలు", craftCategory: "క్రాఫ్ట్ వర్గం",
+    materialsUsed: "వాడిన పదార్థాలు", originCluster: "మూల ప్రాంతం", fairTradePolicy: "ఫెయిర్ ట్రేడ్ విధానం",
+    fairTradeProtected: "ఫెయిర్-ట్రేడ్ రక్షితం", verifiedBuyerReviews: "ధృవీకరించబడిన కస్టమర్ సమీక్షలు",
+    buyNow: "ఇప్పుడే కొనండి", translating: "AI తెలుగులోకి అనువదిస్తోంది...", translatedBadge: "తెలుగులోకి అనువదించబడింది",
+    translateButton: "తెలుగులోకి అనువదించు", craftNotFound: "కళారూపం కనుగొనబడలేదు", returnToMarketplace: "‹ మార్కెట్‌ప్లేస్‌కు తిరిగి వెళ్ళండి",
+    loadingCraftDetails: "ప్రామాణిక వివరాలు లోడ్ అవుతున్నాయి…", inquirySent: "విచారణ పంపబడింది",
+    viewInquiries: "విచారణలు చూడండి", writeQuestion: "మీ ప్రశ్నను ఇక్కడ రాయండి...", sendInquiry: "సందేశం పంపండి", close: "మూసివేయి"
   },
   hi: {
     settings: "सेटिंग्स", preferences: "प्राथमिकताएं", appLanguage: "ऐप भाषा",
@@ -242,7 +329,16 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     fairPricing: "3. उचित मूल्य और लागत", reviewAndPublish: "4. समीक्षा और प्रकाशित करें",
     speakAnswer: "उत्तर बोलें", listeningTapFinish: "सुन रहा है... समाप्त करने के लिए टैप करें",
     generatingListing: "AI आपके शिल्प का विश्लेषण कर रहा है...",
-    submitListing: "मार्केटप्लेस पर प्रकाशित करें", viewCatalog: "रचनाएं देखें"
+    submitListing: "मार्केटप्लेस पर प्रकाशित करें", viewCatalog: "रचनाएं देखें",
+    craftedBy: "कारीगर", viewArtisanProfile: "कारीगर प्रोफ़ाइल देखें ›", askArtisan: "कारीगर से पूछें",
+    craftStoryTitle: "शिल्प कथा एवं विरासत", listenAudio: "सुनें", stopAudio: "आवाज़ रोकें",
+    authenticitySpecs: "प्रमाणिकता विवरण", craftCategory: "शिल्प श्रेणी",
+    materialsUsed: "प्रयुक्त सामग्री", originCluster: "मूल क्षेत्र", fairTradePolicy: "उचित व्यापार नीति",
+    fairTradeProtected: "फेयर-ट्रेड संरक्षित", verifiedBuyerReviews: "सत्यापित खरीदार समीक्षाएं",
+    buyNow: "अभी खरीदें", translating: "AI हिंदी में अनुवाद कर रहा है...", translatedBadge: "हिंदी में अनुवादित",
+    translateButton: "हिंदी में अनुवाद करें", craftNotFound: "हस्तशिल्प नहीं मिला", returnToMarketplace: "‹ बाज़ार में वापस जाएं",
+    loadingCraftDetails: "प्रामाणिक शिल्प विवरण लोड हो रहे हैं…", inquirySent: "पूछताछ भेजी गई",
+    viewInquiries: "पूछताछ देखें", writeQuestion: "अपना प्रश्न लिखें...", sendInquiry: "पूछताछ भेजें", close: "बंद करें"
   },
   ta: {
     settings: "அமைப்புகள்", preferences: "விருப்பங்கள்", appLanguage: "பயன்பாட்டு மொழி",
@@ -288,7 +384,16 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     fairPricing: "3. நியாயமான விலை & செலவு", reviewAndPublish: "4. சரிபார்த்து வெளியிடு",
     speakAnswer: "பதிலை பேசவும்", listeningTapFinish: "கேட்கிறது... முடிக்க தட்டவும்",
     generatingListing: "AI பகுப்பாய்வு செய்கிறது...",
-    submitListing: "சந்தையில் வெளியிடு", viewCatalog: "படைப்புகளைப் பார்"
+    submitListing: "சந்தையில் வெளியிடு", viewCatalog: "படைப்புகளைப் பார்",
+    craftedBy: "செய்தவர்", viewArtisanProfile: "கைவினைஞர் சுயவிவரம் ›", askArtisan: "கைவினைஞரிடம் கேட்கவும்",
+    craftStoryTitle: "கைவினை கதை & பாரம்பரியம்", listenAudio: "கேட்கவும்", stopAudio: "குரலை நிறுத்து",
+    authenticitySpecs: "உண்மைத்தன்மை விவரக்குறிப்புகள்", craftCategory: "கைவினை வகை",
+    materialsUsed: "பயன்படுத்தப்பட்ட பொருட்கள்", originCluster: "தோற்ற பகுதி", fairTradePolicy: "நியாய வர்த்தக கொள்கை",
+    fairTradeProtected: "நியாய வர்த்தக பாதுகாப்பு", verifiedBuyerReviews: "சரிபார்க்கப்பட்ட வாங்குபவர் மதிப்புரைகள்",
+    buyNow: "இப்போது வாங்கவும்", translating: "AI தமிழில் மொழிபெயர்க்கிறது...", translatedBadge: "தமிழில் மொழிபெயர்க்கப்பட்டது",
+    translateButton: "தமிழில் மொழிபெயர்க்கவும்", craftNotFound: "பொருள் கிடைக்கவில்லை", returnToMarketplace: "‹ சந்தைக்குத் திரும்பு",
+    loadingCraftDetails: "கைவினை விவரங்கள் ஏற்றப்படுகின்றன…", inquirySent: "விசாரணை அனுப்பப்பட்டது",
+    viewInquiries: "விசாரணைகளைப் பார்", writeQuestion: "உங்கள் கேள்வியை எழுதுங்கள்...", sendInquiry: "விசாரணை அனுப்பு", close: "மூடு"
   },
   bn: {
     settings: "সেটিংস", preferences: "পছন্দসমূহ", appLanguage: "অ্যাপের ভাষা",
@@ -334,7 +439,16 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     fairPricing: "3. ন্যায্য মূল্য ও খরচ", reviewAndPublish: "4. পর্যালোচনা ও প্রকাশ",
     speakAnswer: "উত্তর বলুন", listeningTapFinish: "শুনছে... শেষ করতে ট্যাপ করুন",
     generatingListing: "AI আপনার শিল্পকর্ম বিশ্লেষণ করছে...",
-    submitListing: "মার্কেটপ্লেসে প্রকাশ করুন", viewCatalog: "সৃষ্টিগুলি দেখুন"
+    submitListing: "মার্কেটপ্লেসে প্রকাশ করুন", viewCatalog: "সৃষ্টিগুলি দেখুন",
+    craftedBy: "কারিগর", viewArtisanProfile: "কারিগর প্রোফাইল দেখুন ›", askArtisan: "কারিগরকে জিজ্ঞাসা করুন",
+    craftStoryTitle: "কারুশিল্পের গল্প ও ঐতিহ্য", listenAudio: "শুনুন", stopAudio: "ভয়েস থামান",
+    authenticitySpecs: "প্রামাণিকতা বিশদ", craftCategory: "কারুশিল্প বিভাগ",
+    materialsUsed: "ব্যবহৃত উপকরণ", originCluster: "মূল অঞ্চল", fairTradePolicy: "ন্যায্য বাণিজ্য নীতি",
+    fairTradeProtected: "ন্যায্য-বাণিজ্য সুরক্ষিত", verifiedBuyerReviews: "যাচাইকৃত ক্রেতা পর্যালোচনা",
+    buyNow: "এখনই কিনুন", translating: "AI বাংলায় অনুবাদ করছে...", translatedBadge: "বাংলায় অনুবাদ করা হয়েছে",
+    translateButton: "বাংলায় অনুবাদ করুন", craftNotFound: "কারুশিল্প পাওয়া যায়নি", returnToMarketplace: "‹ মার্কেটপ্লেসে ফিরে যান",
+    loadingCraftDetails: "প্রামাণিক কারুশিল্পের বিবরণ লোড হচ্ছে…", inquirySent: "অনুসন্ধান পাঠানো হয়েছে",
+    viewInquiries: "অনুসন্ধানগুলি দেখুন", writeQuestion: "আপনার প্রশ্ন লিখুন...", sendInquiry: "অনুসন্ধান পাঠান", close: "বন্ধ করুন"
   }
 };
 

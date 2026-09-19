@@ -22,14 +22,14 @@ import { api } from "../src/api";
 import { theme } from "../src/theme";
 import { addToCart } from "../src/cart";
 import { toggleWishlist, isWishlisted } from "../src/wishlist";
-import { PrimaryButton, OutlineButton } from "../src/components";
+import { PrimaryButton, OutlineButton, LanguageSelectorModal } from "../src/components";
 import { useI18n } from "../src/i18n";
 
 const { width } = Dimensions.get("window");
 
 export default function ProductDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { language } = useI18n();
+  const { language, t, getCategory } = useI18n();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
@@ -39,12 +39,64 @@ export default function ProductDetail() {
   const [enquiryMessage, setEnquiryMessage] = useState("");
   const [sendingEnquiry, setSendingEnquiry] = useState(false);
 
+  // Translation States
+  const [translatedData, setTranslatedData] = useState<{
+    title?: string;
+    description?: string;
+    craft_story?: string;
+  } | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const [langModalVisible, setLangModalVisible] = useState(false);
+
   // Reviews and Artisan Profile States
   const [reviews, setReviews] = useState<any[]>([]);
   const [showArtisanModal, setShowArtisanModal] = useState(false);
   const [artisanData, setArtisanData] = useState<any>(null);
   const [loadingArtisan, setLoadingArtisan] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const fetchTranslation = (targetLang: string = language) => {
+    if (!product || targetLang === "en") {
+      setTranslatedData(null);
+      return;
+    }
+
+    if (product.translations) {
+      try {
+        const transMap =
+          typeof product.translations === "string"
+            ? JSON.parse(product.translations)
+            : product.translations;
+        if (transMap && transMap[targetLang]) {
+          setTranslatedData(transMap[targetLang]);
+          return;
+        }
+      } catch {}
+    }
+
+    setTranslating(true);
+    api
+      .translateProduct({
+        product_id: product.id,
+        target_language: targetLang,
+        title: product.title,
+        description: product.description,
+        craft_story: product.craft_story
+      })
+      .then((res) => {
+        if (res?.title || res?.craft_story || res?.description) {
+          setTranslatedData(res);
+        }
+      })
+      .catch((err) => console.warn("Auto-translation error:", err))
+      .finally(() => setTranslating(false));
+  };
+
+  useEffect(() => {
+    if (product) {
+      fetchTranslation(language);
+    }
+  }, [product?.id, language]);
 
   useEffect(() => {
     if (id) {
@@ -164,7 +216,9 @@ export default function ProductDetail() {
     }
 
     const storyText =
+      translatedData?.craft_story ||
       product?.craft_story ||
+      translatedData?.description ||
       product?.description ||
       "Each piece is handcrafted with timeless techniques passed down through generations.";
 
@@ -193,7 +247,7 @@ export default function ProductDetail() {
     return (
       <View style={styles.centerBox}>
         <ActivityIndicator size="large" color={theme.accent} />
-        <Text style={styles.loadingText}>Loading authentic craft details…</Text>
+        <Text style={styles.loadingText}>{t("loadingCraftDetails")}</Text>
       </View>
     );
   }
@@ -201,7 +255,7 @@ export default function ProductDetail() {
   if (!product) {
     return (
       <View style={styles.centerBox}>
-        <Text style={styles.errorTitle}>Craft not found</Text>
+        <Text style={styles.errorTitle}>{t("craftNotFound")}</Text>
         <Pressable
           style={styles.backButton}
           onPress={() => {
@@ -209,7 +263,7 @@ export default function ProductDetail() {
             else router.replace("/buyer");
           }}
         >
-          <Text style={styles.backButtonText}>‹ Return to Marketplace</Text>
+          <Text style={styles.backButtonText}>{t("returnToMarketplace")}</Text>
         </Pressable>
       </View>
     );
@@ -222,10 +276,15 @@ export default function ProductDetail() {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#1C1C1C" />
 
+      <LanguageSelectorModal
+        visible={langModalVisible}
+        onClose={() => setLangModalVisible(false)}
+      />
+
       {addedToast && (
         <View style={styles.toast}>
           <Ionicons name="checkmark-circle" size={16} color="#fff" style={{ marginRight: 6 }} />
-          <Text style={styles.toastText}>Added {quantity} item(s) to Bag!</Text>
+          <Text style={styles.toastText}>{t("addedToBag")} ({quantity})</Text>
         </View>
       )}
 
@@ -251,7 +310,17 @@ export default function ProductDetail() {
               <Ionicons name="arrow-back" size={20} color="#1C1C1C" />
             </Pressable>
 
-            <View style={{ flexDirection: "row", gap: 10 }}>
+            <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+              <Pressable
+                style={styles.langPillProduct}
+                onPress={() => setLangModalVisible(true)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Change Language"
+              >
+                <Text style={styles.langPillProductText}>🌐 {language.toUpperCase()}</Text>
+              </Pressable>
+
               <Pressable
                 style={[styles.iconCircle, isSaved && styles.iconCircleActive]}
                 onPress={handleToggleWishlist}
@@ -277,30 +346,56 @@ export default function ProductDetail() {
           {/* Category Tag on Image Bottom */}
           <View style={styles.categoryBadge}>
             <Text style={styles.categoryBadgeText}>
-              {product.category || "Authentic Indian Craft"}
+              {getCategory(product.category || "Authentic Indian Craft")}
             </Text>
           </View>
         </View>
 
         {/* Content Body */}
         <View style={styles.body}>
+          {/* Translation Status Banners */}
+          {translating && (
+            <View style={styles.translatingBanner}>
+              <ActivityIndicator size="small" color="#B85D19" style={{ marginRight: 6 }} />
+              <Text style={styles.translatingBannerText}>{t("translating")}</Text>
+            </View>
+          )}
+          {translatedData && !translating && (
+            <View style={styles.translatedBanner}>
+              <Ionicons name="sparkles" size={14} color="#2E7D32" style={{ marginRight: 5 }} />
+              <Text style={styles.translatedBannerText}>
+                {t("translatedBadge")} ({language.toUpperCase()})
+              </Text>
+            </View>
+          )}
+          {language !== "en" && !translatedData && !translating && (
+            <Pressable style={styles.manualTranslateBtn} onPress={() => fetchTranslation(language)}>
+              <Ionicons name="language" size={14} color="#8B4513" style={{ marginRight: 6 }} />
+              <Text style={styles.manualTranslateBtnText}>
+                {t("translateButton")} ({language.toUpperCase()})
+              </Text>
+            </Pressable>
+          )}
+
           {/* Craft Origin / Verification Banner (Conditional on real backend data) */}
           {(product.region_of_origin || product.verification_status === "VERIFIED") && (
             <View style={styles.giBanner}>
               <Ionicons name="shield-checkmark" size={18} color="#B85D19" style={{ marginRight: 8 }} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.giTitle}>
-                  {product.region_of_origin ? `Origin: ${product.region_of_origin}` : "Authentic Artisan Craft"}
+                  {product.region_of_origin ? `${t("originCluster")}: ${getCategory(product.region_of_origin)}` : t("authenticitySpecs")}
                 </Text>
                 <Text style={styles.giSub}>
-                  {product.verification_status === "VERIFIED" ? "Platform Verified Artisan Work" : "Direct from craft maker"}
+                  {product.verification_status === "VERIFIED" ? t("fairTradeProtected") : t("directArtisanDelivery")}
                 </Text>
               </View>
             </View>
           )}
 
           {/* Title and Artisan Info */}
-          <Text style={styles.productTitle}>{product.title || "Handcrafted Product"}</Text>
+          <Text style={styles.productTitle}>
+            {translatedData?.title || product.title || "Handcrafted Product"}
+          </Text>
 
           <View style={styles.artisanContainer}>
             <Pressable
@@ -311,9 +406,9 @@ export default function ProductDetail() {
               <Ionicons name="person-circle-outline" size={22} color={theme.colors.primary} style={{ marginRight: 6 }} />
               <View>
                 <Text style={styles.artisanText}>
-                  Crafted by <Text style={{ fontWeight: "800", color: theme.colors.ink }}>{product.artisan_name || "Registered Artisan"}</Text>
+                  {t("craftedBy")} <Text style={{ fontWeight: "800", color: theme.colors.ink }}>{product.artisan_name || t("verifiedMasterArtisan")}</Text>
                 </Text>
-                <Text style={styles.viewArtisanLink}>View Artisan Profile ›</Text>
+                <Text style={styles.viewArtisanLink}>{t("viewArtisanProfile")}</Text>
               </View>
             </Pressable>
             <Pressable
@@ -321,7 +416,7 @@ export default function ProductDetail() {
               onPress={() => setShowEnquiryModal(true)}
             >
               <Ionicons name="chatbubbles-outline" size={14} color={theme.colors.primary} style={{ marginRight: 4 }} />
-              <Text style={styles.askArtisanText}>Ask Artisan</Text>
+              <Text style={styles.askArtisanText}>{t("askArtisan")}</Text>
             </Pressable>
           </View>
 
@@ -334,14 +429,14 @@ export default function ProductDetail() {
 
               <View style={styles.stockBox}>
                 <Text style={styles.stockBoxText}>
-                  {product.stock > 0 ? "✓ " + product.stock + " In Stock" : "Pre-Order Available"}
+                  {product.stock > 0 ? "✓ " + product.stock + " " + t("inStock") : t("preOrder")}
                 </Text>
               </View>
             </View>
 
             <View style={styles.ondcRow}>
               <Ionicons name="checkmark-done-circle" size={16} color="#2E7D32" style={{ marginRight: 6 }} />
-              <Text style={styles.ondcText}>Direct Artisan Creation • Standard Delivery</Text>
+              <Text style={styles.ondcText}>{t("directArtisanDelivery")}</Text>
             </View>
           </View>
 
@@ -350,7 +445,7 @@ export default function ProductDetail() {
             <View style={styles.storyHeader}>
               <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
                 <Text style={{ fontSize: 18, marginRight: 6 }}>📜</Text>
-                <Text style={styles.storyTitle}>Craft Story & Artisan Heritage</Text>
+                <Text style={styles.storyTitle}>{t("craftStoryTitle")}</Text>
               </View>
               <Pressable
                 style={[styles.audioBtn, isSpeaking && styles.audioBtnActive]}
@@ -362,40 +457,40 @@ export default function ProductDetail() {
                   color={isSpeaking ? "#FFFFFF" : theme.accent}
                 />
                 <Text style={[styles.audioBtnText, isSpeaking && styles.audioBtnTextActive]}>
-                  {isSpeaking ? "Stop Voice" : "🔊 Listen"}
+                  {isSpeaking ? t("stopAudio") : "🔊 " + t("listenAudio")}
                 </Text>
               </Pressable>
             </View>
             <Text style={styles.storyBody}>
-              "{product.craft_story || product.description || "Each piece is handcrafted with timeless techniques passed down through generations. Natural organic materials are molded and painted with intricate heritage motifs."}"
+              "{translatedData?.craft_story || product.craft_story || translatedData?.description || product.description || "Each piece is handcrafted with timeless techniques passed down through generations."}"
             </Text>
           </View>
 
           {/* Craft Specifications */}
           <View style={styles.specCard}>
-            <Text style={styles.specTitle}>AUTHENTICITY SPECIFICATIONS</Text>
+            <Text style={styles.specTitle}>{t("authenticitySpecs")}</Text>
 
             <View style={styles.specRow}>
-              <Text style={styles.specLabel}>Craft Category</Text>
-              <Text style={styles.specVal}>{product.category || "Handloom"}</Text>
+              <Text style={styles.specLabel}>{t("craftCategory")}</Text>
+              <Text style={styles.specVal}>{getCategory(product.category || "Handloom")}</Text>
             </View>
             <View style={styles.specDivider} />
 
             <View style={styles.specRow}>
-              <Text style={styles.specLabel}>Materials Used</Text>
-              <Text style={styles.specVal}>{product.materials || "Natural craft materials"}</Text>
+              <Text style={styles.specLabel}>{t("materialsUsed")}</Text>
+              <Text style={styles.specVal}>{getCategory(product.materials || "Natural materials")}</Text>
             </View>
             <View style={styles.specDivider} />
 
             <View style={styles.specRow}>
-              <Text style={styles.specLabel}>Origin Cluster</Text>
-              <Text style={styles.specVal}>{product.region_of_origin || "India"}</Text>
+              <Text style={styles.specLabel}>{t("originCluster")}</Text>
+              <Text style={styles.specVal}>{getCategory(product.region_of_origin || "India")}</Text>
             </View>
             <View style={styles.specDivider} />
 
             <View style={styles.specRow}>
-              <Text style={styles.specLabel}>Fair Trade Policy</Text>
-              <Text style={[styles.specVal, { color: "#2E7D32", fontWeight: "800" }]}>Fair-Trade Protected</Text>
+              <Text style={styles.specLabel}>{t("fairTradePolicy")}</Text>
+              <Text style={[styles.specVal, { color: "#2E7D32", fontWeight: "800" }]}>{t("fairTradeProtected")}</Text>
             </View>
           </View>
 
@@ -403,7 +498,7 @@ export default function ProductDetail() {
           <View style={styles.reviewsCard}>
             <View style={styles.reviewsHeader}>
               <View>
-                <Text style={styles.reviewsEyebrow}>VERIFIED BUYER REVIEWS</Text>
+                <Text style={styles.reviewsEyebrow}>{t("verifiedBuyerReviews")}</Text>
                 <View style={styles.ratingSummaryRow}>
                   <Ionicons name="star" size={18} color="#F59E0B" />
                   <Text style={styles.ratingBigText}>
@@ -507,12 +602,12 @@ export default function ProductDetail() {
         {/* Add to Cart Button */}
         <Pressable style={styles.addBagBtn} onPress={handleAddToCart}>
           <Ionicons name="bag-outline" size={16} color={theme.accent} style={{ marginRight: 6 }} />
-          <Text style={styles.addBagText}>Add to Bag</Text>
+          <Text style={styles.addBagText}>{t("addToCart")}</Text>
         </Pressable>
 
         {/* Buy Now Button */}
         <Pressable style={styles.buyNowBtn} onPress={handleBuyNow}>
-          <Text style={styles.buyNowText}>Buy Now</Text>
+          <Text style={styles.buyNowText}>{t("buyNow")}</Text>
         </Pressable>
       </View>
 
@@ -1309,5 +1404,74 @@ const styles = StyleSheet.create({
   artisanOriginText: {
     fontSize: 12,
     color: theme.muted
+  },
+  langPillProduct: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.08)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2
+  },
+  langPillProductText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1C1C1C"
+  },
+  translatingBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF8E1",
+    borderWidth: 1,
+    borderColor: "#FFE082",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginBottom: 12
+  },
+  translatingBannerText: {
+    fontSize: 12,
+    color: "#8D6E63",
+    fontWeight: "600"
+  },
+  translatedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    borderWidth: 1,
+    borderColor: "#C8E6C9",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginBottom: 12
+  },
+  translatedBannerText: {
+    fontSize: 12,
+    color: "#2E7D32",
+    fontWeight: "700"
+  },
+  manualTranslateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#F5EBE1",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E6D5C3",
+    marginBottom: 12
+  },
+  manualTranslateBtnText: {
+    fontSize: 12,
+    color: "#8B4513",
+    fontWeight: "700"
   }
 });
