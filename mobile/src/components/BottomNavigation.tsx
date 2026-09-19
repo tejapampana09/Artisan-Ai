@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../theme";
 import { getCartCount, subscribeCart } from "../cart";
 import { getWishlist, subscribeWishlist } from "../wishlist";
+import { useI18n } from "../i18n";
 
 interface BottomNavProps {
   role: "seller" | "buyer";
@@ -21,6 +22,7 @@ interface NavItem {
 }
 
 export const BottomNavigation: React.FC<BottomNavProps> = ({ role }) => {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const currentPath = usePathname();
   const [cartCount, setCartCount] = useState(0);
@@ -46,19 +48,19 @@ export const BottomNavigation: React.FC<BottomNavProps> = ({ role }) => {
   }, [role]);
 
   const sellerItems: NavItem[] = [
-    { label: "Studio", icon: "storefront-outline", activeIcon: "storefront", path: "/seller" },
-    { label: "Creations", icon: "cube-outline", activeIcon: "cube", path: "/seller-products" },
-    { label: "AI Studio", icon: "sparkles-outline", activeIcon: "sparkles", path: "/seller-ai", isHero: true },
-    { label: "Orders", icon: "receipt-outline", activeIcon: "receipt", path: "/seller-orders" },
-    { label: "Business", icon: "trending-up-outline", activeIcon: "trending-up", path: "/seller-business" }
+    { label: t("studio"), icon: "storefront-outline", activeIcon: "storefront", path: "/seller" },
+    { label: t("creations"), icon: "cube-outline", activeIcon: "cube", path: "/seller-products" },
+    { label: t("aiStudio"), icon: "sparkles-outline", activeIcon: "sparkles", path: "/seller-ai", isHero: true },
+    { label: t("orders"), icon: "receipt-outline", activeIcon: "receipt", path: "/seller-orders" },
+    { label: t("business"), icon: "trending-up-outline", activeIcon: "trending-up", path: "/seller-business" }
   ];
 
   const buyerItems: NavItem[] = [
-    { label: "Explore", icon: "compass-outline", activeIcon: "compass", path: "/buyer" },
-    { label: "Saved", icon: "heart-outline", activeIcon: "heart", path: "/buyer-wishlist", badge: wishlistCount },
-    { label: "Bag", icon: "bag-handle-outline", activeIcon: "bag-handle", path: "/buyer-cart", badge: cartCount },
-    { label: "Orders", icon: "receipt-outline", activeIcon: "receipt", path: "/buyer-orders" },
-    { label: "AI Guide", icon: "sparkles-outline", activeIcon: "sparkles", path: "/buyer-assistant" }
+    { label: t("explore"), icon: "compass-outline", activeIcon: "compass", path: "/buyer" },
+    { label: t("saved"), icon: "heart-outline", activeIcon: "heart", path: "/buyer-wishlist", badge: wishlistCount },
+    { label: t("bag"), icon: "bag-handle-outline", activeIcon: "bag-handle", path: "/buyer-cart", badge: cartCount },
+    { label: t("orders"), icon: "receipt-outline", activeIcon: "receipt", path: "/buyer-orders" },
+    { label: t("aiGuide"), icon: "sparkles-outline", activeIcon: "sparkles", path: "/buyer-assistant" }
   ];
 
   const items: NavItem[] = role === "seller" ? sellerItems : buyerItems;

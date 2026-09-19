@@ -26,7 +26,14 @@ export default function SellerChannelsScreen() {
   const [ondc, setOndc] = useState<any>(null);
   const [channels, setChannels] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
-  const [publishing, setPublishing] = useState<number | null>(null);
+  const [publishing, setPublishing] = useState<string | null>(null);
+  const publishedProducts = products.filter(
+    (product) => String(product.status || "").toUpperCase() === "PUBLISHED"
+  );
+  const inReviewCount = products.filter(
+    (product) => String(product.status || "").toUpperCase() === "PENDING_APPROVAL"
+  ).length;
+  const ondcStatus = ondc?.verification_status || ondc?.status || "NOT_CONFIGURED";
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -52,25 +59,30 @@ export default function SellerChannelsScreen() {
   }, [loadData]);
 
   const handlePublishAll = async (channelName: string) => {
-    if (products.length === 0) {
-      Alert.alert("Catalog Empty", "Please create and publish crafts in your studio first.");
+    if (publishedProducts.length === 0) {
+      Alert.alert(
+        "No Published Crafts",
+        inReviewCount > 0
+          ? `${inReviewCount} craft${inReviewCount === 1 ? " is" : "s are"} still in review. Only approved and published crafts can be checked for channel eligibility.`
+          : "Submit a craft for review and wait for approval before checking channel eligibility."
+      );
       return;
     }
 
-    setPublishing(1);
+    setPublishing(channelName);
     try {
-      let publishedCount = 0;
-      for (const p of products) {
+      let eligibleCount = 0;
+      for (const p of publishedProducts) {
         try {
           await api.publishToChannel(p.id, channelName);
-          publishedCount++;
+          eligibleCount++;
         } catch (e) {
-          // Continue publishing remaining
+          // Continue to report the result for the rest of the published catalog.
         }
       }
       Alert.alert(
-        "Channel Broadcast",
-        `Broadcasted ${publishedCount} crafts to ${channelName}. Catalog feeds are synced.`
+        "Channel Eligibility Checked",
+        `${eligibleCount} of ${publishedProducts.length} published craft${publishedProducts.length === 1 ? " is" : "s are"} eligible for ${channelName}. Network discovery still depends on the connection status shown here.`
       );
     } catch (e: any) {
       Alert.alert("Publish Error", e?.message || "Could not publish catalog.");
@@ -106,32 +118,32 @@ export default function SellerChannelsScreen() {
               <Text style={styles.ondcTitle}>ONDC Seller-Side Foundation</Text>
               <Text style={styles.ondcSub}>Beckn Protocol & Open Network Discovery</Text>
             </View>
-            <StatusBadge status={ondc?.status || "CONFIGURED"} />
+            <StatusBadge status={ondcStatus} />
           </View>
 
           <Text style={styles.ondcStatement}>
-            Artisan AI establishes your workshop as a verified seller node on India's Open Network
-            for Digital Commerce (ONDC). Any buyer app in the Beckn ecosystem can discover your
-            crafts and settle payments directly to your studio.
+            This screen reports the current ONDC connection honestly. Only approved, published
+            crafts can be considered for discovery, and availability to buyer apps depends on the
+            verification status shown above.
           </Text>
 
           <View style={styles.truthBox}>
             <View style={styles.truthRow}>
               <Ionicons name="checkmark-circle" size={16} color={theme.colors.success} />
               <Text style={styles.truthText}>
-                Schema compliance: <Text style={{ fontWeight: "700" }}>{ondc?.schema_version || "Beckn v1.2.0"}</Text>
+                Protocol: <Text style={{ fontWeight: "700" }}>{ondc?.schema_version || "Beckn v1.2.0"}</Text>
               </Text>
             </View>
             <View style={styles.truthRow}>
               <Ionicons name="checkmark-circle" size={16} color={theme.colors.success} />
               <Text style={styles.truthText}>
-                BPP Node Adapter: <Text style={{ fontWeight: "700" }}>Active Seller Agent</Text>
+                Network verification: <Text style={{ fontWeight: "700" }}>{ondcStatus}</Text>
               </Text>
             </View>
             <View style={styles.truthRow}>
               <Ionicons name="shield-checkmark" size={16} color={theme.colors.primary} />
               <Text style={styles.truthText}>
-                Middleman commission: <Text style={{ fontWeight: "700", color: theme.colors.success }}>0% (Zero intermediary markup)</Text>
+                Published catalog: <Text style={{ fontWeight: "700", color: theme.colors.success }}>{publishedProducts.length} eligible to check</Text>
               </Text>
             </View>
           </View>
@@ -140,7 +152,7 @@ export default function SellerChannelsScreen() {
         {/* Channels List */}
         <SectionHeader
           title="Active Channels"
-          subtitle="Broadcasting your studio to global and regional buyers"
+          subtitle="Current availability and verified channel eligibility"
         />
 
         <Card style={styles.channelItem}>
@@ -166,16 +178,16 @@ export default function SellerChannelsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.channelTitle}>ONDC Open Commerce Network</Text>
-              <Text style={styles.channelMeta}>Searchable via Paytm, Pincode, Mystore</Text>
+              <Text style={styles.channelMeta}>Connection status: {ondcStatus}</Text>
             </View>
-            <StatusBadge status="CONFIGURED" />
+            <StatusBadge status={ondcStatus} />
           </View>
           <Text style={styles.channelDesc}>
-            Exposes your products via Beckn protocol endpoints to all registered buyer apps nationwide.
+            Checks whether your approved catalog meets ONDC discovery requirements. It does not claim live buyer-app reachability until verification succeeds.
           </Text>
           <View style={{ marginTop: 12 }}>
             <SecondaryButton
-              title={publishing ? "Broadcasting..." : "Broadcast Catalog to ONDC"}
+              title={publishing ? "Checking eligibility..." : "Check ONDC eligibility"}
               icon="radio-outline"
               onPress={() => handlePublishAll("ONDC")}
               disabled={!!publishing}
@@ -190,12 +202,12 @@ export default function SellerChannelsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.channelTitle}>Global Craft Heritage Exchange</Text>
-              <Text style={styles.channelMeta}>Export readiness & international inquiries</Text>
+              <Text style={styles.channelMeta}>Sandbox demonstration channel</Text>
             </View>
-            <StatusBadge status="READY" />
+            <StatusBadge status="SANDBOX" />
           </View>
           <Text style={styles.channelDesc}>
-            Standardized multi-currency export listings with automated HS code assignment and customs documentation.
+            A simulated export adapter for demonstrations; it does not create a live international listing or customs paperwork.
           </Text>
         </Card>
       </ScrollView>

@@ -19,7 +19,9 @@ import { Ionicons, AntDesign, Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
+import { clearSession } from "../src/storage";
 import { addToCart, getCartCount, subscribeCart } from "../src/cart";
+import { getWishlist, subscribeWishlist, toggleWishlist } from "../src/wishlist";
 import { BottomNavigation } from "../src/components";
 import { subscribeNotifications } from "../src/notifications";
 
@@ -48,10 +50,15 @@ export default function BuyerScreen() {
   useEffect(() => {
     loadProducts();
     updateCart();
+    getWishlist().then((items) => setSavedProductIds(new Set(items.map((item) => item.id)))).catch(() => {});
     const unsub = subscribeCart(() => updateCart());
+    const unsubWishlist = subscribeWishlist(() => {
+      getWishlist().then((items) => setSavedProductIds(new Set(items.map((item) => item.id)))).catch(() => {});
+    });
     const unsubNotifs = subscribeNotifications((_, count) => setUnreadNotifs(count));
     return () => {
       unsub();
+      unsubWishlist();
       unsubNotifs();
     };
   }, []);
@@ -89,13 +96,8 @@ export default function BuyerScreen() {
     }
   };
 
-  const handleToggleSave = (id: number) => {
-    setSavedProductIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const handleToggleSave = async (product: any) => {
+    await toggleWishlist(product);
   };
 
   const handleQuickAdd = async (product: any) => {
@@ -154,9 +156,9 @@ export default function BuyerScreen() {
           {/* Wishlist Heart */}
           <Pressable
             style={[styles.heartBtn, isSaved && styles.heartBtnActive]}
-            onPress={(e) => {
+              onPress={async (e) => {
               e.stopPropagation();
-              handleToggleSave(item.id);
+                await handleToggleSave(item);
             }}
             hitSlop={8}
           >
@@ -278,7 +280,10 @@ export default function BuyerScreen() {
 
         <Pressable
           style={styles.modePill}
-          onPress={() => router.push("/login?role=seller")}
+          onPress={async () => {
+            await clearSession("MARKETPLACE");
+            router.replace({ pathname: "/login", params: { role: "seller", redirect: "/seller" } });
+          }}
         >
           <Ionicons name="storefront-outline" size={14} color={theme.muted} style={{ marginRight: 6 }} />
           <Text style={styles.modePillText}>Sell as Artisan 🎨</Text>

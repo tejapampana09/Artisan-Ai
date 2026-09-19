@@ -4,6 +4,7 @@ import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { theme } from "../src/theme";
+import { I18nProvider } from "../src/i18n";
 import {
   registerForPushNotificationsAsync,
   fetchNotifications,
@@ -40,22 +41,24 @@ export default function Layout() {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{
-        headerShown: false,
-        headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.ink,
-        contentStyle: { backgroundColor: theme.bg }
-      }}>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="buyer" options={{ headerShown: false }} />
-        <Stack.Screen name="seller" options={{ headerShown: false }} />
-        <Stack.Screen name="oauth2redirect" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" options={{ headerShown: false }} />
-      </Stack>
-    </SafeAreaProvider>
+    <I18nProvider>
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        <Stack screenOptions={{
+          headerShown: false,
+          headerStyle: { backgroundColor: theme.bg },
+          headerTintColor: theme.ink,
+          contentStyle: { backgroundColor: theme.bg }
+        }}>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="buyer" options={{ headerShown: false }} />
+          <Stack.Screen name="seller" options={{ headerShown: false }} />
+          <Stack.Screen name="oauth2redirect" options={{ headerShown: false }} />
+          <Stack.Screen name="+not-found" options={{ headerShown: false }} />
+        </Stack>
+      </SafeAreaProvider>
+    </I18nProvider>
   );
 }
 

@@ -925,18 +925,16 @@ async def estimate_fair_price(
         except Exception:
             pass
 
-    # Benchmark fallback if AI call is unavailable
+    # Do not invent a category price when neither live market data nor artisan
+    # costs are available. The caller must show pricing as unavailable.
     matched_benchmark = None
     for cat_key, bench in CATEGORY_MARKET_BENCHMARKS.items():
         if cat_key.lower() in clean_cat.lower() or cat_key.lower() in clean_title.lower():
             matched_benchmark = bench
             break
-    if not matched_benchmark:
-        matched_benchmark = CATEGORY_MARKET_BENCHMARKS.get("Other", {"suggested": Decimal("1500.00"), "min": Decimal("1000.00")})
-
     return {
-        "suggested_price": matched_benchmark["suggested"],
-        "min_fair_price": matched_benchmark["min"],
-        "pricing_source": "MARKET_CATEGORY_BENCHMARK",
-        "reasoning": f"Fair price estimated based on similar market products in {clean_cat} category."
+        "suggested_price": None,
+        "min_fair_price": None,
+        "pricing_source": "AWAITING_MARKET_OR_COST_DATA",
+        "reasoning": "No reliable market comparables or artisan cost inputs were available, so no price was invented."
     }

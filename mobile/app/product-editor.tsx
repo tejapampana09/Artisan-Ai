@@ -12,7 +12,9 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { api } from "../src/api";
+import { api, ApiError } from "../src/api";
+import { imageAssetToApiSource } from "../src/media";
+import { queueOfflineProduct } from "../src/offlineQueue";
 import { theme } from "../src/theme";
 import {
   Screen,
@@ -46,11 +48,23 @@ export default function ProductEditor() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const usePickedImage = (asset: {
+    uri: string;
+    base64?: string | null;
+    mimeType?: string | null;
+  }) => {
+    try {
+      setImageUri(imageAssetToApiSource(asset));
+    } catch (error: any) {
+      Alert.alert("Photo Unavailable", error?.message || "Please choose the image again.");
+    }
+  };
+
   useEffect(() => {
     if (id) {
       setLoading(true);
       api
-        .product(Number(id))
+          .sellerProduct(Number(id))
         .then((p) => {
           setTitle(p.title || "");
           setCategory(p.category || "");
@@ -87,10 +101,11 @@ export default function ProductEditor() {
   const pickImage = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.85
+      quality: 0.85,
+      base64: true
     });
     if (!res.canceled && res.assets && res.assets.length > 0) {
-      setImageUri(res.assets[0].uri);
+      usePickedImage(res.assets[0]);
     }
   };
 
@@ -101,10 +116,11 @@ export default function ProductEditor() {
       return;
     }
     const res = await ImagePicker.launchCameraAsync({
-      quality: 0.85
+      quality: 0.85,
+      base64: true
     });
     if (!res.canceled && res.assets && res.assets.length > 0) {
-      setImageUri(res.assets[0].uri);
+      usePickedImage(res.assets[0]);
     }
   };
 
@@ -133,20 +149,67 @@ export default function ProductEditor() {
       packaging_cost: numPack,
       other_cost: numOth,
       min_margin_pct: numMargin,
-      image_url: imageUri || undefined,
-      status: targetStatus
+      image_url: imageUri || undefined
     };
 
     try {
+      let savedProduct: any;
       if (isEditing) {
-        await api.updateProduct(Number(id), payload);
-        Alert.alert("Success", "Craft item updated successfully.");
+        // A draft can be reopened for edits. Submitting is handled through the
+        // dedicated endpoint below so the backend validates the transition.
+        if (targetStatus === "DRAFT") payload.status = "DRAFT";
+        savedProduct = await api.updateProduct(Number(id), payload);
       } else {
-        await api.createProduct(payload);
-        Alert.alert("Success", "Craft item added to creations.");
+        savedProduct = await api.createProduct(payload);
+      }
+
+      if (targetStatus === "PENDING_APPROVAL") {
+        await api.submitProductForReview(savedProduct.id);
+        Alert.alert(
+          "Sent for Review",
+          "Your craft is now in review. It will become visible to buyers only after approval."
+        );
+      } else {
+        Alert.alert("Draft Saved", "Your craft is safely saved in My Creations.");
       }
       router.back();
     } catch (err: any) {
+      const isNetworkFailure =
+        !isEditing &&
+        !(err instanceof ApiError) &&
+        /network|internet|fetch|timed out/i.test(String(err?.message || ""));
+
+      if (isNetworkFailure) {
+        try {
+          await queueOfflineProduct({
+            title: title.trim(),
+            category: category.trim(),
+            description: description.trim() || undefined,
+            craft_story: craftStory.trim() || undefined,
+            materials: materials.trim() || undefined,
+            price: parseFloat(price),
+            stock: parseInt(stock, 10) || 1,
+            image_url: imageUri || undefined,
+            material_cost: numMat,
+            labour_cost: numLab,
+            packaging_cost: numPack,
+            other_cost: numOth,
+            min_margin_pct: numMargin
+          });
+          Alert.alert(
+            "Saved Offline",
+            "This craft was saved as a local draft. Sync it from Business Intelligence when you are back online, then submit it for review."
+          );
+          router.back();
+          return;
+        } catch (queueError: any) {
+          Alert.alert(
+            "Save Failed",
+            queueError?.message || "Could not save the craft online or offline."
+          );
+          return;
+        }
+      }
       Alert.alert("Save Failed", err?.detail || err?.message || "Could not save craft item.");
     } finally {
       setSaving(false);

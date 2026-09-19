@@ -8,7 +8,7 @@ const RESOLVED_URL =
   RAW_URL.includes("localhost") || RAW_URL.includes("127.0.0.1")
     ? CLOUDFRONT_URL
     : RAW_URL;
-const BASE_URL = RESOLVED_URL.replace(/\/api\/?$/, "").replace(/\/$/, "");
+export const BASE_URL = RESOLVED_URL.replace(/\/api\/?$/, "").replace(/\/$/, "");
 
 export class ApiError extends Error {
   status: number;
@@ -22,7 +22,7 @@ export class ApiError extends Error {
 
 async function request<T>(
   path: string,
-  options: RequestInit = {},
+  options: RequestInit & { timeoutMs?: number } = {},
   domain?: AuthDomain
 ): Promise<T> {
   if (!BASE_URL) throw new Error("EXPO_PUBLIC_API_URL is not configured.");
@@ -39,7 +39,8 @@ async function request<T>(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 45000);
+  const timeoutMs = options.timeoutMs ?? (path.includes("/ai/") ? 90000 : 45000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const url = `${BASE_URL}/api${path}`;
@@ -64,7 +65,9 @@ async function request<T>(
 
     if (!response.ok) {
       let detail = "Request failed";
-      if (typeof data === "object" && data?.detail) {
+      if (response.status === 413) {
+        detail = "Photo is too large to upload. Please choose a smaller image and try again.";
+      } else if (typeof data === "object" && data?.detail) {
         detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
       } else if (typeof data === "string" && data.length > 0) {
         detail = data;
@@ -156,6 +159,10 @@ export const api = {
     return request<any>(`/products/${id}`);
   },
 
+  async sellerProduct(id: number) {
+    return request<any>(`/products/${id}`, {}, "STUDIO");
+  },
+
   async sellerProducts(status?: string) {
     const q = status ? `?status=${encodeURIComponent(status)}` : "";
     return request<any[]>(`/products${q}`, {}, "STUDIO");
@@ -193,18 +200,46 @@ export const api = {
     );
   },
 
+  async submitProductForReview(id: number) {
+    return request<any>(
+      `/studio/products/${id}/submit`,
+      { method: "POST" },
+      "STUDIO"
+    );
+  },
+
   // -------------------------------------------------------------
   // AI CATALOG STUDIO
   // -------------------------------------------------------------
   async processCatalog(payload: Record<string, unknown>) {
-    return request<any>(
-      "/ai/process-catalog",
-      {
-        method: "POST",
-        body: JSON.stringify(payload)
-      },
-      "STUDIO"
-    );
+    try {
+      return await request<any>(
+        "/ai/process-catalog",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+          timeoutMs: 180000
+        },
+        "STUDIO"
+      );
+    } catch (error) {
+      // Some production proxies reject even compressed base64 images. The
+      // catalog can still be generated from the verified artisan answers.
+      if (error instanceof ApiError && error.status === 413 && payload.image_url) {
+        const textOnlyPayload = { ...payload };
+        delete textOnlyPayload.image_url;
+        return request<any>(
+          "/ai/process-catalog",
+          {
+            method: "POST",
+            body: JSON.stringify(textOnlyPayload),
+            timeoutMs: 180000
+          },
+          "STUDIO"
+        );
+      }
+      throw error;
+    }
   },
 
   async enhanceImage(image_url: string, backdrop_id: string = "marble_pedestal") {
@@ -218,7 +253,7 @@ export const api = {
     );
   },
 
-  async approveCatalog(payload: Record<string, unknown>) {
+  async submitCatalogForApproval(payload: Record<string, unknown>) {
     return request<any>(
       "/ai/approve-and-publish",
       {

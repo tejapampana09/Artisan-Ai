@@ -94,28 +94,28 @@ export default function BuyerCart() {
     setOrdering(true);
     try {
       // Place order for each item in cart
+      const orderIds: string[] = [];
       for (const item of items) {
-        await api.placeOrder({
+        const order = await api.placeOrder({
           product_id: item.id,
           quantity: item.quantity,
           delivery_address: deliveryAddress.trim(),
           buyer_name: deliveryName.trim() || undefined,
           buyer_phone: deliveryPhone.trim() || undefined
         });
+        if (order?.id != null) orderIds.push(String(order.id));
       }
 
       await clearCart();
       setItems([]);
-      Alert.alert(
-        "🎉 Order Placed Successfully!",
-        "Your handcrafted creations are now scheduled with the artisan for dispatch.",
-        [
-          {
-            text: "View My Orders",
-            onPress: () => router.replace("/buyer-orders")
-          }
-        ]
-      );
+      router.replace({
+        pathname: "/order-confirmation",
+        params: {
+          count: String(items.length),
+          total: String(grandTotal),
+          orderIds: orderIds.join(",")
+        }
+      });
     } catch (err: any) {
       Alert.alert("Order Failed", err?.detail || err?.message || "Could not place order.");
     } finally {

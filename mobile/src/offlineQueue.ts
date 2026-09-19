@@ -136,7 +136,28 @@ export async function processBatchSync(): Promise<{
       price_decisions: decs
     });
 
-    if (res && res.status === "SUCCESS") {
+    // The API contract uses lowercase `success`; normalizing also keeps this
+    // client compatible if another deployment returns uppercase values.
+    if (res && String(res.status).toUpperCase() === "SUCCESS") {
+      const itemResults = [
+        ...(Array.isArray(res.products_synced) ? res.products_synced : []),
+        ...(Array.isArray(res.price_decisions_synced) ? res.price_decisions_synced : [])
+      ];
+      const hasUnresolvedItem = itemResults.some((item: any) => {
+        const status = String(item?.status || "").toUpperCase();
+        return status.startsWith("FAILED") || status === "REJECTED_UNAUTHORIZED" || status === "SKIPPED_NOT_FOUND";
+      });
+
+      if (hasUnresolvedItem) {
+        currentSyncState = "FAILED";
+        await notifySyncChange();
+        return {
+          success: false,
+          syncedCount: 0,
+          message: "Some offline items need attention and were kept on this device."
+        };
+      }
+
       await AsyncStorage.multiRemove([QUEUED_PRODUCTS_KEY, QUEUED_DECISIONS_KEY]);
       await AsyncStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
       currentSyncState = "SYNCED";

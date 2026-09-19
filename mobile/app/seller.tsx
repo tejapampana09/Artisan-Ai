@@ -13,6 +13,7 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { api } from "../src/api";
 import { getSession } from "../src/storage";
 import { theme } from "../src/theme";
+import { clearSession } from "../src/storage";
 import {
   Screen,
   Header,
@@ -113,7 +114,10 @@ export default function SellerDashboard() {
           <View style={styles.headerActions}>
             <Pressable
               style={styles.switchModeBtn}
-              onPress={() => router.replace("/buyer")}
+              onPress={async () => {
+                await clearSession("STUDIO");
+                router.replace({ pathname: "/login", params: { role: "buyer", redirect: "/buyer" } });
+              }}
               accessibilityRole="button"
               accessibilityLabel="Switch to Buyer View"
             >

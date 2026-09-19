@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 from backend.app.database import get_db
 from backend.app.models import Product, PricingDecision, User, Event, ProcessedOperation
-from backend.app.services.auth import get_current_user
+from backend.app.services.auth import require_artisan
 
 router = APIRouter(prefix="/api/sync", tags=["Offline Sync"])
 
@@ -25,7 +25,7 @@ class OfflineProductItem(BaseModel):
     stock: int = Field(default=1, ge=0)
     image_url: Optional[str] = None
     enhanced_image_url: Optional[str] = None
-    status: str = "PUBLISHED"
+    status: str = "DRAFT"
     material_cost: float = Field(default=0.0, ge=0.0)
     labour_cost: float = Field(default=0.0, ge=0.0)
     packaging_cost: float = Field(default=0.0, ge=0.0)
@@ -83,7 +83,7 @@ def get_sync_status(db: Session = Depends(get_db)):
 def batch_sync(
     payload: BatchSyncRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_artisan)
 ):
     """
     Atomically process batch sync queue uploaded from offline PWA / mobile client.
@@ -122,7 +122,9 @@ def batch_sync(
                     stock=prod_item.stock,
                     image_url=prod_item.image_url,
                     enhanced_image_url=prod_item.enhanced_image_url,
-                    status=prod_item.status if prod_item.status else "PUBLISHED",
+                    # Offline uploads must use the same seller review flow as
+                    # online products; a client must never self-publish.
+                    status="DRAFT",
                     material_cost=Decimal(str(prod_item.material_cost)),
                     labour_cost=Decimal(str(prod_item.labour_cost)),
                     packaging_cost=Decimal(str(prod_item.packaging_cost)),

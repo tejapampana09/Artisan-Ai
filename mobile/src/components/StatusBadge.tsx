@@ -88,6 +88,33 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
         border = theme.colors.dangerBorder;
         label = "Suspended";
         break;
+      case "VERIFIED":
+      case "ACTIVE":
+        bg = theme.colors.successLight;
+        color = theme.colors.success;
+        border = theme.colors.successBorder;
+        label = normalized === "VERIFIED" ? "Verified" : "Active";
+        break;
+      case "CONFIGURED":
+      case "PENDING":
+        bg = theme.colors.infoLight;
+        color = theme.colors.info;
+        border = theme.colors.infoBorder;
+        label = normalized === "PENDING" ? "Pending" : "Configured";
+        break;
+      case "SANDBOX":
+        bg = theme.colors.warningLight;
+        color = theme.colors.warning;
+        border = theme.colors.warningBorder;
+        label = "Sandbox";
+        break;
+      case "NOT_CONFIGURED":
+      case "UNAVAILABLE":
+        bg = theme.colors.surfaceMuted;
+        color = theme.colors.inkMuted;
+        border = theme.colors.border;
+        label = normalized === "NOT_CONFIGURED" ? "Not configured" : "Unavailable";
+        break;
       default:
         label = status;
     }

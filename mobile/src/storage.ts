@@ -68,5 +68,10 @@ export async function clearSession(domain?: AuthDomain): Promise<void> {
   }
   if (!domain) {
     await AsyncStorage.removeItem(ACTIVE_DOMAIN_KEY).catch(() => {});
+  } else {
+    const activeDomain = await AsyncStorage.getItem(ACTIVE_DOMAIN_KEY);
+    if (activeDomain === domain) {
+      await AsyncStorage.removeItem(ACTIVE_DOMAIN_KEY).catch(() => {});
+    }
   }
 }

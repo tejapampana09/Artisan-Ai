@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,23 +12,23 @@ import {
   Platform
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../src/theme";
 import { getSession, clearSession } from "../src/storage";
+import { AppLanguage, useI18n } from "../src/i18n";
 
-const SETTINGS_LANG_KEY = "artisan_settings_language";
 const SETTINGS_ADDR_KEY = "artisan_saved_delivery_address";
 const SETTINGS_NOTIFS_KEY = "artisan_notifications_settings";
 
 export default function SettingsScreen() {
+  const { language, setLanguage, t } = useI18n();
   const [session, setSession] = useState<{
     token: string | null;
     domain: "STUDIO" | "MARKETPLACE" | null;
     user: any;
   }>({ token: null, domain: null, user: null });
 
-  const [language, setLanguage] = useState<string>("English");
   const [savedAddress, setSavedAddress] = useState<string>("");
   const [editingAddress, setEditingAddress] = useState<boolean>(false);
   const [tempAddress, setTempAddress] = useState<string>("");
@@ -39,17 +39,16 @@ export default function SettingsScreen() {
 
   const [cacheClearedToast, setCacheClearedToast] = useState<boolean>(false);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadSettings();
+    }, [])
+  );
 
   const loadSettings = async () => {
     try {
       const sess = await getSession();
       setSession(sess);
-
-      const savedLang = await AsyncStorage.getItem(SETTINGS_LANG_KEY);
-      if (savedLang) setLanguage(savedLang);
 
       const addr = await AsyncStorage.getItem(SETTINGS_ADDR_KEY);
       if (addr) {
@@ -69,9 +68,8 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleSelectLanguage = async (lang: string) => {
-    setLanguage(lang);
-    await AsyncStorage.setItem(SETTINGS_LANG_KEY, lang);
+  const handleSelectLanguage = async (lang: AppLanguage) => {
+    await setLanguage(lang);
   };
 
   const handleSaveAddress = async () => {
@@ -308,15 +306,15 @@ export default function SettingsScreen() {
 
         {/* Preferences: Language */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>PREFERENCES</Text>
+          <Text style={styles.sectionHeader}>{t("preferences").toUpperCase()}</Text>
           <View style={styles.cardBox}>
-            <Text style={styles.settingLabel}>App Language</Text>
-            <Text style={styles.settingSub}>Select your preferred interface language</Text>
+            <Text style={styles.settingLabel}>{t("appLanguage")}</Text>
+            <Text style={styles.settingSub}>{t("selectInterfaceLanguage")}</Text>
             <View style={styles.langGrid}>
               {[
-                { label: "English", code: "English" },
-                { label: "తెలుగు (Telugu)", code: "Telugu" },
-                { label: "हिंदी (Hindi)", code: "Hindi" }
+                { label: t("english"), code: "en" as AppLanguage },
+                { label: t("telugu"), code: "te" as AppLanguage },
+                { label: t("hindi"), code: "hi" as AppLanguage }
               ].map(item => {
                 const active = language === item.code;
                 return (
@@ -338,14 +336,14 @@ export default function SettingsScreen() {
             {/* Saved Delivery Address */}
             <View style={styles.addressHeader}>
               <View>
-                <Text style={styles.settingLabel}>Saved Delivery Address</Text>
-                <Text style={styles.settingSub}>Used for quick one-tap ONDC checkout</Text>
+                <Text style={styles.settingLabel}>{t("savedDeliveryAddress")}</Text>
+                <Text style={styles.settingSub}>{t("usedForCheckout")}</Text>
               </View>
               <Pressable
                 onPress={() => setEditingAddress(!editingAddress)}
                 style={styles.editBtn}
               >
-                <Text style={styles.editBtnText}>{editingAddress ? "Cancel" : "Edit"}</Text>
+                <Text style={styles.editBtnText}>{editingAddress ? t("cancel") : t("edit")}</Text>
               </Pressable>
             </View>
 
@@ -359,7 +357,7 @@ export default function SettingsScreen() {
                   multiline
                 />
                 <Pressable onPress={handleSaveAddress} style={styles.saveAddressBtn}>
-                  <Text style={styles.saveAddressBtnText}>Save Address</Text>
+                  <Text style={styles.saveAddressBtnText}>{t("saveAddress")}</Text>
                 </Pressable>
               </View>
             ) : (
