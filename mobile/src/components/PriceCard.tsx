@@ -101,7 +101,7 @@ export const PriceCard: React.FC<PriceCardProps> = ({
               ₹{marketRange.min.toLocaleString("en-IN")} - ₹{marketRange.max.toLocaleString("en-IN")}
             </Text>
             <Text style={styles.factorSub}>
-              {marketRange.median ? `Median: ₹${marketRange.median.toLocaleString("en-IN")}` : "Live Comparables"}
+              {marketRange.median ? `Median: ₹${marketRange.median.toLocaleString("en-IN")}` : "Market Observation Signal"}
             </Text>
           </View>
         )}

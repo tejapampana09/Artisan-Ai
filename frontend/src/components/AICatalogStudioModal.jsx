@@ -1960,9 +1960,17 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       <span className="text-[11px] font-extrabold text-emerald-900 bg-white px-2.5 py-0.5 rounded-lg border border-emerald-300 shadow-2xs">
                         🛡️ Protected 20% Floor: ₹{aiDraft.min_fair_price}
                       </span>
-                    ) : (
+                    ) : (aiDraft.pricing_source === 'CASE_3_INSIDE_MARKET' || aiDraft.pricing_source === 'CASE_4_ABOVE_MARKET' || aiDraft.pricing_source === 'CASE_3_UNBENCHMARKED_ARTISAN_PRICE' || (costs.selling_price && Number(costs.selling_price) > 0)) ? (
                       <span className="text-[11px] font-extrabold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-lg border border-amber-300">
+                        🏷️ Artisan Stated Price (Cost Inputs Omitted)
+                      </span>
+                    ) : aiDraft.market_summary?.median_price ? (
+                      <span className="text-[11px] font-extrabold text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-lg border border-emerald-300">
                         🏷️ Market Estimated (Cost Inputs Omitted)
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-extrabold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-lg border border-stone-300">
+                        🏷️ Custom Price (Cost Inputs Omitted)
                       </span>
                     )}
                   </div>
@@ -1975,11 +1983,24 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         <h5 className="text-sm font-extrabold text-[#2A1E17]">✨ AI Recommended Selling Price</h5>
                       </div>
                       <p className="text-[11px] text-emerald-800 font-medium leading-tight mt-1">
-                        {aiDraft.min_fair_price 
-                          ? 'Combines artisan cost basis + 20% floor + live market median signal.'
-                          : (aiDraft.market_summary?.comparable_count 
-                              ? `Based on ${aiDraft.market_summary.comparable_count} verified market listings (Market Range: ₹${aiDraft.market_summary.min_price || 0} – ₹${aiDraft.market_summary.max_price || 0}, Median: ₹${aiDraft.market_summary.median_price || aiDraft.suggested_price})`
-                              : 'Estimated directly from live online market research.')}
+                        {(() => {
+                          if (aiDraft.min_fair_price) {
+                            return 'Combines artisan cost basis + 20% protected profit floor + live market signal.';
+                          }
+                          const hasValidRange = (
+                            aiDraft.market_summary?.min_price != null &&
+                            aiDraft.market_summary?.max_price != null &&
+                            aiDraft.market_summary?.median_price != null &&
+                            Number(aiDraft.market_summary.min_price) > 0
+                          );
+                          if (hasValidRange) {
+                            return `Based on ${aiDraft.market_summary.priced_comparable_count || aiDraft.market_summary.comparable_count} price-verified market listings (Market Range: ₹${aiDraft.market_summary.min_price} – ₹${aiDraft.market_summary.max_price}, Median: ₹${aiDraft.market_summary.median_price}).`;
+                          }
+                          if (aiDraft.market_summary?.comparable_count > 0) {
+                            return `${aiDraft.market_summary.comparable_count} comparable listings observed online. Verified prices not published on external snippets; respecting your stated price.`;
+                          }
+                          return 'Set your desired selling price or enter production costs to generate a protected price recommendation.';
+                        })()}
                       </p>
                     </div>
                     <div className="flex items-center space-x-2 shrink-0">
@@ -2037,17 +2058,17 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       <div className="flex justify-between items-baseline mt-1">
                         <span className="text-xs font-semibold text-[#2A1E17]">Comparable Market Median:</span>
                         <span className="text-xs font-bold text-indigo-900">
-                          {aiDraft.market_summary?.median_price != null || aiDraft.price_recommendation?.market_median != null
-                            ? `₹${aiDraft.market_summary?.median_price || aiDraft.price_recommendation?.market_median}`
-                            : 'Market data estimated'}
+                          {aiDraft.market_summary?.median_price != null && Number(aiDraft.market_summary.median_price) > 0
+                            ? `₹${aiDraft.market_summary.median_price}`
+                            : 'Awaiting verified market prices'}
                         </span>
                       </div>
                       <div className="flex justify-between items-baseline mt-0.5">
                         <span className="text-xs font-semibold text-[#6B5B51]">Retained Benchmark Range:</span>
                         <span className="text-xs font-bold text-[#2A1E17]">
-                          {aiDraft.market_summary?.min_price != null && aiDraft.market_summary?.max_price != null
-                            ? `₹${aiDraft.market_summary.min_price} – ₹${aiDraft.market_summary.max_price} (${aiDraft.market_summary.comparable_count || 0} items)`
-                            : 'Live market search active'}
+                          {aiDraft.market_summary?.min_price != null && aiDraft.market_summary?.max_price != null && Number(aiDraft.market_summary.min_price) > 0
+                            ? `₹${aiDraft.market_summary.min_price} – ₹${aiDraft.market_summary.max_price} (${aiDraft.market_summary.priced_comparable_count || aiDraft.market_summary.comparable_count} items)`
+                            : (aiDraft.market_summary?.comparable_count > 0 ? `${aiDraft.market_summary.comparable_count} items found (Prices unlisted)` : 'Benchmark range pending')}
                         </span>
                       </div>
                     </div>
@@ -2133,7 +2154,9 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     )).slice(0, 4)
                   : [];
 
-                const medianPrice = aiDraft.market_summary?.median_price || aiDraft.suggested_price;
+                const medianPrice = (aiDraft.market_summary?.median_price && Number(aiDraft.market_summary.median_price) > 0)
+                  ? Number(aiDraft.market_summary.median_price)
+                  : null;
 
                 const getPlatformBadge = (source = '', url = '') => {
                   const s = (source + ' ' + url).toLowerCase();
@@ -2159,7 +2182,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         </span>
                       </div>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${medianPrice ? 'text-emerald-800 bg-emerald-50 border-emerald-200' : 'text-[#6B6B6B] bg-stone-50 border-[#E8E5DF]'}`}>
-                        {medianPrice ? 'Live Median Benchmark Active' : 'No verified results'}
+                        {medianPrice ? 'Live Median Benchmark Active' : (aiDraft.market_summary?.comparable_count > 0 ? `${aiDraft.market_summary.comparable_count} Listings Found (Prices Unlisted)` : 'Search Active')}
                       </span>
                     </div>
 
@@ -2167,11 +2190,19 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     <div className="p-2.5 bg-white rounded-xl border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-2xs">
                       <div className="text-[11px] text-[#2A1E17]">
                         <span className="font-extrabold text-emerald-900">Comparable Market Median: </span>
-                        <span className="text-[#6B5B51]">Grounded on Indian artisan marketplaces (India Handmade, Mystore, iTokri). No mock products used.</span>
+                        <span className="text-[#6B5B51]">
+                          {medianPrice 
+                            ? 'Grounded on Indian artisan marketplaces (India Handmade, Mystore, iTokri). No mock products used.'
+                            : 'Authentic Indian craft platforms searched. Price tags not disclosed in public snippets.'}
+                        </span>
                       </div>
-                      {medianPrice && (
+                      {medianPrice ? (
                         <span className="text-xs font-black text-emerald-950 bg-emerald-100 px-3 py-1 rounded-lg border border-emerald-300 shrink-0">
                           Median Price: ₹{medianPrice}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-stone-500 bg-stone-100 px-2.5 py-1 rounded-lg border border-stone-200 shrink-0">
+                          Median Unavailable
                         </span>
                       )}
                     </div>

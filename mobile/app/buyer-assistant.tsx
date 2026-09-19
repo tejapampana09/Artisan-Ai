@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,8 +15,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import * as Speech from "expo-speech";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
+import { useI18n } from "../src/i18n";
 
 interface ProductCardData {
   id: number;
@@ -42,10 +44,11 @@ const SUGGESTIONS = [
   "How to identify pure Chanderi silk?",
   "Custom Terracotta Vase",
   "Organic Glaze Recipes",
-  "ONDC Shipping & Tracking"
+  "Order Status & Delivery"
 ];
 
 export default function BuyerAssistant() {
+  const { language } = useI18n();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "intro",
@@ -56,7 +59,58 @@ export default function BuyerAssistant() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+    };
+  }, []);
+
+  const handleToggleSpeech = async (msgId: string, text: string) => {
+    if (!text || text.trim() === "") return;
+    try {
+      if (speakingMsgId === msgId) {
+        Speech.stop();
+        setSpeakingMsgId(null);
+        return;
+      }
+      Speech.stop();
+      setSpeakingMsgId(msgId);
+
+      const langMap: Record<string, string> = {
+        te: "te-IN",
+        hi: "hi-IN",
+        ta: "ta-IN",
+        bn: "bn-IN",
+        en: "en-US"
+      };
+      const voiceLang = langMap[language] || "en-US";
+
+      Speech.speak(text, {
+        language: voiceLang,
+        pitch: 1.0,
+        rate: 0.95,
+        onDone: () => setSpeakingMsgId(null),
+        onError: () => {
+          if (voiceLang !== "en-US") {
+            Speech.speak(text, {
+              language: "en-US",
+              pitch: 1.0,
+              rate: 0.95,
+              onDone: () => setSpeakingMsgId(null),
+              onError: () => setSpeakingMsgId(null)
+            });
+          } else {
+            setSpeakingMsgId(null);
+          }
+        }
+      });
+    } catch {
+      setSpeakingMsgId(null);
+    }
+  };
 
   const sendMessage = async (textToSend?: string) => {
     const query = (textToSend || input).trim();
@@ -233,14 +287,39 @@ export default function BuyerAssistant() {
                   </View>
                 )}
 
-                <Text
-                  style={[
-                    styles.timestamp,
-                    m.sender === "user" ? styles.userTimestamp : styles.aiTimestamp
-                  ]}
-                >
-                  {m.timestamp}
-                </Text>
+                <View style={styles.bubbleBottomRow}>
+                  {m.sender === "ai" && (
+                    <Pressable
+                      style={styles.speakBtn}
+                      onPress={() => handleToggleSpeech(m.id, m.text)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Read aloud"
+                    >
+                      <Ionicons
+                        name={speakingMsgId === m.id ? "volume-high" : "volume-medium-outline"}
+                        size={15}
+                        color={speakingMsgId === m.id ? theme.colors.primary : theme.colors.inkMuted}
+                      />
+                      <Text
+                        style={[
+                          styles.speakBtnText,
+                          speakingMsgId === m.id && { color: theme.colors.primary }
+                        ]}
+                      >
+                        {speakingMsgId === m.id ? "Speaking…" : "Listen"}
+                      </Text>
+                    </Pressable>
+                  )}
+                  <Text
+                    style={[
+                      styles.timestamp,
+                      m.sender === "user" ? styles.userTimestamp : styles.aiTimestamp
+                    ]}
+                  >
+                    {m.timestamp}
+                  </Text>
+                </View>
               </View>
 
               {m.sender === "user" && (
@@ -450,9 +529,29 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "500"
   },
+  bubbleBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 6,
+    gap: 8
+  },
+  speakBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(159, 60, 22, 0.08)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    gap: 4
+  },
+  speakBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#8A726A"
+  },
   timestamp: {
     fontSize: 10,
-    marginTop: 6,
     textAlign: "right"
   },
   aiTimestamp: {

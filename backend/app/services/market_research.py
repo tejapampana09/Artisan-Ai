@@ -19,7 +19,32 @@ def build_market_query(
     """
     Deterministically constructs a clean marketplace search query string.
     """
-    base_name = (artisan_facts.product_name or title_hint or "").strip()
+    raw_name = (artisan_facts.product_name or "").strip()
+    raw_hint = (title_hint or "").strip()
+
+    # If product_name contains native non-Latin script (Telugu, Hindi, etc.) and an English title_hint is available,
+    # prefer the English title_hint because Indian e-commerce portals index products primarily in English.
+    has_non_ascii_name = any(ord(c) > 127 for c in raw_name)
+    has_ascii_hint = bool(raw_hint and not any(ord(c) > 127 for c in raw_hint))
+
+    if has_non_ascii_name and has_ascii_hint:
+        base_name = raw_hint
+    elif not has_non_ascii_name and raw_name:
+        base_name = raw_name
+    elif raw_hint:
+        base_name = raw_hint
+    else:
+        base_name = raw_name
+
+    # Clean up common conversational prefixes
+    for prefix in ["this is an authentic", "this is a", "this is", "authentic", "handcrafted"]:
+        if base_name.lower().startswith(prefix):
+            base_name = base_name[len(prefix):].strip()
+
+    words = base_name.split()
+    if len(words) > 6:
+        base_name = " ".join(words[:5])
+
     if base_name and base_name.lower() in ["handmade artisan craft product.", "handmade artisan craft product", "craft", "product"]:
         base_name = ""
 

@@ -314,7 +314,9 @@ export default function SettingsScreen() {
               {[
                 { label: t("english"), code: "en" as AppLanguage },
                 { label: t("telugu"), code: "te" as AppLanguage },
-                { label: t("hindi"), code: "hi" as AppLanguage }
+                { label: t("hindi"), code: "hi" as AppLanguage },
+                { label: t("tamil"), code: "ta" as AppLanguage },
+                { label: t("bengali"), code: "bn" as AppLanguage }
               ].map(item => {
                 const active = language === item.code;
                 return (

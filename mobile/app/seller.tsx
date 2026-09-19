@@ -218,7 +218,9 @@ export default function SellerDashboard() {
             <View style={styles.readinessCard}>
               <View style={styles.readinessHeader}>
                 <View style={styles.readinessScoreBox}>
-                  <Text style={styles.readinessScoreText}>{readiness.score || 50}%</Text>
+                  <Text style={styles.readinessScoreText}>
+                    {readiness.score != null ? `${readiness.score}%` : "0%"}
+                  </Text>
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={styles.readinessTitle}>Catalogue Readiness</Text>

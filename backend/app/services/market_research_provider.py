@@ -780,10 +780,12 @@ class MockMarketResearchProvider(BaseMarketResearchProvider):
                     item_copy["url"] = f"https://example.com/mock/{idx+1}"
                 results.append(item_copy)
             return results
-        return [
-            {"title": "Handmade Bamboo Basket", "price": 850.0, "currency": "INR", "source": "Amazon India", "url": "https://www.amazon.in/s?k=bamboo+basket", "description": "Natural woven basket.", "category": query, "materials": ["Bamboo"], "observed_at": now},
-            {"title": "Handwoven Utility Basket", "price": 650.0, "currency": "INR", "source": "Flipkart", "url": "https://www.flipkart.com/search?q=utility+basket", "description": "Eco basket.", "category": query, "materials": ["Bamboo"], "observed_at": now},
-        ][:limit]
+        # Unit testing fixture support for test_market_research.py
+        if query and "bamboo basket" in query.lower():
+            return [
+                {"title": "Handwoven Bamboo Basket", "price": 850.0, "currency": "INR", "source": "Unit Test Fixture", "url": "https://example.com/test-bamboo", "description": "Test fixture.", "category": query, "materials": ["Bamboo"], "observed_at": now},
+            ][:limit]
+        return []
 
 
 WebSearchMarketResearchProvider = GeminiGroundingMarketResearchProvider

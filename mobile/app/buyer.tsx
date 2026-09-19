@@ -14,7 +14,7 @@ import {
   Platform
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons, AntDesign, Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../src/api";
@@ -36,16 +36,29 @@ const CATEGORIES = [
 ];
 
 export default function BuyerScreen() {
+  const params = useLocalSearchParams<{ category?: string; search?: string }>();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Crafts");
+  const [sortBy, setSortBy] = useState<"POPULAR" | "PRICE_LOW" | "PRICE_HIGH" | "UNDER_2000">("POPULAR");
   const [savedProductIds, setSavedProductIds] = useState<Set<number>>(new Set());
   const [cartCount, setCartCount] = useState(0);
   const [addedToast, setAddedToast] = useState("");
-  const [showNotifications, setShowNotifications] = useState(false);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+
+  useEffect(() => {
+    if (params.category) {
+      const match = CATEGORIES.find(
+        (c) => c.toLowerCase() === (params.category || "").toLowerCase()
+      );
+      setSelectedCategory(match || params.category);
+    }
+    if (params.search) {
+      setSearchQuery(params.search);
+    }
+  }, [params.category, params.search]);
 
   useEffect(() => {
     loadProducts();
@@ -107,7 +120,7 @@ export default function BuyerScreen() {
   };
 
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
+    let list = products.filter((p) => {
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -122,7 +135,16 @@ export default function BuyerScreen() {
 
       return matchesSearch && matchesCat;
     });
-  }, [products, searchQuery, selectedCategory]);
+
+    if (sortBy === "PRICE_LOW") {
+      list = [...list].sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+    } else if (sortBy === "PRICE_HIGH") {
+      list = [...list].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+    } else if (sortBy === "UNDER_2000") {
+      list = list.filter((p) => (Number(p.price) || 0) <= 2000);
+    }
+    return list;
+  }, [products, searchQuery, selectedCategory, sortBy]);
 
   const trendingProducts = useMemo(() => {
     return products.slice(0, 4);
@@ -207,8 +229,8 @@ export default function BuyerScreen() {
             )}
           </View>
 
-          {/* ONDC Shipping Info */}
-          <Text style={styles.shippingText}>🚚 Direct Artisan Delivery • ONDC</Text>
+          {/* Direct Delivery Info */}
+          <Text style={styles.shippingText}>🚚 Direct Artisan Delivery</Text>
         </View>
 
         {/* Add to Cart Button */}
@@ -352,6 +374,34 @@ export default function BuyerScreen() {
               })}
             </ScrollView>
 
+            {/* Sort & Price Filter Row */}
+            <View style={styles.sortBar}>
+              <Text style={styles.sortLabel}>Sort:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                {(
+                  [
+                    { id: "POPULAR", label: "Popular" },
+                    { id: "PRICE_LOW", label: "₹ Low to High" },
+                    { id: "PRICE_HIGH", label: "₹ High to Low" },
+                    { id: "UNDER_2000", label: "Under ₹2,000" }
+                  ] as const
+                ).map((s) => {
+                  const isCurrent = sortBy === s.id;
+                  return (
+                    <Pressable
+                      key={s.id}
+                      onPress={() => setSortBy(s.id)}
+                      style={[styles.sortPill, isCurrent && styles.sortPillActive]}
+                    >
+                      <Text style={[styles.sortPillText, isCurrent && styles.sortPillTextActive]}>
+                        {s.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
             {/* Trending Across India Row (Matching Web BuyView) */}
             {!searchQuery && selectedCategory === "All Crafts" && trendingProducts.length > 0 && (
               <View style={styles.trendingSection}>
@@ -419,58 +469,6 @@ export default function BuyerScreen() {
 
       {/* Role-Based Bottom Navigation */}
       <BottomNavigation role="buyer" />
-
-      {/* Notifications Modal */}
-      <Modal
-        visible={showNotifications}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowNotifications(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Notifications</Text>
-              <Pressable onPress={() => setShowNotifications(false)} hitSlop={10}>
-                <Ionicons name="close" size={22} color={theme.ink} />
-              </Pressable>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {[
-                {
-                  id: 1,
-                  title: "New GI Tag Collection Available",
-                  msg: "Master artisan S. Rao has listed authentic Kalamkari stoles from Srikalahasti.",
-                  time: "2h ago"
-                },
-                {
-                  id: 2,
-                  title: "Fair Price Guarantee Active",
-                  msg: "Cost-plus margin floor is now enforced on all regional terracotta collections.",
-                  time: "5h ago"
-                },
-                {
-                  id: 3,
-                  title: "Free Delivery via ONDC",
-                  msg: "Direct artisan-to-doorstep shipping is free on all handcrafted orders.",
-                  time: "1d ago"
-                }
-              ].map(n => (
-                <View key={n.id} style={styles.notifCard}>
-                  <View style={styles.notifIcon}>
-                    <Text style={{ fontSize: 16 }}>🏺</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.notifCardTitle}>{n.title}</Text>
-                    <Text style={styles.notifCardMsg}>{n.msg}</Text>
-                    <Text style={styles.notifCardTime}>{n.time}</Text>
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -616,6 +614,40 @@ const styles = StyleSheet.create({
     color: theme.ink
   },
   categoryChipTextActive: {
+    color: "#FFFFFF"
+  },
+  sortBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    marginBottom: 14,
+    gap: 8
+  },
+  sortLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: theme.muted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5
+  },
+  sortPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: "#F3EFEA",
+    borderWidth: 1,
+    borderColor: "#E5DFD5"
+  },
+  sortPillActive: {
+    backgroundColor: "#2C1810",
+    borderColor: "#2C1810"
+  },
+  sortPillText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: theme.ink
+  },
+  sortPillTextActive: {
     color: "#FFFFFF"
   },
   trendingSection: {

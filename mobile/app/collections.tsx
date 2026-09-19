@@ -1,10 +1,12 @@
 import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { router } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { theme } from "../src/theme";
+import { Redirect } from "expo-router";
 
-const collections = [["The Weaver's Edit", "Pochampally Ikat", "18 creations", "#C97D5D"], ["Earth & Indigo", "Blue Pottery", "24 creations", "#7895A8"], ["Festival Table", "Wood & Metal", "12 creations", "#B68A4A"], ["Natural Stories", "Kalamkari", "20 creations", "#78966C"]];
-export default function CollectionsScreen() { return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content}><Pressable style={styles.back} onPress={() => router.replace("/buyer")}><Ionicons name="arrow-back" size={18} color={theme.colors.ink} /><Text style={styles.backText}>Back to marketplace</Text></Pressable><Text style={styles.eyebrow}>CURATED COLLECTIONS</Text><Text style={styles.title}>Find a feeling. Take home a story.</Text><Text style={styles.subtitle}>Thoughtfully grouped craft collections for gifting, living, and collecting.</Text><View style={styles.grid}>{collections.map(([title, craft, count, color]) => <Pressable key={title} style={[styles.tile, { backgroundColor: color }]} onPress={() => router.replace({ pathname: "/buyer", params: { category: craft } } as any)}><View style={styles.icon}><Ionicons name="sparkles-outline" size={22} color="#fff" /></View><Text style={styles.tileTitle}>{title}</Text><Text style={styles.tileMeta}>{craft} · {count}</Text><View style={styles.arrow}><Ionicons name="arrow-forward" size={16} color="#fff" /></View></Pressable>)}</View></ScrollView></SafeAreaView>; }
-const styles = StyleSheet.create({ safe: { flex: 1, backgroundColor: theme.colors.background }, content: { padding: 20, paddingBottom: 40 }, back: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 26 }, backText: { color: theme.colors.inkMuted, fontWeight: "700" }, eyebrow: { color: theme.colors.primary, fontSize: 11, fontWeight: "900", letterSpacing: 2 }, title: { color: theme.colors.ink, fontSize: 29, lineHeight: 36, fontWeight: "900", marginTop: 10 }, subtitle: { color: theme.colors.inkMuted, fontSize: 15, lineHeight: 22, marginTop: 10, marginBottom: 24 }, grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 }, tile: { width: "48%", minHeight: 190, borderRadius: 20, padding: 16, justifyContent: "flex-end" }, icon: { position: "absolute", top: 16, left: 16, width: 42, height: 42, borderRadius: 21, backgroundColor: "#FFFFFF33", alignItems: "center", justifyContent: "center" }, tileTitle: { color: "#fff", fontSize: 18, lineHeight: 22, fontWeight: "900" }, tileMeta: { color: "#FFFFFFDD", fontSize: 11, marginTop: 6 }, arrow: { position: "absolute", right: 14, bottom: 14 } });
+/**
+ * Collections redirect:
+ * Per backend architecture and user directive, craft browsing is consolidated
+ * directly inside the live marketplace (/buyer) with dynamic category and search filtering,
+ * preventing any artificial or unverified catalog collections.
+ */
+export default function CollectionsScreen() {
+  return <Redirect href="/buyer" />;
+}

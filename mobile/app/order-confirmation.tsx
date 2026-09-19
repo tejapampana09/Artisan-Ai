@@ -4,10 +4,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../src/theme";
 
 export default function OrderConfirmation() {
-  const params = useLocalSearchParams<{ count?: string; total?: string; orderIds?: string }>();
+  const params = useLocalSearchParams<{
+    count?: string;
+    total?: string;
+    orderIds?: string;
+    paymentMode?: string;
+  }>();
   const count = Math.max(1, Number(params.count || 1));
   const total = Number(params.total || 0);
   const orderIds = params.orderIds?.split(",").filter(Boolean) || [];
+  const paymentMode = params.paymentMode === "RAZORPAY" ? "Online Paid (Razorpay)" : "Cash on Delivery (COD)";
 
   return (
     <View style={styles.screen}>
@@ -24,12 +30,25 @@ export default function OrderConfirmation() {
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Orders placed</Text>
-            <Text style={styles.summaryValue}>{count}</Text>
+            <Text style={styles.summaryValue}>{count} Handcrafted {count === 1 ? "Item" : "Items"}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total paid</Text>
+            <Text style={styles.summaryLabel}>Total Amount</Text>
             <Text style={styles.summaryValue}>₹{Math.round(total).toLocaleString("en-IN")}</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Payment Mode</Text>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Ionicons
+                name={params.paymentMode === "RAZORPAY" ? "shield-checkmark" : "cash-outline"}
+                size={14}
+                color={params.paymentMode === "RAZORPAY" ? "#2E7D32" : theme.accent}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={[styles.summaryValue, { fontSize: 13 }]}>{paymentMode}</Text>
+            </View>
           </View>
           {orderIds.length > 0 ? (
             <>

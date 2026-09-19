@@ -195,15 +195,16 @@ def calculate_price_recommendation_from_inputs(
     if not has_artisan_price:
         # Case 1 — Price NOT provided by Artisan
         pricing_case = "CASE_1_PRICE_NOT_PROVIDED"
+        raw_mkt_dec = to_decimal(market_median) if (market_median is not None and to_decimal(market_median) > 0) else None
         if med_dec is not None and med_dec > 0:
             raw_recommended = med_dec
             reasoning.append(f"Selling price not provided. Recommended fair market price based on comparable market median (₹{float(med_dec):,.0f}).")
-        elif low_dec is not None and high_dec is not None:
-            raw_recommended = (low_dec + high_dec) / Decimal("2.0")
-            reasoning.append(f"Selling price not provided. Recommended mid-range price based on craft benchmarks (₹{float(raw_recommended):,.0f}).")
         elif has_costs and minimum_fair_price > 0:
             raw_recommended = minimum_fair_price
             reasoning.append(f"Selling price not provided. Recommendation set to minimum fair price (₹{float(minimum_fair_price):,.0f}) based on cost basis.")
+        elif low_dec is not None and high_dec is not None:
+            raw_recommended = ((low_dec + high_dec) / Decimal("2.0")).quantize(Decimal("1.00"))
+            reasoning.append(f"Selling price not provided. Recommended mid-range price based on craft benchmarks (₹{float(raw_recommended):,.0f}).")
         else:
             raw_recommended = None
             reasoning.append("Selling price not provided and no market research or cost inputs available.")
@@ -237,7 +238,7 @@ def calculate_price_recommendation_from_inputs(
             else:
                 is_inside = True
         else:
-            is_inside = True
+            is_inside = False
 
         if is_below:
             # Case 2 — Artisan price below market range -> move to market median / midpoint!
@@ -253,11 +254,17 @@ def calculate_price_recommendation_from_inputs(
             mkt_ref_str = f"₹{float(med_dec):,.0f}" if med_dec else f"₹{float(mkt_high):,.0f}"
             reasoning.append(f"Your price (₹{float(curr_price):,.0f}) is above observed market range ({mkt_ref_str}). Premium handcrafted positioning flagged.")
 
-        else:
+        elif is_inside and mkt_low is not None and mkt_high is not None:
             # Case 3 — Artisan price inside market range -> preserve artisan price exactly!
             pricing_case = "CASE_3_INSIDE_MARKET"
             raw_recommended = curr_price
-            reasoning.append(f"Your price (₹{float(curr_price):,.0f}) is inside the competitive market range. Preserving your price.")
+            reasoning.append(f"Your price (₹{float(curr_price):,.0f}) is inside the competitive market range (₹{float(mkt_low):,.0f} – ₹{float(mkt_high):,.0f}). Preserving your price.")
+
+        else:
+            # Case 3 variant — No benchmark range available
+            pricing_case = "CASE_3_INSIDE_MARKET"
+            raw_recommended = curr_price
+            reasoning.append(f"Preserving your entered price of ₹{float(curr_price):,.0f} (external market benchmark range unavailable).")
 
     # -------------------------------------------------------------------------
     # ML DEMAND FACTOR APPLICATION

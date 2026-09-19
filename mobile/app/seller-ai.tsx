@@ -959,45 +959,58 @@ export default function SellerAICatalogStudio() {
               </Pressable>
             </View>
 
-            {/* Explainable Dynamic Price Recommendation Card (From Web) */}
-            <View style={styles.pricingCard}>
-              <View style={styles.pricingHeaderRow}>
-                <View>
-                  <Text style={styles.pricingBadge}>AI FAIR-WAGE PRICING</Text>
-                  <Text style={styles.pricingValue}>₹{editPrice}</Text>
-                </View>
-                <View style={styles.fairRatioBox}>
-                  <Text style={styles.fairRatioLabel}>Fair Wage Margin</Text>
-                  <Text style={styles.fairRatioValue}>+35% Verified</Text>
-                </View>
-              </View>
-
-              <View style={styles.pricingBreakdown}>
-                <Text style={styles.breakdownText}>
-                  • Raw Materials: ₹{materialCost} | Labour: ₹{labourCost} | Packaging: ₹{packagingCost}
-                </Text>
-                <Text style={styles.breakdownText}>
-                  • Market Benchmark: ₹{Math.round(Number(editPrice) * 0.95)} – ₹{Math.round(Number(editPrice) * 1.2)}
-                </Text>
-              </View>
-            </View>
-
+            {/* Explainable Dynamic Price Recommendation Card */}
             {(() => {
               const market = aiDraft?.market_summary || {};
               const research = aiDraft?.market_research || {};
               const listings = Array.isArray(research.results) ? research.results : [];
               const hasMarketData = Number(market.comparable_count || 0) > 0;
               return (
-                <View style={styles.marketCard}>
-                  <Text style={styles.sectionLabel}>LIVE MARKET RESEARCH</Text>
-                  <Text style={styles.marketQuery}>
-                    Similar products for: {research.query || editTitle || editCategory}
-                  </Text>
+                <>
+                  <View style={styles.pricingCard}>
+                    <View style={styles.pricingHeaderRow}>
+                      <View>
+                        <Text style={styles.pricingBadge}>AI FAIR-WAGE PRICING</Text>
+                        <Text style={styles.pricingValue}>₹{editPrice}</Text>
+                      </View>
+                      <View style={styles.fairRatioBox}>
+                        <Text style={styles.fairRatioLabel}>Fair Wage Margin</Text>
+                        <Text style={styles.fairRatioValue}>Cost-Floor Protected</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.pricingBreakdown}>
+                      <Text style={styles.breakdownText}>
+                        • Cost Floor: Materials ₹{materialCost} | Labour ₹{labourCost} | Packaging ₹{packagingCost}
+                      </Text>
+                      {aiDraft?.price_recommendation?.demand_label && (
+                        <Text style={styles.breakdownText}>
+                          • Buyer Demand Signal: {aiDraft.price_recommendation.demand_label}
+                          {aiDraft.price_recommendation.demand_factor
+                            ? ` (${aiDraft.price_recommendation.demand_factor}x factor)`
+                            : ""}
+                        </Text>
+                      )}
+                      <Text style={styles.breakdownText}>
+                        {market.min_price != null && market.max_price != null
+                          ? `• External Comparable Benchmark: ₹${Math.round(market.min_price)} – ₹${Math.round(market.max_price)} (Observed)`
+                          : "• External Comparable Benchmark: Awaiting external market matches"}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.marketCard}>
+                    <Text style={styles.sectionLabel}>
+                      {hasMarketData ? "EXTERNAL COMPARABLE PRODUCTS (PRICE BENCHMARK)" : "EXTERNAL COMPARABLE PRODUCTS — NO ONLINE MATCH"}
+                    </Text>
+                    <Text style={styles.marketQuery}>
+                      Online listings searched for: {research.query || editTitle || editCategory}
+                    </Text>
                   {hasMarketData ? (
                     <>
                       <View style={styles.marketStatsRow}>
                         <View>
-                          <Text style={styles.marketStatLabel}>Similar listings</Text>
+                          <Text style={styles.marketStatLabel}>Observed listings</Text>
                           <Text style={styles.marketStatValue}>{market.comparable_count}</Text>
                         </View>
                         <View>
@@ -1009,14 +1022,14 @@ export default function SellerAICatalogStudio() {
                           </Text>
                         </View>
                         <View>
-                          <Text style={styles.marketStatLabel}>Median</Text>
+                          <Text style={styles.marketStatLabel}>Observed median</Text>
                           <Text style={styles.marketStatValue}>
                             {market.median_price != null ? `₹${Math.round(market.median_price)}` : "Unavailable"}
                           </Text>
                         </View>
                       </View>
                       <Text style={styles.marketConfidence}>
-                        Confidence: {market.market_confidence || "LOW"} · Recommendation source: {aiDraft?.pricing_source || "pricing engine"}
+                        Confidence: {market.market_confidence || "LOW"} · Distinct from marketplace buyer demand
                       </Text>
                       {listings.slice(0, 5).map((listing: any, index: number) => (
                         <Pressable
@@ -1028,7 +1041,7 @@ export default function SellerAICatalogStudio() {
                           <View style={{ flex: 1 }}>
                             <Text style={styles.marketListingTitle} numberOfLines={2}>{listing.title}</Text>
                             <Text style={styles.marketListingSource}>
-                              {listing.source || "External market"} · {listing.match_tier || "MATCH"}
+                              {listing.source || "External marketplace"} · {listing.match_tier || "MATCH"}
                             </Text>
                           </View>
                           <Text style={styles.marketListingPrice}>
@@ -1039,12 +1052,13 @@ export default function SellerAICatalogStudio() {
                     </>
                   ) : (
                     <Text style={styles.marketEmptyText}>
-                      {research.notice || "No reliable comparable listings were returned. No default price is being invented; enter your own price or retry market research."}
+                      {research.notice || "No price-verified comparable listings found online. Dynamic pricing uses your guaranteed cost floor and category demand without inventing external products."}
                     </Text>
                   )}
                 </View>
-              );
-            })()}
+              </>
+            );
+          })()}
 
             {/* Editable Catalogue Content Card */}
             <View style={styles.card}>

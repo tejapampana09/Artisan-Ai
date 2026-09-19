@@ -118,8 +118,8 @@ def test_scenario_5_selling_price_schema_and_validation():
     assert req.selling_price == 650.0
 
 
-@patch("backend.app.services.catalog_orchestrator.generate_catalog_draft")
-@patch("backend.app.services.catalog_orchestrator.research_market")
+@patch("backend.app.services.catalog_orchestrator.generate_catalog_draft", new_callable=AsyncMock)
+@patch("backend.app.services.catalog_orchestrator.research_market", new_callable=AsyncMock)
 def test_scenario_6_e2e_selling_price_pipeline_reaches_pricing_engine(
     mock_research,
     mock_generate,

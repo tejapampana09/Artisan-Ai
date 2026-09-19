@@ -32,30 +32,33 @@ A physical Android phone must use a backend URL reachable from that phone (LAN I
 ## Current implementation
 
 Seller:
-- Login
-- Dashboard
-- Products
-- AI Catalog draft request
-- Image selection
-- Orders
-- Enquiries
+- Login (Email/Password & Google OAuth PKCE)
+- Dashboard (Revenue, Orders, Enquiries, Readiness)
+- Products (List, Create, Edit, Delete, Status Transitions)
+- AI Catalog Draft Generation & Image Enhancement
+- Dynamic Explainable Pricing & Autonomous Smart Pricing Toggle
+- Market Research Telemetry & Comparables Lookup
+- Orders & Customer Enquiries
+- ONDC Seller-Side Adapter Readiness & Catalog Sync
 
 Buyer:
-- Login/register
-- Marketplace
-- Search
-- Product details
-- Wishlist
-- Cart
-- Orders
-- Enquiries
-- Buyer AI assistant
+- Login/Register & Guest Mode
+- Live Marketplace with Dynamic Categorization, Multi-field Search, and Price/Sort Filters
+- Direct Collection Filter Navigation via `/buyer?category=...&search=...`
+- Product Details with Audio Narration (`expo-speech`) in 5 languages (en, te, hi, ta, bn)
+- Verified Buyer Reviews & Ratings (Delivered-order enforcement)
+- Master Artisan Public Profile View (`/api/artisan/{id}`)
+- Wishlist & Cart
+- Server-Authoritative Checkout with Cash on Delivery (COD) & Online Payment Wiring (`/api/marketplace/payments/create` & `/verify`)
+- Order Confirmation & Buyer Orders History with Tracking Timeline
+- Buyer AI Assistant with Multilingual Speech Output
 
-## Important
+## Payments & Verifications
 
-Payment is not implemented in this mobile client because the current hackathon scope can keep payment/settlement separate.
-
-ONDC is displayed as the existing backend integration status; the mobile app never fabricates a live ONDC connection.
+- **Cash on Delivery (COD)**: Fully wired and server-authoritative. Orders transition to CONFIRMED with payment status managed on the backend.
+- **Online Payment (Razorpay)**: Server-authoritative order creation and signature verification wired to `/api/marketplace/payments/verify`.
+- **Verified Reviews**: Enforced by server. Reviews can only be submitted for verified `DELIVERED` orders belonging to the authenticated buyer.
+- **ONDC**: Seller-side foundation only; the mobile buyer does not fabricate fake ONDC payments, settlements, or live GPS dispatch.
 
 ## Build
 

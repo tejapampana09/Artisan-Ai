@@ -489,6 +489,70 @@ export const api = {
   },
 
   // -------------------------------------------------------------
+  // REVIEWS & RATINGS
+  // -------------------------------------------------------------
+  async productReviews(productId: number) {
+    return request<any[]>(`/products/${productId}/reviews`);
+  },
+
+  async submitReview(productId: number, payload: { rating: number; comment: string; order_id?: number }) {
+    return request<any>(
+      `/products/${productId}/reviews`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      },
+      "MARKETPLACE"
+    );
+  },
+
+  // -------------------------------------------------------------
+  // MARKETPLACE PAYMENTS
+  // -------------------------------------------------------------
+  async createPayment(payload: { order_id: number; provider?: string; idempotency_key?: string }) {
+    return request<any>(
+      "/marketplace/payments/create",
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      },
+      "MARKETPLACE"
+    );
+  },
+
+  async verifyPayment(payload: {
+    order_id: number;
+    provider?: string;
+    payment_id?: number;
+    provider_order_id?: string;
+    provider_payment_id?: string;
+    signature?: string;
+    amount?: number;
+    currency?: string;
+    idempotency_key?: string;
+  }) {
+    return request<any>(
+      "/marketplace/payments/verify",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          provider: "COD",
+          ...payload
+        })
+      },
+      "MARKETPLACE"
+    );
+  },
+
+  // -------------------------------------------------------------
+  // TTS (TEXT TO SPEECH) HELPER
+  // -------------------------------------------------------------
+  getTtsAudioUrl(text: string, lang: string = "te"): string {
+    const encodedText = encodeURIComponent(text.trim().slice(0, 300));
+    return `${BASE_URL}/api/tts?text=${encodedText}&lang=${lang}`;
+  },
+
+  // -------------------------------------------------------------
   // OFFLINE BATCH SYNC
   // -------------------------------------------------------------
   async syncStatus() {

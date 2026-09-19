@@ -17,16 +17,19 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as Speech from "expo-speech";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
 import { addToCart } from "../src/cart";
 import { toggleWishlist, isWishlisted } from "../src/wishlist";
 import { PrimaryButton, OutlineButton } from "../src/components";
+import { useI18n } from "../src/i18n";
 
 const { width } = Dimensions.get("window");
 
 export default function ProductDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { language } = useI18n();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
@@ -36,17 +39,58 @@ export default function ProductDetail() {
   const [enquiryMessage, setEnquiryMessage] = useState("");
   const [sendingEnquiry, setSendingEnquiry] = useState(false);
 
+  // Reviews and Artisan Profile States
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [showArtisanModal, setShowArtisanModal] = useState(false);
+  const [artisanData, setArtisanData] = useState<any>(null);
+  const [loadingArtisan, setLoadingArtisan] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
   useEffect(() => {
     if (id) {
       setLoading(true);
       isWishlisted(Number(id)).then(setIsSaved).catch(() => {});
       api
         .product(Number(id))
-        .then((data) => setProduct(data))
+        .then((data) => {
+          setProduct(data);
+          // Fetch verified reviews for this product
+          api
+            .productReviews(Number(id))
+            .then((revs) => setReviews(Array.isArray(revs) ? revs : []))
+            .catch(() => setReviews([]));
+
+          // Fetch artisan public profile if seller_id exists
+          if (data?.seller_id) {
+            api
+              .artisanProfile(data.seller_id)
+              .then(setArtisanData)
+              .catch(() => {});
+          }
+        })
         .catch((err) => console.warn("Product fetch error:", err))
         .finally(() => setLoading(false));
     }
+
+    return () => {
+      Speech.stop().catch(() => {});
+    };
   }, [id]);
+
+  const handleOpenArtisanModal = async () => {
+    setShowArtisanModal(true);
+    if (product?.seller_id && !artisanData) {
+      setLoadingArtisan(true);
+      try {
+        const data = await api.artisanProfile(product.seller_id);
+        setArtisanData(data);
+      } catch (e) {
+        console.warn("Artisan profile fetch error:", e);
+      } finally {
+        setLoadingArtisan(false);
+      }
+    }
+  };
 
   const handleToggleWishlist = async () => {
     if (!product) return;
@@ -94,6 +138,39 @@ export default function ProductDetail() {
     if (!product) return;
     await addToCart(product, quantity);
     router.push("/buyer-cart");
+  };
+
+  const handleToggleStorySpeech = async () => {
+    if (isSpeaking) {
+      await Speech.stop();
+      setIsSpeaking(false);
+      return;
+    }
+
+    const storyText =
+      product?.craft_story ||
+      product?.description ||
+      "Each piece is handcrafted with timeless techniques passed down through generations.";
+
+    const langCode =
+      language === "te"
+        ? "te-IN"
+        : language === "hi"
+        ? "hi-IN"
+        : language === "ta"
+        ? "ta-IN"
+        : language === "bn"
+        ? "bn-IN"
+        : "en-IN";
+
+    setIsSpeaking(true);
+    Speech.speak(storyText, {
+      language: langCode,
+      rate: 0.9,
+      pitch: 1.0,
+      onDone: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false)
+    });
   };
 
   if (loading) {
@@ -191,25 +268,38 @@ export default function ProductDetail() {
 
         {/* Content Body */}
         <View style={styles.body}>
-          {/* GI Tag Certified Banner */}
-          <View style={styles.giBanner}>
-            <Ionicons name="shield-checkmark" size={18} color="#B85D19" style={{ marginRight: 8 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.giTitle}>GI Tag Certified Heritage Craft</Text>
-              <Text style={styles.giSub}>Verified origin & artisanal lineage protection</Text>
+          {/* Craft Origin / Verification Banner (Conditional on real backend data) */}
+          {(product.region_of_origin || product.verification_status === "VERIFIED") && (
+            <View style={styles.giBanner}>
+              <Ionicons name="shield-checkmark" size={18} color="#B85D19" style={{ marginRight: 8 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.giTitle}>
+                  {product.region_of_origin ? `Origin: ${product.region_of_origin}` : "Authentic Artisan Craft"}
+                </Text>
+                <Text style={styles.giSub}>
+                  {product.verification_status === "VERIFIED" ? "Platform Verified Artisan Work" : "Direct from craft maker"}
+                </Text>
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Title and Artisan Info */}
-          <Text style={styles.productTitle}>{product.title || "Handcrafted Masterpiece"}</Text>
+          <Text style={styles.productTitle}>{product.title || "Handcrafted Product"}</Text>
 
           <View style={styles.artisanContainer}>
-            <View style={styles.artisanRow}>
-              <Ionicons name="person-circle-outline" size={20} color={theme.colors.primary} style={{ marginRight: 6 }} />
-              <Text style={styles.artisanText}>
-                Crafted by <Text style={{ fontWeight: "800", color: theme.colors.ink }}>{product.artisan_name || "Verified Master Artisan"}</Text>
-              </Text>
-            </View>
+            <Pressable
+              style={styles.artisanRow}
+              onPress={() => setShowArtisanModal(true)}
+              hitSlop={6}
+            >
+              <Ionicons name="person-circle-outline" size={22} color={theme.colors.primary} style={{ marginRight: 6 }} />
+              <View>
+                <Text style={styles.artisanText}>
+                  Crafted by <Text style={{ fontWeight: "800", color: theme.colors.ink }}>{product.artisan_name || "Registered Artisan"}</Text>
+                </Text>
+                <Text style={styles.viewArtisanLink}>View Artisan Profile ›</Text>
+              </View>
+            </Pressable>
             <Pressable
               style={styles.askArtisanBtn}
               onPress={() => setShowEnquiryModal(true)}
@@ -219,15 +309,11 @@ export default function ProductDetail() {
             </Pressable>
           </View>
 
-          {/* Price & ONDC Info Block */}
+          {/* Price & Delivery Info Block */}
           <View style={styles.priceCard}>
             <View style={styles.priceMainRow}>
               <View>
                 <Text style={styles.priceCurrent}>₹{Number(product.price || 0).toLocaleString("en-IN")}</Text>
-                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
-                  <Text style={styles.priceMrp}>₹{mrp.toLocaleString("en-IN")}</Text>
-                  <Text style={styles.discountTag}>20% OFF</Text>
-                </View>
               </View>
 
               <View style={styles.stockBox}>
@@ -239,15 +325,30 @@ export default function ProductDetail() {
 
             <View style={styles.ondcRow}>
               <Ionicons name="checkmark-done-circle" size={16} color="#2E7D32" style={{ marginRight: 6 }} />
-              <Text style={styles.ondcText}>ONDC Protocol Verified • Free Direct Artisan Delivery</Text>
+              <Text style={styles.ondcText}>Direct Artisan Creation • Standard Delivery</Text>
             </View>
           </View>
 
-          {/* Craft Story Section (Quotes exact from web) */}
+          {/* Craft Story Section with Audio Narration */}
           <View style={styles.storyCard}>
             <View style={styles.storyHeader}>
-              <Text style={{ fontSize: 18, marginRight: 6 }}>📜</Text>
-              <Text style={styles.storyTitle}>Craft Story & Artisan Heritage</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                <Text style={{ fontSize: 18, marginRight: 6 }}>📜</Text>
+                <Text style={styles.storyTitle}>Craft Story & Artisan Heritage</Text>
+              </View>
+              <Pressable
+                style={[styles.audioBtn, isSpeaking && styles.audioBtnActive]}
+                onPress={handleToggleStorySpeech}
+              >
+                <Ionicons
+                  name={isSpeaking ? "volume-high" : "volume-medium-outline"}
+                  size={15}
+                  color={isSpeaking ? "#FFFFFF" : theme.accent}
+                />
+                <Text style={[styles.audioBtnText, isSpeaking && styles.audioBtnTextActive]}>
+                  {isSpeaking ? "Stop Voice" : "🔊 Listen"}
+                </Text>
+              </Pressable>
             </View>
             <Text style={styles.storyBody}>
               "{product.craft_story || product.description || "Each piece is handcrafted with timeless techniques passed down through generations. Natural organic materials are molded and painted with intricate heritage motifs."}"
@@ -266,20 +367,102 @@ export default function ProductDetail() {
 
             <View style={styles.specRow}>
               <Text style={styles.specLabel}>Materials Used</Text>
-              <Text style={styles.specVal}>{product.materials || "Natural Organic Pigments, Teak Wood"}</Text>
+              <Text style={styles.specVal}>{product.materials || "Natural craft materials"}</Text>
             </View>
             <View style={styles.specDivider} />
 
             <View style={styles.specRow}>
               <Text style={styles.specLabel}>Origin Cluster</Text>
-              <Text style={styles.specVal}>Machilipatnam / Srikalahasti, AP</Text>
+              <Text style={styles.specVal}>{product.region_of_origin || "India"}</Text>
             </View>
             <View style={styles.specDivider} />
 
             <View style={styles.specRow}>
               <Text style={styles.specLabel}>Fair Trade Policy</Text>
-              <Text style={[styles.specVal, { color: "#2E7D32", fontWeight: "800" }]}>Guaranteed 20%+ Artisan Margin</Text>
+              <Text style={[styles.specVal, { color: "#2E7D32", fontWeight: "800" }]}>Fair-Trade Protected</Text>
             </View>
+          </View>
+
+          {/* Verified Customer Reviews Section */}
+          <View style={styles.reviewsCard}>
+            <View style={styles.reviewsHeader}>
+              <View>
+                <Text style={styles.reviewsEyebrow}>VERIFIED BUYER REVIEWS</Text>
+                <View style={styles.ratingSummaryRow}>
+                  <Ionicons name="star" size={18} color="#F59E0B" />
+                  <Text style={styles.ratingBigText}>
+                    {reviews.length > 0
+                      ? (
+                          reviews.reduce((acc, r) => acc + (Number(r.rating) || 5), 0) /
+                          reviews.length
+                        ).toFixed(1)
+                      : "No ratings yet"}
+                  </Text>
+                  {reviews.length > 0 && (
+                    <Text style={styles.reviewsCountText}>
+                      ({reviews.length} {reviews.length === 1 ? "review" : "reviews"})
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <View style={styles.verifiedTag}>
+                <Ionicons name="shield-checkmark" size={13} color="#2E7D32" style={{ marginRight: 4 }} />
+                <Text style={styles.verifiedTagText}>Verified Reviews</Text>
+              </View>
+            </View>
+
+            {reviews.length === 0 ? (
+              <View style={styles.noReviewsBox}>
+                <Ionicons name="chatbox-ellipses-outline" size={24} color={theme.muted} style={{ marginBottom: 6 }} />
+                <Text style={styles.noReviewsText}>
+                  No reviews submitted yet. Be the first verified buyer to review after delivery!
+                </Text>
+              </View>
+            ) : (
+              reviews.map((r, i) => (
+                <View key={"rev-" + (r.id || i)} style={styles.singleReview}>
+                  <View style={styles.singleReviewTop}>
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <View style={styles.reviewerAvatar}>
+                        <Text style={styles.reviewerAvatarText}>
+                          {(r.buyer_name || "Buyer")[0].toUpperCase()}
+                        </Text>
+                      </View>
+                      <View>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                          <Text style={styles.reviewerName}>{r.buyer_name || "Buyer"}</Text>
+                          {!!r.verified_purchase && (
+                            <Ionicons name="checkmark-circle" size={13} color="#2E7D32" />
+                          )}
+                        </View>
+                        <Text style={styles.reviewDate}>
+                          {r.created_at
+                            ? new Date(r.created_at).toLocaleDateString("en-IN", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric"
+                              })
+                            : "Verified Buyer"}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: "row" }}>
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Ionicons
+                          key={s}
+                          name={s <= (r.rating || 5) ? "star" : "star-outline"}
+                          size={13}
+                          color="#F59E0B"
+                        />
+                      ))}
+                    </View>
+                  </View>
+                  {r.comment ? (
+                    <Text style={styles.reviewComment}>{r.comment}</Text>
+                  ) : null}
+                </View>
+              ))
+            )}
           </View>
         </View>
       </ScrollView>
@@ -311,9 +494,9 @@ export default function ProductDetail() {
           <Text style={styles.addBagText}>Add to Bag</Text>
         </Pressable>
 
-        {/* Buy Now via ONDC */}
+        {/* Buy Now Button */}
         <Pressable style={styles.buyNowBtn} onPress={handleBuyNow}>
-          <Text style={styles.buyNowText}>Buy via ONDC</Text>
+          <Text style={styles.buyNowText}>Buy Now</Text>
         </Pressable>
       </View>
 
@@ -361,6 +544,125 @@ export default function ProductDetail() {
                 disabled={sendingEnquiry}
               />
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Real Master Artisan Heritage & Lineage Modal */}
+      <Modal
+        visible={showArtisanModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowArtisanModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text style={{ fontSize: 20, marginRight: 6 }}>🏛️</Text>
+                <Text style={styles.modalTitle}>Master Artisan Heritage</Text>
+              </View>
+              <Pressable onPress={() => setShowArtisanModal(false)} hitSlop={8}>
+                <Ionicons name="close" size={24} color={theme.colors.ink} />
+              </Pressable>
+            </View>
+
+            {loadingArtisan ? (
+              <View style={{ paddingVertical: 30, alignItems: "center" }}>
+                <ActivityIndicator size="small" color={theme.accent} />
+                <Text style={{ marginTop: 8, color: theme.muted, fontSize: 12 }}>
+                  Loading verified artisan lineage from database…
+                </Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+                {/* Profile Banner */}
+                <View style={styles.artisanProfileCard}>
+                  <Image
+                    source={{
+                      uri:
+                        artisanData?.avatar_url ||
+                        `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(
+                          artisanData?.name || product.artisan_name || "Artisan"
+                        )}`
+                    }}
+                    style={styles.artisanModalAvatar}
+                  />
+                  <Text style={styles.artisanModalName}>
+                    {artisanData?.name || product.artisan_name || "Artisan"}
+                  </Text>
+                  <View style={styles.artisanBadgeRow}>
+                    <Ionicons name="shield-checkmark" size={14} color="#2E7D32" style={{ marginRight: 4 }} />
+                    <Text style={styles.artisanBadgeText}>
+                      {artisanData?.verification_status === "VERIFIED_ARTISAN"
+                        ? "Verified Artisan Seller"
+                        : artisanData?.verification_status === "PROFILE_COMPLETE"
+                        ? "Profile Complete"
+                        : "Registered Craft Maker"}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Quick Stats Grid */}
+                <View style={styles.artisanStatsGrid}>
+                  <View style={styles.artisanStatItem}>
+                    <Text style={styles.artisanStatNumber}>
+                      {artisanData?.experience_years ? `${artisanData.experience_years} Yrs` : "Experienced"}
+                    </Text>
+                    <Text style={styles.artisanStatLabel}>Experience</Text>
+                  </View>
+                  <View style={styles.artisanStatItem}>
+                    <Text style={styles.artisanStatNumber}>
+                      {artisanData?.total_products_count ?? 1}
+                    </Text>
+                    <Text style={styles.artisanStatLabel}>Craft Works</Text>
+                  </View>
+                  <View style={styles.artisanStatItem}>
+                    <Text style={styles.artisanStatNumber}>
+                      {artisanData?.average_rating && artisanData.average_rating > 0
+                        ? `⭐ ${artisanData.average_rating}`
+                        : "No ratings"}
+                    </Text>
+                    <Text style={styles.artisanStatLabel}>Artisan Rating</Text>
+                  </View>
+                </View>
+
+                {/* Craft Bio */}
+                <View style={styles.artisanBioBox}>
+                  <Text style={styles.artisanBioHeading}>ABOUT THE ARTISAN</Text>
+                  <Text style={styles.artisanBioText}>
+                    {artisanData?.bio ||
+                      product.craft_story ||
+                      `${artisanData?.name || product.artisan_name || "This artisan"} specializes in traditional ${
+                        artisanData?.craft || product.category || "handicrafts"
+                      }.`}
+                  </Text>
+                </View>
+
+                {/* Origin Location Info */}
+                <View style={styles.artisanOriginRow}>
+                  <Ionicons name="location-outline" size={16} color={theme.accent} style={{ marginRight: 6 }} />
+                  <Text style={styles.artisanOriginText}>
+                    Location:{" "}
+                    <Text style={{ fontWeight: "700", color: theme.ink }}>
+                      {artisanData?.location || product.region_of_origin || "India"}
+                    </Text>
+                  </Text>
+                </View>
+
+                {/* Message Artisan Action */}
+                <View style={{ marginTop: 16 }}>
+                  <PrimaryButton
+                    title="Send Direct Craft Inquiry"
+                    icon="chatbubbles-outline"
+                    onPress={() => {
+                      setShowArtisanModal(false);
+                      setShowEnquiryModal(true);
+                    }}
+                  />
+                </View>
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
@@ -771,5 +1073,225 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "800",
     fontSize: 13
+  },
+  viewArtisanLink: {
+    fontSize: 11,
+    color: theme.colors.primary,
+    fontWeight: "700",
+    marginTop: 2
+  },
+  audioBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F4EFEA",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: "#E5DFD5"
+  },
+  audioBtnActive: {
+    backgroundColor: theme.accent,
+    borderColor: theme.accent
+  },
+  audioBtnText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: theme.accent
+  },
+  audioBtnTextActive: {
+    color: "#FFFFFF"
+  },
+  reviewsCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E8E5DF"
+  },
+  reviewsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 14,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0ECE6"
+  },
+  reviewsEyebrow: {
+    fontSize: 11,
+    fontWeight: "900",
+    color: theme.colors.primary,
+    letterSpacing: 1.2,
+    marginBottom: 4
+  },
+  ratingSummaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6
+  },
+  ratingBigText: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: theme.ink
+  },
+  reviewsCountText: {
+    fontSize: 12,
+    color: theme.muted,
+    fontWeight: "600"
+  },
+  verifiedTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10
+  },
+  verifiedTagText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#2E7D32"
+  },
+  noReviewsBox: {
+    alignItems: "center",
+    paddingVertical: 18
+  },
+  noReviewsText: {
+    fontSize: 12,
+    color: theme.muted,
+    textAlign: "center",
+    lineHeight: 18
+  },
+  singleReview: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F8F6F2"
+  },
+  singleReviewTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6
+  },
+  reviewerAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8
+  },
+  reviewerAvatarText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  reviewerName: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: theme.ink
+  },
+  reviewDate: {
+    fontSize: 10,
+    color: theme.muted,
+    fontWeight: "500"
+  },
+  reviewComment: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#4A4036"
+  },
+  artisanProfileCard: {
+    alignItems: "center",
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0ECE6",
+    marginBottom: 16
+  },
+  artisanModalAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2,
+    borderColor: theme.accent,
+    marginBottom: 8,
+    backgroundColor: "#F3EFEA"
+  },
+  artisanModalName: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: theme.ink,
+    marginBottom: 4
+  },
+  artisanBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12
+  },
+  artisanBadgeText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#2E7D32"
+  },
+  artisanStatsGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#FAF6F0",
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 16
+  },
+  artisanStatItem: {
+    flex: 1,
+    alignItems: "center"
+  },
+  artisanStatNumber: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: theme.ink,
+    marginBottom: 2
+  },
+  artisanStatLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: theme.muted,
+    textTransform: "uppercase"
+  },
+  artisanBioBox: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E8E5DF",
+    padding: 14,
+    marginBottom: 14
+  },
+  artisanBioHeading: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: theme.accent,
+    letterSpacing: 1.2,
+    marginBottom: 6
+  },
+  artisanBioText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#4A4036"
+  },
+  artisanOriginRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 4,
+    marginBottom: 10
+  },
+  artisanOriginText: {
+    fontSize: 12,
+    color: theme.muted
   }
 });

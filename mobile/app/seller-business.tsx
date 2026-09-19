@@ -17,7 +17,6 @@ import {
   Header,
   BottomNavigation,
   Card,
-  StatCard,
   SectionHeader,
   PrimaryButton,
   SecondaryButton,
@@ -31,7 +30,9 @@ export default function SellerBusinessScreen() {
   const [copilot, setCopilot] = useState<any>(null);
   const [readiness, setReadiness] = useState<any>(null);
   const [opportunities, setOpportunities] = useState<any[]>([]);
+  const [categoryDemands, setCategoryDemands] = useState<any[]>([]);
   const [modelInfo, setModelInfo] = useState<any>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [demandResult, setDemandResult] = useState<any>(null);
   const [predicting, setPredicting] = useState(false);
   const [offlineCount, setOfflineCount] = useState(0);
@@ -47,35 +48,61 @@ export default function SellerBusinessScreen() {
         api.mlModelInfo()
       ]);
 
-      if (copilotRes.status === "fulfilled") setCopilot(copilotRes.value);
-      if (readyRes.status === "fulfilled") setReadiness(readyRes.value);
-      if (oppRes.status === "fulfilled") setOpportunities(Array.isArray(oppRes.value) ? oppRes.value : []);
-      if (modelRes.status === "fulfilled") setModelInfo(modelRes.value);
+      if (copilotRes.status === "fulfilled" && copilotRes.value) {
+        setCopilot(copilotRes.value);
+      }
+      if (readyRes.status === "fulfilled" && readyRes.value) {
+        setReadiness(readyRes.value);
+      }
+      if (oppRes.status === "fulfilled" && oppRes.value) {
+        const oppData = oppRes.value;
+        const oppList = Array.isArray(oppData.opportunities)
+          ? oppData.opportunities
+          : Array.isArray(oppData)
+          ? oppData
+          : [];
+        setOpportunities(oppList);
+
+        const catList = Array.isArray(oppData.category_demand) ? oppData.category_demand : [];
+        setCategoryDemands(catList);
+
+        if (!copilot && oppData.copilot_insight) {
+          setCopilot(oppData.copilot_insight);
+        }
+
+        if (catList.length > 0 && !selectedCategory) {
+          setSelectedCategory(catList[0].category);
+        }
+      }
+      if (modelRes.status === "fulfilled" && modelRes.value) {
+        setModelInfo(modelRes.value);
+      }
 
       const count = await getQueueCount();
       setOfflineCount(count);
-    } catch (e: any) {
-      // Non-fatal
+    } catch {
+      // Handled cleanly via state
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [copilot, selectedCategory]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   const handlePredictSample = async (category: string) => {
+    setSelectedCategory(category);
     setPredicting(true);
+    setDemandResult(null);
     try {
       const res = await api.predictDemand({
         category,
-        region: "All India",
-        season: "FESTIVE"
+        price: 500
       });
       setDemandResult(res);
     } catch (e: any) {
-      Alert.alert("Demand Forecast", e?.detail || e?.message || "Could not fetch demand forecast.");
+      Alert.alert("Demand Forecast Notice", e?.detail || e?.message || "Could not fetch demand forecast.");
     } finally {
       setPredicting(false);
     }
@@ -95,11 +122,16 @@ export default function SellerBusinessScreen() {
     }
   };
 
+  const availableCategories =
+    categoryDemands.length > 0
+      ? categoryDemands.map((d) => d.category)
+      : ["Apparel & Sarees", "Electronics Accessories", "Wooden Toys", "Handloom"];
+
   return (
     <Screen safeArea={false}>
       <Header
-        title="Business Intelligence"
-        subtitle="AI Copilot, Demand Models & Readiness"
+        title="Demand & Intelligence"
+        subtitle="Marketplace Demand, ML Forecasts & Readiness"
         showBack={false}
         rightAction={{
           icon: "refresh-outline",
@@ -111,37 +143,50 @@ export default function SellerBusinessScreen() {
         {/* Readiness Overview */}
         <Card style={styles.readinessCard}>
           <View style={styles.readinessTop}>
-            <View>
-              <Text style={styles.readinessTitle}>Studio Readiness Score</Text>
-              <Text style={styles.readinessSub}>Fulfillment & catalog health for ONDC</Text>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={styles.readinessTitle}>Catalogue Readiness</Text>
+              <Text style={styles.readinessSub}>
+                {readiness?.next_best_action || "Listing completeness & verification status"}
+              </Text>
             </View>
             <View style={styles.scoreCircle}>
               <Text style={styles.scoreNumber}>
-                {readiness?.readiness_score ?? readiness?.score ?? 88}%
+                {readiness?.score != null ? `${readiness.score}%` : loading ? "…" : "0%"}
               </Text>
             </View>
           </View>
 
-          <View style={styles.readinessBadges}>
-            <View style={styles.badgeItem}>
-              <Ionicons name="checkmark-circle" size={16} color={theme.colors.success} />
-              <Text style={styles.badgeItemText}>Direct Payment Setup</Text>
+          {(Array.isArray(readiness?.strengths) && readiness.strengths.length > 0) ||
+          (Array.isArray(readiness?.improvements) && readiness.improvements.length > 0) ? (
+            <View style={styles.readinessBadges}>
+              {Array.isArray(readiness?.strengths) &&
+                readiness.strengths.map((st: string, idx: number) => (
+                  <View key={`str-${idx}`} style={styles.badgeItem}>
+                    <Ionicons name="checkmark-circle" size={16} color={theme.colors.success} />
+                    <Text style={styles.badgeItemText}>{st}</Text>
+                  </View>
+                ))}
+              {Array.isArray(readiness?.improvements) &&
+                readiness.improvements.map((imp: string, idx: number) => (
+                  <View key={`imp-${idx}`} style={styles.badgeItem}>
+                    <Ionicons name="alert-circle-outline" size={16} color={theme.colors.warning} />
+                    <Text style={[styles.badgeItemText, { color: theme.colors.warning }]}>
+                      Action needed: {imp}
+                    </Text>
+                  </View>
+                ))}
             </View>
-            <View style={styles.badgeItem}>
-              <Ionicons name="checkmark-circle" size={16} color={theme.colors.success} />
-              <Text style={styles.badgeItemText}>ONDC Schema Verified</Text>
-            </View>
-            <View style={styles.badgeItem}>
-              <Ionicons name="checkmark-circle" size={16} color={theme.colors.success} />
-              <Text style={styles.badgeItemText}>Authentic Cost Floor</Text>
-            </View>
-          </View>
+          ) : (
+            <Text style={styles.emptyNoticeText}>
+              {loading ? "Evaluating catalogue readiness…" : "List products to evaluate studio readiness."}
+            </Text>
+          )}
         </Card>
 
-        {/* AI Business Copilot Insights */}
+        {/* AI Business Copilot Strategic Advisor */}
         <SectionHeader
-          title="Artisan Copilot"
-          subtitle="Real-time strategic advice generated from your catalog"
+          title="Artisan Copilot (Strategic Advisor)"
+          subtitle="Real-time guidance calculated from your catalog inventory & buyer activity"
         />
 
         <Card style={styles.copilotCard}>
@@ -150,23 +195,39 @@ export default function SellerBusinessScreen() {
               <Ionicons name="sparkles" size={18} color="#FFFFFF" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.copilotTitle}>Studio Advisor</Text>
-              <Text style={styles.copilotMeta}>Grounded in marketplace transactions</Text>
+              <Text style={styles.copilotTitle}>
+                {copilot?.headline || "Studio Demand Copilot"}
+              </Text>
+              <Text style={styles.copilotMeta}>
+                {copilot?.category ? `Category: ${copilot.category}` : "Platform Telemetry"}
+                {copilot?.demand_label ? ` · Demand: ${copilot.demand_label}` : ""}
+              </Text>
             </View>
           </View>
 
           <Text style={styles.copilotText}>
-            {copilot?.insight ||
-              copilot?.message ||
-              "Your catalog is well-positioned. Handcrafted terracotta and handloom textiles are seeing increased search volume ahead of regional festivals. Maintaining transparent pricing with verified artisan stories will maximize buyer trust."}
+            {copilot?.narrative ||
+              (loading
+                ? "Analyzing market demand telemetry…"
+                : "No active craft products listed yet. Create your first craft listing in AI Catalog Studio to activate automated pricing recommendations and market demand tracking.")}
           </Text>
 
-          {copilot?.recommended_actions && Array.isArray(copilot.recommended_actions) && (
+          {copilot?.next_best_action && (
+            <View style={styles.actionItemBox}>
+              <Ionicons name="arrow-forward-circle" size={18} color={theme.colors.primary} />
+              <Text style={styles.actionItemText}>
+                <Text style={{ fontWeight: "700" }}>Recommended Action: </Text>
+                {copilot.next_best_action}
+              </Text>
+            </View>
+          )}
+
+          {Array.isArray(copilot?.recommended_actions) && copilot.recommended_actions.length > 0 && (
             <View style={styles.actionList}>
-              <Text style={styles.actionListTitle}>Recommended Actions:</Text>
+              <Text style={styles.actionListTitle}>Action Steps:</Text>
               {copilot.recommended_actions.map((act: string, idx: number) => (
                 <View key={idx} style={styles.actionItem}>
-                  <Ionicons name="arrow-forward-circle" size={16} color={theme.colors.primary} />
+                  <Ionicons name="chevron-forward" size={14} color={theme.colors.primary} />
                   <Text style={styles.actionItemText}>{act}</Text>
                 </View>
               ))}
@@ -174,27 +235,98 @@ export default function SellerBusinessScreen() {
           )}
         </Card>
 
-        {/* ML Demand Intelligence */}
+        {/* ─── SECTION 1: MARKET CATEGORY DEMAND (BUYER TRAFFIC & ACTIVITY) ─── */}
         <SectionHeader
-          title="ML Demand Forecasting"
-          subtitle="Server-side neural demand prediction model"
+          title="Marketplace Category Demand"
+          subtitle="Live buyer searches, saves, and orders across craft sectors (distinct from comparable products)"
+        />
+
+        {categoryDemands.length > 0 ? (
+          <View style={styles.demandCardsContainer}>
+            {categoryDemands.map((cat, idx) => {
+              const isHigh = cat.demand_level === "HIGH" || cat.demand_pct >= 20;
+              const trendDirection = cat.trend_direction || "STABLE";
+              return (
+                <Card key={`cat-demand-${idx}`} style={styles.demandCatCard}>
+                  <View style={styles.demandCatHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.demandCatTitle}>{cat.category}</Text>
+                      <Text style={styles.demandCatSource}>
+                        {cat.data_source_label || "Live Marketplace"} · {cat.total_buyer_events ?? 0} buyer interactions
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.demandTag,
+                        {
+                          backgroundColor: isHigh
+                            ? theme.colors.success + "20"
+                            : theme.colors.surfaceVariant
+                        }
+                      ]}
+                    >
+                      <Ionicons
+                        name={trendDirection === "INCREASING" ? "trending-up" : "remove"}
+                        size={14}
+                        color={isHigh ? theme.colors.success : theme.colors.inkMuted}
+                      />
+                      <Text
+                        style={[
+                          styles.demandTagText,
+                          { color: isHigh ? theme.colors.success : theme.colors.ink }
+                        ]}
+                      >
+                        {cat.demand_pct_label || `${cat.demand_pct}%`}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.demandCatFooter}>
+                    <Text style={styles.demandBenchmarkText}>
+                      Marketplace Price Range: <Text style={{ fontWeight: "700" }}>{cat.benchmark_price_range || "N/A"}</Text>
+                    </Text>
+                    {cat.event_breakdown && typeof cat.event_breakdown === "object" && (
+                      <Text style={styles.demandEventBreakdown}>
+                        Orders: {cat.event_breakdown.ORDER ?? 0} · Views: {cat.event_breakdown.VIEW ?? 0}
+                      </Text>
+                    )}
+                  </View>
+                </Card>
+              );
+            })}
+          </View>
+        ) : (
+          <Card style={styles.emptyCard}>
+            <Ionicons name="analytics-outline" size={24} color={theme.colors.inkMuted} />
+            <Text style={styles.emptyCardText}>
+              {loading
+                ? "Aggregating category buyer interactions…"
+                : "Awaiting marketplace buyer views and orders to calculate live category demand trends."}
+            </Text>
+          </Card>
+        )}
+
+        {/* ─── SECTION 2: ML DEMAND FORECASTING (PREDICTIVE REGRESSION) ─── */}
+        <SectionHeader
+          title="Predictive ML Demand Forecasting"
+          subtitle="Server-side neural regression predicting consumer demand multiplier"
         />
 
         <Card style={styles.mlCard}>
           <View style={styles.mlHeader}>
-            <Ionicons name="analytics" size={20} color={theme.colors.primary} />
+            <Ionicons name="bulb-outline" size={20} color={theme.colors.primary} />
             <Text style={styles.mlTitle}>Demand Probability Engine</Text>
           </View>
           <Text style={styles.mlDesc}>
-            Test projected buyer demand for specific craft categories across upcoming seasons:
+            Select a craft category to test real-time projected buyer demand from the server ML engine:
           </Text>
 
           <View style={styles.chipsRow}>
-            {["Pottery", "Textiles", "Woodwork", "Jewelry"].map((cat) => (
+            {availableCategories.map((cat) => (
               <Chip
                 key={cat}
                 label={cat}
-                selected={false}
+                selected={selectedCategory === cat}
                 onPress={() => handlePredictSample(cat)}
               />
             ))}
@@ -203,56 +335,99 @@ export default function SellerBusinessScreen() {
           {predicting && (
             <View style={styles.predictingRow}>
               <ActivityIndicator size="small" color={theme.colors.primary} />
-              <Text style={styles.predictingText}>Running neural demand regression...</Text>
+              <Text style={styles.predictingText}>Evaluating ML demand regression…</Text>
             </View>
           )}
 
           {demandResult && (
             <View style={styles.demandBox}>
               <View style={styles.demandRow}>
-                <Text style={styles.demandLabel}>Predicted Demand Index:</Text>
-                <Text style={styles.demandValue}>
-                  {demandResult.demand_score ?? demandResult.score ?? "High (8.4/10)"}
+                <Text style={styles.demandLabel}>Predicted Demand Level:</Text>
+                <Text
+                  style={[
+                    styles.demandValue,
+                    {
+                      color:
+                        demandResult.demand_level === "HIGH"
+                          ? theme.colors.success
+                          : theme.colors.primary
+                    }
+                  ]}
+                >
+                  {demandResult.demand_level || "CALCULATED"} (
+                  {demandResult.predicted_demand_score != null
+                    ? Math.round(demandResult.predicted_demand_score)
+                    : 0}
+                  /100)
                 </Text>
               </View>
-              {demandResult.factors && (
-                <Text style={styles.demandSub}>
-                  Influencing factors: {JSON.stringify(demandResult.factors)}
-                </Text>
-              )}
-            </View>
-          )}
 
-          {modelInfo && (
-            <View style={styles.modelMetaBox}>
-              <Text style={styles.modelMetaText}>
-                Engine: {modelInfo.model_name || "ArtisanAI Demand ML v1.4"} | Accuracy:{" "}
-                {modelInfo.accuracy || "92.4%"}
+              <View style={[styles.demandRow, { marginTop: 6 }]}>
+                <Text style={styles.demandLabel}>Demand Multiplier:</Text>
+                <Text style={styles.demandSubValue}>
+                  {demandResult.ml_demand_multiplier != null
+                    ? `${demandResult.ml_demand_multiplier > 1 ? "+" : ""}${Math.round(
+                        (demandResult.ml_demand_multiplier - 1) * 100
+                      )}% price surge`
+                    : "1.0x (Baseline)"}
+                </Text>
+              </View>
+
+              <Text style={styles.demandSub}>
+                Model Engine: {demandResult.model_source || "Trained Scikit-Learn Engine"}
               </Text>
             </View>
           )}
+
+          <View style={styles.modelMetaBox}>
+            <Text style={styles.modelMetaText}>
+              {modelInfo?.metadata
+                ? `Engine: ${modelInfo.metadata.model_type || "RandomForestRegressor"} · R²: ${
+                    modelInfo.metadata.r2_score != null
+                      ? `${Math.round(modelInfo.metadata.r2_score * 100)}%`
+                      : "Active"
+                  } (${modelInfo.metadata.n_samples || 0} event samples)`
+                : "Engine: RandomForest ML Demand Engine (Trained on buyer events)"}
+            </Text>
+          </View>
         </Card>
 
-        {/* Growth Opportunities */}
+        {/* ─── SECTION 3: CATALOG RESTOCK & DEMAND OPPORTUNITIES ─── */}
         {opportunities.length > 0 && (
           <>
             <SectionHeader
-              title="Market Opportunities"
-              subtitle="Unfilled patron requests matching your skills"
+              title="Catalog Inventory & Demand Opportunities"
+              subtitle="Specific products in your catalog identified with rising buyer demand or low stock"
             />
             {opportunities.map((opp, i) => (
-              <Card key={i} style={styles.oppCard}>
+              <Card key={`opp-${i}`} style={styles.oppCard}>
                 <View style={styles.oppTop}>
-                  <Text style={styles.oppTitle}>{opp.title || "Custom Craft Request"}</Text>
-                  <Text style={styles.oppTag}>{opp.category || "General"}</Text>
+                  <Text style={styles.oppTitle}>{opp.product_title || opp.headline}</Text>
+                  <Text style={styles.oppTag}>
+                    {opp.category} {opp.demand_label ? `· ${opp.demand_label}` : ""}
+                  </Text>
                 </View>
-                <Text style={styles.oppDesc}>{opp.description || opp.notes || "High regional demand for traditional craft items."}</Text>
+                <Text style={styles.oppDesc}>{opp.narrative}</Text>
+
+                {opp.next_best_action && (
+                  <View style={styles.oppActionRow}>
+                    <Ionicons name="information-circle-outline" size={16} color={theme.colors.primary} />
+                    <Text style={styles.oppActionText}>{opp.next_best_action}</Text>
+                  </View>
+                )}
+
                 <View style={styles.oppFooter}>
-                  <Text style={styles.oppEst}>Est. Value: ₹{opp.estimated_value || "2,500"}</Text>
+                  <Text style={styles.oppPrice}>
+                    {opp.recommended_price != null
+                      ? `Recommended: ₹${Math.round(opp.recommended_price)} (Current: ₹${Math.round(
+                          opp.current_price || 0
+                        )})`
+                      : `Stock: ${opp.stock ?? 0} units`}
+                  </Text>
                   <SecondaryButton
-                    title="Explore Craft"
+                    title="Review Craft"
                     size="small"
-                    onPress={() => router.push("/seller-ai")}
+                    onPress={() => router.push("/seller-products")}
                   />
                 </View>
               </Card>
@@ -263,15 +438,15 @@ export default function SellerBusinessScreen() {
         {/* Offline Queue Management */}
         <SectionHeader
           title="Device Storage & Offline Queue"
-          subtitle="Direct sync with cloud repository"
+          subtitle="Direct local-to-cloud synchronization for rural areas"
         />
 
         <Card style={styles.offlineCard}>
           <View style={styles.offlineHeader}>
             <View>
-              <Text style={styles.offlineTitle}>Offline Operations</Text>
+              <Text style={styles.offlineTitle}>Offline Pending Operations</Text>
               <Text style={styles.offlineCount}>
-                {offlineCount} pending actions waiting for sync
+                {offlineCount} pending actions waiting for cloud sync
               </Text>
             </View>
             <Ionicons
@@ -283,7 +458,7 @@ export default function SellerBusinessScreen() {
 
           <View style={styles.offlineActions}>
             <PrimaryButton
-              title={syncing ? "Syncing..." : "Sync Offline Queue"}
+              title={syncing ? "Syncing…" : "Sync Offline Queue"}
               icon="sync-outline"
               onPress={handleSyncOffline}
               disabled={syncing}
@@ -350,7 +525,13 @@ const styles = StyleSheet.create({
   badgeItemText: {
     ...theme.typography.bodySmall,
     color: theme.colors.inkLight,
-    fontWeight: "500"
+    fontWeight: "500",
+    flex: 1
+  },
+  emptyNoticeText: {
+    ...theme.typography.caption,
+    color: theme.colors.inkMuted,
+    marginTop: theme.spacing.sm
   },
   copilotCard: {
     backgroundColor: "#FFFFFF",
@@ -386,6 +567,15 @@ const styles = StyleSheet.create({
     color: theme.colors.ink,
     lineHeight: 22
   },
+  actionItemBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: theme.colors.primaryLight + "15",
+    padding: theme.spacing.sm,
+    borderRadius: theme.radius.sm,
+    marginTop: theme.spacing.md
+  },
   actionList: {
     marginTop: theme.spacing.md,
     paddingTop: theme.spacing.sm,
@@ -409,6 +599,72 @@ const styles = StyleSheet.create({
     color: theme.colors.inkLight,
     flex: 1
   },
+  demandCardsContainer: {
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.lg
+  },
+  demandCatCard: {
+    backgroundColor: "#FFFFFF",
+    padding: theme.spacing.md
+  },
+  demandCatHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start"
+  },
+  demandCatTitle: {
+    ...theme.typography.subtitle,
+    color: theme.colors.ink,
+    fontWeight: "700"
+  },
+  demandCatSource: {
+    ...theme.typography.caption,
+    color: theme.colors.inkMuted,
+    marginTop: 2
+  },
+  demandTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: theme.radius.full
+  },
+  demandTagText: {
+    fontSize: 11,
+    fontWeight: "800"
+  },
+  demandCatFooter: {
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center"
+  },
+  demandBenchmarkText: {
+    ...theme.typography.caption,
+    color: theme.colors.inkLight
+  },
+  demandEventBreakdown: {
+    ...theme.typography.caption,
+    color: theme.colors.inkMuted,
+    fontSize: 10
+  },
+  emptyCard: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 24,
+    marginBottom: theme.spacing.lg,
+    gap: 8
+  },
+  emptyCardText: {
+    ...theme.typography.caption,
+    color: theme.colors.inkMuted,
+    textAlign: "center",
+    maxWidth: 260
+  },
   mlCard: {
     marginBottom: theme.spacing.lg
   },
@@ -429,6 +685,7 @@ const styles = StyleSheet.create({
   },
   chipsRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     marginBottom: theme.spacing.sm
   },
@@ -462,13 +719,17 @@ const styles = StyleSheet.create({
   },
   demandValue: {
     ...theme.typography.subtitle,
-    color: theme.colors.success,
     fontWeight: "800"
+  },
+  demandSubValue: {
+    ...theme.typography.bodySmall,
+    fontWeight: "700",
+    color: theme.colors.ink
   },
   demandSub: {
     ...theme.typography.caption,
     color: theme.colors.inkMuted,
-    marginTop: 4
+    marginTop: 6
   },
   modelMetaBox: {
     marginTop: theme.spacing.sm,
@@ -492,7 +753,9 @@ const styles = StyleSheet.create({
   },
   oppTitle: {
     ...theme.typography.subtitle,
-    color: theme.colors.ink
+    color: theme.colors.ink,
+    flex: 1,
+    marginRight: 8
   },
   oppTag: {
     ...theme.typography.caption,
@@ -506,15 +769,28 @@ const styles = StyleSheet.create({
   oppDesc: {
     ...theme.typography.bodySmall,
     color: theme.colors.inkLight,
+    marginBottom: 6
+  },
+  oppActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     marginBottom: 8
+  },
+  oppActionText: {
+    ...theme.typography.caption,
+    color: theme.colors.primary,
+    fontWeight: "600",
+    flex: 1
   },
   oppFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center"
+    alignItems: "center",
+    marginTop: 4
   },
-  oppEst: {
-    ...theme.typography.subtitle,
+  oppPrice: {
+    ...theme.typography.caption,
     color: theme.colors.ink,
     fontWeight: "700"
   },

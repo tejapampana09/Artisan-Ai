@@ -78,10 +78,12 @@ async def process_full_catalog_pipeline(
             other_cost=other_cost,
             qna_answers=qna_answers
         )
+        is_native_name = any(ord(c) > 127 for c in (canonical_facts.product_name or ""))
+        title_for_market = category_hint if is_native_name else (canonical_facts.product_name or category_hint)
         market_coro = research_market(
             artisan_facts=canonical_facts,
             provider=provider,
-            title_hint=canonical_facts.product_name or category_hint,
+            title_hint=title_for_market,
             category_hint=canonical_facts.craft_type or category_hint,
             image_url=image_url
         )
@@ -139,6 +141,22 @@ async def process_full_catalog_pipeline(
     ml_demand_score = float(ml_pred.get("predicted_demand_score", 0.0))
     ml_demand_pct = round(ml_demand_score, 1)
 
+    cat_name = validated_catalog.get("category") or category_hint or "Handcrafted"
+    benchmark_low = None
+    benchmark_high = None
+    if db is not None:
+        try:
+            from backend.app.models import Product
+            from sqlalchemy import func
+            row = db.query(func.min(Product.price), func.max(Product.price)).filter(
+                Product.status == "PUBLISHED", Product.category.ilike(f"%{cat_name}%")
+            ).first()
+            if row and row[0] is not None and row[1] is not None:
+                benchmark_low = float(row[0])
+                benchmark_high = float(row[1])
+        except Exception:
+            pass
+
     # Pure Market-Aware Pricing Calculation (No DB Product required)
     pricing_rec = calculate_price_recommendation_from_inputs(
         title=validated_catalog.get("title", ""),
@@ -156,6 +174,8 @@ async def process_full_catalog_pipeline(
         demand_factor=ml_demand_multiplier,
         demand_label=f"{ml_demand_label} DEMAND",
         demand_pct=ml_demand_pct,
+        benchmark_low=benchmark_low,
+        benchmark_high=benchmark_high,
         ml_info=ml_pred
     )
 
@@ -186,9 +206,9 @@ async def process_full_catalog_pipeline(
 
     min_fair = Decimal(str(pricing_rec["minimum_fair_price"])) if (pricing_rec.get("minimum_fair_price") and pricing_rec["minimum_fair_price"] > 0) else None
     rec_price = Decimal(str(pricing_rec["recommended_price"])) if (pricing_rec.get("recommended_price") is not None and pricing_rec["recommended_price"] > 0) else None
-    if (rec_price is None or rec_price <= 0) and raw_market_median is not None and float(raw_market_median) > 0:
+    if (rec_price is None or rec_price <= 0) and market_is_reliable and raw_market_median is not None and float(raw_market_median) > 0:
         rec_price = Decimal(str(raw_market_median))
-    pricing_available = (rec_price is not None and float(rec_price) > 0) or (raw_market_median is not None and float(raw_market_median) > 0)
+    pricing_available = rec_price is not None and float(rec_price) > 0
     pricing_source = pricing_rec.get("safety_constraints", {}).get("pricing_case", "MARKET_BASED_RECOMMENDATION")
     notice_text = None
 

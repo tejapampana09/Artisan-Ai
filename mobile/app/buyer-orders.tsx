@@ -11,7 +11,9 @@ import {
   Image,
   Platform,
   StatusBar,
-  Alert
+  Alert,
+  Modal,
+  TextInput
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,6 +25,14 @@ export default function BuyerOrders() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "DELIVERED">("ALL");
+
+  // Review states
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [targetOrderForReview, setTargetOrderForReview] = useState<any | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewedOrderIds, setReviewedOrderIds] = useState<Set<number>>(new Set());
 
   const loadOrders = async () => {
     try {
@@ -40,6 +50,38 @@ export default function BuyerOrders() {
   useEffect(() => {
     loadOrders();
   }, []);
+
+  const handleOpenReviewModal = (order: any) => {
+    setTargetOrderForReview(order);
+    setReviewRating(5);
+    setReviewComment("");
+    setReviewModalVisible(true);
+  };
+
+  const handleSubmitReview = async () => {
+    if (!targetOrderForReview) return;
+    setSubmittingReview(true);
+    try {
+      await api.submitReview(targetOrderForReview.product_id, {
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+        order_id: targetOrderForReview.id
+      });
+      setReviewedOrderIds((prev) => new Set([...prev, targetOrderForReview.id]));
+      setReviewModalVisible(false);
+      Alert.alert(
+        "Verified Review Published",
+        "Thank you! Your verified customer review has been published directly on this craft's page."
+      );
+    } catch (err: any) {
+      Alert.alert(
+        "Review Submission Failed",
+        err?.detail || err?.message || "Could not submit review."
+      );
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   const handleCancelOrder = (orderId: number) => {
     Alert.alert(
@@ -254,6 +296,7 @@ export default function BuyerOrders() {
 
                 {/* Action Buttons */}
                 <View style={styles.actionRow}>
+                  {/* Cancel for Pending */}
                   {["CONFIRMED", "PROCESSING", "PENDING"].includes((item.status || "").toUpperCase()) && (
                     <Pressable
                       style={[styles.helpBtn, { borderColor: "#FFCDD2" }]}
@@ -263,6 +306,40 @@ export default function BuyerOrders() {
                       <Text style={[styles.helpBtnText, { color: "#C62828" }]}>Cancel Order</Text>
                     </Pressable>
                   )}
+
+                  {/* Review Button for Delivered Orders */}
+                  {(item.status || "").toUpperCase() === "DELIVERED" && (
+                    <Pressable
+                      style={[
+                        styles.helpBtn,
+                        {
+                          borderColor: "#F59E0B",
+                          backgroundColor: reviewedOrderIds.has(item.id) ? "#F3F4F6" : "#FFFBEB"
+                        }
+                      ]}
+                      onPress={() => handleOpenReviewModal(item)}
+                      disabled={reviewedOrderIds.has(item.id)}
+                    >
+                      <Ionicons
+                        name={reviewedOrderIds.has(item.id) ? "checkmark-circle" : "star"}
+                        size={14}
+                        color={reviewedOrderIds.has(item.id) ? "#10B981" : "#F59E0B"}
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text
+                        style={[
+                          styles.helpBtnText,
+                          {
+                            color: reviewedOrderIds.has(item.id) ? "#10B981" : "#B45309",
+                            fontWeight: "800"
+                          }
+                        ]}
+                      >
+                        {reviewedOrderIds.has(item.id) ? "Reviewed ✓" : "Write Review"}
+                      </Text>
+                    </Pressable>
+                  )}
+
                   <Pressable
                     style={styles.helpBtn}
                     onPress={() => router.push("/buyer-assistant")}
@@ -282,6 +359,100 @@ export default function BuyerOrders() {
           }}
         />
       )}
+
+      {/* Verified Review Submission Modal */}
+      <Modal
+        visible={reviewModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setReviewModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text style={{ fontSize: 20, marginRight: 6 }}>⭐</Text>
+                <Text style={styles.modalTitle}>Rate & Review Craft</Text>
+              </View>
+              <Pressable onPress={() => setReviewModalVisible(false)} hitSlop={8}>
+                <Ionicons name="close" size={24} color={theme.ink} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.modalSub}>
+              Share your experience as a verified collector of{" "}
+              <Text style={{ fontWeight: "800", color: theme.ink }}>
+                {targetOrderForReview?.product_title || "this handcrafted item"}
+              </Text>
+              :
+            </Text>
+
+            {/* Interactive 5-Star Selector */}
+            <View style={styles.starRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Pressable
+                  key={star}
+                  onPress={() => setReviewRating(star)}
+                  style={styles.starPressable}
+                  hitSlop={8}
+                >
+                  <Ionicons
+                    name={star <= reviewRating ? "star" : "star-outline"}
+                    size={36}
+                    color="#F59E0B"
+                  />
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={styles.ratingText}>
+              {reviewRating === 5
+                ? "⭐⭐⭐⭐⭐ Exceptional Masterpiece"
+                : reviewRating === 4
+                ? "⭐⭐⭐⭐ Very High Quality"
+                : reviewRating === 3
+                ? "⭐⭐⭐ Good Authentic Craft"
+                : reviewRating === 2
+                ? "⭐⭐ Needs Improvement"
+                : "⭐ Disappointed"}
+            </Text>
+
+            {/* Review Comment Input */}
+            <TextInput
+              style={styles.commentInput}
+              placeholder="What did you love about the craft, texture, materials, or artisan's packaging?..."
+              placeholderTextColor={theme.muted}
+              multiline
+              numberOfLines={4}
+              value={reviewComment}
+              onChangeText={setReviewComment}
+              textAlignVertical="top"
+            />
+
+            {/* Submit & Cancel Buttons */}
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.submitReviewBtn, submittingReview && { opacity: 0.7 }]}
+                onPress={handleSubmitReview}
+                disabled={submittingReview}
+              >
+                {submittingReview ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.submitReviewBtnText}>Publish Verified Review</Text>
+                )}
+              </Pressable>
+              <Pressable
+                style={styles.cancelReviewBtn}
+                onPress={() => setReviewModalVisible(false)}
+                disabled={submittingReview}
+              >
+                <Text style={styles.cancelReviewBtnText}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -548,5 +719,88 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     color: "#fff"
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    justifyContent: "flex-end"
+  },
+  modalSheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: Platform.OS === "ios" ? 40 : 24,
+    maxHeight: "85%"
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: theme.ink
+  },
+  modalSub: {
+    fontSize: 13,
+    color: theme.muted,
+    lineHeight: 18,
+    marginBottom: 16
+  },
+  starRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 12,
+    marginBottom: 10
+  },
+  starPressable: {
+    padding: 4
+  },
+  ratingText: {
+    textAlign: "center",
+    fontSize: 13,
+    fontWeight: "800",
+    color: theme.ink,
+    marginBottom: 16
+  },
+  commentInput: {
+    backgroundColor: "#FAF6F0",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E8E2D8",
+    padding: 14,
+    fontSize: 13,
+    color: theme.ink,
+    minHeight: 90,
+    marginBottom: 18
+  },
+  modalActions: {
+    gap: 10
+  },
+  submitReviewBtn: {
+    backgroundColor: theme.accent,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center"
+  },
+  submitReviewBtnText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800"
+  },
+  cancelReviewBtn: {
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.border
+  },
+  cancelReviewBtnText: {
+    color: theme.muted,
+    fontSize: 13,
+    fontWeight: "700"
   }
 });
