@@ -22,7 +22,7 @@ def record_event(
     event_in: EventCreate, 
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     auth_header: Optional[str] = Header(None, alias="Authorization")
 ):
     # Security: Disallow client-spoofed ORDER / ENQUIRY events via telemetry
@@ -442,13 +442,19 @@ def update_order_status(
         )
 
     old_status = order.status
-    is_seller: bool = bool(prod.seller_id == current_user.id or current_user.role == "ADMIN")
-    is_buyer: bool = bool(order.user_id == current_user.id)
+    old_status_norm = (old_status or "").upper().strip()
+
+    clean_user_phone = "".join(filter(str.isdigit, str(getattr(current_user, "phone", "") or "")))
+    clean_order_phone = "".join(filter(str.isdigit, str(order.buyer_phone or "")))
+    phone_matches = bool(clean_user_phone and clean_order_phone and (clean_user_phone == clean_order_phone or clean_user_phone.endswith(clean_order_phone) or clean_order_phone.endswith(clean_user_phone)))
+
+    is_seller: bool = bool((prod.seller_id and prod.seller_id == current_user.id) or current_user.role == "ADMIN")
+    is_buyer: bool = bool((order.user_id is not None and order.user_id == current_user.id) or phone_matches)
 
     if is_seller:
         order.status = new_status
     elif is_buyer and new_status == "CANCELLED":
-        if order.status in ["SHIPPED", "DELIVERED"]:
+        if old_status_norm in ["SHIPPED", "DELIVERED"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Order cannot be cancelled once shipped or delivered."
@@ -461,14 +467,21 @@ def update_order_status(
         )
 
     # Business policy: Pre-fulfillment cancellation restores inventory once
-    if new_status == "CANCELLED" and old_status != "CANCELLED":
-        db.query(Product).filter(Product.id == prod.id).update(
-            {Product.stock: Product.stock + order.quantity},
-            synchronize_session=False
+    if new_status == "CANCELLED" and old_status_norm != "CANCELLED":
+        restored_stock = (prod.stock or 0) + order.quantity
+        prod.stock = restored_stock
+        order.cancellation_status = "CANCELLED"
+        db.add(prod)
+        db.add(order)
+        db.execute(
+            update(Product)
+            .where(Product.id == prod.id)
+            .values(stock=restored_stock)
         )
 
     db.commit()
     db.refresh(order)
+    db.refresh(prod)
 
     # Status-change notifications strictly targeted to dedicated buyer
     STATUS_LABELS = {

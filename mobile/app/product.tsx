@@ -67,6 +67,14 @@ export default function ProductDetail() {
               .then(setArtisanData)
               .catch(() => {});
           }
+
+          // Record view event for real-time analytics & seller dashboard views counter
+          api.recordEvent({
+            event_type: "VIEW",
+            product_id: Number(id),
+            category: data?.category,
+            metadata_info: `Buyer viewed ${data?.title || 'craft'}`
+          });
         })
         .catch((err) => console.warn("Product fetch error:", err))
         .finally(() => setLoading(false));
@@ -96,6 +104,14 @@ export default function ProductDetail() {
     if (!product) return;
     const newState = await toggleWishlist(product);
     setIsSaved(newState);
+    if (newState) {
+      api.recordEvent({
+        event_type: "SAVE",
+        product_id: product.id,
+        category: product.category,
+        metadata_info: `Buyer saved ${product.title}`
+      });
+    }
   };
 
   const handleSendEnquiry = async () => {

@@ -170,7 +170,9 @@ export default function SettingsScreen() {
         >
           <Text style={styles.backText}>‹ Back</Text>
         </Pressable>
-        <Text style={styles.pageTitle}>Settings & Profile</Text>
+        <Text style={styles.pageTitle}>
+          {isSeller ? (language === "te" ? "ప్రొఫైల్ & ఖాతా" : "Artisan Profile") : (language === "te" ? "సెట్టింగ్‌లు & ప్రొఫైల్" : "Settings & Profile")}
+        </Text>
         <View style={{ width: 50 }} />
       </View>
 
@@ -190,7 +192,7 @@ export default function SettingsScreen() {
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>
               {isLoggedIn
-                ? (user?.full_name || user?.name || (isSeller ? "Artisan Maker" : "Customer"))
+                ? (user?.full_name || user?.name || (isSeller ? "Master Artisan" : "Customer"))
                 : "Not Logged In"}
             </Text>
             <Text style={styles.profileEmail}>
@@ -198,6 +200,16 @@ export default function SettingsScreen() {
                 ? (user?.email || "Active Session")
                 : "Guest Visitor"}
             </Text>
+            {isSeller && (user?.craft || user?.craft_specialization) && (
+              <Text style={{ fontSize: 12, color: theme.colors.primary, fontWeight: "600", marginTop: 2 }}>
+                🎨 {user?.craft || user?.craft_specialization}
+              </Text>
+            )}
+            {isSeller && user?.phone && (
+              <Text style={{ fontSize: 11, color: theme.colors.inkMuted, marginTop: 1 }}>
+                📞 {user.phone}
+              </Text>
+            )}
             <View style={[
               styles.roleBadge,
               !isLoggedIn
@@ -217,7 +229,7 @@ export default function SettingsScreen() {
                 {!isLoggedIn
                   ? "🔒 Guest Mode"
                   : isSeller
-                  ? "🎨 Artisan Studio (Seller)"
+                  ? "🎨 Verified Artisan Studio"
                   : "🛍️ Heritage Marketplace (Buyer)"}
               </Text>
             </View>
@@ -236,22 +248,52 @@ export default function SettingsScreen() {
 
         {/* Quick Nav Switcher */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>WORKSPACE / NAVIGATION</Text>
+          <Text style={styles.sectionHeader}>WORKSPACE / QUICK ACCESS</Text>
           <View style={styles.cardBox}>
             {isSeller ? (
-              <Pressable
-                style={styles.menuRow}
-                onPress={() => router.push("/buyer")}
-              >
-                <View style={styles.menuIconBox}>
-                  <Text style={styles.menuEmoji}>🛍️</Text>
-                </View>
-                <View style={styles.menuTextBox}>
-                  <Text style={styles.menuTitle}>Switch to Marketplace</Text>
-                  <Text style={styles.menuDesc}>Browse artisan collections as a buyer</Text>
-                </View>
-                <Text style={styles.chevron}>›</Text>
-              </Pressable>
+              <>
+                <Pressable
+                  style={styles.menuRow}
+                  onPress={() => router.push("/seller-products")}
+                >
+                  <View style={styles.menuIconBox}>
+                    <Text style={styles.menuEmoji}>📦</Text>
+                  </View>
+                  <View style={styles.menuTextBox}>
+                    <Text style={styles.menuTitle}>{language === "te" ? "హస్తకళల జాబితా" : "Craft Catalog"}</Text>
+                    <Text style={styles.menuDesc}>{language === "te" ? "ఉత్పత్తుల స్టాక్ మరియు ధరలను నిర్వహించండి" : "Manage stock, prices & catalog items"}</Text>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.menuRow}
+                  onPress={() => router.push("/seller-orders")}
+                >
+                  <View style={styles.menuIconBox}>
+                    <Text style={styles.menuEmoji}>🚚</Text>
+                  </View>
+                  <View style={styles.menuTextBox}>
+                    <Text style={styles.menuTitle}>{language === "te" ? "కస్టమర్ ఆర్డర్లు" : "Customer Orders"}</Text>
+                    <Text style={styles.menuDesc}>{language === "te" ? "ఆర్డర్ డెలివరీ మరియు ప్యాకింగ్ వివరాలు" : "Track dispatch & fulfillment status"}</Text>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.menuRow}
+                  onPress={() => router.push("/seller-business")}
+                >
+                  <View style={styles.menuIconBox}>
+                    <Text style={styles.menuEmoji}>📈</Text>
+                  </View>
+                  <View style={styles.menuTextBox}>
+                    <Text style={styles.menuTitle}>{language === "te" ? "వ్యాపార విశ్లేషణ" : "Market Intelligence"}</Text>
+                    <Text style={styles.menuDesc}>{language === "te" ? "కస్టమర్ డిమాండ్ మరియు మార్కెట్ ట్రెండ్స్" : "View demand forecast & category trends"}</Text>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </Pressable>
+              </>
             ) : (
               <>
                 <Pressable

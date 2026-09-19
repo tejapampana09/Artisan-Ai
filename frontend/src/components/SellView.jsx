@@ -297,6 +297,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
       setOrders(prev => prev.map(o => o.id === orderId ? updatedOrd : o));
       window.dispatchEvent(new CustomEvent('artisan_notification_refresh'));
       showNotification(`Order status updated to ${newStatus}! / ఆర్డర్ స్టేటస్ అప్‌డేట్ అయింది!`);
+      loadDashboard();
     } catch (err) {
       notify.error('Failed to update status: ' + (err.message || 'Error occurred'));
     } finally {

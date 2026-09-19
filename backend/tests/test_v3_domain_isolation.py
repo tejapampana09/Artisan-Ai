@@ -454,6 +454,61 @@ def test_razorpay_verification_full_cycle_and_anti_replay(admin_headers):
     assert repeat_res.json()["status"] == "VERIFIED"
 
 
+def test_order_cancellation_restores_product_stock(admin_headers):
+    """
+    Verification: When an order is cancelled, the product stock must be accurately restored.
+    """
+    _, _, _, artisan_headers = make_artisan_via_admin(client, admin_headers)
+    _, _, _, buyer_headers = make_buyer(client)
+
+    initial_stock = 10
+    order_qty = 3
+
+    # 1. Artisan creates product
+    prod_res = client.post("/api/products", json={
+        "title": "Channapatna Wooden Toy Train",
+        "price": 850.0,
+        "category": "Woodcraft",
+        "stock": initial_stock
+    }, headers=artisan_headers)
+    assert prod_res.status_code == 201
+    pid = prod_res.json()["id"]
+
+    # 2. Buyer places order for 3 items
+    order_res = client.post("/api/marketplace/order", json={
+        "product_id": pid,
+        "quantity": order_qty,
+        "buyer_name": "Ravi Kumar",
+        "buyer_phone": "+919876543210",
+        "delivery_address": "Hyderabad, Telangana"
+    }, headers=buyer_headers)
+    assert order_res.status_code == 201
+
+    # Fetch product to verify stock decreased
+    p_check = client.get(f"/api/products/{pid}", headers=artisan_headers)
+    assert p_check.status_code == 200
+    assert p_check.json()["stock"] == initial_stock - order_qty
+
+    # Find the order ID
+    orders_res = client.get(f"/api/marketplace/orders?product_id={pid}", headers=artisan_headers)
+    assert orders_res.status_code == 200
+    orders = orders_res.json()
+    assert len(orders) >= 1
+    order_id = orders[0]["id"]
+
+    # 3. Cancel the order
+    cancel_res = client.patch(f"/api/marketplace/orders/{order_id}/status", json={
+        "status": "CANCELLED"
+    }, headers=artisan_headers)
+    assert cancel_res.status_code == 200
+    assert cancel_res.json()["status"] == "CANCELLED"
+
+    # 4. Verify product stock is restored back to initial_stock
+    p_restored = client.get(f"/api/products/{pid}", headers=artisan_headers)
+    assert p_restored.status_code == 200
+    assert p_restored.json()["stock"] == initial_stock, f"Expected stock {initial_stock}, got {p_restored.json()['stock']}"
+
+
 def test_generic_api_me_endpoint_removed():
     """V3 Architecture rule: generic /api/me is removed (returns 404)."""
     res = client.get("/api/me")

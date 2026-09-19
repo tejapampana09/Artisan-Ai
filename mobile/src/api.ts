@@ -149,6 +149,30 @@ export const api = {
   },
 
   // -------------------------------------------------------------
+  // ANALYTICS & EVENTS
+  // -------------------------------------------------------------
+  async recordEvent(payload: {
+    event_type: string;
+    product_id?: number;
+    category?: string;
+    query?: string;
+    metadata_info?: string;
+  }) {
+    try {
+      return await request<any>(
+        "/events",
+        {
+          method: "POST",
+          body: JSON.stringify(payload)
+        },
+        "MARKETPLACE"
+      );
+    } catch {
+      return null;
+    }
+  },
+
+  // -------------------------------------------------------------
   // PRODUCTS
   // -------------------------------------------------------------
   async products(params: string = "") {

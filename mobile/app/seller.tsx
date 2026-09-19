@@ -6,7 +6,8 @@ import {
   Pressable,
   Image,
   RefreshControl,
-  ScrollView
+  ScrollView,
+  Alert
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
@@ -102,6 +103,27 @@ export default function SellerDashboard() {
     delivered: 0,
     cancelled: 0
   };
+  const productPerformance = dashboard?.product_performance || [];
+
+  const handleSignOut = () => {
+    Alert.alert(
+      language === "te" ? "సైన్ అవుట్" : "Sign Out",
+      language === "te"
+        ? "మీరు నిజంగా ఆర్టిసాన్ స్టూడియో నుండి నిష్క్రమించాలనుకుంటున్నారా?"
+        : "Are you sure you want to sign out of Artisan Studio?",
+      [
+        { text: language === "te" ? "రద్దు" : "Cancel", style: "cancel" },
+        {
+          text: language === "te" ? "సైన్ అవుట్" : "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            await clearSession("STUDIO");
+            router.replace({ pathname: "/login", params: { role: "seller" } });
+          }
+        }
+      ]
+    );
+  };
 
   const pendingOrders = orders.filter((o) => {
     const s = (o.status || "").toUpperCase();
@@ -137,17 +159,19 @@ export default function SellerDashboard() {
             >
               <Text style={styles.langPillText}>🌐 {language.toUpperCase()}</Text>
             </Pressable>
+
+            {/* Profile Action */}
             <Pressable
-              style={styles.switchModeBtn}
-              onPress={async () => {
-                await clearSession("STUDIO");
-                router.replace({ pathname: "/login", params: { role: "buyer", redirect: "/buyer" } });
-              }}
+              style={styles.iconBtn}
+              onPress={() => router.push("/settings")}
+              hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Switch to Buyer View"
+              accessibilityLabel="Profile"
             >
-              <Text style={styles.switchModeText}>{t("buyerView")}</Text>
+              <Ionicons name="person-circle-outline" size={20} color={theme.colors.ink} />
             </Pressable>
+
+            {/* Notifications Action */}
             <Pressable
               style={styles.iconBtn}
               onPress={() => router.push("/notifications")}
@@ -164,14 +188,19 @@ export default function SellerDashboard() {
                 </View>
               )}
             </Pressable>
+
+            {/* Sign Out Button */}
             <Pressable
-              style={styles.iconBtn}
-              onPress={() => router.push("/settings")}
+              style={styles.signOutBtn}
+              onPress={handleSignOut}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Settings"
+              accessibilityLabel="Sign Out"
             >
-              <Ionicons name="settings-outline" size={18} color={theme.colors.ink} />
+              <Ionicons name="log-out-outline" size={13} color="#C92A2A" />
+              <Text style={styles.signOutBtnText}>
+                {language === "te" ? "లాగౌట్" : "Sign Out"}
+              </Text>
             </Pressable>
           </View>
         }
@@ -338,6 +367,122 @@ export default function SellerDashboard() {
             </View>
           </Pressable>
 
+          {/* Delivery Pipeline Breakdown (Exact Match to Web Dashboard) */}
+          <SectionHeader
+            title={language === "te" ? "డెలివరీ ప్రగతి / పైప్‌లైన్" : "Delivery Pipeline Breakdown"}
+            subtitle={language === "te" ? "ఆర్డర్ల రవాణా స్థితిగతులు" : "Live status of your orders across fulfillment stages"}
+          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pipelineScroll}>
+            <View style={[styles.pipelineCard, { borderLeftColor: theme.colors.info }]}>
+              <Text style={styles.pipelineLabel}>
+                {language === "te" ? "ఖరారైంది" : "CONFIRMED"}
+              </Text>
+              <Text style={[styles.pipelineValue, { color: theme.colors.info }]}>
+                {deliveryStatus.confirmed ?? 0}
+              </Text>
+            </View>
+            <View style={[styles.pipelineCard, { borderLeftColor: "#E67700" }]}>
+              <Text style={styles.pipelineLabel}>
+                {language === "te" ? "ప్యాకింగ్" : "PACKED"}
+              </Text>
+              <Text style={[styles.pipelineValue, { color: "#E67700" }]}>
+                {deliveryStatus.processing ?? 0}
+              </Text>
+            </View>
+            <View style={[styles.pipelineCard, { borderLeftColor: theme.colors.primary }]}>
+              <Text style={styles.pipelineLabel}>
+                {language === "te" ? "రవాణాలో" : "IN TRANSIT"}
+              </Text>
+              <Text style={[styles.pipelineValue, { color: theme.colors.primary }]}>
+                {deliveryStatus.shipped ?? 0}
+              </Text>
+            </View>
+            <View style={[styles.pipelineCard, { borderLeftColor: theme.colors.success }]}>
+              <Text style={styles.pipelineLabel}>
+                {language === "te" ? "చేరింది" : "DELIVERED"}
+              </Text>
+              <Text style={[styles.pipelineValue, { color: theme.colors.success }]}>
+                {deliveryStatus.delivered ?? 0}
+              </Text>
+            </View>
+            <View style={[styles.pipelineCard, { borderLeftColor: theme.colors.error }]}>
+              <Text style={styles.pipelineLabel}>
+                {language === "te" ? "రద్దు" : "CANCELLED"}
+              </Text>
+              <Text style={[styles.pipelineValue, { color: theme.colors.error }]}>
+                {deliveryStatus.cancelled ?? 0}
+              </Text>
+            </View>
+          </ScrollView>
+
+          {/* Per-Product Sales & View Metrics (Exact Match to Web Dashboard) */}
+          <SectionHeader
+            title={language === "te" ? "ఉత్పత్తి వివరాలు & వ్యూస్" : "Craft Sales & View Metrics"}
+            subtitle={language === "te" ? "ప్రతి హస్తకళకు వచ్చిన వ్యూస్ మరియు అమ్మకాలు" : "Sales volume, views, and revenue per craft listing"}
+            actionLabel={language === "te" ? "అన్నీ చూడండి" : "All Crafts"}
+            onAction={() => router.push("/seller-products")}
+          />
+          {productPerformance.length === 0 ? (
+            <View style={styles.noPerfBox}>
+              <Text style={styles.noPerfText}>
+                {language === "te"
+                  ? "ఇంకా హస్తకళల పనితీరు సమాచారం లేదు. AI తో కొత్త హస్తకళను సృష్టించండి."
+                  : "No craft listings yet. Create your first listing with AI to start tracking views and sales."}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.perfList}>
+              {productPerformance.slice(0, 5).map((prod: any) => (
+                <View key={prod.product_id} style={styles.perfCard}>
+                  <View style={styles.perfTopRow}>
+                    <Image
+                      source={{
+                        uri:
+                          prod.image_url ||
+                          "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=400"
+                      }}
+                      style={styles.perfThumb}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.perfMeta}>
+                      <Text style={styles.perfTitle} numberOfLines={2}>
+                        {prod.title}
+                      </Text>
+                      <View style={styles.perfBadgeRow}>
+                        <Text style={styles.perfPrice}>₹{Number(prod.price || 0).toLocaleString("en-IN")}</Text>
+                        <View style={styles.stockBadge}>
+                          <Text style={styles.stockBadgeText}>
+                            {prod.stock} {language === "te" ? "స్టాక్ సిద్ధం" : "ready"}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.perfMetricsRow}>
+                    <View style={styles.perfMetricItem}>
+                      <Ionicons name="eye-outline" size={13} color={theme.colors.info} />
+                      <Text style={styles.perfMetricText}>
+                        <Text style={styles.perfMetricBold}>{prod.views ?? 0}</Text> {language === "te" ? "వ్యూస్" : "Views"}
+                      </Text>
+                    </View>
+                    <View style={styles.perfMetricItem}>
+                      <Ionicons name="cube-outline" size={13} color={theme.colors.primary} />
+                      <Text style={styles.perfMetricText}>
+                        <Text style={styles.perfMetricBold}>{prod.units_sold ?? 0}</Text> {language === "te" ? "అమ్మకాలు" : "Sold"}
+                      </Text>
+                    </View>
+                    <View style={styles.perfMetricItem}>
+                      <Ionicons name="cash-outline" size={13} color={theme.colors.success} />
+                      <Text style={styles.perfMetricText}>
+                        <Text style={styles.perfMetricBold}>₹{Number(prod.revenue || 0).toLocaleString("en-IN")}</Text>
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
           {/* Live Order Dispatch Pipeline */}
           <SectionHeader
             title={t("orderDispatchPipeline")}
@@ -427,18 +572,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: theme.spacing.sm
   },
-  switchModeBtn: {
-    backgroundColor: theme.colors.surface,
-    paddingHorizontal: 10,
+  signOutBtn: {
+    backgroundColor: "#FFF5F5",
+    paddingHorizontal: 9,
     paddingVertical: 5,
     borderRadius: theme.radius.full,
     borderWidth: 1,
-    borderColor: theme.colors.border
+    borderColor: "#FFC9C9",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3
   },
-  switchModeText: {
+  signOutBtnText: {
     fontSize: 11,
-    fontWeight: "700",
-    color: theme.colors.ink
+    fontWeight: "800",
+    color: "#C92A2A"
   },
   langPill: {
     backgroundColor: "#F4EBE1",
@@ -766,5 +914,120 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: theme.colors.inkMuted,
     lineHeight: 15
+  },
+  pipelineScroll: {
+    marginBottom: theme.spacing.lg
+  },
+  pipelineCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderLeftWidth: 4,
+    marginRight: theme.spacing.sm,
+    minWidth: 105,
+    ...theme.shadows.sm
+  },
+  pipelineLabel: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: theme.colors.inkMuted,
+    textTransform: "uppercase",
+    marginBottom: 2
+  },
+  pipelineValue: {
+    fontSize: 18,
+    fontWeight: "800"
+  },
+  perfList: {
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.lg
+  },
+  perfCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    ...theme.shadows.sm
+  },
+  perfTopRow: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm
+  },
+  perfThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.surfaceVariant
+  },
+  perfMeta: {
+    flex: 1
+  },
+  perfTitle: {
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: "700",
+    color: theme.colors.ink,
+    marginBottom: 4
+  },
+  perfBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8
+  },
+  perfPrice: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: theme.colors.primary
+  },
+  stockBadge: {
+    backgroundColor: "#E6FCF5",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: "#C3FAE8"
+  },
+  stockBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#0CA678"
+  },
+  perfMetricsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    paddingTop: 8
+  },
+  perfMetricItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4
+  },
+  perfMetricText: {
+    fontSize: 11,
+    color: theme.colors.inkMuted
+  },
+  perfMetricBold: {
+    fontWeight: "700",
+    color: theme.colors.ink
+  },
+  noPerfBox: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: theme.spacing.lg
+  },
+  noPerfText: {
+    fontSize: 12,
+    color: theme.colors.inkMuted,
+    textAlign: "center"
   }
 });
