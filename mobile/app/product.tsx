@@ -99,6 +99,18 @@ export default function ProductDetail() {
 
   useEffect(() => {
     if (product) {
+      if (language !== "en" && product.translations) {
+        try {
+          const tMap = typeof product.translations === "string" ? JSON.parse(product.translations) : product.translations;
+          if (tMap && tMap[language]) {
+            const cached = tMap[language];
+            const hasDev = /[\u0900-\u097F]/.test(cached.title || "") || /[\u0900-\u097F]/.test(cached.craft_story || "");
+            if (!((language === "te" || language === "ta" || language === "bn") && hasDev)) {
+              setTranslatedData(cached);
+            }
+          }
+        } catch {}
+      }
       fetchTranslation(language);
     }
   }, [product?.id, language]);
