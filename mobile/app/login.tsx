@@ -10,22 +10,34 @@ import {
   Platform,
   ScrollView,
   Image,
-  SafeAreaView,
   StatusBar
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { api } from "../src/api";
 import { saveSession } from "../src/storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../src/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_CLIENT_ID =
+const ANDROID_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
   process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
-  "26058075206-0jbhgsg44uh3irp9l4ucs3krv1adibng.apps.googleusercontent.com";
+  "";
+const WEB_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+  process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
+  "";
+
+const GOOGLE_DISCOVERY = {
+  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+  tokenEndpoint: "https://oauth2.googleapis.com/token",
+  revocationEndpoint: "https://oauth2.googleapis.com/revoke",
+};
 
 export default function Login() {
   const params = useLocalSearchParams<{ role?: string; redirect?: string }>();
@@ -70,34 +82,78 @@ export default function Login() {
     setErrorMessage("");
     setGoogleBusy(true);
     try {
-      const redirectUri =
+      const clientId =
         Platform.OS === "android"
-          ? "com.googleusercontent.apps.26058075206-0jbhgsg44uh3irp9l4ucs3krv1adibng:/oauth2redirect"
-          : AuthSession.makeRedirectUri();
+          ? ANDROID_CLIENT_ID
+          : (process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || WEB_CLIENT_ID);
 
-      const nonce = Math.random().toString(36).substring(2, 15);
-      const authUrl =
-        "https://accounts.google.com/o/oauth2/v2/auth?" +
-        "client_id=" + encodeURIComponent(GOOGLE_CLIENT_ID) +
-        "&redirect_uri=" + encodeURIComponent(redirectUri) +
-        "&response_type=token%20id_token" +
-        "&scope=" + encodeURIComponent("openid profile email") +
-        "&nonce=" + encodeURIComponent(nonce);
+      const redirectUri = "artisanai://oauth2redirect";
 
-      const res = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-      if (res.type === "success" && res.url) {
-        const matchAccess = res.url.match(/access_token=([^&]+)/);
-        const matchId = res.url.match(/id_token=([^&]+)/);
-        const accessToken = matchAccess ? decodeURIComponent(matchAccess[1]) : undefined;
-        const idToken = matchId ? decodeURIComponent(matchId[1]) : undefined;
+      // RFC 7636 PKCE Authorization Code flow required by Google Identity
+      const request = new AuthSession.AuthRequest({
+        clientId,
+        redirectUri,
+        scopes: ["openid", "profile", "email"],
+        responseType: AuthSession.ResponseType.Code,
+        usePKCE: true,
+      });
+
+      // Persist verifier and config so oauth2redirect screen can complete if Android navigates
+      if (request.codeVerifier) {
+        await AsyncStorage.setItem("google_oauth_code_verifier", request.codeVerifier);
+      }
+      await AsyncStorage.setItem("google_oauth_client_id", clientId);
+      await AsyncStorage.setItem("google_oauth_redirect_uri", redirectUri);
+
+      const res = await request.promptAsync(GOOGLE_DISCOVERY);
+      if (res.type === "success" && res.params?.code) {
+        let accessToken: string | undefined;
+        let idToken: string | undefined;
+
+        try {
+          const tokenResult = await AuthSession.exchangeCodeAsync(
+            {
+              clientId,
+              code: res.params.code,
+              redirectUri,
+              extraParams: {
+                code_verifier: request.codeVerifier || "",
+              },
+            },
+            GOOGLE_DISCOVERY
+          );
+          accessToken = tokenResult.accessToken;
+          idToken = tokenResult.idToken;
+        } catch (exchangeErr: any) {
+          // Token endpoint fallback for native clients
+          const bodyParams: Record<string, string> = {
+            client_id: clientId,
+            code: res.params.code,
+            grant_type: "authorization_code",
+            redirect_uri: redirectUri,
+            code_verifier: request.codeVerifier || "",
+          };
+          const formBody = Object.keys(bodyParams)
+            .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(bodyParams[k])}`)
+            .join("&");
+
+          const fallbackRes = await fetch("https://oauth2.googleapis.com/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formBody,
+          });
+          const fallbackJson = await fallbackRes.json();
+          accessToken = fallbackJson.access_token;
+          idToken = fallbackJson.id_token;
+        }
 
         if (!accessToken && !idToken) {
-          throw new Error("No Google authorization token received.");
+          throw new Error("Could not retrieve authorization tokens from Google.");
         }
 
         const data = await api.googleLoginBuyer({
           access_token: accessToken,
-          token: idToken
+          token: idToken,
         });
 
         if (!data?.access_token) {
@@ -111,9 +167,9 @@ export default function Login() {
           router.replace("/buyer");
         }
       } else if (res.type === "cancel" || res.type === "dismiss") {
-        // Dismissed
-      } else {
-        setErrorMessage("Google Sign-In was cancelled or incomplete.");
+        // User dismissed sheet
+      } else if (res.type === "error") {
+        throw new Error(res.error?.message || "Google Sign-In encountered an error.");
       }
     } catch (err: any) {
       setErrorMessage(
@@ -218,7 +274,7 @@ export default function Login() {
           <View style={styles.headerCard}>
             <View style={styles.headerBadge}>
               <Text style={styles.headerBadgeText}>
-                {isSeller ? "🎨 SELLER STUDIO PORTAL" : "🛍️ CUSTOMER SIGN IN / కస్టమర్ లాగిన్"}
+                {isSeller ? "🎨 SELLER STUDIO PORTAL" : "🛍️ CUSTOMER SIGN IN"}
               </Text>
             </View>
             <Text style={styles.headerTitle}>
@@ -257,7 +313,7 @@ export default function Login() {
                   <View style={styles.rowCenter}>
                     <AntDesign name="google" size={20} color="#EA4335" style={{ marginRight: 10 }} />
                     <Text style={styles.googleBtnText}>
-                      Continue with Google / గూగుల్ తో లాగిన్
+                      Continue with Google
                     </Text>
                   </View>
                 )}
@@ -275,7 +331,7 @@ export default function Login() {
                   <View style={styles.otpHeaderRow}>
                     <Text style={styles.otpTitle}>Mobile OTP Sign-In</Text>
                     <View style={styles.comingSoonTag}>
-                      <Text style={styles.comingSoonText}>Coming Soon / త్వరలో</Text>
+                      <Text style={styles.comingSoonText}>Coming Soon</Text>
                     </View>
                   </View>
                   <Text style={styles.otpDesc}>

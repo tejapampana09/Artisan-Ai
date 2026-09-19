@@ -1,373 +1,431 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
-  Pressable,
   FlatList,
   StyleSheet,
-  ActivityIndicator,
-  SafeAreaView,
-  StatusBar,
-  Platform,
-  Image,
-  Alert
+  Alert,
+  Modal,
+  Pressable,
+  ActivityIndicator
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
+import {
+  Screen,
+  Header,
+  BottomNavigation,
+  Card,
+  StatusBadge,
+  EmptyState,
+  PrimaryButton,
+  SecondaryButton,
+  OutlineButton
+} from "../src/components";
+
+const ORDER_STATUSES = [
+  { label: "Confirmed", value: "CONFIRMED", icon: "checkmark-circle-outline", color: theme.colors.info },
+  { label: "In Production", value: "PROCESSING", icon: "hammer-outline", color: theme.colors.accent },
+  { label: "Dispatched", value: "SHIPPED", icon: "airplane-outline", color: theme.colors.warning },
+  { label: "Delivered", value: "DELIVERED", icon: "home-outline", color: theme.colors.success },
+  { label: "Cancelled", value: "CANCELLED", icon: "close-circle-outline", color: theme.colors.error }
+];
 
 export default function SellerOrders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"ALL" | "PENDING" | "SHIPPED" | "DELIVERED">("ALL");
+  const [filter, setFilter] = useState<"ALL" | "PENDING" | "SHIPPED" | "DELIVERED">("ALL");
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [updating, setUpdating] = useState(false);
 
-  const load = async () => {
+  const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.orders("seller");
-      setOrders(data || []);
+      setOrders(Array.isArray(data) ? data : []);
     } catch (e: any) {
-      Alert.alert("Error", e?.detail || e?.message || "Could not load orders");
+      Alert.alert("Unable to load orders", e?.message || "Please check your network connection.");
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    load();
   }, []);
 
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  const handleUpdateStatus = async (newStatus: string) => {
+    if (!selectedOrder) return;
+    setUpdating(true);
+    try {
+      await api.updateOrderStatus(selectedOrder.id, newStatus);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === selectedOrder.id ? { ...o, status: newStatus } : o))
+      );
+      setSelectedOrder(null);
+      Alert.alert("Status Updated", `Order #${selectedOrder.id} is now marked as ${newStatus}.`);
+    } catch (e: any) {
+      Alert.alert("Update Failed", e?.detail || e?.message || "Could not update status.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const filteredOrders = orders.filter((o) => {
-    const status = (o.status || "").toUpperCase();
-    if (activeTab === "ALL") return true;
-    if (activeTab === "PENDING") return status === "PENDING" || status === "PROCESSING" || status === "CONFIRMED";
-    if (activeTab === "SHIPPED") return status === "SHIPPED";
-    if (activeTab === "DELIVERED") return status === "DELIVERED";
+    const st = (o.status || "").toUpperCase();
+    if (filter === "ALL") return true;
+    if (filter === "PENDING") return st === "PENDING" || st === "PROCESSING" || st === "CONFIRMED";
+    if (filter === "SHIPPED") return st === "SHIPPED";
+    if (filter === "DELIVERED") return st === "DELIVERED";
     return true;
   });
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FCF9F8" />
-
-      {/* Top App Bar */}
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.iconBtn} hitSlop={8}>
-          <Ionicons name="arrow-back" size={20} color="#9F3C16" />
-        </Pressable>
-        <Text style={styles.topBarTitle}>Incoming Orders</Text>
-        <Pressable onPress={load} style={styles.iconBtn} hitSlop={8}>
-          <Ionicons name="reload" size={18} color="#57423B" />
-        </Pressable>
-      </View>
+    <Screen scrollable={false} safeArea={false}>
+      <Header
+        title="Incoming Orders"
+        subtitle={`${orders.length} direct orders received`}
+        showBack={false}
+        rightAction={{
+          icon: "refresh-outline",
+          onPress: fetchOrders
+        }}
+      />
 
       {/* Filter Tabs */}
-      <View style={styles.tabsRow}>
-        {(["ALL", "PENDING", "SHIPPED", "DELIVERED"] as const).map((tab) => (
-          <Pressable
-            key={tab}
-            style={[styles.tabPill, activeTab === tab && styles.tabPillActive]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text
-              style={[
-                styles.tabPillText,
-                activeTab === tab && styles.tabPillTextActive
-              ]}
+      <View style={styles.filterRow}>
+        {(["ALL", "PENDING", "SHIPPED", "DELIVERED"] as const).map((tab) => {
+          const isActive = filter === tab;
+          const count = orders.filter((o) => {
+            const st = (o.status || "").toUpperCase();
+            if (tab === "ALL") return true;
+            if (tab === "PENDING") return st === "PENDING" || st === "PROCESSING" || st === "CONFIRMED";
+            if (tab === "SHIPPED") return st === "SHIPPED";
+            if (tab === "DELIVERED") return st === "DELIVERED";
+            return true;
+          }).length;
+
+          return (
+            <Pressable
+              key={tab}
+              style={[styles.filterChip, isActive && styles.filterChipActive]}
+              onPress={() => setFilter(tab)}
             >
-              {tab === "ALL" ? `All (${orders.length})` : tab}
-            </Text>
-          </Pressable>
-        ))}
+              <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                {tab === "ALL" ? `All (${orders.length})` : `${tab} (${count})`}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
-      {loading ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#9F3C16" />
-          <Text style={styles.loadingText}>Fetching order dispatch stream…</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredOrders}
-          keyExtractor={(item, idx) => String(item.id || idx)}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          onRefresh={load}
-          refreshing={loading}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="cube-outline" size={48} color="#DEC0B7" />
-              <Text style={styles.emptyTitle}>No orders in this state</Text>
-              <Text style={styles.emptySub}>
-                When customers purchase your handcrafted pieces via ONDC, their orders appear here in real time.
-              </Text>
-            </View>
-          }
-          renderItem={({ item }) => {
-            const status = (item.status || "CONFIRMED").toUpperCase();
-            const isDelivered = status === "DELIVERED";
-            const isShipped = status === "SHIPPED";
-            const total = Number(item.total_amount || item.amount || 0);
+      {/* Orders List */}
+      <FlatList
+        data={filteredOrders}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.listContent}
+        refreshing={loading}
+        onRefresh={fetchOrders}
+        ListEmptyComponent={
+          !loading ? (
+            <EmptyState
+              icon="receipt-outline"
+              title="No Orders Found"
+              description={
+                filter === "ALL"
+                  ? "Orders from marketplace buyers and ONDC channels will appear here automatically."
+                  : `No orders currently matching the '${filter}' state.`
+              }
+            />
+          ) : null
+        }
+        renderItem={({ item }) => {
+          const total = Number(item.total_amount || item.amount || 0);
+          const status = (item.status || "CONFIRMED").toUpperCase();
 
-            return (
-              <View style={styles.orderCard}>
-                <View style={styles.orderHeader}>
-                  <View>
-                    <Text style={styles.orderIdText}>Order #{item.id}</Text>
-                    <Text style={styles.orderDateText}>
-                      {item.created_at || "Scheduled for Dispatch"}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.statusPill,
-                      isDelivered && { backgroundColor: "#E8F5E9" },
-                      isShipped && { backgroundColor: "#FFF3E0" }
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.statusPillText,
-                        isDelivered && { color: "#2E7D32" },
-                        isShipped && { color: "#E65100" }
-                      ]}
-                    >
-                      {status}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.buyerRow}>
-                  <Ionicons name="person-outline" size={16} color="#8A726A" style={{ marginRight: 6 }} />
-                  <Text style={styles.buyerNameText}>
-                    Buyer:{" "}
-                    <Text style={{ fontWeight: "700", color: "#1B1C1C" }}>
-                      {item.buyer_name || "Verified Customer"}
-                    </Text>
+          return (
+            <Card style={styles.orderCard}>
+              <View style={styles.orderHead}>
+                <View>
+                  <Text style={styles.orderNumber}>Order #{item.id}</Text>
+                  <Text style={styles.orderDate}>
+                    {item.created_at ? new Date(item.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Recent Order"}
                   </Text>
                 </View>
+                <StatusBadge status={status} />
+              </View>
 
-                {item.delivery_address && (
-                  <View style={styles.addressRow}>
-                    <Ionicons name="location-outline" size={16} color="#8A726A" style={{ marginRight: 6 }} />
-                    <Text style={styles.addressText} numberOfLines={2}>
-                      {item.delivery_address}
-                    </Text>
-                  </View>
-                )}
+              <View style={styles.divider} />
 
-                <View style={styles.orderFooter}>
-                  <View>
-                    <Text style={styles.ondcLabel}>ONDC Logistics Guarantee</Text>
-                    <Text style={styles.priceAmount}>
-                      ₹{total.toLocaleString("en-IN")}
-                    </Text>
-                  </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="person-outline" size={16} color={theme.colors.inkMuted} />
+                <Text style={styles.detailText}>
+                  Buyer: <Text style={styles.detailBold}>{item.buyer_name || "Verified Patron"}</Text>
+                </Text>
+              </View>
 
-                  <Pressable
-                    style={styles.dispatchBtn}
-                    onPress={() => {
-                      Alert.alert(
-                        `Order #${item.id} Details`,
-                        `Buyer: ${item.buyer_name || "Customer"}\nPhone: ${item.buyer_phone || "Protected via ONDC"}\nAddress: ${item.delivery_address || "Provided on shipping label"}\n\nStatus: ${status}\nLogistics: ONDC Direct Artisan Dispatch`
-                      );
-                    }}
-                  >
-                    <Text style={styles.dispatchBtnText}>Manage Order</Text>
-                  </Pressable>
+              {item.delivery_address ? (
+                <View style={styles.detailRow}>
+                  <Ionicons name="location-outline" size={16} color={theme.colors.inkMuted} />
+                  <Text style={styles.detailText} numberOfLines={2}>
+                    {item.delivery_address}
+                  </Text>
+                </View>
+              ) : null}
+
+              <View style={styles.orderFooter}>
+                <View>
+                  <Text style={styles.payoutLabel}>Total Value</Text>
+                  <Text style={styles.payoutValue}>₹{total.toLocaleString("en-IN")}</Text>
+                </View>
+
+                <View style={styles.actionButtonGroup}>
+                  <SecondaryButton
+                    title="Update Status"
+                    size="small"
+                    icon="swap-horizontal-outline"
+                    onPress={() => setSelectedOrder(item)}
+                  />
                 </View>
               </View>
-            );
-          }}
-        />
-      )}
-    </SafeAreaView>
+            </Card>
+          );
+        }}
+      />
+
+      {/* Status Update Modal */}
+      <Modal
+        visible={!!selectedOrder}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedOrder(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Order #{selectedOrder?.id} Dispatch</Text>
+              <Pressable onPress={() => setSelectedOrder(null)}>
+                <Ionicons name="close" size={24} color={theme.colors.ink} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.modalSub}>
+              Select the new fulfillment status for this customer's craft order:
+            </Text>
+
+            <View style={styles.statusOptions}>
+              {ORDER_STATUSES.map((st) => {
+                const isSelected = selectedOrder?.status?.toUpperCase() === st.value;
+                return (
+                  <Pressable
+                    key={st.value}
+                    style={[styles.statusItem, isSelected && styles.statusItemActive]}
+                    onPress={() => handleUpdateStatus(st.value)}
+                    disabled={updating}
+                  >
+                    <View style={[styles.statusIconBox, { backgroundColor: st.color + "18" }]}>
+                      <Ionicons name={st.icon as any} size={20} color={st.color} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.statusLabel, isSelected && styles.statusLabelActive]}>
+                        {st.label}
+                      </Text>
+                      <Text style={styles.statusCode}>{st.value}</Text>
+                    </View>
+                    {isSelected ? (
+                      <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
+                    ) : (
+                      <Ionicons name="chevron-forward" size={16} color={theme.colors.inkMuted} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {updating && (
+              <View style={styles.updatingOverlay}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+                <Text style={styles.updatingText}>Updating order status on server...</Text>
+              </View>
+            )}
+
+            <OutlineButton
+              title="Close"
+              style={{ marginTop: 12 }}
+              onPress={() => setSelectedOrder(null)}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      <BottomNavigation role="seller" />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#FCF9F8"
-  },
-  topBar: {
+  filterRow: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 10 : 12,
-    paddingBottom: 12,
-    backgroundColor: "#FCF9F8",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0EDED"
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    gap: theme.spacing.xs,
+    backgroundColor: theme.colors.background
   },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F6F3F2",
-    alignItems: "center",
-    justifyContent: "center"
+  filterChip: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 6,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.surfaceVariant
   },
-  topBarTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#9F3C16"
+  filterChipActive: {
+    backgroundColor: theme.colors.primary
   },
-  tabsRow: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 8
+  filterChipText: {
+    ...theme.typography.caption,
+    color: theme.colors.inkMuted,
+    fontWeight: "600"
   },
-  tabPill: {
-    backgroundColor: "#EAE7E7",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20
-  },
-  tabPillActive: {
-    backgroundColor: "#9F3C16"
-  },
-  tabPillText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#57423B"
-  },
-  tabPillTextActive: {
-    color: "#FFFFFF"
+  filterChipTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700"
   },
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40
+    padding: theme.spacing.lg,
+    paddingBottom: 100
   },
   orderCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "rgba(222, 192, 183, 0.4)",
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1
+    marginBottom: theme.spacing.md
   },
-  orderHeader: {
+  orderHead: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start"
   },
-  orderIdText: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#1B1C1C"
+  orderNumber: {
+    ...theme.typography.h3,
+    color: theme.colors.ink
   },
-  orderDateText: {
-    fontSize: 11,
-    color: "#8A726A",
+  orderDate: {
+    ...theme.typography.caption,
+    color: theme.colors.inkMuted,
     marginTop: 2
-  },
-  statusPill: {
-    backgroundColor: "#FFDBCF",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10
-  },
-  statusPillText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#822801"
   },
   divider: {
     height: 1,
-    backgroundColor: "#F0EDED",
-    marginVertical: 12
+    backgroundColor: theme.colors.border,
+    marginVertical: theme.spacing.sm
   },
-  buyerRow: {
+  detailRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
     marginBottom: 6
   },
-  buyerNameText: {
-    fontSize: 13,
-    color: "#57423B"
+  detailText: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.inkLight,
+    flex: 1
   },
-  addressRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 10
-  },
-  addressText: {
-    flex: 1,
-    fontSize: 12,
-    color: "#8A726A",
-    lineHeight: 16
+  detailBold: {
+    color: theme.colors.ink,
+    fontWeight: "600"
   },
   orderFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 8,
-    paddingTop: 10,
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: "#F0EDED"
+    borderTopColor: theme.colors.border
   },
-  ondcLabel: {
-    fontSize: 10,
-    color: "#2E7D32",
+  payoutLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.inkMuted
+  },
+  payoutValue: {
+    ...theme.typography.h3,
+    color: theme.colors.primary
+  },
+  actionButtonGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end"
+  },
+  modalSheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
+    padding: theme.spacing.lg,
+    paddingBottom: 36
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8
+  },
+  modalTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.ink
+  },
+  modalSub: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.inkMuted,
+    marginBottom: 16
+  },
+  statusOptions: {
+    gap: 8
+  },
+  statusItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceVariant,
+    gap: 12
+  },
+  statusItemActive: {
+    backgroundColor: theme.colors.primaryLight + "15",
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary
+  },
+  statusIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  statusLabel: {
+    ...theme.typography.subtitle,
+    color: theme.colors.ink
+  },
+  statusLabelActive: {
+    color: theme.colors.primary,
     fontWeight: "700"
   },
-  priceAmount: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: "#9F3C16",
-    marginTop: 2
+  statusCode: {
+    ...theme.typography.caption,
+    color: theme.colors.inkMuted
   },
-  dispatchBtn: {
-    backgroundColor: "#F6F3F2",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#DEC0B7"
-  },
-  dispatchBtnText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#9F3C16"
-  },
-  centerBox: {
-    flex: 1,
+  updatingOverlay: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 30
+    gap: 8,
+    marginVertical: 12
   },
-  loadingText: {
-    fontSize: 13,
-    color: "#8A726A",
-    marginTop: 10
-  },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 40,
-    marginTop: 40
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#1B1C1C",
-    marginTop: 12
-  },
-  emptySub: {
-    fontSize: 13,
-    color: "#8A726A",
-    textAlign: "center",
-    marginTop: 6,
-    lineHeight: 18
+  updatingText: {
+    ...theme.typography.caption,
+    color: theme.colors.primary,
+    fontWeight: "600"
   }
 });

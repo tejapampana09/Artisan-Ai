@@ -1,529 +1,519 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
+  StyleSheet,
   Pressable,
   FlatList,
-  StyleSheet,
-  ActivityIndicator,
-  SafeAreaView,
-  StatusBar,
   Image,
   Alert,
-  TextInput,
-  Platform
+  ScrollView,
+  Switch
 } from "react-native";
-import { router } from "expo-router";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { router, useFocusEffect } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
+import {
+  Screen,
+  Header,
+  BottomNavigation,
+  SearchBar,
+  StatusBadge,
+  Chip,
+  EmptyState,
+  ErrorState,
+  LoadingSkeleton,
+  Modal,
+  PriceCard,
+  PrimaryButton
+} from "../src/components";
 
 export default function SellerProducts() {
-  const [items, setItems] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<"ALL" | "ACTIVE" | "DRAFT">("ALL");
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const load = async () => {
-    setLoading(true);
+  // Pricing Modal State
+  const [pricingProduct, setPricingProduct] = useState<any>(null);
+  const [pricingRec, setPricingRec] = useState<any>(null);
+  const [loadingRec, setLoadingRec] = useState(false);
+  const [acceptingPrice, setAcceptingPrice] = useState(false);
+
+  const loadProducts = async () => {
+    setErrorMessage("");
     try {
       const data = await api.sellerProducts();
-      setItems(data || []);
-    } catch (e: any) {
-      Alert.alert("Error", e?.detail || e?.message || "Could not load products");
+      setProducts(data || []);
+    } catch (err: any) {
+      setErrorMessage(err?.detail || err?.message || "Could not load products.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadProducts();
+    }, [])
+  );
 
-  const filteredItems = items.filter((p) => {
-    const matchesSearch =
-      !searchQuery.trim() ||
-      (p.title && p.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase()));
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadProducts();
+  };
 
-    if (!matchesSearch) return false;
-    if (activeFilter === "ALL") return true;
-    if (activeFilter === "ACTIVE") return (p.status || "").toUpperCase() === "PUBLISHED";
-    if (activeFilter === "DRAFT") return (p.status || "").toUpperCase() === "DRAFT";
-    return true;
-  });
-
-  const handlePriceSuggestion = async (productId: number, title: string) => {
+  const handleOpenPricing = async (prod: any) => {
+    setPricingProduct(prod);
+    setLoadingRec(true);
     try {
+      const rec = await api.priceRecommendation(prod.id);
+      setPricingRec(rec);
+    } catch (err: any) {
       Alert.alert(
-        "AI Price Recommendation",
-        `Analyzing demand and craft fair-trade floor for "${title}"…\n\nRecommended: ₹${Math.round(
-          (items.find((x) => x.id === productId)?.price || 500) * 1.15
-        )}\nProfit Margin: Guaranteed 20%+ Artisan Surplus via ONDC.`
+        "Pricing Unavailable",
+        err?.detail || err?.message || "Could not generate price recommendation."
+      );
+      setPricingProduct(null);
+    } finally {
+      setLoadingRec(false);
+    }
+  };
+
+  const handleAcceptPrice = async () => {
+    if (!pricingProduct) return;
+    setAcceptingPrice(true);
+    try {
+      await api.submitPriceDecision(pricingProduct.id, "ACCEPT");
+      Alert.alert("Price Updated", `Product price updated to recommended fair market value.`);
+      setPricingProduct(null);
+      loadProducts();
+    } catch (err: any) {
+      Alert.alert("Error", err?.detail || err?.message || "Failed to accept pricing.");
+    } finally {
+      setAcceptingPrice(false);
+    }
+  };
+
+  const handleRejectPrice = async () => {
+    if (!pricingProduct) return;
+    try {
+      await api.submitPriceDecision(pricingProduct.id, "REJECT");
+      Alert.alert("Price Kept", `Current price retained.`);
+      setPricingProduct(null);
+    } catch (err: any) {
+      Alert.alert("Error", err?.detail || err?.message || "Failed to record decision.");
+    }
+  };
+
+  const handleToggleSmartPricing = async (productId: number) => {
+    try {
+      const res = await api.toggleSmartPricing(productId);
+      const isNow = res?.auto_smart_pricing_enabled;
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === productId ? { ...p, auto_smart_pricing_enabled: isNow } : p
+        )
       );
     } catch (err: any) {
-      Alert.alert("Error", err.message);
+      Alert.alert("Error", err?.detail || err?.message || "Could not toggle smart pricing.");
     }
   };
 
+  const handleDeleteProduct = (productId: number, title: string) => {
+    Alert.alert(
+      "Delete Craft Piece",
+      `Are you sure you want to remove "${title}"? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.deleteProduct(productId);
+              setProducts((prev) => prev.filter((p) => p.id !== productId));
+            } catch (err: any) {
+              Alert.alert("Delete Failed", err?.detail || err?.message || "Could not delete.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const statusFilters = [
+    { label: "All Pieces", value: "ALL" },
+    { label: "Published", value: "PUBLISHED" },
+    { label: "AI Drafts", value: "DRAFT" },
+    { label: "In Review", value: "PENDING_APPROVAL" }
+  ];
+
+  const filteredProducts = products.filter((p) => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      (p.title && p.title.toLowerCase().includes(q)) ||
+      (p.category && p.category.toLowerCase().includes(q)) ||
+      (p.materials && p.materials.toLowerCase().includes(q));
+
+    const status = (p.status || "").toUpperCase();
+    let matchesStatus = true;
+    if (selectedStatus === "PUBLISHED") matchesStatus = status === "PUBLISHED";
+    else if (selectedStatus === "DRAFT") matchesStatus = status === "DRAFT" || status === "AI_GENERATED";
+    else if (selectedStatus === "PENDING_APPROVAL") matchesStatus = status === "PENDING_APPROVAL" || status === "APPROVED";
+
+    return matchesSearch && matchesStatus;
+  });
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FCF9F8" />
-
-      {/* Top Bar (Exact Stitch Design) */}
-      <View style={styles.topBar}>
-        <View style={styles.topBarLeft}>
-          <Pressable onPress={() => router.back()} style={styles.iconBtn} hitSlop={8}>
-            <Ionicons name="arrow-back" size={20} color="#9F3C16" />
-          </Pressable>
-          <View style={styles.brandRow}>
-            <MaterialIcons name="storefront" size={22} color="#9F3C16" />
-            <Text style={styles.topBarTitle}>My Creations</Text>
-          </View>
-        </View>
-
-        <View style={styles.topBarRight}>
-          <Pressable
-            style={styles.iconBtn}
-            onPress={() => setShowSearch(!showSearch)}
-            hitSlop={8}
-          >
-            <Ionicons name="search" size={18} color="#57423B" />
-          </Pressable>
+    <Screen scrollable={false} withBottomNavPadding>
+      <Header
+        title="My Creations"
+        subtitle={`${products.length} registered craft items`}
+        roleBadge="ARTISAN"
+        rightAction={
           <Pressable
             style={styles.addBtn}
-            onPress={() => router.push("/seller-ai")}
-            hitSlop={8}
+            onPress={() => router.push("/product-editor" as any)}
+            accessibilityRole="button"
+            accessibilityLabel="Add Craft Piece"
           >
-            <Ionicons name="add" size={20} color="#fff" />
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+            <Text style={styles.addBtnText}>New</Text>
           </Pressable>
-        </View>
+        }
+      />
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Filter by title, category, materials…"
+        />
       </View>
 
-      {/* Search Input Bar */}
-      {showSearch && (
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={16} color="#8A726A" style={{ marginRight: 8 }} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search creations by title or craft type…"
-            placeholderTextColor="#8A726A"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoFocus
-          />
-          {searchQuery ? (
-            <Pressable onPress={() => setSearchQuery("")}>
-              <Ionicons name="close-circle" size={18} color="#8A726A" />
-            </Pressable>
-          ) : null}
-        </View>
-      )}
-
-      {/* Filter Tabs (Stitch Design) */}
-      <View style={styles.tabsRow}>
-        <Pressable
-          style={[styles.tabPill, activeFilter === "ALL" && styles.tabPillActive]}
-          onPress={() => setActiveFilter("ALL")}
-        >
-          <Text
-            style={[styles.tabPillText, activeFilter === "ALL" && styles.tabPillTextActive]}
-          >
-            All ({items.length})
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.tabPill, activeFilter === "ACTIVE" && styles.tabPillActive]}
-          onPress={() => setActiveFilter("ACTIVE")}
-        >
-          <Text
-            style={[styles.tabPillText, activeFilter === "ACTIVE" && styles.tabPillTextActive]}
-          >
-            Active ({items.filter((x) => (x.status || "").toUpperCase() === "PUBLISHED").length})
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.tabPill, activeFilter === "DRAFT" && styles.tabPillActive]}
-          onPress={() => setActiveFilter("DRAFT")}
-        >
-          <Text
-            style={[styles.tabPillText, activeFilter === "DRAFT" && styles.tabPillTextActive]}
-          >
-            Drafts ({items.filter((x) => (x.status || "").toUpperCase() === "DRAFT").length})
-          </Text>
-        </Pressable>
+      {/* Status Filter Carousel */}
+      <View style={styles.filterBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+          {statusFilters.map((f) => (
+            <Chip
+              key={f.value}
+              label={f.label}
+              selected={selectedStatus === f.value}
+              onPress={() => setSelectedStatus(f.value)}
+            />
+          ))}
+        </ScrollView>
       </View>
 
-      {loading ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#9F3C16" />
-          <Text style={styles.loadingText}>Loading your craft creations…</Text>
+      {/* Product List */}
+      {loading && !refreshing ? (
+        <View style={styles.loadingBox}>
+          <LoadingSkeleton />
+          <LoadingSkeleton />
         </View>
+      ) : errorMessage ? (
+        <ErrorState message={errorMessage} onRetry={loadProducts} />
       ) : (
         <FlatList
-          data={filteredItems}
-          keyExtractor={(item, idx) => String(item.id || idx)}
+          data={filteredProducts}
+          keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-          onRefresh={load}
-          refreshing={loading}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="cube-outline" size={48} color="#DEC0B7" />
-              <Text style={styles.emptyTitle}>No creations found</Text>
-              <Text style={styles.emptySub}>
-                Use our Voice & AI Catalog Studio to turn your handmade pieces into live listings.
-              </Text>
-              <Pressable
-                style={styles.emptyCreateBtn}
-                onPress={() => router.push("/seller-ai")}
-              >
-                <Text style={styles.emptyCreateBtnText}>+ Create with AI</Text>
-              </Pressable>
-            </View>
+            <EmptyState
+              icon="cube-outline"
+              title="No Creations Found"
+              description={
+                searchQuery
+                  ? "Try changing your search keywords or filter status."
+                  : "Start by creating your first craft listing with AI."
+              }
+              actionLabel="Create with AI"
+              onAction={() => router.push("/seller-ai")}
+            />
           }
           renderItem={({ item }) => {
-            const isPublished = (item.status || "").toUpperCase() === "PUBLISHED";
-            const img = item.enhanced_image_url || item.image_url;
-            return (
-              <View style={styles.listingCard}>
-                <View style={styles.cardMain}>
-                  <Image
-                    source={{
-                      uri:
-                        img ||
-                        "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=300"
-                    }}
-                    style={styles.thumb}
-                  />
-                  <View style={styles.cardDetails}>
-                    <View style={styles.cardTopBadgeRow}>
-                      <View
-                        style={[
-                          styles.statusBadge,
-                          isPublished ? styles.statusPublished : styles.statusDraft
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.statusBadgeText,
-                            isPublished ? styles.statusTextPub : styles.statusTextDraft
-                          ]}
-                        >
-                          {isPublished ? "Active" : "Draft"}
-                        </Text>
-                      </View>
-                      <Text style={styles.idBadgeText}>ID: #CR-{item.id}</Text>
-                    </View>
+            const price = Number(item.price) || 0;
+            const stock = Number(item.stock) || 0;
+            const img =
+              item.enhanced_image_url ||
+              item.image_url ||
+              "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=400";
+            const isAutoPricing = !!item.auto_smart_pricing_enabled;
 
-                    <Text style={styles.itemTitle} numberOfLines={1}>
-                      {item.title || "Handcrafted Masterpiece"}
+            return (
+              <View style={styles.itemCard}>
+                <View style={styles.itemTopRow}>
+                  <Image source={{ uri: img }} style={styles.thumbnail} resizeMode="cover" />
+                  <View style={styles.itemMeta}>
+                    <View style={styles.badgeRow}>
+                      <StatusBadge status={item.status || "PUBLISHED"} type="product" />
+                      <Text style={styles.categoryText} numberOfLines={1}>
+                        {item.category || "Handicraft"}
+                      </Text>
+                    </View>
+                    <Text style={styles.itemTitle} numberOfLines={2}>
+                      {item.title || "Handmade Craft"}
                     </Text>
-                    <Text style={styles.itemCategory} numberOfLines={1}>
-                      {item.category || "Authentic Craft"}
-                    </Text>
+                    <View style={styles.itemPriceRow}>
+                      <Text style={styles.itemPrice}>₹{price.toLocaleString("en-IN")}</Text>
+                      <Text style={styles.stockLabel}>Stock: {stock} units</Text>
+                    </View>
                   </View>
                 </View>
 
-                <View style={styles.cardFooter}>
-                  <View>
-                    <Text style={styles.stockLabel}>
-                      Stock:{" "}
-                      <Text style={{ fontWeight: "700", color: "#1B1C1C" }}>
-                        {item.stock ?? 4} units
-                      </Text>
-                    </Text>
-                    <Text style={styles.priceValue}>
-                      ₹{Number(item.price || 0).toLocaleString("en-IN")}
-                    </Text>
+                {/* Smart Pricing Toggle Row */}
+                <View style={styles.smartPricingToggleRow}>
+                  <View style={styles.toggleTextContainer}>
+                    <Ionicons name="flash" size={14} color={theme.colors.accentDark} style={{ marginRight: 4 }} />
+                    <Text style={styles.toggleLabel}>Autonomous Smart Pricing</Text>
                   </View>
+                  <Switch
+                    value={isAutoPricing}
+                    onValueChange={() => handleToggleSmartPricing(item.id)}
+                    trackColor={{ false: theme.colors.border, true: theme.colors.primaryMuted }}
+                    thumbColor={isAutoPricing ? theme.colors.primary : "#FFFFFF"}
+                  />
+                </View>
 
-                  <View style={styles.cardActions}>
-                    <Pressable
-                      style={styles.actionBtnPrice}
-                      onPress={() => handlePriceSuggestion(item.id, item.title)}
-                    >
-                      <Ionicons name="sparkles" size={13} color="#9F3C16" style={{ marginRight: 4 }} />
-                      <Text style={styles.actionBtnPriceText}>AI Price</Text>
-                    </Pressable>
+                {/* Action Buttons Row */}
+                <View style={styles.itemActions}>
+                  <Pressable
+                    style={styles.actionBtnPricing}
+                    onPress={() => handleOpenPricing(item)}
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="sparkles" size={13} color={theme.colors.primary} style={{ marginRight: 4 }} />
+                    <Text style={styles.actionBtnPricingText}>Smart Pricing</Text>
+                  </Pressable>
 
-                    <Pressable
-                      style={styles.actionBtnView}
-                      onPress={() => router.push(`/product?id=${item.id}`)}
-                    >
-                      <Text style={styles.actionBtnViewText}>View</Text>
-                    </Pressable>
-                  </View>
+                  <Pressable
+                    style={styles.actionBtnEdit}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/product-editor",
+                        params: { id: String(item.id) }
+                      } as any)
+                    }
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="create-outline" size={14} color={theme.colors.ink} style={{ marginRight: 4 }} />
+                    <Text style={styles.actionBtnEditText}>Edit</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={styles.actionBtnDelete}
+                    onPress={() => handleDeleteProduct(item.id, item.title)}
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="trash-outline" size={14} color={theme.colors.danger} />
+                  </Pressable>
                 </View>
               </View>
             );
           }}
         />
       )}
-    </SafeAreaView>
+
+      {/* Smart Pricing Modal */}
+      {pricingProduct && (
+        <Modal
+          visible={!!pricingProduct}
+          onClose={() => setPricingProduct(null)}
+          title={`Pricing: ${pricingProduct.title}`}
+        >
+          {loadingRec ? (
+            <View style={{ paddingVertical: 32, alignItems: "center" }}>
+              <LoadingSkeleton />
+              <Text style={{ marginTop: 12, color: theme.colors.inkMuted }}>
+                Analyzing craft cost floor & live demand telemetry…
+              </Text>
+            </View>
+          ) : pricingRec ? (
+            <PriceCard
+              currentPrice={Number(pricingProduct.price) || 0}
+              recommendedPrice={Number(pricingRec.recommended_price) || 0}
+              costFloor={pricingRec.cost_floor ? Number(pricingRec.cost_floor) : undefined}
+              marketRange={pricingRec.market_range}
+              demandFactor={pricingRec.demand_factor}
+              reasoning={pricingRec.reasoning}
+              explanation={pricingRec.explanation}
+              onAccept={handleAcceptPrice}
+              onReject={handleRejectPrice}
+              isAccepting={acceptingPrice}
+            />
+          ) : null}
+        </Modal>
+      )}
+
+      <BottomNavigation role="seller" />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#FCF9F8"
-  },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 10 : 12,
-    paddingBottom: 14,
-    backgroundColor: "#FCF9F8",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0EDED"
-  },
-  topBarLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8
-  },
-  brandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6
-  },
-  topBarTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#9F3C16",
-    letterSpacing: -0.4
-  },
-  topBarRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8
-  },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F6F3F2",
-    alignItems: "center",
-    justifyContent: "center"
-  },
   addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#9F3C16",
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#9F3C16",
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 2
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: theme.radius.full
+  },
+  addBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+    marginLeft: 2
   },
   searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F6F3F2",
-    marginHorizontal: 20,
-    marginTop: 8,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: "#DEC0B7"
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: "#1B1C1C"
-  },
-  tabsRow: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 8
-  },
-  tabPill: {
-    backgroundColor: "#EAE7E7",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20
-  },
-  tabPillActive: {
-    backgroundColor: "#9F3C16"
-  },
-  tabPillText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#57423B"
-  },
-  tabPillTextActive: {
-    color: "#FFFFFF"
+  filterBar: {
+    paddingVertical: theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderLight
   },
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: 90
   },
-  listingCard: {
+  loadingBox: {
+    padding: theme.spacing.lg
+  },
+  itemCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
     borderWidth: 1,
-    borderColor: "rgba(222, 192, 183, 0.4)",
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1
+    borderColor: theme.colors.border,
+    ...theme.shadows.sm,
+    marginBottom: theme.spacing.md
   },
-  cardMain: {
-    flexDirection: "row",
-    gap: 12
+  itemTopRow: {
+    flexDirection: "row"
   },
-  thumb: {
-    width: 72,
-    height: 72,
-    borderRadius: 12,
-    backgroundColor: "#F0EDED"
+  thumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceMuted
   },
-  cardDetails: {
+  itemMeta: {
     flex: 1,
-    justifyContent: "center"
+    marginLeft: theme.spacing.md
   },
-  cardTopBadgeRow: {
+  badgeRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 4
   },
-  statusBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6
-  },
-  statusPublished: {
-    backgroundColor: "#FFDBCF"
-  },
-  statusDraft: {
-    backgroundColor: "#F0EDED"
-  },
-  statusBadgeText: {
+  categoryText: {
     fontSize: 10,
-    fontWeight: "800"
-  },
-  statusTextPub: {
-    color: "#822801"
-  },
-  statusTextDraft: {
-    color: "#8A726A"
-  },
-  idBadgeText: {
-    fontSize: 11,
-    color: "#8A726A"
+    fontWeight: "700",
+    color: theme.colors.inkMuted,
+    textTransform: "uppercase"
   },
   itemTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1B1C1C"
+    fontSize: theme.typography.sizes.base,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.ink,
+    lineHeight: 19
   },
-  itemCategory: {
-    fontSize: 12,
-    color: "#8A726A",
-    marginTop: 2
-  },
-  cardFooter: {
+  itemPriceRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#F0EDED"
+    justifyContent: "space-between",
+    marginTop: 6
+  },
+  itemPrice: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.black,
+    color: theme.colors.primary
   },
   stockLabel: {
-    fontSize: 12,
-    color: "#8A726A"
+    fontSize: 11,
+    color: theme.colors.inkMuted
   },
-  priceValue: {
-    fontSize: 17,
-    fontWeight: "900",
-    color: "#9F3C16",
-    marginTop: 2
-  },
-  cardActions: {
-    flexDirection: "row",
-    gap: 8
-  },
-  actionBtnPrice: {
+  smartPricingToggleRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFDBCF",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8
+    justifyContent: "space-between",
+    backgroundColor: theme.colors.surfaceMuted,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: theme.radius.sm,
+    marginTop: theme.spacing.sm
   },
-  actionBtnPriceText: {
+  toggleTextContainer: {
+    flexDirection: "row",
+    alignItems: "center"
+  },
+  toggleLabel: {
     fontSize: 11,
-    fontWeight: "800",
-    color: "#822801"
+    fontWeight: "600",
+    color: theme.colors.ink
   },
-  actionBtnView: {
-    backgroundColor: "#F6F3F2",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+  itemActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight
+  },
+  actionBtnPricing: {
+    flex: 1.2,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.primaryLight,
+    paddingVertical: 8,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
-    borderColor: "#DEC0B7"
+    borderColor: theme.colors.primaryMuted
   },
-  actionBtnViewText: {
+  actionBtnPricingText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#1B1C1C"
+    color: theme.colors.primary
   },
-  centerBox: {
+  actionBtnEdit: {
     flex: 1,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 30
+    backgroundColor: theme.colors.surface,
+    paddingVertical: 8,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border
   },
-  loadingText: {
-    fontSize: 13,
-    color: "#8A726A",
-    marginTop: 10
+  actionBtnEditText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: theme.colors.ink
   },
-  emptyContainer: {
+  actionBtnDelete: {
+    width: 34,
+    height: 34,
     alignItems: "center",
     justifyContent: "center",
-    padding: 40,
-    marginTop: 40
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#1B1C1C",
-    marginTop: 12
-  },
-  emptySub: {
-    fontSize: 13,
-    color: "#8A726A",
-    textAlign: "center",
-    marginTop: 6,
-    lineHeight: 18,
-    marginBottom: 20
-  },
-  emptyCreateBtn: {
-    backgroundColor: "#9F3C16",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12
-  },
-  emptyCreateBtnText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "800"
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.dangerLight
   }
 });

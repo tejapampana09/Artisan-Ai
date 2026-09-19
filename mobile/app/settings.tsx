@@ -8,10 +8,10 @@ import {
   Switch,
   Alert,
   TextInput,
-  SafeAreaView,
   StatusBar,
   Platform
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../src/theme";
@@ -126,6 +126,22 @@ export default function SettingsScreen() {
     );
   };
 
+  const isLoggedIn = Boolean(
+    session.token &&
+    session.token !== "guest_buyer_token" &&
+    session.user
+  );
+  const user = session.user;
+  const isSeller = session.domain === "STUDIO";
+  const userInitials = isLoggedIn
+    ? (user?.full_name || user?.name || (isSeller ? "Artisan" : "Buyer"))
+        .split(" ")
+        .map((w: string) => w[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "?";
+
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out from Artisan AI?", [
       { text: "Cancel", style: "cancel" },
@@ -134,20 +150,12 @@ export default function SettingsScreen() {
         style: "destructive",
         onPress: async () => {
           await clearSession();
-          router.replace("/");
+          setSession({ token: null, domain: null, user: null });
+          Alert.alert("Signed Out", "You have been signed out successfully.");
         }
       }
     ]);
   };
-
-  const user = session.user;
-  const isSeller = session.domain === "STUDIO";
-  const userInitials = (user?.full_name || user?.name || (isSeller ? "Artisan" : "Buyer"))
-    .split(" ")
-    .map((w: string) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -155,7 +163,13 @@ export default function SettingsScreen() {
       
       {/* Top Bar */}
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace("/buyer");
+          }}
+          style={styles.backBtn}
+        >
           <Text style={styles.backText}>‹ Back</Text>
         </Pressable>
         <Text style={styles.pageTitle}>Settings & Profile</Text>
@@ -172,23 +186,55 @@ export default function SettingsScreen() {
         
         {/* Profile Card */}
         <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{userInitials}</Text>
+          <View style={[styles.avatar, !isLoggedIn && { backgroundColor: "#8C7E72" }]}>
+            <Text style={styles.avatarText}>{isLoggedIn ? userInitials : "👤"}</Text>
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>
-              {user?.full_name || user?.name || (isSeller ? "Artisan Maker" : "Valued Customer")}
+              {isLoggedIn
+                ? (user?.full_name || user?.name || (isSeller ? "Artisan Maker" : "Customer"))
+                : "Not Logged In"}
             </Text>
             <Text style={styles.profileEmail}>
-              {user?.email || "Active Session"}
+              {isLoggedIn
+                ? (user?.email || "Active Session")
+                : "Guest Visitor"}
             </Text>
-            <View style={[styles.roleBadge, isSeller ? styles.sellerBadge : styles.buyerBadge]}>
-              <Text style={[styles.roleBadgeText, isSeller ? styles.sellerBadgeText : styles.buyerBadgeText]}>
-                {isSeller ? "🎨 Artisan Studio (Seller)" : "🛍️ Heritage Marketplace (Buyer)"}
+            <View style={[
+              styles.roleBadge,
+              !isLoggedIn
+                ? styles.guestBadge
+                : isSeller
+                ? styles.sellerBadge
+                : styles.buyerBadge
+            ]}>
+              <Text style={[
+                styles.roleBadgeText,
+                !isLoggedIn
+                  ? styles.guestBadgeText
+                  : isSeller
+                  ? styles.sellerBadgeText
+                  : styles.buyerBadgeText
+              ]}>
+                {!isLoggedIn
+                  ? "🔒 Guest Mode"
+                  : isSeller
+                  ? "🎨 Artisan Studio (Seller)"
+                  : "🛍️ Heritage Marketplace (Buyer)"}
               </Text>
             </View>
           </View>
         </View>
+
+        {!isLoggedIn && (
+          <Pressable
+            style={styles.signInCardBtn}
+            onPress={() => router.push("/login")}
+          >
+            <Text style={styles.signInCardBtnText}>✨ Sign In to Artisan AI</Text>
+            <Text style={styles.signInCardBtnSub}>Access orders, saved wishlist & direct artisan enquiries</Text>
+          </Pressable>
+        )}
 
         {/* Quick Nav Switcher */}
         <View style={styles.section}>
@@ -407,10 +453,16 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Sign Out Button */}
-        <Pressable style={styles.signOutBtn} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign Out from Artisan AI</Text>
-        </Pressable>
+        {/* Sign Out / Sign In Action */}
+        {isLoggedIn ? (
+          <Pressable style={styles.signOutBtn} onPress={handleSignOut}>
+            <Text style={styles.signOutText}>Sign Out from Artisan AI</Text>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.signInBottomBtn} onPress={() => router.push("/login")}>
+            <Text style={styles.signInBottomText}>Sign In / Create Account</Text>
+          </Pressable>
+        )}
 
         <Text style={styles.footerNote}>
           Artisan AI · Empowering Indian Heritage Artisans with GenAI & ONDC
@@ -744,6 +796,51 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     color: "#DC2626"
+  },
+  guestBadge: {
+    backgroundColor: "#F0EBE1",
+    borderColor: "#DCD2C6"
+  },
+  guestBadgeText: {
+    color: "#6B5B51",
+    fontWeight: "700"
+  },
+  signInCardBtn: {
+    backgroundColor: "#FAF6F0",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: theme.accent,
+    marginBottom: 20,
+    alignItems: "center"
+  },
+  signInCardBtnText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: theme.accent
+  },
+  signInCardBtnSub: {
+    fontSize: 12,
+    color: "#796A5F",
+    marginTop: 4,
+    textAlign: "center"
+  },
+  signInBottomBtn: {
+    backgroundColor: theme.accent,
+    borderRadius: 16,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginTop: 10,
+    shadowColor: theme.accent,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3
+  },
+  signInBottomText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#FFFFFF"
   },
   footerNote: {
     textAlign: "center",

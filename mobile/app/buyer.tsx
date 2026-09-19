@@ -10,16 +10,18 @@ import {
   ActivityIndicator,
   Modal,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   Platform
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons, AntDesign, Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
 import { addToCart, getCartCount, subscribeCart } from "../src/cart";
+import { BottomNavigation } from "../src/components";
+import { subscribeNotifications } from "../src/notifications";
 
 const CACHE_KEY = "artisan_cached_marketplace_products";
 const CATEGORIES = [
@@ -41,12 +43,17 @@ export default function BuyerScreen() {
   const [cartCount, setCartCount] = useState(0);
   const [addedToast, setAddedToast] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
 
   useEffect(() => {
     loadProducts();
     updateCart();
     const unsub = subscribeCart(() => updateCart());
-    return () => unsub();
+    const unsubNotifs = subscribeNotifications((_, count) => setUnreadNotifs(count));
+    return () => {
+      unsub();
+      unsubNotifs();
+    };
   }, []);
 
   const updateCart = async () => {
@@ -238,11 +245,18 @@ export default function BuyerScreen() {
         <View style={styles.topActions}>
           <Pressable
             style={styles.topIconBtn}
-            onPress={() => setShowNotifications(true)}
+            onPress={() => router.push("/notifications")}
             hitSlop={8}
+            accessibilityLabel="Notifications"
           >
             <Ionicons name="notifications-outline" size={21} color={theme.ink} />
-            <View style={styles.notifDot} />
+            {unreadNotifs > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>
+                  {unreadNotifs > 99 ? "99+" : unreadNotifs}
+                </Text>
+              </View>
+            )}
           </Pressable>
 
           <Pressable
@@ -398,40 +412,8 @@ export default function BuyerScreen() {
         }
       />
 
-      {/* Floating Bottom Navigation Bar (Mobile Native Standard) */}
-      <View style={styles.bottomNav}>
-        <Pressable style={styles.navItem} onPress={() => {}}>
-          <Ionicons name="bag-handle" size={22} color={theme.accent} />
-          <Text style={[styles.navLabel, { color: theme.accent, fontWeight: "800" }]}>Explore</Text>
-        </Pressable>
-
-        <Pressable style={styles.navItem} onPress={() => router.push("/buyer-assistant")}>
-          <Ionicons name="sparkles-outline" size={22} color={theme.muted} />
-          <Text style={styles.navLabel}>AI Concierge</Text>
-        </Pressable>
-
-        <Pressable style={styles.navItem} onPress={() => router.push("/buyer-cart")}>
-          <View>
-            <Ionicons name="cart-outline" size={24} color={theme.ink} />
-            {cartCount > 0 && (
-              <View style={styles.cartBadge}>
-                <Text style={styles.cartBadgeText}>{cartCount}</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.navLabel}>Bag</Text>
-        </Pressable>
-
-        <Pressable style={styles.navItem} onPress={() => router.push("/buyer-orders")}>
-          <Ionicons name="cube-outline" size={22} color={theme.muted} />
-          <Text style={styles.navLabel}>Orders</Text>
-        </Pressable>
-
-        <Pressable style={styles.navItem} onPress={() => router.push("/settings" as any)}>
-          <Ionicons name="person-outline" size={22} color={theme.muted} />
-          <Text style={styles.navLabel}>Profile</Text>
-        </Pressable>
-      </View>
+      {/* Role-Based Bottom Navigation */}
+      <BottomNavigation role="buyer" />
 
       {/* Notifications Modal */}
       <Modal
@@ -989,5 +971,24 @@ const styles = StyleSheet.create({
   notifCardTime: {
     fontSize: 10,
     color: "#9E9E9E"
+  },
+  notifBadge: {
+    position: "absolute",
+    top: -2,
+    right: -4,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 9,
+    minWidth: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: "#FAF9F6"
+  },
+  notifBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "800"
   }
 });

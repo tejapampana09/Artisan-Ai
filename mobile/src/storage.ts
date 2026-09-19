@@ -1,28 +1,72 @@
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const TOKEN_KEY = "artisan_ai_mobile_token";
-const DOMAIN_KEY = "artisan_ai_mobile_domain";
-const USER_KEY = "artisan_ai_mobile_user";
+const STUDIO_TOKEN_KEY = "artisan_ai_studio_token";
+const MARKETPLACE_TOKEN_KEY = "artisan_ai_marketplace_token";
+const ACTIVE_DOMAIN_KEY = "artisan_ai_active_domain";
+const STUDIO_USER_KEY = "artisan_ai_studio_user";
+const MARKETPLACE_USER_KEY = "artisan_ai_marketplace_user";
 
-export async function saveSession(token: string, domain: "STUDIO" | "MARKETPLACE", user: unknown) {
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
-  await AsyncStorage.setItem(DOMAIN_KEY, domain);
-  await AsyncStorage.setItem(USER_KEY, JSON.stringify(user ?? null));
+export type AuthDomain = "STUDIO" | "MARKETPLACE";
+
+export interface UserSession {
+  token: string | null;
+  domain: AuthDomain | null;
+  user: any | null;
 }
 
-export async function getSession() {
-  const token = await SecureStore.getItemAsync(TOKEN_KEY);
-  const domain = await AsyncStorage.getItem(DOMAIN_KEY);
-  const rawUser = await AsyncStorage.getItem(USER_KEY);
-  return {
-    token,
-    domain: domain as "STUDIO" | "MARKETPLACE" | null,
-    user: rawUser ? JSON.parse(rawUser) : null
-  };
+export async function saveSession(
+  token: string,
+  domain: AuthDomain,
+  user: unknown
+): Promise<void> {
+  if (domain === "STUDIO") {
+    await SecureStore.setItemAsync(STUDIO_TOKEN_KEY, token);
+    await AsyncStorage.setItem(STUDIO_USER_KEY, JSON.stringify(user ?? null));
+  } else {
+    await SecureStore.setItemAsync(MARKETPLACE_TOKEN_KEY, token);
+    await AsyncStorage.setItem(MARKETPLACE_USER_KEY, JSON.stringify(user ?? null));
+  }
+  await AsyncStorage.setItem(ACTIVE_DOMAIN_KEY, domain);
 }
 
-export async function clearSession() {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
-  await AsyncStorage.multiRemove([DOMAIN_KEY, USER_KEY]);
+export async function getSession(requestedDomain?: AuthDomain): Promise<UserSession> {
+  const activeDomain = (await AsyncStorage.getItem(ACTIVE_DOMAIN_KEY)) as AuthDomain | null;
+  const targetDomain = requestedDomain || activeDomain || "MARKETPLACE";
+
+  if (targetDomain === "STUDIO") {
+    const token = await SecureStore.getItemAsync(STUDIO_TOKEN_KEY);
+    const rawUser = await AsyncStorage.getItem(STUDIO_USER_KEY);
+    return {
+      token,
+      domain: "STUDIO",
+      user: rawUser ? JSON.parse(rawUser) : null
+    };
+  } else {
+    const token = await SecureStore.getItemAsync(MARKETPLACE_TOKEN_KEY);
+    const rawUser = await AsyncStorage.getItem(MARKETPLACE_USER_KEY);
+    return {
+      token,
+      domain: "MARKETPLACE",
+      user: rawUser ? JSON.parse(rawUser) : null
+    };
+  }
+}
+
+export async function setActiveDomain(domain: AuthDomain): Promise<void> {
+  await AsyncStorage.setItem(ACTIVE_DOMAIN_KEY, domain);
+}
+
+export async function clearSession(domain?: AuthDomain): Promise<void> {
+  if (!domain || domain === "STUDIO") {
+    await SecureStore.deleteItemAsync(STUDIO_TOKEN_KEY).catch(() => {});
+    await AsyncStorage.removeItem(STUDIO_USER_KEY).catch(() => {});
+  }
+  if (!domain || domain === "MARKETPLACE") {
+    await SecureStore.deleteItemAsync(MARKETPLACE_TOKEN_KEY).catch(() => {});
+    await AsyncStorage.removeItem(MARKETPLACE_USER_KEY).catch(() => {});
+  }
+  if (!domain) {
+    await AsyncStorage.removeItem(ACTIVE_DOMAIN_KEY).catch(() => {});
+  }
 }

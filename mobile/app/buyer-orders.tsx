@@ -10,7 +10,8 @@ import {
   RefreshControl,
   Image,
   Platform,
-  StatusBar
+  StatusBar,
+  Alert
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -40,6 +41,31 @@ export default function BuyerOrders() {
     loadOrders();
   }, []);
 
+  const handleCancelOrder = (orderId: number) => {
+    Alert.alert(
+      "Cancel Order",
+      `Are you sure you want to cancel Order #${orderId}?`,
+      [
+        { text: "Keep Order", style: "cancel" },
+        {
+          text: "Yes, Cancel",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.cancelBuyerOrder(orderId);
+              setOrders((prev) =>
+                prev.map((o) => (o.id === orderId ? { ...o, status: "CANCELLED" } : o))
+              );
+              Alert.alert("Order Cancelled", `Order #${orderId} has been cancelled.`);
+            } catch (err: any) {
+              Alert.alert("Cancellation Failed", err?.detail || err?.message || "Could not cancel order.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const filteredOrders = orders.filter((o) => {
     if (statusFilter === "ALL") return true;
     const status = (o.status || "").toUpperCase();
@@ -66,7 +92,14 @@ export default function BuyerOrders() {
     <View style={styles.container}>
       {/* Top Header */}
       <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={10}>
+        <Pressable
+          style={styles.backBtn}
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace("/buyer");
+          }}
+          hitSlop={10}
+        >
           <Ionicons name="arrow-back" size={20} color={theme.ink} />
         </Pressable>
         <Text style={styles.headerTitle}>My Orders</Text>
@@ -221,6 +254,15 @@ export default function BuyerOrders() {
 
                 {/* Action Buttons */}
                 <View style={styles.actionRow}>
+                  {["CONFIRMED", "PROCESSING", "PENDING"].includes((item.status || "").toUpperCase()) && (
+                    <Pressable
+                      style={[styles.helpBtn, { borderColor: "#FFCDD2" }]}
+                      onPress={() => handleCancelOrder(item.id)}
+                    >
+                      <Ionicons name="close-circle-outline" size={14} color="#C62828" style={{ marginRight: 4 }} />
+                      <Text style={[styles.helpBtnText, { color: "#C62828" }]}>Cancel Order</Text>
+                    </Pressable>
+                  )}
                   <Pressable
                     style={styles.helpBtn}
                     onPress={() => router.push("/buyer-assistant")}

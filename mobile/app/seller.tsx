@@ -1,825 +1,689 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
-  Pressable,
-  ScrollView,
   StyleSheet,
-  ActivityIndicator,
-  SafeAreaView,
-  StatusBar,
+  Pressable,
   Image,
-  Alert,
   RefreshControl,
-  Platform
+  ScrollView
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { api } from "../src/api";
 import { getSession } from "../src/storage";
 import { theme } from "../src/theme";
+import {
+  Screen,
+  Header,
+  BottomNavigation,
+  StatCard,
+  PrimaryButton,
+  SecondaryButton,
+  StatusBadge,
+  EmptyState,
+  ErrorState,
+  SkeletonBox,
+  SectionHeader
+} from "../src/components";
 
 export default function SellerDashboard() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [ondc, setOndc] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
+  const [dashboard, setDashboard] = useState<any>(null);
+  const [readiness, setReadiness] = useState<any>(null);
+  const [opportunities, setOpportunities] = useState<any>(null);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const loadData = async () => {
+    setErrorMessage("");
     try {
-      const [p, o, s, sess] = await Promise.all([
-        api.sellerProducts().catch(() => []),
-        api.orders("seller").catch(() => []),
-        api.ondcStatus().catch(() => null),
-        getSession()
+      const [sess, dash, read, opps, ords] = await Promise.all([
+        getSession("STUDIO"),
+        api.sellerDashboard().catch(() => null),
+        api.sellerReadiness().catch(() => null),
+        api.sellerOpportunities().catch(() => null),
+        api.orders("seller").catch(() => [])
       ]);
-      setProducts(p || []);
-      setOrders(o || []);
-      setOndc(s);
+
       setUser(sess.user);
-    } catch (e: any) {
-      console.warn("Seller load error:", e);
+      setDashboard(dash);
+      setReadiness(read);
+      setOpportunities(opps);
+      setOrders(ords || []);
+    } catch (err: any) {
+      setErrorMessage(err?.detail || err?.message || "Failed to load dashboard data.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
     loadData();
   };
 
-  const totalRevenue = orders.reduce((sum, o) => {
-    const amt = Number(o.total_amount || o.amount || 0);
-    return sum + amt;
-  }, 0);
+  const artisanName = user?.name || "Verified Artisan";
+  const craftSpecialty = user?.craft || user?.craft_specialization || "Authentic Handcrafted Heritage";
+  const avatarUrl =
+    user?.avatar_url ||
+    `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(artisanName)}`;
 
-  const pendingOrders = orders.filter(
-    (o) => (o.status || "").toUpperCase() === "PENDING" || (o.status || "").toUpperCase() === "PROCESSING"
-  );
+  const totalRevenue = dashboard?.total_revenue ?? 0;
+  const unitsSold = dashboard?.units_sold ?? 0;
+  const totalOrders = dashboard?.total_orders ?? orders.length;
+  const totalViews = dashboard?.total_views ?? 0;
+  const totalEnquiries = dashboard?.total_enquiries ?? 0;
+  const deliveryStatus = dashboard?.delivery_status || {
+    confirmed: 0,
+    processing: 0,
+    shipped: 0,
+    delivered: 0,
+    cancelled: 0
+  };
 
-  const artisanName = user?.name || "Eleanor Vance";
-  const craftSpecialty = user?.craft_type || "Heritage Terracotta & Handlooms";
+  const pendingOrders = orders.filter((o) => {
+    const s = (o.status || "").toUpperCase();
+    return s === "CONFIRMED" || s === "PROCESSING" || s === "PENDING";
+  });
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FCF9F8" />
+    <Screen
+      scrollable
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      withBottomNavPadding
+      contentContainerStyle={styles.container}
+    >
+      {/* Header */}
+      <Header
+        title="Artisan Studio"
+        subtitle="Sovereign Rural Craft Commerce"
+        roleBadge="ARTISAN"
+        rightAction={
+          <View style={styles.headerActions}>
+            <Pressable
+              style={styles.switchModeBtn}
+              onPress={() => router.replace("/buyer")}
+              accessibilityRole="button"
+              accessibilityLabel="Switch to Buyer View"
+            >
+              <Text style={styles.switchModeText}>🛍️ Buyer View</Text>
+            </Pressable>
+            <Pressable
+              style={styles.iconBtn}
+              onPress={() => router.push("/settings")}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Settings"
+            >
+              <Ionicons name="settings-outline" size={18} color={theme.colors.ink} />
+            </Pressable>
+          </View>
+        }
+      />
 
-      {/* Top App Bar (Stitch Design) */}
-      <View style={styles.topBar}>
-        <View style={styles.brandRow}>
-          <MaterialIcons name="storefront" size={24} color="#9F3C16" />
-          <Text style={styles.brandTitle}>Artisan Studio</Text>
+      {loading && !refreshing ? (
+        <View style={styles.loadingContainer}>
+          <SkeletonBox height={90} borderRadius={theme.radius.lg} style={{ marginBottom: 16 }} />
+          <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
+            <SkeletonBox height={90} style={{ flex: 1 }} borderRadius={theme.radius.md} />
+            <SkeletonBox height={90} style={{ flex: 1 }} borderRadius={theme.radius.md} />
+          </View>
+          <SkeletonBox height={140} borderRadius={theme.radius.lg} style={{ marginBottom: 16 }} />
         </View>
-
-        <View style={styles.topActions}>
-          <Pressable
-            style={styles.switchModeBtn}
-            onPress={() => router.replace("/buyer")}
-          >
-            <Text style={styles.switchModeText}>🛍️ Buyer View</Text>
-          </Pressable>
-          <Pressable
-            style={styles.iconCircle}
-            onPress={() => router.push("/settings")}
-            hitSlop={8}
-          >
-            <Ionicons name="settings-outline" size={19} color="#1B1C1C" />
-          </Pressable>
-        </View>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        {/* Creator Greeting Section (Exact Match to Stitch) */}
-        <View style={styles.creatorCard}>
-          <View style={styles.creatorLeft}>
-            <Image
-              source={{
-                uri:
-                  user?.avatar_url ||
-                  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400"
-              }}
-              style={styles.creatorAvatar}
-            />
-            <View style={{ flex: 1 }}>
-              <View style={styles.proBadge}>
-                <Text style={styles.proBadgeText}>PRO CREATOR</Text>
+      ) : errorMessage ? (
+        <ErrorState message={errorMessage} onRetry={loadData} />
+      ) : (
+        <>
+          {/* Artisan Profile Card */}
+          <View style={styles.profileCard}>
+            <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" />
+            <View style={styles.profileInfo}>
+              <View style={styles.verifiedRow}>
+                <Text style={styles.verifiedBadge}>VERIFIED MASTER ARTISAN</Text>
               </View>
-              <Text style={styles.creatorName} numberOfLines={1}>
+              <Text style={styles.artisanName} numberOfLines={1}>
                 {artisanName}
               </Text>
-              <Text style={styles.creatorSub} numberOfLines={1}>
+              <Text style={styles.craftSpecialty} numberOfLines={1}>
                 {craftSpecialty}
               </Text>
             </View>
+            <Pressable
+              style={styles.editProfileBtn}
+              onPress={() => router.push("/settings")}
+              hitSlop={8}
+            >
+              <Ionicons name="create-outline" size={18} color={theme.colors.primary} />
+            </Pressable>
           </View>
 
-          <Pressable
-            style={styles.editProfileBtn}
-            onPress={() => router.push("/settings")}
-          >
-            <Ionicons name="sparkles" size={16} color="#9F3C16" />
-          </Pressable>
-        </View>
-
-        {/* Summary Metric Cards (Bento / Asymmetric Grid) */}
-        <View style={styles.bentoGrid}>
-          {/* Card 1: Total Earnings */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricCardHeader}>
-              <Text style={styles.metricLabel}>Total Earnings</Text>
-              <Ionicons name="wallet-outline" size={18} color="#9F3C16" />
-            </View>
-            <Text style={styles.metricValue}>
-              ₹{totalRevenue > 0 ? totalRevenue.toLocaleString("en-IN") : "48,250"}
-            </Text>
-            <Text style={styles.metricGain}>+14% this month</Text>
+          {/* Key Metrics Grid */}
+          <View style={styles.metricsGrid}>
+            <StatCard
+              label="Total Revenue"
+              value={`₹${totalRevenue.toLocaleString("en-IN")}`}
+              subtitle={`${unitsSold} items fulfilled`}
+              icon="wallet-outline"
+              iconColor={theme.colors.primary}
+              style={{ flex: 1 }}
+            />
+            <StatCard
+              label="Pending Orders"
+              value={pendingOrders.length}
+              subtitle={pendingOrders.length > 0 ? "Requires Dispatch" : "All orders dispatched"}
+              icon="cube-outline"
+              iconColor={theme.colors.accentDark}
+              onPress={() => router.push("/seller-orders")}
+              style={{ flex: 1 }}
+            />
           </View>
 
-          {/* Card 2: Active Listings */}
-          <Pressable
-            style={styles.metricCard}
-            onPress={() => router.push("/seller-products")}
-          >
-            <View style={styles.metricCardHeader}>
-              <Text style={styles.metricLabel}>Active Listings</Text>
-              <Ionicons name="cube-outline" size={18} color="#9F3C16" />
-            </View>
-            <Text style={styles.metricValue}>{products.length || 18}</Text>
-            <Text style={styles.metricSub}>3 in AI draft</Text>
-          </Pressable>
-
-          {/* Card 3: Pending Orders */}
-          <Pressable
-            style={styles.metricCard}
-            onPress={() => router.push("/seller-orders")}
-          >
-            <View style={styles.metricCardHeader}>
-              <Text style={styles.metricLabel}>Pending Orders</Text>
-              <Ionicons name="cart-outline" size={18} color="#835500" />
-            </View>
-            <Text style={styles.metricValue}>{pendingOrders.length || 3}</Text>
-            <Text style={[styles.metricSub, { color: "#835500", fontWeight: "700" }]}>
-              Action required
-            </Text>
-          </Pressable>
-
-          {/* Card 4: Avg Rating */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricCardHeader}>
-              <Text style={styles.metricLabel}>Avg Rating</Text>
-              <Ionicons name="star" size={18} color="#FEB956" />
-            </View>
-            <Text style={styles.metricValue}>4.9 ★</Text>
-            <Text style={styles.metricSub}>From 142 reviews</Text>
+          <View style={styles.metricsGrid}>
+            <StatCard
+              label="Buyer Enquiries"
+              value={totalEnquiries}
+              subtitle="Direct artisan leads"
+              icon="chatbubbles-outline"
+              iconColor={theme.colors.info}
+              onPress={() => router.push("/seller-enquiries")}
+              style={{ flex: 1 }}
+            />
+            <StatCard
+              label="Catalog Views"
+              value={totalViews}
+              subtitle="Consumer interest"
+              icon="eye-outline"
+              iconColor={theme.colors.success}
+              style={{ flex: 1 }}
+            />
           </View>
-        </View>
 
-        {/* Quick Actions (3 Rounded Buttons) */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-        </View>
-        <View style={styles.quickActionsGrid}>
-          <Pressable
-            style={styles.actionCardPrimary}
-            onPress={() => router.push("/seller-ai")}
-          >
-            <Ionicons name="add-circle" size={24} color="#fff" />
-            <Text style={styles.actionCardPrimaryText}>Add New Piece</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.actionCardSecondary}
-            onPress={() => router.push("/seller-enquiries")}
-          >
-            <Ionicons name="chatbubbles-outline" size={22} color="#9F3C16" />
-            <Text style={styles.actionCardSecondaryText}>Commissions</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.actionCardSecondary}
-            onPress={() => {
-              Alert.alert(
-                "ONDC Settlements & Payouts",
-                `Direct ONDC Bank Settlements: ACTIVE\n\nTotal Settled: ₹${totalRevenue || "48,250"}\nPending Payout: ₹3,420\nGateway: ONDC Financial Network (T+1 Settlement)`
-              );
-            }}
-          >
-            <Ionicons name="cash-outline" size={22} color="#9F3C16" />
-            <Text style={styles.actionCardSecondaryText}>Payouts</Text>
-          </Pressable>
-        </View>
-
-        {/* AI Catalog Studio Hero Feature Card */}
-        <Pressable
-          style={styles.aiStudioBanner}
-          onPress={() => router.push("/seller-ai")}
-        >
-          <View style={styles.aiStudioTag}>
-            <Ionicons name="sparkles" size={13} color="#FEB956" style={{ marginRight: 4 }} />
-            <Text style={styles.aiStudioTagText}>AI STUDIO & CATALOG GENERATOR</Text>
-          </View>
-          <Text style={styles.aiStudioTitle}>
-            Create professional listings with AI Storytelling
-          </Text>
-          <Text style={styles.aiStudioSub}>
-            Upload craft photos, enhance studio lighting with AI, and auto-generate GI tags and fair pricing.
-          </Text>
-          <View style={styles.aiStudioBtn}>
-            <Text style={styles.aiStudioBtnText}>Launch AI Studio ›</Text>
-          </View>
-        </Pressable>
-
-        {/* Recent Incoming Orders List */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Recent Incoming Orders</Text>
-          <Pressable onPress={() => router.push("/seller-orders")}>
-            <Text style={styles.viewAllText}>View All ({orders.length})</Text>
-          </Pressable>
-        </View>
-
-        {orders.length === 0 ? (
-          <View style={styles.emptyOrdersCard}>
-            <Ionicons name="cube-outline" size={36} color="#8A726A" />
-            <Text style={styles.emptyTitle}>No orders yet</Text>
-            <Text style={styles.emptySub}>
-              Your live listings on ONDC are being showcased to buyers across India.
-            </Text>
-          </View>
-        ) : (
-          orders.slice(0, 3).map((o, idx) => {
-            const status = (o.status || "CONFIRMED").toUpperCase();
-            const isShipped = status === "SHIPPED";
-            const isDelivered = status === "DELIVERED";
-            return (
-              <View key={o.id || idx} style={styles.orderCard}>
-                <Image
-                  source={{
-                    uri:
-                      o.product_image ||
-                      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=300"
-                  }}
-                  style={styles.orderThumb}
-                />
-                <View style={styles.orderInfo}>
-                  <Text style={styles.orderProductTitle} numberOfLines={1}>
-                    {o.product_title || `Order #${o.id}`}
-                  </Text>
-                  <Text style={styles.orderBuyerText}>
-                    Ordered by {o.buyer_name || "Customer"} • ₹{o.total_amount || o.amount || 240}
+          {/* Readiness Score Banner */}
+          {readiness && (
+            <View style={styles.readinessCard}>
+              <View style={styles.readinessHeader}>
+                <View style={styles.readinessScoreBox}>
+                  <Text style={styles.readinessScoreText}>{readiness.score || 50}%</Text>
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.readinessTitle}>Catalogue Readiness</Text>
+                  <Text style={styles.readinessSub}>
+                    {readiness.next_best_action || "List products to boost discoverability."}
                   </Text>
                 </View>
-                <View style={styles.orderRight}>
-                  <View
-                    style={[
-                      styles.orderStatusBadge,
-                      isDelivered && { backgroundColor: "#E8F5E9" },
-                      isShipped && { backgroundColor: "#FFF3E0" }
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.orderStatusText,
-                        isDelivered && { color: "#2E7D32" },
-                        isShipped && { color: "#E65100" }
-                      ]}
-                    >
-                      {status}
+              </View>
+              {Array.isArray(readiness.improvements) && readiness.improvements.length > 0 && (
+                <View style={styles.readinessAdvice}>
+                  <Ionicons name="sparkles" size={13} color={theme.colors.accentDark} style={{ marginRight: 6 }} />
+                  <Text style={styles.readinessAdviceText} numberOfLines={1}>
+                    Next: {readiness.improvements[0]}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Quick Actions Grid */}
+          <SectionHeader title="Quick Actions" />
+          <View style={styles.quickGrid}>
+            <Pressable
+              style={styles.quickActionPrimary}
+              onPress={() => router.push("/seller-ai")}
+              accessibilityRole="button"
+            >
+              <View style={styles.quickActionIconCircle}>
+                <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+              </View>
+              <Text style={styles.quickActionPrimaryTitle}>Create with AI</Text>
+              <Text style={styles.quickActionPrimarySub}>Photo & Voice Story</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.quickActionSecondary}
+              onPress={() => router.push("/product-editor" as any)}
+              accessibilityRole="button"
+            >
+              <Ionicons name="add-circle-outline" size={22} color={theme.colors.primary} />
+              <Text style={styles.quickActionSecondaryTitle}>Add Craft</Text>
+              <Text style={styles.quickActionSecondarySub}>Manual Form</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.quickActionSecondary}
+              onPress={() => router.push("/seller-business" as any)}
+              accessibilityRole="button"
+            >
+              <Ionicons name="trending-up" size={22} color={theme.colors.accentDark} />
+              <Text style={styles.quickActionSecondaryTitle}>Intelligence</Text>
+              <Text style={styles.quickActionSecondarySub}>Market & ML</Text>
+            </Pressable>
+          </View>
+
+          {/* AI Catalog Studio Hero Card */}
+          <Pressable
+            style={styles.heroBanner}
+            onPress={() => router.push("/seller-ai")}
+            accessibilityRole="button"
+          >
+            <View style={styles.heroBadge}>
+              <Ionicons name="sparkles" size={12} color="#FFFFFF" />
+              <Text style={styles.heroBadgeText}>VOICE-FIRST MULTIMODAL AI</Text>
+            </View>
+            <Text style={styles.heroTitle}>
+              Turn your craft photos & stories into live catalog listings
+            </Text>
+            <Text style={styles.heroDesc}>
+              Upload a picture, speak in your native language, enhance studio backdrops, and get instant fair-price evaluations.
+            </Text>
+            <View style={styles.heroButtonRow}>
+              <Text style={styles.heroButtonText}>Launch AI Catalog Studio ›</Text>
+            </View>
+          </Pressable>
+
+          {/* Live Order Dispatch Pipeline */}
+          <SectionHeader
+            title="Order Dispatch Pipeline"
+            subtitle={`${orders.length} total customer orders`}
+            actionLabel="View All Orders"
+            onAction={() => router.push("/seller-orders")}
+          />
+
+          {orders.length === 0 ? (
+            <EmptyState
+              icon="receipt-outline"
+              title="No Orders Yet"
+              description="When buyers purchase your pieces through Artisan AI or ONDC, they will appear here."
+              actionLabel="Add a New Craft"
+              onAction={() => router.push("/seller-ai")}
+            />
+          ) : (
+            <View style={styles.ordersList}>
+              {orders.slice(0, 3).map((ord) => (
+                <Pressable
+                  key={ord.id}
+                  style={styles.orderCard}
+                  onPress={() => router.push("/seller-orders")}
+                >
+                  <View style={styles.orderTopRow}>
+                    <View>
+                      <Text style={styles.orderId}>Order #{ord.id}</Text>
+                      <Text style={styles.orderProduct} numberOfLines={1}>
+                        {ord.product_title || `Product #${ord.product_id}`}
+                      </Text>
+                    </View>
+                    <StatusBadge status={ord.status || "CONFIRMED"} type="order" />
+                  </View>
+                  <View style={styles.orderBottomRow}>
+                    <Text style={styles.buyerName}>
+                      Buyer: {ord.buyer_name || "Verified Customer"} (×{ord.quantity || 1})
+                    </Text>
+                    <Text style={styles.orderAmount}>
+                      ₹{Number(ord.total_price || 0).toLocaleString("en-IN")}
                     </Text>
                   </View>
-                  <Text style={styles.orderTimeText}>ONDC Live</Text>
-                </View>
-              </View>
-            );
-          })
-        )}
-
-        {/* Recent Creations (Listings preview) */}
-        <View style={[styles.sectionHeaderRow, { marginTop: 22 }]}>
-          <Text style={styles.sectionTitle}>My Creations</Text>
-          <Pressable onPress={() => router.push("/seller-products")}>
-            <Text style={styles.viewAllText}>Manage ({products.length})</Text>
-          </Pressable>
-        </View>
-
-        {products.slice(0, 3).map((prod, idx) => (
-          <View key={prod.id || idx} style={styles.creationCard}>
-            <Image
-              source={{
-                uri:
-                  prod.enhanced_image_url ||
-                  prod.image_url ||
-                  "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=300"
-              }}
-              style={styles.creationThumb}
-            />
-            <View style={styles.creationInfo}>
-              <View style={styles.creationIdRow}>
-                <View style={styles.activePill}>
-                  <Text style={styles.activePillText}>Active</Text>
-                </View>
-                <Text style={styles.creationIdText}>ID: #CR-{prod.id}</Text>
-              </View>
-              <Text style={styles.creationTitle} numberOfLines={1}>
-                {prod.title}
-              </Text>
-              <Text style={styles.creationCategory} numberOfLines={1}>
-                {prod.category || "Handcrafted Heritage"}
-              </Text>
-              <Text style={styles.creationPrice}>
-                ₹{Number(prod.price || 0).toLocaleString("en-IN")}
-              </Text>
+                </Pressable>
+              ))}
             </View>
-          </View>
-        ))}
+          )}
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
+          {/* Market Opportunity Cards */}
+          {opportunities && opportunities.high_demand_categories && (
+            <>
+              <SectionHeader
+                title="Market Demand Opportunities"
+                subtitle="Live category intelligence"
+                actionLabel="Explore"
+                onAction={() => router.push("/seller-business" as any)}
+              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.oppsScroll}>
+                {opportunities.high_demand_categories.slice(0, 3).map((cat: any, idx: number) => (
+                  <View key={idx} style={styles.oppCard}>
+                    <Text style={styles.oppCategory}>{cat.category}</Text>
+                    <Text style={styles.oppDemand}>
+                      Demand Surge: +{Math.round((cat.demand_index || 1.2) * 10)}%
+                    </Text>
+                    <Text style={styles.oppDesc} numberOfLines={2}>
+                      {cat.recommendation || "High consumer search volume across regions."}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </>
+          )}
+        </>
+      )}
 
-      {/* Tailored Bottom Nav for Sellers (Exact Stitch Design) */}
-      <View style={styles.bottomNav}>
-        <Pressable style={styles.navItemActive}>
-          <Ionicons name="grid" size={20} color="#734A00" />
-          <Text style={styles.navLabelActive}>Dashboard</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.navItem}
-          onPress={() => router.push("/seller-products")}
-        >
-          <Ionicons name="cube-outline" size={20} color="#57423B" />
-          <Text style={styles.navLabel}>Creations</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.navItem}
-          onPress={() => router.push("/seller-orders")}
-        >
-          <Ionicons name="cart-outline" size={20} color="#57423B" />
-          <Text style={styles.navLabel}>Orders</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.navItem}
-          onPress={() => router.push("/seller-ai")}
-        >
-          <Ionicons name="sparkles-outline" size={20} color="#57423B" />
-          <Text style={styles.navLabel}>AI Studio</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.navItem}
-          onPress={() => router.push("/settings")}
-        >
-          <Ionicons name="person-outline" size={20} color="#57423B" />
-          <Text style={styles.navLabel}>Profile</Text>
-        </Pressable>
-      </View>
-    </SafeAreaView>
+      {/* Persistent Bottom Nav */}
+      <BottomNavigation role="seller" />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#FCF9F8"
+  container: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.sm
   },
-  topBar: {
+  headerActions: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 10 : 12,
-    paddingBottom: 14,
-    backgroundColor: "#FCF9F8",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0EDED"
-  },
-  brandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8
-  },
-  brandTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#9F3C16",
-    letterSpacing: -0.5
-  },
-  topActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10
+    gap: theme.spacing.sm
   },
   switchModeBtn: {
-    backgroundColor: "#F6F3F2",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: theme.radius.full,
     borderWidth: 1,
-    borderColor: "#DEC0B7"
+    borderColor: theme.colors.border
   },
   switchModeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
-    color: "#9F3C16"
+    color: theme.colors.ink
   },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F6F3F2",
+  iconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     alignItems: "center",
     justifyContent: "center"
   },
-  scroll: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 90
+  loadingContainer: {
+    marginTop: theme.spacing.md
   },
-  creatorCard: {
+  profileCard: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#F6F3F2",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
     borderWidth: 1,
-    borderColor: "rgba(222, 192, 183, 0.4)"
+    borderColor: theme.colors.borderLight,
+    ...theme.shadows.sm,
+    marginBottom: theme.spacing.md
   },
-  creatorLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flex: 1
-  },
-  creatorAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  avatar: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: theme.colors.surfaceMuted,
     borderWidth: 2,
-    borderColor: "#9F3C16"
+    borderColor: theme.colors.primaryLight
   },
-  proBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "#FFDBCF",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginBottom: 3
+  profileInfo: {
+    flex: 1,
+    marginLeft: theme.spacing.md
   },
-  proBadgeText: {
-    fontSize: 10,
+  verifiedRow: {
+    flexDirection: "row",
+    alignItems: "center"
+  },
+  verifiedBadge: {
+    fontSize: 9,
     fontWeight: "800",
-    color: "#390C00"
+    color: theme.colors.primary,
+    letterSpacing: 0.6
   },
-  creatorName: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#1B1C1C"
+  artisanName: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.ink,
+    marginTop: 1
   },
-  creatorSub: {
-    fontSize: 12,
-    color: "#57423B",
+  craftSpecialty: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.inkMuted,
     marginTop: 1
   },
   editProfileBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.primaryLight,
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#DEC0B7"
+    justifyContent: "center"
   },
-  bentoGrid: {
+  metricsGrid: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 20
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm
   },
-  metricCard: {
-    width: "48%",
+  readinessCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
     borderWidth: 1,
-    borderColor: "#EAE7E7",
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1
+    borderColor: theme.colors.border,
+    marginBottom: theme.spacing.sm,
+    ...theme.shadows.sm
   },
-  metricCardHeader: {
+  readinessHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center"
   },
-  metricLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#57423B"
+  readinessScoreBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.colors.accentLight,
+    alignItems: "center",
+    justifyContent: "center"
   },
-  metricValue: {
-    fontSize: 22,
+  readinessScoreText: {
+    fontSize: 14,
     fontWeight: "800",
-    color: "#1B1C1C",
-    marginTop: 10
+    color: theme.colors.accentDark
   },
-  metricGain: {
-    fontSize: 11,
+  readinessTitle: {
+    fontSize: theme.typography.sizes.sm,
     fontWeight: "700",
-    color: "#9F3C16",
+    color: theme.colors.ink
+  },
+  readinessSub: {
+    fontSize: 11,
+    color: theme.colors.inkMuted,
     marginTop: 2
   },
-  metricSub: {
-    fontSize: 11,
-    color: "#8A726A",
-    marginTop: 2
-  },
-  sectionHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#1B1C1C"
-  },
-  viewAllText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#9F3C16"
-  },
-  quickActionsGrid: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 20
-  },
-  actionCardPrimary: {
-    flex: 1,
-    backgroundColor: "#9F3C16",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    shadowColor: "#9F3C16",
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3
-  },
-  actionCardPrimaryText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#FFFFFF"
-  },
-  actionCardSecondary: {
-    flex: 1,
-    backgroundColor: "#F6F3F2",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    borderWidth: 1,
-    borderColor: "#DEC0B7"
-  },
-  actionCardSecondaryText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#1B1C1C"
-  },
-  aiStudioBanner: {
-    backgroundColor: "#BF542C",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    shadowColor: "#BF542C",
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 2
-  },
-  aiStudioTag: {
+  readinessAdvice: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(0,0,0,0.18)",
+    backgroundColor: theme.colors.surfaceMuted,
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginBottom: 8
-  },
-  aiStudioTagText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#FEB956"
-  },
-  aiStudioTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    lineHeight: 24
-  },
-  aiStudioSub: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.85)",
-    marginTop: 6,
-    lineHeight: 18
-  },
-  aiStudioBtn: {
-    marginTop: 12,
-    alignSelf: "flex-start",
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 10
-  },
-  aiStudioBtnText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#9F3C16"
-  },
-  emptyOrdersCard: {
-    backgroundColor: "#F6F3F2",
-    borderRadius: 14,
-    padding: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#DEC0B7"
-  },
-  emptyTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#1B1C1C",
+    paddingVertical: 5,
+    borderRadius: theme.radius.xs,
     marginTop: 8
   },
-  emptySub: {
-    fontSize: 12,
-    color: "#8A726A",
-    textAlign: "center",
-    marginTop: 4,
-    lineHeight: 16
-  },
-  orderCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#EAE7E7",
-    elevation: 1
-  },
-  orderThumb: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    backgroundColor: "#F0EDED"
-  },
-  orderInfo: {
-    flex: 1,
-    marginLeft: 10
-  },
-  orderProductTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#1B1C1C"
-  },
-  orderBuyerText: {
+  readinessAdviceText: {
     fontSize: 11,
-    color: "#57423B",
+    color: theme.colors.ink,
+    fontWeight: "500",
+    flex: 1
+  },
+  quickGrid: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md
+  },
+  quickActionPrimary: {
+    flex: 1.3,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+    ...theme.shadows.sm
+  },
+  quickActionIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6
+  },
+  quickActionPrimaryTitle: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: theme.typography.sizes.sm
+  },
+  quickActionPrimarySub: {
+    color: "rgba(255, 255, 255, 0.85)",
+    fontSize: 10,
     marginTop: 2
   },
-  orderRight: {
-    alignItems: "flex-end"
-  },
-  orderStatusBadge: {
-    backgroundColor: "#FFDBCF",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10
-  },
-  orderStatusText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#822801"
-  },
-  orderTimeText: {
-    fontSize: 10,
-    color: "#8A726A",
-    marginTop: 3
-  },
-  creationCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#EAE7E7"
-  },
-  creationThumb: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-    backgroundColor: "#F0EDED"
-  },
-  creationInfo: {
+  quickActionSecondary: {
     flex: 1,
-    marginLeft: 12
+    backgroundColor: "#FFFFFF",
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    justifyContent: "center"
   },
-  creationIdRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center"
+  quickActionSecondaryTitle: {
+    color: theme.colors.ink,
+    fontWeight: "700",
+    fontSize: theme.typography.sizes.xs,
+    marginTop: 4
   },
-  activePill: {
-    backgroundColor: "#FFDBCF",
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 6
-  },
-  activePillText: {
+  quickActionSecondarySub: {
+    color: theme.colors.inkSubtle,
     fontSize: 9,
-    fontWeight: "800",
-    color: "#390C00"
-  },
-  creationIdText: {
-    fontSize: 10,
-    color: "#8A726A"
-  },
-  creationTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#1B1C1C",
-    marginTop: 2
-  },
-  creationCategory: {
-    fontSize: 11,
-    color: "#57423B",
     marginTop: 1
   },
-  creationPrice: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#9F3C16",
-    marginTop: 2
+  heroBanner: {
+    backgroundColor: "#2A1E17",
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    ...theme.shadows.md
   },
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    backgroundColor: "#FCF9F8",
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#EAE7E7",
-    elevation: 8
-  },
-  navItemActive: {
+  heroBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FEB956",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 5
+    alignSelf: "flex-start",
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: theme.radius.xs,
+    gap: 4,
+    marginBottom: 8
   },
-  navLabelActive: {
-    fontSize: 12,
+  heroBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
     fontWeight: "800",
-    color: "#734A00"
+    letterSpacing: 0.6
   },
-  navItem: {
-    alignItems: "center",
-    paddingVertical: 4,
-    paddingHorizontal: 8
+  heroTitle: {
+    color: "#FFFFFF",
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: "800",
+    lineHeight: 24,
+    marginBottom: 6
   },
-  navLabel: {
+  heroDesc: {
+    color: "#DEC0B7",
+    fontSize: theme.typography.sizes.xs,
+    lineHeight: 18,
+    marginBottom: 12
+  },
+  heroButtonRow: {
+    alignSelf: "flex-start"
+  },
+  heroButtonText: {
+    color: "#FEB956",
+    fontWeight: "700",
+    fontSize: theme.typography.sizes.sm
+  },
+  ordersList: {
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.lg
+  },
+  orderCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    ...theme.shadows.sm
+  },
+  orderTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 6
+  },
+  orderId: {
     fontSize: 11,
-    color: "#57423B",
-    marginTop: 2
+    fontWeight: "700",
+    color: theme.colors.inkMuted
+  },
+  orderProduct: {
+    fontSize: theme.typography.sizes.base,
+    fontWeight: "700",
+    color: theme.colors.ink,
+    maxWidth: 200
+  },
+  orderBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    paddingTop: 6,
+    marginTop: 4
+  },
+  buyerName: {
+    fontSize: 11,
+    color: theme.colors.inkMuted
+  },
+  orderAmount: {
+    fontSize: theme.typography.sizes.base,
+    fontWeight: "800",
+    color: theme.colors.primary
+  },
+  oppsScroll: {
+    marginBottom: theme.spacing.lg
+  },
+  oppCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    width: 200,
+    marginRight: theme.spacing.sm,
+    ...theme.shadows.sm
+  },
+  oppCategory: {
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: "700",
+    color: theme.colors.primary
+  },
+  oppDemand: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: theme.colors.success,
+    marginVertical: 4
+  },
+  oppDesc: {
+    fontSize: 11,
+    color: theme.colors.inkMuted,
+    lineHeight: 15
   }
 });

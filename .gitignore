@@ -33,7 +33,8 @@ mobile/*.keystore
 # Logs & Environment
 *.log
 .env
-.env.local
+.env*
+*.env*
 .pytest_cache/
 .DS_Store
 Thumbs.db

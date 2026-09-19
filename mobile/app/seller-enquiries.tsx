@@ -1,217 +1,376 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
   Alert,
-  SafeAreaView,
-  StatusBar,
-  Platform,
+  Modal,
   Pressable,
+  TextInput,
   ActivityIndicator
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
+import {
+  Screen,
+  Header,
+  BottomNavigation,
+  Card,
+  StatusBadge,
+  EmptyState,
+  PrimaryButton,
+  SecondaryButton,
+  OutlineButton
+} from "../src/components";
 
 export default function SellerEnquiries() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedEnquiry, setSelectedEnquiry] = useState<any | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const load = () => {
+  const fetchEnquiries = useCallback(async () => {
     setLoading(true);
-    api.enquiries("seller")
-      .then((x) => setItems(x || []))
-      .catch((e) => Alert.alert("Error", e.message || "Failed to load enquiries"))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    load();
+    try {
+      const data = await api.enquiries("seller");
+      setItems(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Failed to load enquiries.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchEnquiries();
+  }, [fetchEnquiries]);
+
+  const handleOpenReply = (enquiry: any) => {
+    setSelectedEnquiry(enquiry);
+    setReplyText(enquiry.artisan_reply || "");
+  };
+
+  const handleSendReply = async () => {
+    if (!selectedEnquiry) return;
+    if (!replyText.trim()) {
+      Alert.alert("Empty Reply", "Please write a response to the buyer.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await api.replyEnquiry(selectedEnquiry.id, replyText.trim());
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === selectedEnquiry.id
+            ? { ...item, artisan_reply: replyText.trim(), status: "RESPONDED" }
+            : item
+        )
+      );
+      setSelectedEnquiry(null);
+      setReplyText("");
+      Alert.alert("Reply Sent", "Your response has been sent directly to the prospective buyer.");
+    } catch (e: any) {
+      Alert.alert("Failed to Send Reply", e?.detail || e?.message || "Unable to send response.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FCF9F8" />
+    <Screen scrollable={false} safeArea={false}>
+      <Header
+        title="Buyer Inquiries"
+        subtitle={`${items.length} conversations received`}
+        showBack={false}
+        rightAction={{
+          icon: "refresh-outline",
+          onPress: fetchEnquiries
+        }}
+      />
 
-      {/* Top App Bar */}
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.iconBtn} hitSlop={8}>
-          <Ionicons name="arrow-back" size={20} color="#9F3C16" />
-        </Pressable>
-        <Text style={styles.topBarTitle}>Buyer Enquiries</Text>
-        <Pressable onPress={load} style={styles.iconBtn} hitSlop={8}>
-          <Ionicons name="reload" size={18} color="#57423B" />
-        </Pressable>
-      </View>
+      <FlatList
+        contentContainerStyle={styles.listContent}
+        data={items}
+        keyExtractor={(x, i) => String(x.id ?? i)}
+        refreshing={loading}
+        onRefresh={fetchEnquiries}
+        ListEmptyComponent={
+          !loading ? (
+            <EmptyState
+              icon="chatbubbles-outline"
+              title="No Inquiries Yet"
+              description="When prospective patrons ask questions about your handcrafted items or custom orders, they will appear here."
+            />
+          ) : null
+        }
+        renderItem={({ item }) => {
+          const hasReplied = Boolean(item.artisan_reply);
 
-      {loading ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#9F3C16" />
-          <Text style={styles.loadingText}>Fetching inquiries...</Text>
-        </View>
-      ) : (
-        <FlatList
-          contentContainerStyle={styles.listContent}
-          data={items}
-          keyExtractor={(x, i) => String(x.id ?? i)}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
+          return (
+            <Card style={styles.card}>
               <View style={styles.cardTop}>
                 <View style={styles.badgePill}>
-                  <Text style={styles.badgeText}>ENQUIRY #{item.id || "NEW"}</Text>
+                  <Text style={styles.badgeText}>INQUIRY #{item.id || "NEW"}</Text>
                 </View>
-                <Text style={styles.dateText}>{item.created_at ? new Date(item.created_at).toLocaleDateString() : "Recent"}</Text>
+                <StatusBadge status={hasReplied ? "RESPONDED" : "PENDING"} />
               </View>
-              <Text style={styles.name}>{item.subject || item.product_title || "Product Query"}</Text>
-              <Text style={styles.meta}>{item.message || item.enquiry_text || "No message provided."}</Text>
-              {item.buyer_name && (
-                <View style={styles.buyerRow}>
-                  <Ionicons name="person-outline" size={14} color="#8A726A" />
-                  <Text style={styles.buyerName}>From: {item.buyer_name}</Text>
+
+              <Text style={styles.name}>
+                {item.product_title || item.subject || `Inquiry on Craft #${item.product_id || ""}`}
+              </Text>
+
+              <View style={styles.buyerRow}>
+                <Ionicons name="person-outline" size={14} color={theme.colors.inkMuted} />
+                <Text style={styles.buyerName}>
+                  From: {item.buyer_name || "Verified Patron"}
+                </Text>
+                <Text style={styles.dateText}>
+                  {item.created_at ? new Date(item.created_at).toLocaleDateString() : ""}
+                </Text>
+              </View>
+
+              <View style={styles.messageBox}>
+                <Text style={styles.messageLabel}>Customer Message:</Text>
+                <Text style={styles.messageText}>
+                  {item.message || item.enquiry_text || "Customer has enquired about this craft."}
+                </Text>
+              </View>
+
+              {hasReplied && (
+                <View style={styles.replyBox}>
+                  <View style={styles.replyHead}>
+                    <Ionicons name="sparkles" size={14} color={theme.colors.primary} />
+                    <Text style={styles.replyHeadText}>Your Artisan Reply</Text>
+                  </View>
+                  <Text style={styles.replyText}>{item.artisan_reply}</Text>
                 </View>
               )}
+
+              <View style={styles.actionRow}>
+                <SecondaryButton
+                  title={hasReplied ? "Edit Response" : "Reply to Buyer"}
+                  size="small"
+                  icon="arrow-undo-outline"
+                  onPress={() => handleOpenReply(item)}
+                />
+              </View>
+            </Card>
+          );
+        }}
+      />
+
+      {/* Reply Composer Modal */}
+      <Modal
+        visible={!!selectedEnquiry}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedEnquiry(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Respond to Patron</Text>
+              <Pressable onPress={() => setSelectedEnquiry(null)}>
+                <Ionicons name="close" size={24} color={theme.colors.ink} />
+              </Pressable>
             </View>
-          )}
-          ListEmptyComponent={
-            <View style={styles.emptyBox}>
-              <Ionicons name="chatbubbles-outline" size={48} color="#DEC0B7" />
-              <Text style={styles.emptyTitle}>No Enquiries Yet</Text>
-              <Text style={styles.emptySub}>
-                When prospective buyers ask questions about your crafts, they will appear here.
+
+            <Text style={styles.modalContext}>
+              Replying to {selectedEnquiry?.buyer_name || "Buyer"} on{" "}
+              <Text style={{ fontWeight: "700" }}>{selectedEnquiry?.product_title || "Craft"}</Text>
+            </Text>
+
+            <View style={styles.quoteBox}>
+              <Text style={styles.quoteText}>
+                "{selectedEnquiry?.message || selectedEnquiry?.enquiry_text || ""}"
               </Text>
             </View>
-          }
-        />
-      )}
-    </SafeAreaView>
+
+            <Text style={styles.inputLabel}>Your Artisan Response</Text>
+            <TextInput
+              style={styles.textInput}
+              multiline
+              numberOfLines={4}
+              placeholder="Provide craft context, customization availability, or dispatch timelines..."
+              placeholderTextColor={theme.colors.inkMuted}
+              value={replyText}
+              onChangeText={setReplyText}
+              textAlignVertical="top"
+            />
+
+            <View style={styles.modalActions}>
+              <PrimaryButton
+                title={submitting ? "Sending..." : "Send Response"}
+                icon="send-outline"
+                onPress={handleSendReply}
+                disabled={submitting}
+              />
+              <OutlineButton
+                title="Cancel"
+                onPress={() => setSelectedEnquiry(null)}
+                disabled={submitting}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <BottomNavigation role="seller" />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#FCF9F8"
-  },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 10 : 12,
-    paddingBottom: 12,
-    backgroundColor: "#FCF9F8",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0EDED"
-  },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F6F3F2",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  topBarTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#9F3C16"
-  },
   listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 40
+    padding: theme.spacing.lg,
+    paddingBottom: 100
   },
   card: {
-    backgroundColor: "#FFFFFF",
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(222, 192, 183, 0.5)",
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1
+    marginBottom: theme.spacing.md
   },
   cardTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8
+    marginBottom: theme.spacing.xs
   },
   badgePill: {
-    backgroundColor: "#FFDBCF",
+    backgroundColor: theme.colors.surfaceVariant,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6
+    borderRadius: theme.radius.sm
   },
   badgeText: {
-    fontSize: 10,
+    ...theme.typography.caption,
     fontWeight: "800",
-    color: "#822801"
-  },
-  dateText: {
-    fontSize: 11,
-    color: "#8A726A"
+    color: theme.colors.primary
   },
   name: {
-    fontWeight: "800",
-    fontSize: 16,
-    color: "#1B1C1C",
+    ...theme.typography.h3,
+    color: theme.colors.ink,
     marginBottom: 6
-  },
-  meta: {
-    color: "#57423B",
-    fontSize: 13,
-    lineHeight: 19,
-    marginBottom: 8
   },
   buyerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    borderTopWidth: 1,
-    borderTopColor: "#F0EDED",
-    paddingTop: 8,
-    marginTop: 4
+    gap: 6,
+    marginBottom: theme.spacing.sm
   },
   buyerName: {
-    fontSize: 12,
-    color: "#8A726A",
-    fontWeight: "600"
+    ...theme.typography.bodySmall,
+    color: theme.colors.inkMuted,
+    fontWeight: "600",
+    flex: 1
   },
-  centerBox: {
+  dateText: {
+    ...theme.typography.caption,
+    color: theme.colors.inkMuted
+  },
+  messageBox: {
+    backgroundColor: theme.colors.surfaceVariant,
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.md,
+    marginBottom: theme.spacing.sm
+  },
+  messageLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.inkMuted,
+    fontWeight: "700",
+    marginBottom: 4
+  },
+  messageText: {
+    ...theme.typography.body,
+    color: theme.colors.ink
+  },
+  replyBox: {
+    backgroundColor: theme.colors.primaryLight + "10",
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.primary,
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.sm,
+    marginBottom: theme.spacing.sm
+  },
+  replyHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4
+  },
+  replyHeadText: {
+    ...theme.typography.caption,
+    fontWeight: "700",
+    color: theme.colors.primary
+  },
+  replyText: {
+    ...theme.typography.body,
+    color: theme.colors.inkLight
+  },
+  actionRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: theme.spacing.xs
+  },
+  modalOverlay: {
     flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end"
+  },
+  modalSheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
+    padding: theme.spacing.lg,
+    paddingBottom: 36
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    justifyContent: "center",
-    padding: 40
+    marginBottom: 8
   },
-  loadingText: {
-    fontSize: 13,
-    color: "#8A726A",
-    marginTop: 10
+  modalTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.ink
   },
-  emptyBox: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 40,
-    marginTop: 40
+  modalContext: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.inkMuted,
+    marginBottom: 12
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#1B1C1C",
-    marginTop: 12
+  quoteBox: {
+    backgroundColor: theme.colors.surfaceVariant,
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.md,
+    marginBottom: theme.spacing.md
   },
-  emptySub: {
-    fontSize: 13,
-    color: "#8A726A",
-    textAlign: "center",
-    marginTop: 6,
-    lineHeight: 18
+  quoteText: {
+    ...theme.typography.bodySmall,
+    fontStyle: "italic",
+    color: theme.colors.inkLight
+  },
+  inputLabel: {
+    ...theme.typography.subtitle,
+    color: theme.colors.ink,
+    marginBottom: 6
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+    ...theme.typography.body,
+    color: theme.colors.ink,
+    backgroundColor: "#FFFFFF",
+    minHeight: 100,
+    marginBottom: theme.spacing.md
+  },
+  modalActions: {
+    gap: 8
   }
 });
 

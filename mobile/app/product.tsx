@@ -9,14 +9,19 @@ import {
   ActivityIndicator,
   Image,
   Dimensions,
-  SafeAreaView,
   StatusBar,
-  Platform
+  Platform,
+  Modal,
+  TextInput,
+  Alert
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
 import { addToCart } from "../src/cart";
+import { toggleWishlist, isWishlisted } from "../src/wishlist";
+import { PrimaryButton, OutlineButton } from "../src/components";
 
 const { width } = Dimensions.get("window");
 
@@ -27,10 +32,14 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [isSaved, setIsSaved] = useState(false);
   const [addedToast, setAddedToast] = useState(false);
+  const [showEnquiryModal, setShowEnquiryModal] = useState(false);
+  const [enquiryMessage, setEnquiryMessage] = useState("");
+  const [sendingEnquiry, setSendingEnquiry] = useState(false);
 
   useEffect(() => {
     if (id) {
       setLoading(true);
+      isWishlisted(Number(id)).then(setIsSaved).catch(() => {});
       api
         .product(Number(id))
         .then((data) => setProduct(data))
@@ -38,6 +47,41 @@ export default function ProductDetail() {
         .finally(() => setLoading(false));
     }
   }, [id]);
+
+  const handleToggleWishlist = async () => {
+    if (!product) return;
+    const newState = await toggleWishlist(product);
+    setIsSaved(newState);
+  };
+
+  const handleSendEnquiry = async () => {
+    if (!enquiryMessage.trim()) {
+      Alert.alert("Empty Message", "Please write a question or message for the artisan.");
+      return;
+    }
+    setSendingEnquiry(true);
+    try {
+      await api.sendEnquiry({
+        product_id: product.id,
+        quantity,
+        message: enquiryMessage.trim()
+      });
+      setShowEnquiryModal(false);
+      setEnquiryMessage("");
+      Alert.alert(
+        "Inquiry Sent",
+        "Your message has been sent directly to the artisan's studio. You can track responses in your Inquiries tab.",
+        [
+          { text: "View Inquiries", onPress: () => router.push("/buyer-enquiries") },
+          { text: "OK" }
+        ]
+      );
+    } catch (e: any) {
+      Alert.alert("Error", e?.detail || e?.message || "Failed to send enquiry.");
+    } finally {
+      setSendingEnquiry(false);
+    }
+  };
 
   const handleAddToCart = async () => {
     if (!product) return;
@@ -65,7 +109,13 @@ export default function ProductDetail() {
     return (
       <View style={styles.centerBox}>
         <Text style={styles.errorTitle}>Craft not found</Text>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable
+          style={styles.backButton}
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace("/buyer");
+          }}
+        >
           <Text style={styles.backButtonText}>‹ Return to Marketplace</Text>
         </Pressable>
       </View>
@@ -97,14 +147,21 @@ export default function ProductDetail() {
 
           {/* Floating Top Nav on Image */}
           <View style={styles.imageNavRow}>
-            <Pressable style={styles.iconCircle} onPress={() => router.back()} hitSlop={10}>
+            <Pressable
+              style={styles.iconCircle}
+              onPress={() => {
+                if (router.canGoBack()) router.back();
+                else router.replace("/buyer");
+              }}
+              hitSlop={10}
+            >
               <Ionicons name="arrow-back" size={20} color="#1C1C1C" />
             </Pressable>
 
             <View style={{ flexDirection: "row", gap: 10 }}>
               <Pressable
                 style={[styles.iconCircle, isSaved && styles.iconCircleActive]}
-                onPress={() => setIsSaved(!isSaved)}
+                onPress={handleToggleWishlist}
                 hitSlop={10}
               >
                 <Ionicons
@@ -146,11 +203,20 @@ export default function ProductDetail() {
           {/* Title and Artisan Info */}
           <Text style={styles.productTitle}>{product.title || "Handcrafted Masterpiece"}</Text>
 
-          <View style={styles.artisanRow}>
-            <Ionicons name="person-circle-outline" size={18} color={theme.accent} style={{ marginRight: 6 }} />
-            <Text style={styles.artisanText}>
-              Crafted by <Text style={{ fontWeight: "800", color: theme.ink }}>{product.artisan_name || "Master Weaver"}</Text>
-            </Text>
+          <View style={styles.artisanContainer}>
+            <View style={styles.artisanRow}>
+              <Ionicons name="person-circle-outline" size={20} color={theme.colors.primary} style={{ marginRight: 6 }} />
+              <Text style={styles.artisanText}>
+                Crafted by <Text style={{ fontWeight: "800", color: theme.colors.ink }}>{product.artisan_name || "Verified Master Artisan"}</Text>
+              </Text>
+            </View>
+            <Pressable
+              style={styles.askArtisanBtn}
+              onPress={() => setShowEnquiryModal(true)}
+            >
+              <Ionicons name="chatbubbles-outline" size={14} color={theme.colors.primary} style={{ marginRight: 4 }} />
+              <Text style={styles.askArtisanText}>Ask Artisan</Text>
+            </Pressable>
           </View>
 
           {/* Price & ONDC Info Block */}
@@ -250,6 +316,54 @@ export default function ProductDetail() {
           <Text style={styles.buyNowText}>Buy via ONDC</Text>
         </Pressable>
       </View>
+
+      {/* Direct Artisan Enquiry Modal */}
+      <Modal
+        visible={showEnquiryModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEnquiryModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Inquire with Artisan</Text>
+              <Pressable onPress={() => setShowEnquiryModal(false)} hitSlop={8}>
+                <Ionicons name="close" size={24} color={theme.colors.ink} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.modalSub}>
+              Send a direct query to {product.artisan_name || "the master artisan"} regarding customization, materials, or delivery timelines:
+            </Text>
+
+            <TextInput
+              style={styles.enquiryInput}
+              placeholder="e.g. Can this craft piece be made in custom dimensions or colors?"
+              placeholderTextColor={theme.colors.inkMuted}
+              multiline
+              numberOfLines={4}
+              value={enquiryMessage}
+              onChangeText={setEnquiryMessage}
+              textAlignVertical="top"
+            />
+
+            <View style={styles.modalActions}>
+              <PrimaryButton
+                title={sendingEnquiry ? "Sending..." : "Send Direct Message"}
+                icon="send-outline"
+                onPress={handleSendEnquiry}
+                disabled={sendingEnquiry}
+              />
+              <OutlineButton
+                title="Cancel"
+                onPress={() => setShowEnquiryModal(false)}
+                disabled={sendingEnquiry}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -258,6 +372,70 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: "#FAF9F6"
+  },
+  artisanContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16
+  },
+  askArtisanBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primaryLight + "30",
+    borderWidth: 1,
+    borderColor: theme.colors.primaryMuted
+  },
+  askArtisanText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: theme.colors.primary
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end"
+  },
+  modalSheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 36
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: theme.colors.ink
+  },
+  modalSub: {
+    fontSize: 13,
+    color: theme.colors.inkMuted,
+    lineHeight: 18,
+    marginBottom: 16
+  },
+  enquiryInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: theme.colors.ink,
+    minHeight: 100,
+    marginBottom: 16,
+    backgroundColor: "#FAF9F6"
+  },
+  modalActions: {
+    gap: 8
   },
   scroll: {
     paddingBottom: 110

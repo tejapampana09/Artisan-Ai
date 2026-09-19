@@ -7,12 +7,12 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  SafeAreaView,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
   Image
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { api } from "../src/api";
@@ -122,7 +122,10 @@ export default function BuyerAssistant() {
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace("/buyer");
+            }}
             style={styles.iconBtn}
             hitSlop={10}
           >

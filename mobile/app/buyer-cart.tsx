@@ -12,7 +12,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  StatusBar
+  StatusBar,
+  Modal
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,6 +27,7 @@ export default function BuyerCart() {
   const [loading, setLoading] = useState(true);
   const [ordering, setOrdering] = useState(false);
   const [isGuest, setIsGuest] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [deliveryName, setDeliveryName] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryPhone, setDeliveryPhone] = useState("");
@@ -80,21 +82,7 @@ export default function BuyerCart() {
       !s.token || s.token === "guest_buyer_token" || s.user?.email === "guest@artisanai.in";
 
     if (guest) {
-      Alert.alert(
-        "Login to Place Order / లాగిన్ అవ్వండి",
-        "Please sign in to confirm your delivery address and track live ONDC dispatch.\nఆర్డర్ పూర్తి చేయడానికి దయచేసి లాగిన్ అవ్వండి.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Login / Sign In",
-            onPress: () =>
-              router.push({
-                pathname: "/login",
-                params: { role: "buyer", redirect: "/buyer-cart" }
-              })
-          }
-        ]
-      );
+      setShowLoginModal(true);
       return;
     }
 
@@ -149,7 +137,14 @@ export default function BuyerCart() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={10}>
+        <Pressable
+          style={styles.backBtn}
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace("/buyer");
+          }}
+          hitSlop={10}
+        >
           <Ionicons name="arrow-back" size={20} color={theme.ink} />
         </Pressable>
         <Text style={styles.headerTitle}>Shopping Bag ({items.length})</Text>
@@ -246,24 +241,24 @@ export default function BuyerCart() {
           {isGuest && (
             <Pressable
               style={styles.guestAlertBanner}
-              onPress={() =>
-                router.push({
-                  pathname: "/login",
-                  params: { role: "buyer", redirect: "/buyer-cart" }
-                })
-              }
+              onPress={() => setShowLoginModal(true)}
             >
               <View style={styles.guestAlertIcon}>
-                <Ionicons name="lock-closed" size={20} color={theme.accent} />
+                <Ionicons name="shield-checkmark" size={20} color={theme.colors.primary} />
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.guestAlertTitle}>Login to Place Order</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                  <Text style={styles.guestAlertTitle}>Login to Place Order</Text>
+                  <View style={styles.guestTag}>
+                    <Text style={styles.guestTagText}>Sign In</Text>
+                  </View>
+                </View>
                 <Text style={styles.guestAlertSub}>
-                  Sign in with Google or Mobile to confirm address & track ONDC shipment
+                  Sign in with Google or Mobile to autofill address & track live ONDC dispatch.
                 </Text>
               </View>
               <View style={styles.guestAlertBtn}>
-                <Text style={styles.guestAlertBtnText}>Login</Text>
+                <Text style={styles.guestAlertBtnText}>Sign In →</Text>
               </View>
             </Pressable>
           )}
@@ -325,12 +320,12 @@ export default function BuyerCart() {
           {/* Checkout Button */}
           {isGuest ? (
             <Pressable
-              style={[styles.checkoutBtn, { backgroundColor: "#B85D19" }]}
-              onPress={handlePlaceOrder}
+              style={[styles.checkoutBtn, { backgroundColor: theme.colors.primary }]}
+              onPress={() => setShowLoginModal(true)}
             >
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <Ionicons name="log-in-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.checkoutBtnText}>Login to Place Order · ₹{grandTotal}</Text>
+                <Text style={styles.checkoutBtnText}>Sign In to Place Order · ₹{grandTotal}</Text>
               </View>
             </Pressable>
           ) : (
@@ -354,6 +349,105 @@ export default function BuyerCart() {
           )}
         </ScrollView>
       )}
+
+      {/* Premium Heritage Login to Place Order Bottom Sheet Modal */}
+      <Modal
+        visible={showLoginModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowLoginModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowLoginModal(false)}
+        >
+          <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.sheetHeaderRow}>
+              <View style={styles.sheetBadge}>
+                <Ionicons name="shield-checkmark" size={13} color={theme.colors.primary} />
+                <Text style={styles.sheetBadgeText}>ONDC SECURE CHECKOUT</Text>
+              </View>
+              <Pressable
+                style={styles.sheetCloseBtn}
+                onPress={() => setShowLoginModal(false)}
+                hitSlop={10}
+              >
+                <Ionicons name="close" size={18} color={theme.colors.inkMuted} />
+              </Pressable>
+            </View>
+
+            <View style={styles.sheetIconWrapper}>
+              <View style={styles.sheetIconCircle}>
+                <Ionicons name="bag-check" size={30} color={theme.colors.primary} />
+              </View>
+            </View>
+
+            <Text style={styles.sheetTitle}>Sign In to Place Order</Text>
+            <Text style={styles.sheetSubtitle}>
+              Please sign in to complete your checkout and track live dispatch
+            </Text>
+
+            <Text style={styles.sheetDescription}>
+              Sign in with your account to verify delivery details, connect directly with rural master artisans, and unlock live ONDC order tracking.
+            </Text>
+
+            {/* Value Props Checklist */}
+            <View style={styles.sheetBenefitsBox}>
+              <View style={styles.benefitRow}>
+                <Ionicons name="checkmark-circle" size={18} color="#2E7D32" style={{ marginTop: 1 }} />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.benefitTitle}>100% Direct Artisan Benefit</Text>
+                  <Text style={styles.benefitSubtitle}>100% of proceeds go directly to rural craft masters</Text>
+                </View>
+              </View>
+              <View style={styles.benefitRow}>
+                <Ionicons name="checkmark-circle" size={18} color="#2E7D32" style={{ marginTop: 1 }} />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.benefitTitle}>Live ONDC Order Tracking & SMS</Text>
+                  <Text style={styles.benefitSubtitle}>Real-time dispatch updates and delivery notifications</Text>
+                </View>
+              </View>
+              <View style={styles.benefitRow}>
+                <Ionicons name="checkmark-circle" size={18} color="#2E7D32" style={{ marginTop: 1 }} />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.benefitTitle}>Verified Heritage Guarantee</Text>
+                  <Text style={styles.benefitSubtitle}>Secure delivery, authentic crafts & certified GI tags</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Order total pill */}
+            <View style={styles.orderSummaryPill}>
+              <Text style={styles.orderSummaryLabel}>Cart Total:</Text>
+              <Text style={styles.orderSummaryValue}>₹{grandTotal}</Text>
+            </View>
+
+            {/* Action Buttons */}
+            <Pressable
+              style={styles.modalPrimaryBtn}
+              onPress={() => {
+                setShowLoginModal(false);
+                router.push({
+                  pathname: "/login",
+                  params: { role: "buyer", redirect: "/buyer-cart" }
+                });
+              }}
+            >
+              <Ionicons name="log-in-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.modalPrimaryBtnText}>Sign In to Continue →</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.modalSecondaryBtn}
+              onPress={() => setShowLoginModal(false)}
+            >
+              <Text style={styles.modalSecondaryBtnText}>Review Bag</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -596,36 +690,50 @@ const styles = StyleSheet.create({
   guestAlertBanner: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FDF5EE",
+    backgroundColor: "#FDF6F0",
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#F0DEC9",
+    borderColor: "#EED8C5",
     marginBottom: 16
   },
   guestAlertIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "#FAEADB",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FBF3F0",
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#DEC0B7"
   },
   guestAlertTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
-    color: "#843B27",
-    marginBottom: 2
+    color: "#1C1C1C"
+  },
+  guestTag: {
+    backgroundColor: "#FBF3F0",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#DEC0B7"
+  },
+  guestTagText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#9F3C16"
   },
   guestAlertSub: {
     fontSize: 12,
-    color: "#736C65",
+    color: "#6B5B51",
     lineHeight: 16
   },
   guestAlertBtn: {
-    backgroundColor: theme.accent,
+    backgroundColor: "#9F3C16",
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 10,
     marginLeft: 8
   },
@@ -633,5 +741,164 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 12,
     fontWeight: "800"
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(28, 28, 28, 0.6)",
+    justifyContent: "flex-end"
+  },
+  modalSheet: {
+    backgroundColor: "#FAF9F6",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === "ios" ? 36 : 24,
+    borderWidth: 1,
+    borderColor: "#E8E5DF"
+  },
+  sheetHandle: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#D1C7BD",
+    alignSelf: "center",
+    marginBottom: 16
+  },
+  sheetHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16
+  },
+  sheetBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FBF3F0",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#DEC0B7"
+  },
+  sheetBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#9F3C16",
+    letterSpacing: 0.5
+  },
+  sheetCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F0EDED",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  sheetIconWrapper: {
+    alignItems: "center",
+    marginBottom: 12
+  },
+  sheetIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#FBF3F0",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#DEC0B7"
+  },
+  sheetTitle: {
+    fontSize: 21,
+    fontWeight: "800",
+    color: "#1C1C1C",
+    textAlign: "center",
+    letterSpacing: -0.3
+  },
+  sheetSubtitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#9F3C16",
+    textAlign: "center",
+    marginTop: 3,
+    marginBottom: 8
+  },
+  sheetDescription: {
+    fontSize: 13,
+    color: "#6B5B51",
+    textAlign: "center",
+    lineHeight: 18,
+    paddingHorizontal: 8,
+    marginBottom: 16
+  },
+  sheetBenefitsBox: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E8E5DF",
+    marginBottom: 14
+  },
+  benefitRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 8
+  },
+  benefitTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1C1C1C"
+  },
+  benefitSubtitle: {
+    fontSize: 11,
+    color: "#8A726A",
+    marginTop: 1
+  },
+  orderSummaryPill: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#F5F3EF",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 14
+  },
+  orderSummaryLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#6B5B51"
+  },
+  orderSummaryValue: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#9F3C16"
+  },
+  modalPrimaryBtn: {
+    backgroundColor: "#9F3C16",
+    borderRadius: 16,
+    paddingVertical: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 3,
+    marginBottom: 8
+  },
+  modalPrimaryBtnText: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#FFFFFF"
+  },
+  modalSecondaryBtn: {
+    paddingVertical: 8,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  modalSecondaryBtnText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#8A726A"
   }
 });
