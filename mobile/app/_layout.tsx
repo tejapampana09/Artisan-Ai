@@ -12,6 +12,7 @@ import {
   syncPushTokenWithBackend
 } from "../src/notifications";
 import { getSession } from "../src/storage";
+import { startNativeForegroundService } from "../src/nativeForegroundService";
 
 let lastHandledNotificationId: string | number | null = null;
 
@@ -20,6 +21,7 @@ export default function Layout() {
     // Register push notification permissions & Android channels
     registerForPushNotificationsAsync().catch(() => {});
     syncPushTokenWithBackend().catch(() => {});
+    startNativeForegroundService().catch(() => {});
     
     // Start real-time notification polling (every 4s)
     const stopPolling = startNotificationPolling(4000);
