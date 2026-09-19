@@ -22,6 +22,10 @@ import {
   createAudioPlayer,
   AudioPlayer
 } from "expo-audio";
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent
+} from "expo-speech-recognition";
 import { Ionicons } from "@expo/vector-icons";
 import { api, BASE_URL } from "../src/api";
 import { imageAssetToApiSource } from "../src/media";
@@ -274,50 +278,73 @@ export default function SellerAICatalogStudio() {
     Alert.alert("Sample Loaded", `Loaded authentic details for "${sample.name}". You can customize them or proceed directly.`);
   };
 
-  // ─── Audio Recording Handlers (Speech to Text) ───
-  const handleToggleRecord = async () => {
+  // ─── Native Speech-to-Text Recognition ───
+  const [isRecognizing, setIsRecognizing] = useState(false);
+
+  useSpeechRecognitionEvent("start", () => {
+    setIsRecognizing(true);
+  });
+
+  useSpeechRecognitionEvent("end", () => {
+    setIsRecognizing(false);
+  });
+
+  useSpeechRecognitionEvent("result", (event) => {
+    const transcript = event.results[0]?.transcript;
+    if (transcript) {
+      const activeQ = QNA_QUESTIONS[activeQnaIndex];
+      setQnaAnswers((prev) => ({
+        ...prev,
+        [activeQ.id]: transcript
+      }));
+    }
+  });
+
+  useSpeechRecognitionEvent("error", (event) => {
+    console.warn("Speech recognition error:", event.error, event.message);
+    setIsRecognizing(false);
+  });
+
+  const handleToggleSpeech = async () => {
     try {
-      if (!isRecordingPermissionGranted) {
-        const perm = await AudioModule.requestRecordingPermissionsAsync();
-        if (!perm.granted) {
-          return Alert.alert("Microphone Permission", "Microphone access is required to record your voice.");
-        }
-        setIsRecordingPermissionGranted(true);
+      if (isRecognizing) {
+        await ExpoSpeechRecognitionModule.stop();
+        setIsRecognizing(false);
+        return;
       }
 
-      if (recorderState.isRecording) {
-        await recorder.stop();
-        if (recorder.uri) {
-          setAudioUri(recorder.uri);
-          const activeQ = QNA_QUESTIONS[activeQnaIndex];
-          setIsTranscribing(true);
-          try {
-            const resp = await api.transcribeAudio(recorder.uri, selectedLang);
-            const transcribedText = (resp?.text || "").trim();
-            if (transcribedText) {
-              setQnaAnswers((prev) => {
-                const currentVal = (prev[activeQ.id as keyof typeof prev] || "").trim();
-                return {
-                  ...prev,
-                  [activeQ.id]: currentVal ? `${currentVal} ${transcribedText}` : transcribedText
-                };
-              });
-            } else {
-              Alert.alert("Voice Notice", "No clear speech detected. Please speak closer to the microphone and try again.");
-            }
-          } catch (transErr: any) {
-            console.warn("Speech transcription failed:", transErr);
-            Alert.alert("Transcription Notice", "Could not transcribe audio. Please verify your connection or type directly.");
-          } finally {
-            setIsTranscribing(false);
-          }
-        }
-      } else {
-        await recorder.prepareToRecordAsync();
-        recorder.record();
+      const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!result.granted) {
+        return Alert.alert(
+          "Microphone Permission",
+          "Microphone access is required to speak your answer."
+        );
       }
+
+      const localeMap: Record<string, string> = {
+        te: "te-IN",
+        hi: "hi-IN",
+        en: "en-IN",
+        ta: "ta-IN",
+        bn: "bn-IN",
+        kn: "kn-IN",
+        mr: "mr-IN",
+        gu: "gu-IN",
+      };
+      const langCode = localeMap[selectedLang] || "te-IN";
+
+      await ExpoSpeechRecognitionModule.start({
+        lang: langCode,
+        interimResults: true,
+        maxAlternatives: 1,
+        continuous: false,
+        requiresOnDeviceRecognition: false,
+        addsPunctuation: true,
+      });
     } catch (err: any) {
-      Alert.alert("Audio Error", err?.message || "Recording could not be started.");
+      console.warn("Failed to start speech recognition:", err);
+      Alert.alert("Speech Error", err?.message || "Could not start speech recognition.");
+      setIsRecognizing(false);
     }
   };
 
@@ -735,27 +762,23 @@ export default function SellerAICatalogStudio() {
                     onChangeText={(txt) => setQnaAnswers((prev) => ({ ...prev, [activeQuestion.id]: txt }))}
                   />
 
-                  {/* Voice Record Button (Speech to Text) */}
+                  {/* Native Speech-to-Text Button */}
                   <Pressable
                     style={[
                       styles.voiceBtn,
-                      recorderState.isRecording && styles.voiceBtnRecording,
-                      isTranscribing && { backgroundColor: "#B45309" }
+                      isRecognizing && styles.voiceBtnRecording
                     ]}
-                    onPress={handleToggleRecord}
-                    disabled={isTranscribing}
+                    onPress={handleToggleSpeech}
                   >
                     <Ionicons
-                      name={isTranscribing ? "hourglass-outline" : recorderState.isRecording ? "stop-circle" : "mic"}
+                      name={isRecognizing ? "stop-circle" : "mic"}
                       size={20}
                       color="#FFFFFF"
                     />
                     <Text style={styles.voiceBtnText}>
-                      {isTranscribing
-                        ? "Transcribing voice to text..."
-                        : recorderState.isRecording
-                        ? `Listening (${Math.round(recorderState.durationMillis / 1000)}s) - Tap to Stop & Transcribe`
-                        : "Speak Your Answer"}
+                      {isRecognizing
+                        ? "Listening... Tap to Finish"
+                        : "Speak Answer"}
                     </Text>
                   </Pressable>
                 </View>
