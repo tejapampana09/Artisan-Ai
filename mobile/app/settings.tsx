@@ -149,7 +149,7 @@ export default function SettingsScreen() {
         onPress: async () => {
           await clearSession();
           setSession({ token: null, domain: null, user: null });
-          Alert.alert("Signed Out", "You have been signed out successfully.");
+          router.replace("/buyer");
         }
       }
     ]);

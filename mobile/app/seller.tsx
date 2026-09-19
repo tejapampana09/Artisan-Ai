@@ -118,7 +118,8 @@ export default function SellerDashboard() {
           style: "destructive",
           onPress: async () => {
             await clearSession("STUDIO");
-            router.replace({ pathname: "/login", params: { role: "seller" } });
+            await clearSession();
+            router.replace("/buyer");
           }
         }
       ]
@@ -148,6 +149,7 @@ export default function SellerDashboard() {
         title={t("artisanStudio")}
         subtitle={t("ruralCommerce")}
         roleBadge="ARTISAN"
+        showNotificationBell={false}
         rightAction={
           <View style={styles.headerActions}>
             <Pressable
