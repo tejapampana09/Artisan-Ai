@@ -236,7 +236,7 @@ def verify_payment(
             title="🛒 New Verified Order Received!",
             message=f"{order.buyer_name} ordered '{product.title}' × {order.quantity} unit(s) (₹{float(order.total_price):,.0f}). Payment verified.",
             type="ORDER",
-            data={"order_id": order.id, "product_id": product.id}
+            data={"order_id": order.id, "product_id": product.id, "role": "seller"}
         )
     create_and_dispatch_notification(
         db=db,
@@ -244,7 +244,7 @@ def verify_payment(
         title="✅ Order Confirmed & Paid!",
         message=f"Your order for '{product.title if product else 'Artisan Craft'}' × {order.quantity} (₹{float(order.total_price):,.0f}) is confirmed and paid.",
         type="ORDER",
-        data={"order_id": order.id}
+        data={"order_id": order.id, "role": "buyer"}
     )
     db.commit()
 

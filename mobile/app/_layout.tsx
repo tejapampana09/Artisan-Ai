@@ -8,8 +8,10 @@ import { I18nProvider } from "../src/i18n";
 import {
   registerForPushNotificationsAsync,
   startNotificationPolling,
-  addNotificationResponseReceivedListener
+  addNotificationResponseReceivedListener,
+  syncPushTokenWithBackend
 } from "../src/notifications";
+import { getSession } from "../src/storage";
 
 let lastHandledNotificationId: string | number | null = null;
 
@@ -17,12 +19,13 @@ export default function Layout() {
   useEffect(() => {
     // Register push notification permissions & Android channels
     registerForPushNotificationsAsync().catch(() => {});
+    syncPushTokenWithBackend().catch(() => {});
     
     // Start real-time notification polling (every 4s)
     const stopPolling = startNotificationPolling(4000);
 
     // Listen for user interaction with notifications (taps)
-    const responseSubscription = addNotificationResponseReceivedListener((response) => {
+    const responseSubscription = addNotificationResponseReceivedListener(async (response) => {
       try {
         const data: any = response?.notification?.request?.content?.data;
         if (!data || !data.type) return;
@@ -35,10 +38,27 @@ export default function Layout() {
         lastHandledNotificationId = notifId;
 
         const type = String(data.type).toUpperCase();
+        const role = data.role ? String(data.role).toLowerCase() : null;
+
+        const session = await getSession();
+        const isStudio = role === "seller" || (!role && session?.domain === "STUDIO");
+
         if (type.includes("ENQUIRY")) {
-          router.push("/seller-enquiries");
+          if (isStudio) {
+            router.push("/seller-enquiries");
+          } else {
+            router.push("/buyer-enquiries");
+          }
         } else if (type.includes("ORDER")) {
-          router.push("/seller-orders");
+          if (isStudio) {
+            router.push("/seller-orders");
+          } else {
+            router.push("/buyer-orders");
+          }
+        } else if (type.includes("REVIEW")) {
+          if (isStudio) {
+            router.push("/seller-products");
+          }
         }
       } catch (err) {
         console.warn("Notification navigation error:", err);

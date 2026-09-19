@@ -112,7 +112,7 @@ def create_product_review(
             title="⭐ New Verified Craft Review!",
             message=f"{current_user.name} rated '{product.title}' {req.rating}/5 stars: '{req.comment or 'Great craft!'}'",
             type="REVIEW",
-            data={"product_id": product.id, "order_id": review.order_id}
+            data={"product_id": product.id, "order_id": review.order_id, "role": "seller"}
         )
         db.commit()
 

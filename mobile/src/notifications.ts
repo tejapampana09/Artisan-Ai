@@ -134,6 +134,17 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         showBadge: true,
         enableLights: true
       });
+
+      await Notifications.setNotificationChannelAsync("artisan_general", {
+        name: "Artisan Updates",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 200, 200],
+        lightColor: "#9F3C16",
+        sound: "default",
+        enableVibrate: true,
+        showBadge: true,
+        enableLights: true
+      });
     }
 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -166,11 +177,14 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 
     if (token) {
       await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
-      try {
-        await api.registerPushToken(token);
-        console.log("[Push] Registered device push token with AWS RDS backend:", token);
-      } catch (regErr) {
-        console.warn("[Push] Could not sync push token with backend:", regErr);
+      const session = await getSession();
+      if (session?.token) {
+        try {
+          await api.registerPushToken(token, session.domain || "MARKETPLACE");
+          console.log("[Push] Registered device push token with backend:", token);
+        } catch (regErr) {
+          console.warn("[Push] Could not sync push token with backend:", regErr);
+        }
       }
       return token;
     }
@@ -179,6 +193,37 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   } catch (err) {
     console.warn("Push notification registration failed:", err);
     return null;
+  }
+}
+
+/**
+ * Synchronize registered push token with backend for current or specified domain
+ */
+export async function syncPushTokenWithBackend(domainOverride?: AuthDomain): Promise<boolean> {
+  try {
+    let domain = domainOverride;
+    if (!domain) {
+      const session = await getSession();
+      if (!session || !session.token) {
+        return false;
+      }
+      domain = session.domain || "MARKETPLACE";
+    }
+
+    let token = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+    if (!token) {
+      token = await registerForPushNotificationsAsync();
+    }
+
+    if (token) {
+      await api.registerPushToken(token, domain);
+      console.log(`[Push] Successfully registered push token for domain ${domain}:`, token);
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.warn("[Push] Error syncing push token with backend:", err);
+    return false;
   }
 }
 
@@ -259,7 +304,8 @@ export async function fetchNotifications(domainOverride?: AuthDomain): Promise<N
           if (allowLocal) {
             await sendLocalNotification(item.title, item.message, {
               id: item.id,
-              type: item.type
+              type: item.type,
+              role: domain === "STUDIO" ? "seller" : "buyer"
             });
           }
         }

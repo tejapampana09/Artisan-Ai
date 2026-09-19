@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { resetNotificationHistory } from "./notifications";
+import { resetNotificationHistory, syncPushTokenWithBackend } from "./notifications";
 
 const STUDIO_TOKEN_KEY = "artisan_ai_studio_token";
 const MARKETPLACE_TOKEN_KEY = "artisan_ai_marketplace_token";
@@ -39,6 +39,7 @@ export async function saveSession(
     await AsyncStorage.setItem(MARKETPLACE_USER_KEY, JSON.stringify(user ?? null));
   }
   await AsyncStorage.setItem(ACTIVE_DOMAIN_KEY, domain);
+  syncPushTokenWithBackend(domain).catch(() => {});
 }
 
 export async function getSession(requestedDomain?: AuthDomain): Promise<UserSession> {

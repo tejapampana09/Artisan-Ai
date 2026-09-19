@@ -145,7 +145,7 @@ def submit_enquiry(
     db.commit()
     db.refresh(evt)
 
-    # Notify seller of new enquiry
+    # 1. Notify seller of new incoming buyer enquiry
     if product.seller_id:
         create_and_dispatch_notification(
             db=db,
@@ -153,9 +153,19 @@ def submit_enquiry(
             title="📩 New Buyer Enquiry!",
             message=f"{buyer_name} enquired about '{product.title}' × {enquiry.quantity} unit(s). Check your enquiries tab.",
             type="ENQUIRY",
-            data={"product_id": product.id}
+            data={"product_id": product.id, "role": "seller"}
         )
-        db.commit()
+
+    # 2. Notify buyer that enquiry was sent
+    create_and_dispatch_notification(
+        db=db,
+        user_id=current_user.id,
+        title="📩 Enquiry Sent to Artisan",
+        message=f"Your enquiry for '{product.title}' × {enquiry.quantity} unit(s) was sent to the artisan. We'll notify you when they reply.",
+        type="ENQUIRY",
+        data={"product_id": product.id, "role": "buyer"}
+    )
+    db.commit()
 
     trigger_auto_pricing(product, db)
     return evt
@@ -243,7 +253,7 @@ def reply_enquiry(
             title="💬 Artisan Replied to Your Enquiry!",
             message=f"The artisan replied to your enquiry on '{prod.title}': \"{payload.artisan_reply.strip()[:120]}\"",
             type="ENQUIRY",
-            data={"product_id": prod.id if prod else enquiry.product_id}
+            data={"product_id": prod.id if prod else enquiry.product_id, "role": "buyer"}
         )
         db.commit()
 
@@ -342,16 +352,26 @@ def place_order(
         )
         db.add(evt)
 
-        # Notify seller of new incoming order & dispatch push alert
+        # 1. Notify seller of new incoming order & dispatch push alert
         if product.seller_id:
             create_and_dispatch_notification(
                 db=db,
                 user_id=product.seller_id,
-                title="🛍️ New Order Placed!",
-                message=f"{buyer_name} placed an order for '{product.title}' × {order.quantity} unit(s) (₹{float(total_price):,.0f}). Check your orders tab.",
+                title="🛍️ New Order Received!",
+                message=f"{buyer_name} placed an order for '{product.title}' × {order.quantity} unit(s) (₹{float(total_price):,.0f}). Open orders tab to fulfill.",
                 type="ORDER",
-                data={"order_id": order_record.id, "product_id": product.id}
+                data={"order_id": order_record.id, "product_id": product.id, "role": "seller"}
             )
+
+        # 2. Notify buyer that order was placed successfully
+        create_and_dispatch_notification(
+            db=db,
+            user_id=current_user.id,
+            title="🛍️ Order Placed Successfully!",
+            message=f"Your order for '{product.title}' × {order.quantity} unit(s) (₹{float(total_price):,.0f}) is confirmed! The artisan will prepare your piece.",
+            type="ORDER",
+            data={"order_id": order_record.id, "product_id": product.id, "role": "buyer"}
+        )
 
         db.commit()
         db.refresh(evt)
@@ -511,7 +531,7 @@ def update_order_status(
                         target_buyer_id = u.id
                         break
 
-        # Strictly notify dedicated buyer on all seller-driven status changes
+        # 1. Notify dedicated buyer on seller-driven status changes
         if target_buyer_id is not None and is_seller:
             create_and_dispatch_notification(
                 db=db,
@@ -519,36 +539,53 @@ def update_order_status(
                 title=title_tpl,
                 message=msg_tpl.format(**label),
                 type="ORDER",
-                data={"order_id": order.id, "status": new_status}
+                data={"order_id": order.id, "status": new_status, "role": "buyer"}
             )
 
-        # Also notify artisan/seller of successful delivery or status change
-        if prod.seller_id and is_seller:
-            seller_title = f"🎉 Order #{order.id} Delivered!" if new_status == "DELIVERED" else f"Order #{order.id}: {new_status}"
-            seller_msg = (
-                f"Order #{order.id} for '{prod.title}' was marked as DELIVERED to {order.buyer_name or 'customer'}."
-                if new_status == "DELIVERED"
-                else f"Order #{order.id} for '{prod.title}' status updated to {new_status}."
-            )
+        # 2. Notify artisan/seller ONLY on successful final delivery milestone (no redundant self-echoes on intermediate steps)
+        if prod.seller_id and is_seller and new_status == "DELIVERED":
             create_and_dispatch_notification(
                 db=db,
                 user_id=prod.seller_id,
-                title=seller_title,
-                message=seller_msg,
+                title=f"🎉 Order #{order.id} Delivered Successfully!",
+                message=f"Order #{order.id} for '{prod.title}' was delivered to {order.buyer_name or 'customer'}. Great job!",
                 type="ORDER",
-                data={"order_id": order.id, "status": new_status}
+                data={"order_id": order.id, "status": new_status, "role": "seller"}
             )
 
-        # Notify seller when buyer cancels
-        if new_status == "CANCELLED" and is_buyer and prod.seller_id:
-            create_and_dispatch_notification(
-                db=db,
-                user_id=prod.seller_id,
-                title="⚠️ Order Cancelled by Buyer",
-                message=f"{order.buyer_name} cancelled the order for '{prod.title}' × {order.quantity} unit(s). Stock has been restored.",
-                type="ORDER",
-                data={"order_id": order.id, "product_id": prod.id}
-            )
+        # 3. Handle cancellation notifications
+        if new_status == "CANCELLED":
+            if is_buyer:
+                # Notify seller of buyer cancellation
+                if prod.seller_id:
+                    create_and_dispatch_notification(
+                        db=db,
+                        user_id=prod.seller_id,
+                        title="⚠️ Order Cancelled by Customer",
+                        message=f"{order.buyer_name or 'Customer'} cancelled Order #{order.id} for '{prod.title}' × {order.quantity} unit(s). Stock has been restored.",
+                        type="ORDER",
+                        data={"order_id": order.id, "product_id": prod.id, "role": "seller"}
+                    )
+                # Confirm cancellation to buyer
+                if target_buyer_id is not None:
+                    create_and_dispatch_notification(
+                        db=db,
+                        user_id=target_buyer_id,
+                        title="❌ Order Cancelled",
+                        message=f"Your order for '{prod.title}' has been cancelled.",
+                        type="ORDER",
+                        data={"order_id": order.id, "status": "CANCELLED", "role": "buyer"}
+                    )
+            elif is_seller and target_buyer_id is not None:
+                # Notify buyer of seller cancellation
+                create_and_dispatch_notification(
+                    db=db,
+                    user_id=target_buyer_id,
+                    title="⚠️ Order Cancelled by Artisan",
+                    message=f"Your order #{order.id} for '{prod.title}' could not be fulfilled and was cancelled by the artisan.",
+                    type="ORDER",
+                    data={"order_id": order.id, "status": "CANCELLED", "role": "buyer"}
+                )
         db.commit()
 
     return OrderResponse(
