@@ -46,8 +46,8 @@ jobs:
     name: RDS Schema Migration (alembic upgrade head)
     needs: test-backend
     runs-on: ubuntu-latest
-    # Only run migration when RDS_DATABASE_URL secret is set (skip for forks/PRs)
-    if: ${{ secrets.RDS_DATABASE_URL != '' }}
+    # NOTE: No job-level `if` using secrets — that is not allowed by GitHub Actions.
+    # Instead each step guards itself: if DATABASE_URL is empty it skips gracefully.
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -69,6 +69,10 @@ jobs:
           ENVIRONMENT: production
           PYTHONPATH: .
         run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "RDS_DATABASE_URL secret not configured — skipping migration (no-op)."
+            exit 0
+          fi
           echo "=== Current RDS Alembic revision ==="
           python -m alembic current || echo "(no revision yet — fresh database)"
 
@@ -78,6 +82,10 @@ jobs:
           ENVIRONMENT: production
           PYTHONPATH: .
         run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "RDS_DATABASE_URL secret not configured — skipping migration (no-op)."
+            exit 0
+          fi
           echo "=== Running: alembic upgrade head ==="
           python -m alembic upgrade head
 
@@ -87,6 +95,10 @@ jobs:
           ENVIRONMENT: production
           PYTHONPATH: .
         run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "Skipped — RDS_DATABASE_URL not configured."
+            exit 0
+          fi
           echo "=== Applied migration. Current revision: ==="
           python -m alembic current
 
