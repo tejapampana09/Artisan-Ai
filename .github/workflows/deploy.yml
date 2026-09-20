@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: eb-deploy-production
+  cancel-in-progress: false
+
 jobs:
   # ════════════════════════════════════════════════════════════════════════════
   # 1. Backend Test Gate — must pass before any deploy step runs
@@ -219,6 +223,29 @@ jobs:
             --source-bundle S3Bucket="artisan-ai-eb-ap-south-1-339954341605",S3Key="deploy-${VERSION_LABEL}.zip" \
             --description "Auto-deploy commit ${{ github.sha }}" \
             --region ap-south-1
+
+      - name: Wait for EB Environment to be Ready
+        run: |
+          echo "Checking if EB environment is in Ready state before deploying..."
+          WAIT_COUNT=0
+          while true; do
+            STATUS=$(aws elasticbeanstalk describe-environments \
+              --environment-names artisan-ai-backend-prod \
+              --region ap-south-1 \
+              --query "Environments[0].Status" \
+              --output text)
+            if [[ "$STATUS" == "Ready" ]]; then
+              echo "✓ EB environment is Ready to receive new deployment."
+              break
+            fi
+            echo "  EB environment status is '${STATUS}'. Waiting 15s before updating (${WAIT_COUNT}s elapsed)..."
+            sleep 15
+            WAIT_COUNT=$((WAIT_COUNT + 15))
+            if [[ $WAIT_COUNT -ge 300 ]]; then
+              echo "⚠ Timed out waiting for previous environment operation to complete."
+              exit 1
+            fi
+          done
 
       - name: Update Elastic Beanstalk Environment
         run: |
