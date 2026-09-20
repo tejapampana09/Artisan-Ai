@@ -34,7 +34,8 @@ export default function SellerBusinessScreen() {
   const [opportunities, setOpportunities] = useState<any[]>([]);
   const [categoryDemands, setCategoryDemands] = useState<any[]>([]);
   const [modelInfo, setModelInfo] = useState<any>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [sellerProducts, setSellerProducts] = useState<any[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [demandResult, setDemandResult] = useState<any>(null);
   const [predicting, setPredicting] = useState(false);
   const [offlineCount, setOfflineCount] = useState(0);
@@ -43,11 +44,12 @@ export default function SellerBusinessScreen() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [copilotRes, readyRes, oppRes, modelRes] = await Promise.allSettled([
+      const [copilotRes, readyRes, oppRes, modelRes, prodsRes] = await Promise.allSettled([
         api.sellerCopilotInsight(),
         api.sellerReadiness(),
         api.sellerOpportunities(),
-        api.mlModelInfo()
+        api.mlModelInfo(),
+        api.sellerProducts()
       ]);
 
       if (copilotRes.status === "fulfilled" && copilotRes.value) {
@@ -55,6 +57,11 @@ export default function SellerBusinessScreen() {
       }
       if (readyRes.status === "fulfilled" && readyRes.value) {
         setReadiness(readyRes.value);
+      }
+      let prodsList: any[] = [];
+      if (prodsRes.status === "fulfilled" && Array.isArray(prodsRes.value)) {
+        prodsList = prodsRes.value;
+        setSellerProducts(prodsList);
       }
       if (oppRes.status === "fulfilled" && oppRes.value) {
         const oppData = oppRes.value;
@@ -72,12 +79,33 @@ export default function SellerBusinessScreen() {
           setCopilot(oppData.copilot_insight);
         }
 
-        if (catList.length > 0 && !selectedCategory) {
-          setSelectedCategory(catList[0].category);
+        // Fallback: derive products from opportunities if sellerProducts was empty
+        if (prodsList.length === 0 && oppList.length > 0) {
+          const derived = oppList
+            .filter((o: any) => o.product_id != null)
+            .map((o: any) => ({
+              id: o.product_id,
+              title: o.product_title || o.headline,
+              category: o.category,
+              price: o.current_price
+            }));
+          if (derived.length > 0) {
+            prodsList = derived;
+            setSellerProducts(derived);
+          }
         }
       }
       if (modelRes.status === "fulfilled" && modelRes.value) {
         setModelInfo(modelRes.value);
+      }
+
+      // Automatically forecast for first product if available
+      if (prodsList.length > 0) {
+        const initialProd = prodsList[0];
+        setSelectedProduct(initialProd);
+        api.predictProductDemand(initialProd.id)
+          .then((res) => setDemandResult(res))
+          .catch(() => {});
       }
 
       const count = await getQueueCount();
@@ -87,24 +115,22 @@ export default function SellerBusinessScreen() {
     } finally {
       setLoading(false);
     }
-  }, [copilot, selectedCategory]);
+  }, [copilot]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const handlePredictSample = async (category: string) => {
-    setSelectedCategory(category);
+  const handlePredictProduct = async (product: any) => {
+    if (!product || !product.id) return;
+    setSelectedProduct(product);
     setPredicting(true);
     setDemandResult(null);
     try {
-      const res = await api.predictDemand({
-        category,
-        price: 500
-      });
+      const res = await api.predictProductDemand(product.id);
       setDemandResult(res);
     } catch (e: any) {
-      Alert.alert("Demand Forecast Notice", e?.detail || e?.message || "Could not fetch demand forecast.");
+      Alert.alert("Demand Forecast Notice", e?.detail || e?.message || "Could not fetch demand forecast for this craft product.");
     } finally {
       setPredicting(false);
     }
@@ -124,10 +150,6 @@ export default function SellerBusinessScreen() {
     }
   };
 
-  const availableCategories =
-    categoryDemands.length > 0
-      ? categoryDemands.map((d) => d.category)
-      : ["Apparel & Sarees", "Electronics Accessories", "Wooden Toys", "Handloom"];
 
   return (
     <Screen safeArea={false}>
@@ -317,33 +339,51 @@ export default function SellerBusinessScreen() {
         <Card style={styles.mlCard}>
           <View style={styles.mlHeader}>
             <Ionicons name="bulb-outline" size={20} color={theme.colors.primary} />
-            <Text style={styles.mlTitle}>Demand Probability Engine</Text>
+            <Text style={styles.mlTitle}>Product Demand Engine</Text>
           </View>
           <Text style={styles.mlDesc}>
-            Select a craft category to test real-time projected buyer demand from the server ML engine:
+            Select one of your catalog products to evaluate real-time ML buyer demand grounded in actual marketplace telemetry:
           </Text>
 
-          <View style={styles.chipsRow}>
-            {availableCategories.map((cat) => (
-              <Chip
-                key={cat}
-                label={cat}
-                selected={selectedCategory === cat}
-                onPress={() => handlePredictSample(cat)}
-              />
-            ))}
-          </View>
+          {sellerProducts.length > 0 ? (
+            <View style={styles.chipsRow}>
+              {sellerProducts.map((prod) => (
+                <Chip
+                  key={prod.id}
+                  label={prod.title || `Product #${prod.id}`}
+                  selected={selectedProduct?.id === prod.id}
+                  onPress={() => handlePredictProduct(prod)}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.noProductsBox}>
+              <Ionicons name="cube-outline" size={24} color={theme.colors.inkMuted} />
+              <Text style={styles.noProductsText}>
+                No published craft listings found. Publish your craft listings in AI Catalog Studio to run live telemetry-driven demand forecasting.
+              </Text>
+            </View>
+          )}
 
           {predicting && (
             <View style={styles.predictingRow}>
               <ActivityIndicator size="small" color={theme.colors.primary} />
-              <Text style={styles.predictingText}>Evaluating ML demand regression…</Text>
+              <Text style={styles.predictingText}>
+                Evaluating ML demand regression for {selectedProduct?.title || "product"}…
+              </Text>
             </View>
           )}
 
           {demandResult && (
             <View style={styles.demandBox}>
               <View style={styles.demandRow}>
+                <Text style={styles.demandLabel}>Evaluated Product:</Text>
+                <Text style={styles.demandProductTitle} numberOfLines={1}>
+                  {demandResult.product_title || selectedProduct?.title || `#${selectedProduct?.id}`}
+                </Text>
+              </View>
+
+              <View style={[styles.demandRow, { marginTop: 6 }]}>
                 <Text style={styles.demandLabel}>Predicted Demand Level:</Text>
                 <Text
                   style={[
@@ -374,6 +414,27 @@ export default function SellerBusinessScreen() {
                     : "1.0x (Baseline)"}
                 </Text>
               </View>
+
+              {demandResult.features && (
+                <View style={styles.telemetryGrid}>
+                  <View style={styles.telemetryItem}>
+                    <Text style={styles.telemetryItemLabel}>Views</Text>
+                    <Text style={styles.telemetryItemValue}>{demandResult.features.views ?? 0}</Text>
+                  </View>
+                  <View style={styles.telemetryItem}>
+                    <Text style={styles.telemetryItemLabel}>Saves</Text>
+                    <Text style={styles.telemetryItemValue}>{demandResult.features.saves ?? 0}</Text>
+                  </View>
+                  <View style={styles.telemetryItem}>
+                    <Text style={styles.telemetryItemLabel}>Enquiries</Text>
+                    <Text style={styles.telemetryItemValue}>{demandResult.features.enquiries ?? 0}</Text>
+                  </View>
+                  <View style={styles.telemetryItem}>
+                    <Text style={styles.telemetryItemLabel}>Orders</Text>
+                    <Text style={styles.telemetryItemValue}>{demandResult.features.orders ?? 0}</Text>
+                  </View>
+                </View>
+              )}
 
               <Text style={styles.demandSub}>
                 Model Engine: {demandResult.model_source || "Trained Scikit-Learn Engine"}
@@ -727,6 +788,53 @@ const styles = StyleSheet.create({
     ...theme.typography.bodySmall,
     fontWeight: "700",
     color: theme.colors.ink
+  },
+  demandProductTitle: {
+    ...theme.typography.bodySmall,
+    fontWeight: "700",
+    color: theme.colors.ink,
+    maxWidth: "60%",
+    textAlign: "right"
+  },
+  telemetryGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.sm,
+    padding: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    marginBottom: 4
+  },
+  telemetryItem: {
+    alignItems: "center",
+    flex: 1
+  },
+  telemetryItemLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.inkMuted,
+    fontSize: 10,
+    textTransform: "uppercase"
+  },
+  telemetryItemValue: {
+    ...theme.typography.bodySmall,
+    fontWeight: "800",
+    color: theme.colors.ink,
+    marginTop: 2
+  },
+  noProductsBox: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: theme.spacing.md,
+    gap: 8,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.radius.md,
+    marginVertical: theme.spacing.xs
+  },
+  noProductsText: {
+    ...theme.typography.caption,
+    color: theme.colors.inkMuted,
+    textAlign: "center",
+    lineHeight: 18
   },
   demandSub: {
     ...theme.typography.caption,

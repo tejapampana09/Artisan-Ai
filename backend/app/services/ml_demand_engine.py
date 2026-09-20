@@ -299,6 +299,9 @@ class MLDemandEngine:
             # Graceful Fallback if model not loaded
             return {
                 "product_id": product.id,
+                "product_title": getattr(product, "title", f"Product #{product.id}"),
+                "category": getattr(product, "category", "Handcrafted"),
+                "current_price": float(getattr(product, "price", 0.0)),
                 "predicted_demand_score": 0.0,
                 "demand_level": "NORMAL",
                 "ml_demand_multiplier": 1.00,
@@ -315,6 +318,9 @@ class MLDemandEngine:
         if model is None or metadata is None:
             return {
                 "product_id": product.id,
+                "product_title": getattr(product, "title", f"Product #{product.id}"),
+                "category": getattr(product, "category", "Handcrafted"),
+                "current_price": float(getattr(product, "price", 0.0)),
                 "predicted_demand_score": 0.0,
                 "demand_level": "NORMAL",
                 "ml_demand_multiplier": 1.00,
@@ -343,6 +349,9 @@ class MLDemandEngine:
             
             return {
                 "product_id": product.id,
+                "product_title": getattr(product, "title", f"Product #{product.id}"),
+                "category": getattr(product, "category", "Handcrafted"),
+                "current_price": float(getattr(product, "price", 0.0)),
                 "predicted_demand_score": score,
                 "demand_level": level,
                 "ml_demand_multiplier": multiplier,
@@ -363,6 +372,9 @@ class MLDemandEngine:
             logger.error("ML Inference error for product ID %s: %s", product.id, e)
             return {
                 "product_id": product.id,
+                "product_title": getattr(product, "title", f"Product #{product.id}"),
+                "category": getattr(product, "category", "Handcrafted"),
+                "current_price": float(getattr(product, "price", 0.0)),
                 "predicted_demand_score": 0.0,
                 "demand_level": "NORMAL",
                 "ml_demand_multiplier": 1.00,

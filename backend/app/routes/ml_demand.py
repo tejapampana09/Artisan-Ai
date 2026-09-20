@@ -13,14 +13,7 @@ router = APIRouter(prefix="/api/ml", tags=["ML Demand Engine"])
 MIN_REAL_EVENTS_RETRAIN_THRESHOLD = 20
 
 class PredictDemandRequest(BaseModel):
-    product_id: Optional[int] = None
-    material_cost: Optional[float] = Field(default=0.0, ge=0.0)
-    labour_cost: Optional[float] = Field(default=0.0, ge=0.0)
-    packaging_cost: Optional[float] = Field(default=0.0, ge=0.0)
-    other_cost: Optional[float] = Field(default=0.0, ge=0.0)
-    price: Optional[float] = Field(default=0.0, ge=0.0)
-    stock: Optional[int] = Field(default=1, ge=0)
-    category: Optional[str] = "Handcrafted"
+    product_id: int = Field(..., description="ID of an active published catalog product with interaction telemetry")
 
 @router.get("/model-info", summary="Get active ML demand model metadata")
 def get_model_info():
@@ -36,34 +29,38 @@ def get_model_info():
         "metadata": engine.metadata
     }
 
-@router.post("/predict-demand", summary="Predict demand score for a craft product payload or product ID")
+@router.post("/predict-demand", summary="Predict 7-day demand for a published catalog product")
 def predict_demand(
     payload: PredictDemandRequest,
     db: Session = Depends(get_db)
 ):
-    engine = MLDemandEngine()
+    """
+    Predicts 7-day consumer demand for an authentic published catalog product.
+    Requires genuine buyer interaction telemetry (views, saves, enquiries, orders).
+    """
+    product = db.query(Product).filter(Product.id == payload.product_id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with ID {payload.product_id} not found."
+        )
+    return predict_product_demand(product, db)
 
-    if payload.product_id:
-        product = db.query(Product).filter(Product.id == payload.product_id).first()
-        if not product:
-            raise HTTPException(status_code=444 if False else 404, detail=f"Product with ID {payload.product_id} not found.")
-        return predict_product_demand(product, db)
-
-    # Payload-based prediction when product_id is not specified
-    dummy_prod = Product(
-        id=0,
-        title="Predictive Catalog Draft",
-        category=payload.category or "Handcrafted",
-        price=payload.price or 0.0,
-        stock=payload.stock if payload.stock is not None else 1,
-        material_cost=payload.material_cost or 0.0,
-        labour_cost=payload.labour_cost or 0.0,
-        packaging_cost=payload.packaging_cost or 0.0,
-        other_cost=payload.other_cost or 0.0,
-        seller_id=0
-    )
-
-    return engine.predict(dummy_prod, db)
+@router.get("/predict-demand/{product_id}", summary="Get 7-day demand prediction for a specific product ID")
+def get_product_demand_prediction(
+    product_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Convenience GET endpoint to retrieve 7-day ML demand prediction for a specific product ID.
+    """
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with ID {product_id} not found."
+        )
+    return predict_product_demand(product, db)
 
 @router.post("/retrain", summary="Trigger ML model retraining (Requires Auth & Real Event Threshold)")
 def retrain_model(

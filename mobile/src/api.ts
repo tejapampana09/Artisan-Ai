@@ -391,11 +391,15 @@ export const api = {
     return request<any>("/ml/model-info");
   },
 
-  async predictDemand(payload: Record<string, unknown>) {
+  async predictDemand(payload: { product_id: number }) {
     return request<any>("/ml/predict-demand", {
       method: "POST",
       body: JSON.stringify(payload)
     });
+  },
+
+  async predictProductDemand(productId: number) {
+    return request<any>(`/ml/predict-demand/${productId}`);
   },
 
   // -------------------------------------------------------------
