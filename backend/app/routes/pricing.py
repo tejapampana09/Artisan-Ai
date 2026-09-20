@@ -115,18 +115,11 @@ def toggle_smart_pricing(
     db.commit()
     db.refresh(product)
 
-    # Autonomous execution: bypass cooldown on first-ever enable OR if admin
-    # (so artisans see an immediate price update the first time they turn it on)
+    # Autonomous execution: bypass cooldown when enabling
+    # so artisans see an immediate price update when they turn it on
     decision_record = None
     if product.auto_smart_pricing_enabled:
-        is_admin = getattr(current_user, "role", None) == "ADMIN"
-        has_prior_auto = db.query(PricingDecision).filter(
-            PricingDecision.product_id == product.id,
-            PricingDecision.decision == "AUTO_APPLIED"
-        ).first() is not None
-        # Bypass cooldown on first enable so artisan sees immediate pricing effect
-        bypass = is_admin or (not has_prior_auto)
-        decision_record = process_market_aware_auto_pricing(product, db, bypass_cooldown=bypass)
+        decision_record = process_market_aware_auto_pricing(product, db, bypass_cooldown=True)
     decision_data = cast(Any, decision_record)
 
     return {

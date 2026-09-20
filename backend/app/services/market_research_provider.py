@@ -12,6 +12,9 @@ import hashlib
 import time
 from typing import Tuple
 
+from backend.app.services.market_page_fetcher import MarketPageFetcher
+from backend.app.services.market_product_extractor import MarketProductExtractor
+
 logger = logging.getLogger("artisan_ai")
 
 _MARKET_CACHE: Dict[str, Tuple[float, List[Dict[str, Any]]]] = {}
@@ -162,6 +165,53 @@ def _is_url_in_grounding(url: str, grounded_uris: set) -> bool:
     return False
 
 
+async def identify_craft_from_image_helper(
+    api_key: str, query: str, image_part: Dict[str, Any], models_to_try: List[str]
+) -> Optional[str]:
+    """
+    Multimodal Visual Craft Identification Helper.
+    Uses Gemini Vision strictly for visual craft identification (craft type, materials, weave/carving technique).
+    Does NOT generate or hallucinate market listings or prices.
+    Outputs an enriched, precise search phrase that is then passed to the market search pipeline.
+    """
+    if not api_key:
+        return None
+
+    vision_prompt = (
+        f"You are an expert Indian handicrafts curator and technical textile/material analyst.\n"
+        f"Analyze the attached handcrafted product photo and user description: \"{query}\".\n"
+        f"Identify the visual craft type, materials, artisan technique, and regional tradition.\n"
+        f"Return a concise, specific search phrase (under 10 words) optimized for finding this exact handmade product in Indian marketplaces.\n"
+        f"Example: Handcrafted Blue Pottery ceramic floral vase Jaipur\n"
+        f"Return ONLY the search phrase text. Do NOT include prices, JSON, or formatting."
+    )
+    payload = {
+        "contents": [{"parts": [image_part, {"text": vision_prompt}]}],
+        "generationConfig": {
+            "temperature": 0.1,
+            "maxOutputTokens": 100,
+        }
+    }
+    for model in models_to_try:
+        try:
+            api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(api_url, json=payload, headers={"Content-Type": "application/json"})
+            if resp.status_code == 200:
+                res_json = resp.json()
+                candidates = res_json.get("candidates") or []
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    text_out = "".join(p.get("text", "") for p in parts if isinstance(p, dict)).strip()
+                    if text_out and len(text_out) > 3:
+                        logger.info("[Market Vision] Visual identification result: '%s' -> '%s'", query, text_out)
+                        return text_out
+        except Exception as err:
+            logger.warning("[Market Vision] Identification error on %s: %s", model, err)
+            continue
+    return None
+
+
 class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
     """
     Production Live Market Research Provider utilizing Google Gemini with Search Grounding.
@@ -184,45 +234,7 @@ class GeminiGroundingMarketResearchProvider(BaseMarketResearchProvider):
     async def _identify_craft_from_image(
         self, query: str, image_part: Dict[str, Any], models_to_try: List[str]
     ) -> Optional[str]:
-        """
-        Multimodal Visual Craft Identification.
-        Uses Gemini Vision strictly for visual identification (craft type, materials, weave/carving technique).
-        Does NOT generate or hallucinate market listings or prices.
-        Outputs an enriched, precise search phrase that is then passed to the grounded web search pipeline.
-        """
-        vision_prompt = (
-            f"You are an expert Indian handicrafts curator and technical textile/material analyst.\n"
-            f"Analyze the attached handcrafted product photo and user description: \"{query}\".\n"
-            f"Identify the visual craft type, materials, artisan technique, and regional tradition.\n"
-            f"Return a concise, specific search phrase (under 10 words) optimized for finding this exact handmade product in Indian marketplaces.\n"
-            f"Example: Handcrafted Blue Pottery ceramic floral vase Jaipur\n"
-            f"Return ONLY the search phrase text. Do NOT include prices, JSON, or formatting."
-        )
-        payload = {
-            "contents": [{"parts": [image_part, {"text": vision_prompt}]}],
-            "generationConfig": {
-                "temperature": 0.1,
-                "maxOutputTokens": 100,
-            }
-        }
-        for model in models_to_try:
-            try:
-                api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    resp = await client.post(api_url, json=payload, headers={"Content-Type": "application/json"})
-                if resp.status_code == 200:
-                    res_json = resp.json()
-                    candidates = res_json.get("candidates") or []
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        text_out = "".join(p.get("text", "") for p in parts if isinstance(p, dict)).strip()
-                        if text_out and len(text_out) > 3:
-                            logger.info("[Market Vision] Visual identification result: '%s' -> '%s'", query, text_out)
-                            return text_out
-            except Exception as err:
-                logger.warning("[Market Vision] Identification error on %s: %s", model, err)
-                continue
-        return None
+        return await identify_craft_from_image_helper(self.api_key, query, image_part, models_to_try)
 
     async def search_comparable_products(
         self, query: str, limit: int = 10, image_url: Optional[str] = None
@@ -568,10 +580,11 @@ def _verify_price_in_evidence(price_val: float, price_evidence: str, title: str,
 
 class SearXNGMarketResearchProvider(BaseMarketResearchProvider):
     """
-    Self-Hosted Free SearXNG Market Research Provider.
-    Queries a SearXNG instance for real search results, uses Gemini Flash for structured JSON extraction,
-    and enforces a strict verification layer (URL proof & snippet price evidence).
-    Does not automatically failover to WEB_SEARCH (Gemini Grounding) to avoid unexpected 429 quota errors.
+    Self-Hosted Free SearXNG Market Research Provider (Hardened).
+    1. Queries SearXNG instance for real live candidate listings.
+    2. Fetches public candidate product pages with SSRF and redirect protection.
+    3. Deterministically extracts product and price data via Schema.org JSON-LD / OpenGraph / HTML.
+    4. Applies strict page and price verification without requiring Gemini Search Grounding or Gemini API keys.
     """
 
     def __init__(self, searxng_url: Optional[str] = None, api_key: Optional[str] = None):
@@ -583,13 +596,14 @@ class SearXNGMarketResearchProvider(BaseMarketResearchProvider):
                 searxng_url = os.getenv("SEARXNG_BASE_URL", "http://localhost:8080")
         self.searxng_url = (searxng_url or "http://localhost:8080").rstrip("/")
 
-        if not api_key:
+        if api_key is None:
             try:
                 from backend.app.config import GEMINI_API_KEY
                 api_key = GEMINI_API_KEY
             except Exception:
-                pass
-        self.api_key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
+                api_key = os.getenv("GEMINI_API_KEY", "")
+        self.api_key = (api_key or "").strip()
+        self.fetcher = MarketPageFetcher(timeout=5.0)
         self.last_failure_reason: Optional[str] = None
 
     async def search_comparable_products(
@@ -605,20 +619,22 @@ class SearXNGMarketResearchProvider(BaseMarketResearchProvider):
             return cached_res[:limit]
 
         search_query = clean_q
+        # Optional multimodal enrichment: if image_url and api_key are present, refine the query text
         if image_url and self.api_key:
             from backend.app.services.ai_adapter import prepare_image_part
             try:
                 async with httpx.AsyncClient(timeout=10.0) as image_client:
                     image_part = await prepare_image_part(image_url, image_client)
                     if image_part:
-                        vision_ident = GeminiSearchMarketResearchProvider(self.api_key)
-                        visual_q = await vision_ident._identify_craft_from_image(clean_q, image_part, ["gemini-3.1-flash-lite", "gemini-2.5-flash"])
+                        visual_q = await identify_craft_from_image_helper(
+                            self.api_key, clean_q, image_part, ["gemini-3.1-flash-lite", "gemini-2.5-flash"]
+                        )
                         if visual_q:
                             search_query = visual_q
             except Exception as img_err:
                 logger.warning("[Market SearXNG] Craft image identification error: %s", img_err)
 
-        # Step 1: Query SearXNG JSON API
+        # Step 1: Query SearXNG JSON API for candidate URLs
         searxng_endpoint = f"{self.searxng_url}/search"
         params = {
             "q": search_query,
@@ -637,195 +653,89 @@ class SearXNGMarketResearchProvider(BaseMarketResearchProvider):
                         searxng_results = data["results"]
                 else:
                     logger.warning("[SearXNG] SearXNG returned HTTP %s", resp.status_code)
-                    self.last_failure_reason = f"SearXNG service returned HTTP {resp.status_code}."
+                    self.last_failure_reason = f"Live market search returned HTTP {resp.status_code}. No market price was used."
         except Exception as err:
             logger.warning("[SearXNG] Could not connect to SearXNG at %s: %s", self.searxng_url, err)
-            self.last_failure_reason = f"Could not connect to SearXNG search engine at {self.searxng_url}."
+            self.last_failure_reason = "Live market search is currently unavailable. No market price was used."
 
         if not searxng_results:
             if not self.last_failure_reason:
-                self.last_failure_reason = "SearXNG search returned 0 results."
+                self.last_failure_reason = "Live market search found 0 listings. No market price was used."
             logger.warning("[SearXNG] No results for query '%s'", clean_q)
             return []
 
-        # Prepare source manifest from SearXNG search results
-        sources = []
-        for idx, item in enumerate(searxng_results[:15]):
+        # Step 2: Fetch candidate pages and deterministically extract product data
+        candidate_count = min(max(limit * 2, 6), 10)
+        results = []
+
+        for item in searxng_results[:candidate_count]:
             if not isinstance(item, dict):
                 continue
-            url = str(item.get("url") or "").strip()
-            title = str(item.get("title") or "").strip()
-            content = str(item.get("content") or item.get("snippet") or "").strip()
-            if url.startswith("http://") or url.startswith("https://"):
-                sources.append({
-                    "source_index": len(sources) + 1,
-                    "url": url,
-                    "title": title,
-                    "snippet": content,
-                    "domain": urlparse(url).netloc.lower()
-                })
+            raw_url = str(item.get("url") or "").strip()
+            raw_title = str(item.get("title") or "").strip()
+            raw_snippet = str(item.get("content") or item.get("snippet") or "").strip()
 
-        if not sources:
-            self.last_failure_reason = "No valid web source URLs found in SearXNG results."
-            return []
+            if not (raw_url.startswith("http://") or raw_url.startswith("https://")):
+                continue
 
-        if not self.api_key:
-            try:
-                from backend.app.config import GEMINI_API_KEY
-                self.api_key = GEMINI_API_KEY.strip()
-            except Exception:
-                pass
+            domain = urlparse(raw_url).netloc.lower()
 
-        if not self.api_key:
-            # Basic regex extraction if no Gemini key available
-            results = []
-            for s in sources[:limit]:
-                price_val = _extract_regex_price(f"{s['title']} {s['snippet']}")
-                if price_val and not _verify_price_in_evidence(price_val, "", s["title"], s["snippet"]):
-                    price_val = None
+            # Attempt live page fetch
+            page = await self.fetcher.fetch_page(raw_url)
+            extracted = None
+            if page.success and page.html:
+                extracted = MarketProductExtractor.extract_from_html(page.html, page.final_url or raw_url)
+
+            if extracted and extracted.title:
+                # Page successfully fetched and product schema/meta verified
+                p_val = extracted.price
+                price_verified = bool(p_val is not None and p_val > 0)
                 results.append({
-                    "title": s["title"],
-                    "price": price_val,
-                    "currency": "INR",
-                    "source": s["domain"],
-                    "url": s["url"],
-                    "description": s["snippet"][:200],
-                    "category": clean_q,
-                    "materials": [],
+                    "title": extracted.title,
+                    "price": p_val if price_verified else None,
+                    "currency": extracted.currency or "INR",
+                    "source": domain,
+                    "url": raw_url,
+                    "image_url": extracted.image_url,
+                    "description": (extracted.description or raw_snippet)[:300],
+                    "category": extracted.category or clean_q,
+                    "materials": extracted.materials,
+                    "market_source_type": "EXTERNAL_LIVE",
+                    "page_verified": True,
+                    "product_verified": True,
+                    "price_verified": price_verified,
+                    "extraction_method": extracted.extraction_method,
                     "observed_at": datetime.now(timezone.utc)
                 })
-            set_market_cache(clean_q, results, image_url)
-            return results[:limit]
-
-        # Step 2: Use Gemini Flash for structured extraction
-        from backend.app.config import GEMINI_MODEL, GEMINI_FALLBACK_MODELS
-        models_to_try = [GEMINI_MODEL] + [m for m in GEMINI_FALLBACK_MODELS if m != GEMINI_MODEL]
-
-        extraction_prompt = (
-            f"You are an expert market analyst extracting product pricing for handmade/artisan items in India. "
-            f"Analyze these real web search results from SearXNG for query: \"{clean_q}\".\n"
-            f"Prioritize authentic Indian artisan marketplaces and ONDC channels like India Handmade (indiahandmade.com), Mystore (mystore.in), iTokri, Jaypore, Tribes India, Craftsvilla.\n\n"
-            f"SearXNG Search Results:\n{json.dumps(sources, ensure_ascii=False, indent=2)}\n\n"
-            f"Return a JSON array of up to {min(limit, len(sources))} objects. Each object MUST include:\n"
-            f"- source_index (integer matching source_index above)\n"
-            f"- title (string)\n"
-            f"- price_evidence (string, exact price mention from snippet/title e.g. \"₹1,499\", or null if not explicitly mentioned)\n"
-            f"- price (numeric INR or null)\n"
-            f"- currency ('INR')\n"
-            f"- description (string)\n"
-            f"- category (string)\n"
-            f"- materials (list of strings)\n"
-            f"Do not invent a price or mock products. If the snippet does not show an explicit price, set price and price_evidence to null."
-        )
-
-        extraction_payload = {
-            "contents": [{"parts": [{"text": extraction_prompt}]}],
-            "generationConfig": {
-                "temperature": 0.0,
-                "maxOutputTokens": 4096,
-                "responseMimeType": "application/json",
-            },
-        }
-
-        results = []
-        for model in models_to_try:
-            try:
-                api_url = (
-                    f"https://generativelanguage.googleapis.com/v1beta/models/"
-                    f"{model}:generateContent?key={self.api_key}"
-                )
-                async with httpx.AsyncClient(timeout=6.0) as client:
-                    resp = await client.post(api_url, json=extraction_payload, headers={"Content-Type": "application/json"})
-
-                if resp.status_code != 200:
-                    logger.warning("[SearXNG] Gemini extraction pass on %s returned HTTP %s", model, resp.status_code)
-                    continue
-
-                res_json = resp.json()
-                candidates = res_json.get("candidates") or []
-                if not candidates:
-                    continue
-
-                parts = candidates[0].get("content", {}).get("parts", []) if isinstance(candidates[0], dict) else []
-                extraction_text = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
-                parsed_array = _extract_json_array(extraction_text)
-                if not parsed_array:
-                    continue
-
-                # Step 3: Verification Layer
-                for item in parsed_array:
-                    if not isinstance(item, dict):
-                        continue
-                    title = str(item.get("title") or "").strip()
-                    if not title:
-                        continue
-
-                    # 3a. URL Verification (must come from SearXNG source list)
-                    s_idx = item.get("source_index")
-                    try:
-                        s_idx = int(s_idx)
-                    except (TypeError, ValueError):
-                        continue
-                    if s_idx < 1 or s_idx > len(sources):
-                        continue
-                    matched_source = sources[s_idx - 1]
-                    final_url = matched_source["url"]
-
-                    # 3b. Price Evidence Verification
-                    raw_price = item.get("price")
-                    price_evidence = str(item.get("price_evidence") or "").strip()
-                    parsed_price = None
-
-                    if raw_price is not None:
-                        try:
-                            p_val = float(str(raw_price).replace(",", "").replace("₹", "").strip())
-                            if p_val > 0:
-                                if _verify_price_in_evidence(p_val, price_evidence, matched_source["title"], matched_source["snippet"]):
-                                    parsed_price = p_val
-                                else:
-                                    logger.info("[SearXNG] Unverified price %s for '%s' (not in snippet text)", p_val, title)
-                        except (ValueError, TypeError):
-                            pass
-
-                    results.append({
-                        "title": title,
-                        "price": parsed_price,
-                        "currency": "INR",
-                        "source": matched_source["domain"],
-                        "url": final_url,
-                        "description": str(item.get("description") or matched_source["snippet"]),
-                        "category": str(item.get("category") or clean_q),
-                        "materials": item.get("materials") or [],
-                        "observed_at": datetime.now(timezone.utc)
-                    })
-
-                if results:
-                    logger.info("[SearXNG] Successfully extracted %d verified comparables for '%s'", len(results), clean_q)
-                    set_market_cache(clean_q, results, image_url)
-                    return results[:limit]
-
-            except Exception as err:
-                logger.warning("[SearXNG] Gemini request error on %s: %s", model, err)
-
-        # Basic fallback regex if LLM pass yielded no valid items
-        if not results and sources:
-            for s in sources[:limit]:
-                price_val = _extract_regex_price(f"{s['title']} {s['snippet']}")
-                if price_val and not _verify_price_in_evidence(price_val, "", s["title"], s["snippet"]):
-                    price_val = None
+            elif raw_title:
+                # Fallback to search snippet if live page fetch was blocked/timed out
+                p_val = _extract_regex_price(f"{raw_title} {raw_snippet}")
+                if p_val and not _verify_price_in_evidence(p_val, "", raw_title, raw_snippet):
+                    p_val = None
+                price_verified = bool(p_val is not None and p_val > 0)
                 results.append({
-                    "title": s["title"],
-                    "price": price_val,
+                    "title": raw_title,
+                    "price": p_val if price_verified else None,
                     "currency": "INR",
-                    "source": s["domain"],
-                    "url": s["url"],
-                    "description": s["snippet"][:200],
+                    "source": domain,
+                    "url": raw_url,
+                    "image_url": None,
+                    "description": raw_snippet[:300],
                     "category": clean_q,
                     "materials": [],
+                    "market_source_type": "EXTERNAL_LIVE",
+                    "page_verified": False,
+                    "product_verified": True,
+                    "price_verified": price_verified,
+                    "extraction_method": "SNIPPET",
                     "observed_at": datetime.now(timezone.utc)
                 })
+
+            if len(results) >= limit:
+                break
 
         if results:
+            logger.info("[SearXNG] Extracted %d comparable products for '%s'", len(results), clean_q)
             set_market_cache(clean_q, results, image_url)
             return results[:limit]
 

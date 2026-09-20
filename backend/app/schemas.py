@@ -425,13 +425,31 @@ class BuyerCopilotResponse(BaseModel):
     match_count: int = 0
     is_fallback: bool = False
 
-# Market Research Schemas (Phase 5)
+# Market Research Schemas (Phase 5 Hardened)
+class MarketProvenance:
+    EXTERNAL_LIVE = "EXTERNAL_LIVE"
+    INTERNAL_MARKETPLACE = "INTERNAL_MARKETPLACE"
+    AI_ESTIMATE = "AI_ESTIMATE"
+    NONE = "NONE"
+
+class MarketSearchProfile(BaseModel):
+    object_type: str = ""
+    craft: str = ""
+    category: str = ""
+    material: List[str] = Field(default_factory=list)
+    technique: List[str] = Field(default_factory=list)
+    region: List[str] = Field(default_factory=list)
+    style: List[str] = Field(default_factory=list)
+    color: List[str] = Field(default_factory=list)
+    keywords: List[str] = Field(default_factory=list)
+
 class MarketListing(BaseModel):
     title: str
     price: Optional[float] = None
     currency: str = "INR"
     source: str = ""
     url: Optional[str] = None
+    image_url: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None
     materials: List[str] = Field(default_factory=list)
@@ -439,19 +457,32 @@ class MarketListing(BaseModel):
     matched_product: bool = False
     matched_material: bool = False
     matched_craft: bool = False
+    matched_technique: bool = False
     similarity_score: float = 0.0
     match_tier: str = "WEAK"  # STRONG (>=0.80), GOOD (>=0.50), WEAK (>=0.20)
+    match_reasons: List[str] = Field(default_factory=list)
+    market_source_type: str = "EXTERNAL_LIVE"
+    page_verified: bool = False
+    product_verified: bool = False
+    price_verified: bool = False
+    extraction_method: Optional[str] = None
     observed_at: Optional[datetime] = None
 
 class MarketSummary(BaseModel):
     comparable_count: int = 0
     priced_comparable_count: int = 0
+    candidate_count: int = 0
+    verified_count: int = 0
+    priced_count: int = 0
     min_price: Optional[float] = None
     median_price: Optional[float] = None
     max_price: Optional[float] = None
     currency: str = "INR"
     market_confidence: str = "LOW"
     is_reliable: bool = False
+    market_source_type: Optional[str] = None
+    internal_comparable_count: int = 0
+    ai_estimated_price: Optional[float] = None
 
 class MarketResearchRequest(BaseModel):
     artisan_facts: ArtisanFacts

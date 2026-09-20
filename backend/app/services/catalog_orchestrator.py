@@ -10,7 +10,6 @@ from backend.app.services.catalog_validator import validate_catalog_draft, has_v
 from backend.app.services.market_research import research_market
 from backend.app.services.market_research_provider import BaseMarketResearchProvider
 from backend.app.services.pricing_engine import calculate_price_recommendation_from_inputs
-from backend.app.services.ml_demand_engine import MLDemandEngine
 
 def _run_coro_sync(coro):
     try:
@@ -153,22 +152,22 @@ async def process_full_catalog_pipeline(
     market_currency = market_response.summary.currency if market_response.summary else "INR"
     market_is_reliable = market_response.summary.is_reliable if market_response.summary else False
 
-    # 5. ML Demand Engine prediction using draft inputs (no DB Product row required)
-    ml_engine = MLDemandEngine()
-    ml_pred = ml_engine.predict_from_inputs(
-        category=validated_catalog.get("category") or category_hint,
-        material_cost=float(material_cost or 0.0),
-        labour_cost=float(labour_cost or 0.0),
-        packaging_cost=float(packaging_cost or 0.0),
-        other_cost=float(other_cost or 0.0),
-        selling_price=float(selling_price or 0.0),
-        db=db
-    )
-    ml_demand_multiplier = float(ml_pred.get("ml_demand_multiplier", 1.0))
-    ml_demand_label = ml_pred.get("demand_level", "NORMAL")
-    # Compute demand_pct from ML score (0-100 → 0-100 percentage proxy)
-    ml_demand_score = float(ml_pred.get("predicted_demand_score", 0.0))
-    ml_demand_pct = round(ml_demand_score, 1)
+    # 5. Demand Telemetry Baseline for Fresh Drafts
+    # Invariant: Fresh unpublished products have 0 buyer interactions (views, saves, orders).
+    # We do NOT fabricate synthetic proxy events or unearned demand multipliers on drafts.
+    # 7-day ML demand forecasting activates in Seller Business post-publication.
+    ml_demand_multiplier = 1.0
+    ml_demand_label = "NEW_LISTING"
+    ml_demand_pct = 0.0
+    ml_pred = {
+        "status": "PENDING_PUBLICATION",
+        "message": "7-day demand forecasting activates after publication based on real buyer interactions.",
+        "predicted_demand_score": None,
+        "demand_level": "PENDING",
+        "ml_demand_multiplier": 1.0,
+        "model_source": "TELEMETRY_PENDING",
+        "model_info": {"available": False, "reason": "Draft has no historical buyer telemetry"}
+    }
 
     cat_name = validated_catalog.get("category") or category_hint or "Handcrafted"
     benchmark_low = None
@@ -207,14 +206,15 @@ async def process_full_catalog_pipeline(
                     if prices:
                         benchmark_low = min(prices)
                         benchmark_high = max(prices)
-                        if not raw_market_median:
-                            raw_market_median = float(statistics.median(prices))
-                            market_is_reliable = True
         except Exception:
             pass
 
-    # 2. If neither web search nor DB returned market prices, dynamically query Gemini AI for fair market evaluation
-    if raw_market_median is None and (benchmark_low is None or benchmark_high is None):
+    # 2. Informational AI Fair-Price Estimation:
+    # If no live external market data was found, optionally query Gemini for an AI estimate.
+    # INVARIANT: AI estimates are informational ONLY; they NEVER set market_is_reliable=True
+    # and NEVER populate observed market median/range.
+    ai_estimated_price = None
+    if raw_market_median is None and not db_similar_products:
         try:
             from backend.app.services.ai_adapter import estimate_fair_price
             ai_eval = await estimate_fair_price(
@@ -224,14 +224,12 @@ async def process_full_catalog_pipeline(
                 description=validated_catalog.get("description_en") or validated_catalog.get("description", "")
             )
             if ai_eval and ai_eval.get("suggested_price"):
-                raw_market_median = float(ai_eval["suggested_price"])
-                market_is_reliable = True
-                benchmark_low = float(ai_eval.get("min_fair_price") or (raw_market_median * 0.75))
-                benchmark_high = round(raw_market_median * 1.30, 2)
+                ai_estimated_price = float(ai_eval["suggested_price"])
         except Exception:
             pass
 
     # Pure Market-Aware Pricing Calculation (No DB Product required)
+    # Market signal is used ONLY when market_is_reliable is True (verified EXTERNAL_LIVE)
     pricing_rec = calculate_price_recommendation_from_inputs(
         title=validated_catalog.get("title", ""),
         category=validated_catalog.get("category", "Handcrafted"),
@@ -241,17 +239,19 @@ async def process_full_catalog_pipeline(
         packaging_cost=packaging_cost or 0.0,
         other_cost=other_cost or 0.0,
         min_margin_pct=0.20,
-        market_median=raw_market_median,
+        market_median=raw_market_median if market_is_reliable else None,
         market_currency=market_currency,
         market_is_reliable=market_is_reliable,
         product_currency="INR",
-        demand_factor=ml_demand_multiplier,
-        demand_label=f"{ml_demand_label} DEMAND",
-        demand_pct=ml_demand_pct,
-        benchmark_low=benchmark_low,
-        benchmark_high=benchmark_high,
-        ml_info=ml_pred
+        demand_factor=1.0,
+        demand_label="NEW_LISTING",
+        demand_pct=0.0,
+        benchmark_low=benchmark_low if market_is_reliable else None,
+        benchmark_high=benchmark_high if market_is_reliable else None,
+        ml_info=None
     )
+    if ai_estimated_price is not None:
+        pricing_rec["ai_estimated_price"] = ai_estimated_price
 
     # Clean catalog payload structure
     catalog_fields = {
@@ -270,42 +270,72 @@ async def process_full_catalog_pipeline(
         "ai_inferred_fields": validated_catalog.get("ai_inferred_fields", [])
     }
 
+    from backend.app.schemas import MarketProvenance
+
     market_summary_dict = market_response.summary.model_dump() if market_response.summary else {
         "comparable_count": 0,
+        "candidate_count": 0,
+        "verified_count": 0,
+        "priced_count": 0,
         "min_price": None,
         "median_price": None,
         "max_price": None,
-        "currency": "INR"
+        "currency": "INR",
+        "market_confidence": "LOW",
+        "is_reliable": False,
+        "market_source_type": MarketProvenance.NONE,
+        "internal_comparable_count": 0,
+        "ai_estimated_price": None
     }
 
-    if market_summary_dict.get("median_price") is None and raw_market_median is not None:
-        market_summary_dict["median_price"] = raw_market_median
-        market_summary_dict["min_price"] = benchmark_low
-        market_summary_dict["max_price"] = benchmark_high
-
     market_research_dict = market_response.model_dump()
-    if not market_research_dict.get("results") and db_similar_products:
+
+    # Apply Strict Market Evidence Invariants:
+    if market_is_reliable and raw_market_median is not None:
+        market_summary_dict["market_source_type"] = MarketProvenance.EXTERNAL_LIVE
+    elif db_similar_products and not market_research_dict.get("results"):
+        # Distinct Internal Marketplace benchmark
         market_research_dict["results"] = [
             {
                 "title": p.title,
                 "price": float(p.price) if p.price else None,
                 "currency": "INR",
-                "source": "Catalog Similar Product",
+                "source": "Artisan AI Marketplace",
                 "url": p.image_url or "",
                 "description": p.description or "",
                 "category": p.category or "",
                 "materials": [p.materials] if p.materials else [],
-                "match_tier": "GOOD"
+                "match_tier": "GOOD",
+                "match_reasons": ["internal marketplace craft"],
+                "market_source_type": MarketProvenance.INTERNAL_MARKETPLACE,
+                "page_verified": False,
+                "product_verified": True,
+                "price_verified": bool(p.price and float(p.price) > 0)
             }
             for p in db_similar_products[:5]
         ]
         market_summary_dict["comparable_count"] = len(market_research_dict["results"])
-        market_summary_dict["priced_comparable_count"] = len([p for p in db_similar_products[:5] if p.price])
+        market_summary_dict["internal_comparable_count"] = len(db_similar_products)
+        market_summary_dict["market_source_type"] = MarketProvenance.INTERNAL_MARKETPLACE
+        market_summary_dict["is_reliable"] = False
+        market_summary_dict["median_price"] = None
+        market_summary_dict["min_price"] = None
+        market_summary_dict["max_price"] = None
+    elif ai_estimated_price is not None:
+        market_summary_dict["market_source_type"] = MarketProvenance.AI_ESTIMATE
+        market_summary_dict["ai_estimated_price"] = ai_estimated_price
+        market_summary_dict["is_reliable"] = False
+        market_summary_dict["median_price"] = None
+        market_summary_dict["min_price"] = None
+        market_summary_dict["max_price"] = None
 
     min_fair = Decimal(str(pricing_rec["minimum_fair_price"])) if (pricing_rec.get("minimum_fair_price") and pricing_rec["minimum_fair_price"] > 0) else None
     rec_price = Decimal(str(pricing_rec["recommended_price"])) if (pricing_rec.get("recommended_price") is not None and pricing_rec["recommended_price"] > 0) else None
     if (rec_price is None or rec_price <= 0) and market_is_reliable and raw_market_median is not None and float(raw_market_median) > 0:
         rec_price = Decimal(str(raw_market_median))
+    elif (rec_price is None or rec_price <= 0) and ai_estimated_price is not None and ai_estimated_price > 0:
+        rec_price = Decimal(str(ai_estimated_price))
+
     pricing_available = rec_price is not None and float(rec_price) > 0
     pricing_source = pricing_rec.get("safety_constraints", {}).get("pricing_case", "MARKET_BASED_RECOMMENDATION")
     notice_text = None
@@ -377,9 +407,11 @@ async def process_full_catalog_pipeline(
         "market_research": market_research_dict,
         "price_recommendation": pricing_rec,
         "ml_demand_info": {
-            "model_source": ml_pred.get("model_source", "RULE_BASED_FALLBACK"),
-            "predicted_demand_score": ml_pred.get("predicted_demand_score", 0.0),
-            "demand_level": ml_pred.get("demand_level", "NORMAL"),
+            "status": ml_pred.get("status", "PENDING_PUBLICATION"),
+            "message": ml_pred.get("message", "7-day demand forecasting activates after publication based on real buyer interactions."),
+            "model_source": ml_pred.get("model_source", "TELEMETRY_PENDING"),
+            "predicted_demand_score": ml_pred.get("predicted_demand_score"),
+            "demand_level": ml_pred.get("demand_level", "PENDING"),
             "ml_demand_multiplier": ml_pred.get("ml_demand_multiplier", 1.0),
             "model_info": ml_pred.get("model_info", {})
         }

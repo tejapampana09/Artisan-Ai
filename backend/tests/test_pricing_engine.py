@@ -388,4 +388,124 @@ def test_16_calculate_price_recommendation_from_inputs_is_pure_and_db_free():
     assert rec["recommended_price"] == 1000.0
     assert rec["safety_constraints"]["minimum_fair_price_protected"] is True
 
+def test_17_auto_smart_pricing_dynamic_surge_in_case_3(db: Session):
+    from backend.app.services.pricing_engine import process_auto_smart_pricing
+
+    # Product priced at 1135 inside market range
+    product = Product(
+        title="Kalamkari Dupatta",
+        category="Textiles",
+        price=Decimal("1135.00"),
+        material_cost=Decimal("300.00"),
+        labour_cost=Decimal("250.00"),
+        packaging_cost=Decimal("25.00"),
+        other_cost=Decimal("25.00"),
+        min_margin_pct=Decimal("0.20"),
+        stock=5,
+        auto_smart_pricing_enabled=True
+    )
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+
+    # Insert events for category to generate high demand (> 1.0x factor)
+    for _ in range(8):
+        db.add(Event(event_type="VIEW", product_id=product.id, category="Textiles"))
+    for _ in range(3):
+        db.add(Event(event_type="ORDER", product_id=product.id, category="Textiles"))
+    db.commit()
+
+    decision = process_auto_smart_pricing(product, db, bypass_cooldown=True)
+
+    assert decision is not None
+    assert decision.decision == "AUTO_APPLIED"
+    assert decision.previous_price == Decimal("1135.00")
+    # Dynamic surge applied above 1135
+    assert float(decision.applied_price) > 1135.0
+    assert float(product.price) == float(decision.applied_price)
+
+def test_18_auto_smart_pricing_baseline_anchor_prevents_compounding(db: Session):
+    from backend.app.services.pricing_engine import process_auto_smart_pricing
+
+    product = Product(
+        title="Brass Lamp",
+        category="Metalcraft",
+        price=Decimal("1000.00"),
+        material_cost=Decimal("400.00"),
+        labour_cost=Decimal("200.00"),
+        min_margin_pct=Decimal("0.20"),
+        stock=5,
+        auto_smart_pricing_enabled=True
+    )
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+
+    # First surge cycle
+    for _ in range(10):
+        db.add(Event(event_type="VIEW", product_id=product.id, category="Metalcraft"))
+    db.commit()
+
+    decision1 = process_auto_smart_pricing(product, db, bypass_cooldown=True)
+    assert decision1 is not None
+    price_after_cycle1 = float(product.price)
+    assert price_after_cycle1 > 1000.0
+
+    # Second evaluation cycle under identical demand conditions:
+    # Baseline anchor should recognize price already reflects demand factor and NOT compound further
+    decision2 = process_auto_smart_pricing(product, db, bypass_cooldown=True)
+    assert decision2 is None
+    assert float(product.price) == price_after_cycle1
+
+def test_19_auto_smart_pricing_respects_cost_floor_on_softening(db: Session):
+    from backend.app.services.pricing_engine import calculate_price_recommendation_from_inputs
+
+    # Cost basis = 500 + 400 + 50 + 50 = 1000. Min fair price @ 20% margin = 1200.
+    # Current price = 1250. Low demand factor 0.85 would yield 1250 * 0.85 = 1062.50.
+    # Protected floor must force recommendation >= 1200.00!
+    rec = calculate_price_recommendation_from_inputs(
+        title="Protected Shawl",
+        category="Weaving",
+        current_price=1250.0,
+        material_cost=500.0,
+        labour_cost=400.0,
+        packaging_cost=50.0,
+        other_cost=50.0,
+        min_margin_pct=0.20,
+        demand_factor=0.85,
+        auto_smart_pricing_enabled=True
+    )
+
+    assert rec["minimum_fair_price"] == 1200.0
+    assert rec["recommended_price"] == 1200.0
+    assert rec["safety_constraints"]["minimum_fair_price_protected"] is True
+
+def test_20_order_event_triggers_auto_pricing(db: Session):
+    from backend.app.services.pricing_engine import trigger_auto_pricing
+
+    product = Product(
+        title="Terracotta Planter",
+        category="Pottery",
+        price=Decimal("800.00"),
+        material_cost=Decimal("200.00"),
+        labour_cost=Decimal("200.00"),
+        min_margin_pct=Decimal("0.20"),
+        stock=10,
+        auto_smart_pricing_enabled=True
+    )
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+
+    # Insert demand events
+    for _ in range(6):
+        db.add(Event(event_type="ORDER", product_id=product.id, category="Pottery"))
+    db.commit()
+
+    decision = trigger_auto_pricing(product.id, db=db, bypass_cooldown=True)
+    assert decision is not None
+    assert decision.decision == "AUTO_APPLIED"
+    assert float(product.price) > 800.0
+
+
 

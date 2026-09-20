@@ -253,8 +253,12 @@ export default function BuyerProductModal({
 
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>
-                <span className="text-[#6B6B6B] block text-[11px]">Current Market Range</span>
-                <span className="font-semibold text-[#1C1C1C] text-sm">₹{Math.round(Number(product.price || 0) * 0.9)} — ₹{Math.round(Number(product.price || 0) * 1.15)}</span>
+                <span className="text-[#6B6B6B] block text-[11px]">Observed Market Range</span>
+                {product.market_min_price && product.market_max_price && Number(product.market_min_price) > 0 ? (
+                  <span className="font-semibold text-[#1C1C1C] text-sm">₹{Number(product.market_min_price).toLocaleString('en-IN')} — ₹{Number(product.market_max_price).toLocaleString('en-IN')}</span>
+                ) : (
+                  <span className="font-medium text-[#8C827A] text-xs">No verified external market range available</span>
+                )}
               </div>
               <div>
                 <span className="text-[#6B6B6B] block text-[11px]">Recommended Fair Price</span>
@@ -263,7 +267,7 @@ export default function BuyerProductModal({
             </div>
 
             <p className="text-[11px] text-[#6B6B6B] italic">
-              Based on comparable marketplace listings and real-time buyer-demand signals.
+              Based on verified external marketplace benchmarks and artisan fair-wage protection.
             </p>
           </div>
 

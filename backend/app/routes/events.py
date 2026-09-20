@@ -376,6 +376,13 @@ def place_order(
         db.commit()
         db.refresh(evt)
 
+        # Trigger Autonomous Smart Pricing on ORDER signal
+        try:
+            trigger_auto_pricing(product, db)
+        except Exception as _ep_err:
+            import logging
+            logging.getLogger("artisan_ai").warning("Auto smart pricing trigger on order failed: %s", _ep_err)
+
         return evt
     except Exception as e:
         db.rollback()

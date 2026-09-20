@@ -296,6 +296,46 @@ Follow these 8 steps to demonstrate the complete, verified platform workflow:
 
 ---
 
+## 🔍 External Market Research & Comparables Engine Architecture
+
+```
+Artisan Product
+      ↓
+Canonical Market Profile
+      ↓
+SearXNG Candidate Discovery
+      ↓
+Public Product Page Fetch
+      ↓
+JSON-LD / OpenGraph / HTML Extraction
+      ↓
+Evidence Verification
+      ↓
+Hard Relevance Filter
+      ↓
+Attribute Similarity
+      ↓
+Verified External Comparables
+      ↓
+Min / Median / Max
+```
+
+### Core Architecture & Evidence Principles
+1. **Low-Cost Discovery**: SearXNG (`MARKET_RESEARCH_PROVIDER=SEARXNG`) is the primary, zero-cost, self-hosted search discovery provider.
+2. **Product Page Fetch & SSRF Protection**: Product candidate pages are fetched using `MarketPageFetcher` with strict SSRF defenses (disallow loopback, private IPv4/IPv6, internal hostnames, and unsafe redirect chains), 5s timeouts, and 1.5MB response size limits.
+3. **Deterministic Data Extraction**: `MarketProductExtractor` inspects Schema.org JSON-LD (`Product`, `Offer`, `AggregateOffer`), OpenGraph tags, and safe visible HTML for price and availability.
+4. **Zero Price Hallucination**: Prices must be explicitly observable in verified source text. Ambiguous phrases ("starts at", "per month", ranges) are rejected.
+5. **Decoupled from Gemini**: The market search and extraction engine operates with zero Gemini dependency and works when `GEMINI_API_KEY=""`. Gemini Vision is optional enrichment.
+6. **Strict Provenance Isolation**:
+   - `EXTERNAL_LIVE`: Real external verified marketplace evidence (`page_verified`, `product_verified`, `price_verified`).
+   - `INTERNAL_MARKETPLACE`: Internal Artisan AI database benchmarks.
+   - `AI_ESTIMATE`: Informational AI fair-price estimates.
+   - `NONE`: No market claim.
+7. **Reliability Invariants**: AI estimates and internal database listings NEVER set `market_is_reliable=True` and NEVER masquerade as observed market ranges.
+8. **Attribute Comparability**: Comparables are evaluated on structured attribute comparability (Product Identity 30%, Craft/Category 20%, Material 15%, Technique/Region 10%, Context 25%). False visual similarity claims are prohibited.
+
+---
+
 
 ## 📜 License & Acknowledgments
 

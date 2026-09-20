@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Mic, MicOff, Sparkles, Image as ImageIcon, CheckCircle2, 
   Layers, Volume2, Globe, ShieldCheck, ArrowRight, RefreshCw, Wand2,
-  Camera, Upload, Trash2, AlertTriangle, Zap
+  Camera, Upload, Trash2, AlertTriangle, Zap, TrendingUp
 } from 'lucide-react';
 import { processAICatalog, approveAndPublishAICatalog, enhanceProductImage, getApiBase } from '../api/index.js';
 import { useOffline } from '../context/OfflineContext';
@@ -2074,8 +2074,20 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     </div>
                   </div>
 
-                  {/* ML Demand Engine Badge */}
-                  {aiDraft.ml_demand_info?.model_source === 'TRAINED_ML_MODEL' && (
+                  {/* Demand Telemetry Status */}
+                  {aiDraft.ml_demand_info?.status === 'PENDING_PUBLICATION' ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2 bg-[#F6F4EE] border border-[#E2DDD3] rounded-xl px-3 py-2 text-[#5A4A42]">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-3.5 h-3.5 text-[#8C6D53]" />
+                        <span className="text-xs font-semibold text-[#2A1E17]">
+                          7-Day Demand Forecasting: Pending Publication
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-[#7A6A60] italic">
+                        Activates in Seller Business after buyer views, saves & orders
+                      </span>
+                    </div>
+                  ) : aiDraft.ml_demand_info?.model_source === 'TRAINED_ML_MODEL' ? (
                     <div className="flex flex-wrap items-center gap-2 bg-violet-50 border border-violet-300 rounded-xl px-3 py-2">
                       <span className="text-xs font-extrabold text-violet-900 flex items-center gap-1.5">
                         🤖 <span>RandomForest ML Demand Engine Active</span>
@@ -2095,7 +2107,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                         </span>
                       )}
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Explainable Pricing Reasoning Bullets */}
                   {Array.isArray(aiDraft.price_recommendation?.reasoning) && aiDraft.price_recommendation.reasoning.length > 0 && (
@@ -2178,27 +2190,37 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                       <div className="flex items-center space-x-1.5">
                         <Sparkles className="w-4 h-4 text-[#A6533B]" />
                         <span className="text-xs font-bold text-[#1C1C1C]">
-                          Market Research & Median Benchmark (India Handmade / Mystore ONDC)
+                          {aiDraft.market_summary?.market_source_type === 'INTERNAL_MARKETPLACE'
+                            ? 'Similar Crafts on Artisan AI (Internal Marketplace Benchmark)'
+                            : 'External Market Comparables & Benchmark (India Handmade / Mystore ONDC)'}
                         </span>
                       </div>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${medianPrice ? 'text-emerald-800 bg-emerald-50 border-emerald-200' : 'text-[#6B6B6B] bg-stone-50 border-[#E8E5DF]'}`}>
-                        {medianPrice ? 'Live Median Benchmark Active' : (aiDraft.market_summary?.comparable_count > 0 ? `${aiDraft.market_summary.comparable_count} Listings Found (Prices Unlisted)` : 'Search Active')}
+                        {medianPrice ? 'Observed Market Benchmark Active' : (aiDraft.market_summary?.ai_estimated_price ? 'AI Estimated Reference' : (aiDraft.market_summary?.comparable_count > 0 ? `${aiDraft.market_summary.comparable_count} Listings Found` : 'Search Active'))}
                       </span>
                     </div>
 
                     {/* Median Price Benchmark summary banner */}
                     <div className="p-2.5 bg-white rounded-xl border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-2xs">
                       <div className="text-[11px] text-[#2A1E17]">
-                        <span className="font-extrabold text-emerald-900">Comparable Market Median: </span>
+                        <span className="font-extrabold text-emerald-900">
+                          {medianPrice ? 'Observed Market Median: ' : (aiDraft.market_summary?.ai_estimated_price ? 'AI Estimated Price: ' : 'Comparable Market Median: ')}
+                        </span>
                         <span className="text-[#6B5B51]">
                           {medianPrice 
-                            ? 'Grounded on Indian artisan marketplaces (India Handmade, Mystore, iTokri). No mock products used.'
-                            : 'Authentic Indian craft platforms searched. Price tags not disclosed in public snippets.'}
+                            ? 'Observed on verified Indian artisan marketplaces (India Handmade, Mystore, iTokri). No mock products used.'
+                            : (aiDraft.market_summary?.ai_estimated_price
+                                ? 'AI estimated fair-wage price recommendation. No verified external market listings observed.'
+                                : 'Authentic Indian craft platforms searched. Verified price tags not available in public listings.')}
                         </span>
                       </div>
                       {medianPrice ? (
                         <span className="text-xs font-black text-emerald-950 bg-emerald-100 px-3 py-1 rounded-lg border border-emerald-300 shrink-0">
                           Median Price: ₹{medianPrice}
+                        </span>
+                      ) : aiDraft.market_summary?.ai_estimated_price ? (
+                        <span className="text-xs font-black text-amber-900 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200 shrink-0">
+                          AI Estimate: ₹{aiDraft.market_summary.ai_estimated_price}
                         </span>
                       ) : (
                         <span className="text-[11px] font-semibold text-stone-500 bg-stone-100 px-2.5 py-1 rounded-lg border border-stone-200 shrink-0">
@@ -2219,8 +2241,8 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                             <div className="flex justify-between items-start gap-1">
                               <span className="text-xs font-bold text-[#1C1C1C] line-clamp-1">{item.title}</span>
                               {item.similarity_score != null && (
-                                <span className="text-[9px] font-semibold bg-emerald-50 text-[#356B4A] px-1.5 py-0.2 rounded border border-emerald-200 shrink-0">
-                                  {Math.round(item.similarity_score * 100)}% Match
+                                <span className="text-[9px] font-semibold bg-emerald-50 text-[#356B4A] px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                                  Attribute Match: {Math.round(item.similarity_score * 100)}%
                                 </span>
                               )}
                             </div>

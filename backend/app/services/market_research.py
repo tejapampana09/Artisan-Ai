@@ -4,12 +4,17 @@ from datetime import datetime, timezone
 from copy import deepcopy
 
 from backend.app.schemas import (
-    ArtisanFacts, MarketListing, MarketSummary, MarketResearchResponse
+    ArtisanFacts, MarketListing, MarketSummary, MarketResearchResponse, MarketProvenance
 )
 from backend.app.services.market_research_provider import (
     BaseMarketResearchProvider, NoOpMarketResearchProvider, get_default_market_research_provider
 )
-from backend.app.services.market_similarity import calculate_market_similarity
+from backend.app.services.market_similarity import (
+    calculate_market_similarity,
+    build_market_search_profile,
+    build_profile_market_query,
+    is_hard_relevance_match
+)
 
 def build_market_query(
     artisan_facts: ArtisanFacts,
@@ -103,13 +108,23 @@ async def research_market(
     """
     # Defensive immutability guarantee for artisan_facts
     facts_copy = deepcopy(artisan_facts)
+    profile = build_market_search_profile(facts_copy, title_hint=title_hint, category_hint=category_hint)
     query = build_market_query(facts_copy, title_hint=title_hint, category_hint=category_hint)
 
     if not query:
         return MarketResearchResponse(
             query="",
             results=[],
-            summary=MarketSummary(comparable_count=0, min_price=None, median_price=None, max_price=None),
+            summary=MarketSummary(
+                comparable_count=0,
+                candidate_count=0,
+                verified_count=0,
+                priced_count=0,
+                min_price=None,
+                median_price=None,
+                max_price=None,
+                market_source_type=MarketProvenance.NONE
+            ),
             notice="Insufficient artisan facts provided to construct a market search query."
         )
 
@@ -118,12 +133,18 @@ async def research_market(
         query, limit=20, image_url=image_url
     )
 
+    candidate_count = len(raw_listings)
     retained_listings: List[MarketListing] = []
     seen_identifiers = set()
 
     for item in raw_listings:
         title = (item.get("title") or "").strip()
         if not title:
+            continue
+
+        # Hard Relevance Filter: reject blogs, news, search/category directories, wrong archetypes
+        is_relevant, reject_reason = is_hard_relevance_match(profile, item)
+        if not is_relevant:
             continue
 
         # Deduplication check by URL or Title
@@ -172,20 +193,31 @@ async def research_market(
         if not domain:
             domain = str(item.get("source") or "").lower()
 
+        # Check explicit price verification flag
+        price_verified = bool(parsed_price is not None and parsed_price > 0 and item.get("price_verified", True))
+
         listing_model = MarketListing(
             title=title,
-            price=parsed_price,
+            price=parsed_price if price_verified else None,
             currency=str(item.get("currency") or "INR"),
-            source=str(item.get("source") or "ExternalMarket"),
+            source=str(item.get("source") or domain or "ExternalMarket"),
             url=item.get("url"),
+            image_url=item.get("image_url"),
             description=item.get("description"),
             category=item.get("category"),
             materials=clean_mats,
             matched_product=flags["matched_product"],
             matched_material=flags["matched_material"],
             matched_craft=flags["matched_craft"],
+            matched_technique=flags.get("matched_technique", False),
             similarity_score=score,
             match_tier=tier,
+            match_reasons=flags.get("match_reasons", []),
+            market_source_type=item.get("market_source_type", MarketProvenance.EXTERNAL_LIVE),
+            page_verified=item.get("page_verified", False),
+            product_verified=item.get("product_verified", True),
+            price_verified=price_verified,
+            extraction_method=item.get("extraction_method"),
             observed_at=obs_at
         )
         retained_listings.append(listing_model)
@@ -213,12 +245,15 @@ async def research_market(
     # Sort listings: Price-verified -> Domestic India source -> Similarity score
     retained_listings.sort(
         key=lambda l: (
-            1 if l.price is not None and l.price > 0 else 0,
+            1 if l.price is not None and l.price > 0 and l.price_verified else 0,
             _is_domestic_indian_source(l),
             l.similarity_score
         ),
         reverse=True
     )
+
+    # Restrict to up to 5 verified comparables
+    retained_listings = retained_listings[:5]
 
     # Calculate Market Summary statistics on valid positive prices with verified source URLs ONLY
     total_comparable_count = len(retained_listings)
@@ -231,7 +266,7 @@ async def research_market(
 
     priced_listings = [
         l for l in retained_listings 
-        if l.price is not None and l.price > 0 and _is_valid_url(l.url)
+        if l.price is not None and l.price > 0 and l.price_verified and _is_valid_url(l.url)
     ]
 
     # Weak matches remain visible to the artisan but must not influence the
@@ -271,15 +306,21 @@ async def research_market(
         market_conf = "LOW"
         is_rel = False
 
+    verified_count = len([l for l in retained_listings if l.page_verified and l.product_verified])
+
     summary = MarketSummary(
         comparable_count=total_comparable_count,
         priced_comparable_count=priced_count,
+        candidate_count=candidate_count,
+        verified_count=verified_count,
+        priced_count=priced_count,
         min_price=min_p,
         median_price=med_p,
         max_price=max_p,
         currency=summary_currency,
         market_confidence=market_conf,
-        is_reliable=is_rel
+        is_reliable=is_rel,
+        market_source_type=MarketProvenance.EXTERNAL_LIVE if total_comparable_count > 0 else MarketProvenance.NONE
     )
 
     notice = None
@@ -291,7 +332,7 @@ async def research_market(
             notice = provider_reason
         else:
             notice = (
-                "No price-verified visual market matches were found for the uploaded craft image. "
+                "No price-verified market comparables were found for the uploaded craft image. "
                 if image_url else "No comparable market listings found for the supplied description. "
             ) + "No market price was used."
 

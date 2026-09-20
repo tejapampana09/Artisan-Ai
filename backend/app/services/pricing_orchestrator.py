@@ -60,7 +60,8 @@ def _run_coro_sync(coro):
 async def get_market_aware_price_recommendation(
     product: Product,
     db: Session,
-    provider: Optional[BaseMarketResearchProvider] = None
+    provider: Optional[BaseMarketResearchProvider] = None,
+    bypass_cooldown: bool = False
 ) -> Dict[str, Any]:
     """
     Orchestration layer (Async):
@@ -84,19 +85,21 @@ async def get_market_aware_price_recommendation(
         db=db,
         market_median=market_median,
         market_currency=market_currency,
-        market_is_reliable=market_is_reliable
+        market_is_reliable=market_is_reliable,
+        bypass_cooldown=bypass_cooldown
     )
 
 def get_market_aware_price_recommendation_sync(
     product: Product,
     db: Session,
-    provider: Optional[BaseMarketResearchProvider] = None
+    provider: Optional[BaseMarketResearchProvider] = None,
+    bypass_cooldown: bool = False
 ) -> Dict[str, Any]:
     """
     Orchestration layer (Sync wrapper):
     Provides synchronous interface for get_market_aware_price_recommendation.
     """
-    return _run_coro_sync(get_market_aware_price_recommendation(product, db, provider=provider))
+    return _run_coro_sync(get_market_aware_price_recommendation(product, db, provider=provider, bypass_cooldown=bypass_cooldown))
 
 def process_market_aware_auto_pricing(
     product: Product,

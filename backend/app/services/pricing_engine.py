@@ -142,7 +142,8 @@ def calculate_price_recommendation_from_inputs(
     enquiry_count: int = 0,
     auto_smart_pricing_enabled: bool = False,
     product_id: Optional[int] = None,
-    ml_info: Optional[Dict[str, Any]] = None
+    ml_info: Optional[Dict[str, Any]] = None,
+    base_price: Optional[Decimal] = None
 ) -> Dict[str, Any]:
     """
     Pure deterministic dynamic pricing calculation implementing the 4-case Decision Tree:
@@ -210,13 +211,13 @@ def calculate_price_recommendation_from_inputs(
             reasoning.append("Selling price not provided and no market research or cost inputs available.")
 
     else:
-        # Artisan provided a price (curr_price > 0)
+        # Artisan has provided a price (curr_price > 0)
         is_below = False
         is_above = False
         is_inside = False
 
-        # Determine classification boundaries (Explicit low/high take precedence unless live median contradicts static category bounds)
         if low_dec is not None and high_dec is not None:
+            # If external market median is outside category benchmark, widen bounds
             if med_dec is not None and med_dec > 0 and (med_dec < low_dec or med_dec > high_dec):
                 mkt_low = med_dec * Decimal("0.85")
                 mkt_high = med_dec * Decimal("1.15")
@@ -268,18 +269,21 @@ def calculate_price_recommendation_from_inputs(
 
     # -------------------------------------------------------------------------
     # ML DEMAND FACTOR APPLICATION
-    # Apply demand multiplier ONLY when price is AI/market-derived (not artisan's own price).
-    # Artisan's own price (Cases 3 & 4) is preserved as-is; we never silently inflate it.
+    # Apply demand multiplier when price is AI/market-derived (not artisan's own price),
+    # OR when auto_smart_pricing_enabled is True (artisan explicitly enabled autonomous pricing).
+    # Artisan's own manual price (Cases 3 & 4) is preserved as-is when auto pricing is OFF.
     # -------------------------------------------------------------------------
     if raw_recommended is not None and demand_factor != 1.0:
         _df = Decimal(str(demand_factor))
-        _applies_to = (not has_artisan_price) or (pricing_case == "CASE_2_BELOW_MARKET")
+        _applies_to = (not has_artisan_price) or (pricing_case == "CASE_2_BELOW_MARKET") or auto_smart_pricing_enabled
         if _applies_to:
-            raw_recommended = (raw_recommended * _df).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            anchor_to_adjust = base_price if (auto_smart_pricing_enabled and base_price is not None and base_price > 0) else raw_recommended
+            raw_recommended = (anchor_to_adjust * _df).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if demand_factor > 1.0:
                 reasoning.append(
-                    f"ML demand multiplier {float(demand_factor):.3f}x applied to AI-recommended price "
-                    f"(demand score {ml_info.get('predicted_demand_score', 0.0) if ml_info else 0:.0f}/100)."
+                    f"ML demand multiplier {float(demand_factor):.3f}x applied "
+                    f"({'Autonomous dynamic pricing surge' if auto_smart_pricing_enabled else 'to AI-recommended price'}, "
+                    f"demand score {ml_info.get('predicted_demand_score', 0.0) if ml_info else 0:.0f}/100)."
                 )
             elif demand_factor < 1.0:
                 reasoning.append(
@@ -299,14 +303,15 @@ def calculate_price_recommendation_from_inputs(
             final_recommended = raw_recommended
 
 
-        if has_artisan_price and (pricing_case in ["CASE_3_INSIDE_MARKET", "CASE_4_ABOVE_MARKET"]):
+        if (not auto_smart_pricing_enabled) and has_artisan_price and (pricing_case in ["CASE_3_INSIDE_MARKET", "CASE_4_ABOVE_MARKET"]):
             rounded_price = final_recommended
         else:
             rounded_price = (Decimal(round(float(final_recommended) / 5.0) * 5)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             
-        if has_artisan_price and pricing_case != "CASE_2_BELOW_MARKET":
-            max_price = (curr_price * (Decimal("1.0") + MAX_UPWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            min_price = (curr_price * (Decimal("1.0") - MAX_DOWNWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        anchor_for_caps = base_price if (auto_smart_pricing_enabled and base_price is not None and base_price > 0) else curr_price
+        if has_artisan_price and (pricing_case != "CASE_2_BELOW_MARKET" or auto_smart_pricing_enabled):
+            max_price = (anchor_for_caps * (Decimal("1.0") + MAX_UPWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            min_price = (anchor_for_caps * (Decimal("1.0") - MAX_DOWNWARD_ADJUSTMENT_PCT)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if rounded_price > max_price:
                 rounded_price = max_price
                 reasoning.append(f"Recommended price capped to +{int(MAX_UPWARD_ADJUSTMENT_PCT * 100)}% maximum upward adjustment ceiling (₹{float(max_price):,.0f}).")
@@ -436,7 +441,8 @@ def calculate_price_recommendation(
     db: Session,
     market_median: Optional[Any] = None,
     market_currency: Optional[str] = None,
-    market_is_reliable: bool = True
+    market_is_reliable: bool = True,
+    bypass_cooldown: bool = False
 ) -> Dict[str, Any]:
     """
     Deterministic explainable dynamic pricing calculation for a Product database model.
@@ -468,6 +474,49 @@ def calculate_price_recommendation(
     save_count = db.query(Event).filter(Event.product_id == product.id, Event.event_type == "SAVE").count()
     enquiry_count = db.query(Event).filter(Event.product_id == product.id, Event.event_type == "ENQUIRY").count()
 
+    curr_price = to_decimal(product.price)
+    auto_enabled = bool(getattr(product, "auto_smart_pricing_enabled", False))
+
+    base_price = None
+    if auto_enabled:
+        last_decision = (
+            db.query(PricingDecision)
+            .filter(
+                PricingDecision.product_id == product.id,
+                PricingDecision.decision.in_(["ACCEPT", "AUTO_APPLIED"])
+            )
+            .order_by(PricingDecision.timestamp.desc())
+            .first()
+        )
+        if last_decision is not None and curr_price != to_decimal(last_decision.applied_price):
+            base_price = curr_price
+        else:
+            last_accept = (
+                db.query(PricingDecision)
+                .filter(
+                    PricingDecision.product_id == product.id,
+                    PricingDecision.decision == "ACCEPT"
+                )
+                .order_by(PricingDecision.timestamp.desc())
+                .first()
+            )
+            if last_accept is not None:
+                base_price = to_decimal(last_accept.applied_price)
+            else:
+                earliest_auto = (
+                    db.query(PricingDecision)
+                    .filter(
+                        PricingDecision.product_id == product.id,
+                        PricingDecision.decision == "AUTO_APPLIED"
+                    )
+                    .order_by(PricingDecision.timestamp.asc())
+                    .first()
+                )
+                if earliest_auto is not None:
+                    base_price = to_decimal(earliest_auto.previous_price)
+                else:
+                    base_price = curr_price
+
     rec = calculate_price_recommendation_from_inputs(
         title=product.title,
         category=product.category,
@@ -488,12 +537,12 @@ def calculate_price_recommendation(
         benchmark_high=benchmark_high,
         save_count=save_count,
         enquiry_count=enquiry_count,
-        auto_smart_pricing_enabled=bool(getattr(product, "auto_smart_pricing_enabled", False)),
+        auto_smart_pricing_enabled=auto_enabled,
         product_id=product.id,
-        ml_info=ml_pred
+        ml_info=ml_pred,
+        base_price=base_price
     )
 
-    curr_price = to_decimal(product.price)
     last_applied = (
         db.query(PricingDecision)
         .filter(
@@ -503,7 +552,7 @@ def calculate_price_recommendation(
         .order_by(PricingDecision.timestamp.desc())
         .first()
     )
-    if last_applied is not None and to_decimal(last_applied.applied_price) == curr_price:
+    if not bypass_cooldown and last_applied is not None and to_decimal(last_applied.applied_price) == curr_price:
         new_prod_events = db.query(Event).filter(Event.product_id == product.id, Event.timestamp > last_applied.timestamp).count()
         new_cat_events = db.query(Event).filter(Event.category == product.category, Event.timestamp > last_applied.timestamp).count()
         if new_prod_events == 0 and new_cat_events < 5:
@@ -556,7 +605,12 @@ def process_auto_smart_pricing(
                 return None
 
     rec = calculate_price_recommendation(
-        product, db, market_median=market_median, market_currency=market_currency, market_is_reliable=market_is_reliable
+        product,
+        db,
+        market_median=market_median,
+        market_currency=market_currency,
+        market_is_reliable=market_is_reliable,
+        bypass_cooldown=bypass_cooldown
     )
     prev_price = Decimal(str(product.price)).quantize(Decimal("0.01"))
     rec_price = Decimal(str(rec["recommended_price"])).quantize(Decimal("0.01"))
