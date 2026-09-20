@@ -102,11 +102,24 @@ class MLDemandEngine:
         stock = int(getattr(product, "stock", 0) or 0)
         cat_encoded = self.get_category_encoding(getattr(product, "category", None))
         
-        # Real buyer engagement counts from events table
-        views = db.query(Event).filter(Event.product_id == product.id, Event.event_type == "VIEW").count()
-        saves = db.query(Event).filter(Event.product_id == product.id, Event.event_type == "SAVE").count()
-        enquiries = db.query(Event).filter(Event.product_id == product.id, Event.event_type == "ENQUIRY").count()
-        orders = db.query(Event).filter(Event.product_id == product.id, Event.event_type == "ORDER").count()
+        # Real buyer engagement counts from events table (aligned with training window: rolling 30-day velocity)
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone.utc)
+        window_start = now - timedelta(days=30)
+        
+        recent_events = db.query(Event).filter(
+            Event.product_id == product.id,
+            Event.timestamp >= window_start
+        ).all()
+        
+        # Fallback to total history if no events in last 30d (e.g. initial launch / seed catalog)
+        if not recent_events:
+            recent_events = db.query(Event).filter(Event.product_id == product.id).all()
+        
+        views = sum(1 for e in recent_events if e.event_type == "VIEW")
+        saves = sum(1 for e in recent_events if e.event_type == "SAVE")
+        enquiries = sum(1 for e in recent_events if e.event_type == "ENQUIRY")
+        orders = sum(1 for e in recent_events if e.event_type == "ORDER")
         
         features = [
             mat_cost,

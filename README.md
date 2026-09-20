@@ -59,13 +59,13 @@ Artisan AI is a production-grade digital marketplace, multimodal smart catalogin
                  ┌────────────────────────────────┼────────────────────────────────┐
                  │                                │                                │
                  ▼                                ▼                                ▼
-     ┌────────────────────────┐       ┌────────────────────────┐       ┌────────────────────────┐
-     │  PARALLEL AI ENGINE    │       │   ML DEMAND ENGINE     │       │   MARKET RESEARCH      │
-     │  • Google Gemini Flash │       │  • scikit-learn        │       │  • Serper / DDG Engine │
-     │  • Multimodal Vision   │       │  • RandomForestRegressor│      │  • 5 Live Comparables  │
-     │  • Cultural Heritage   │       │  • Category Elasticity │       │  • Real Price Medians  │
-     │  • Parallel in ~7.5s   │       │  • Model Info & Retrain│       │  • Confidence Scoring  │
-     └───────────┬────────────┘       └───────────┬────────────┘       └───────────┬────────────┘
+      ┌────────────────────────┐       ┌────────────────────────┐       ┌────────────────────────┐
+      │  PARALLEL AI ENGINE    │       │   ML DEMAND ENGINE     │       │   MARKET RESEARCH      │
+      │  • Google Gemini Flash │       │  • scikit-learn        │       │  • SearXNG SSRF Engine │
+      │  • Multimodal Vision   │       │  • RandomForestRegressor│      │  • Verified Evidence   │
+      │  • Cultural Heritage   │       │  • 7-Day ML Forecast   │       │  • Real Price Medians  │
+      │  • Parallel in ~7.5s   │       │  • Model Info & Retrain│       │  • Attribute Matching  │
+      └───────────┬────────────┘       └───────────┬────────────┘       └───────────┬────────────┘
                  │                                │                                │
                  └────────────────────────────────┼────────────────────────────────┘
                                                   ▼
@@ -98,8 +98,8 @@ Artisan AI is a production-grade digital marketplace, multimodal smart catalogin
 | **Compute & Memory Stability** | **EC2 `t3.small`** (2 vCPU, 2 GB RAM) with **2 GB Dedicated Linux Swapfile** via `.ebextensions/01_swap.config`. | Eliminates Linux OOM SIGKILL failures permanently; provides 4 GB effective memory headroom. |
 | **High-Performance Load Balancing** | **Classic ELB with `CrossZoneLoadBalancing: true`** and 120s idle timeout; Nginx `proxy_read_timeout 120s`. | Eliminates 502/504 gateway timeouts across multi-AZ routing. |
 | **Multimodal AI Smart Cataloging** | **Parallel Gemini Vision + Market Intelligence** (`POST /api/ai/process-catalog`) executing concurrently via `asyncio.gather`. Response time: **~7.5 seconds**. | Artisans upload a photo or speak; system outputs catalog title, craft story, materials, and fair market price. |
-| **Market Comparables Intelligence** | **Live Competitive Pricing Provider** returning 5 comparable listings with titles, prices, source marketplaces (Amazon, Etsy, Craftsvilla), and similarity scores. | Real-time market anchoring without manual search friction. |
-| **ML Demand Forecasting Engine** | **`scikit-learn` `RandomForestRegressor`** (`POST /api/ml/predict-demand`, `GET /api/ml/model-info`, `POST /api/ml/retrain`) with $N \ge 20$ event training threshold. | Predicts category demand velocity [0–100] and elasticity based on telemetry. |
+| **Market Comparables Intelligence** | **Hardened SearXNG Market Research** extracting structured JSON-LD, OpenGraph, and HTML prices with SSRF protection, strict 4-level evidence invariants, and attribute comparability matching. | Real-time market anchoring without manual search friction or unverified claims. |
+| **ML Demand Forecasting Engine** | **`scikit-learn` `RandomForestRegressor`** (`POST /api/ml/predict-demand`, `GET /api/ml/model-info`, `POST /api/ml/retrain`) predicting 7-day forward demand [0–100] and dynamic pricing surge multipliers strictly on published products backed by real buyer telemetry (views, saves, enquiries, orders). | Grounded demand forecasting with zero synthetic events on unpublished drafts. |
 | **Explainable Sovereign Dynamic Pricing** | **Cost-Floor Protection**: Material + Labour + Packaging + $\ge 20\%$ minimum margin guaranteed. Bounded demand multipliers. Human-in-the-loop approval. | Protects artisans against exploitative underpricing while capitalizing on demand surges. |
 | **Targeted Buyer Delivery Alerts** | **Real-Time Order Tracking**: Order status transitions (`CONFIRMED` $\rightarrow$ `PROCESSING` $\rightarrow$ `SHIPPED` $\rightarrow$ `DELIVERED`) trigger targeted notifications to the specific buyer. | Live transparency between artisan and buyer. |
 | **Authentication & Tenant Isolation** | Lightweight JWT tokens with PBKDF2 password hashing; token versioning (`token_version`) for instant session revocation; strict seller isolation (`403 Forbidden` on foreign crafts). | Zero multi-tenant cross-contamination. |

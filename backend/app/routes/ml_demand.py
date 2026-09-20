@@ -93,14 +93,21 @@ def retrain_model(
     Safely triggers ML demand model retraining.
     Enforces minimum real buyer event threshold to prevent abuse and ensure genuine data accumulation.
     """
-    real_event_count = db.query(Event).count()
+    published_count = db.query(Product).filter(Product.status.in_(["PUBLISHED", "ACTIVE"])).count()
+    real_event_count = db.query(Event).filter(Event.timestamp != None).count()
 
-    if real_event_count < MIN_REAL_EVENTS_RETRAIN_THRESHOLD:
+    events = db.query(Event).filter(Event.timestamp != None).all()
+    earliest = min((e.timestamp for e in events if e.timestamp), default=None)
+    latest = max((e.timestamp for e in events if e.timestamp), default=None)
+    days_span = (latest - earliest).days if (earliest and latest) else 0
+
+    if published_count < 20 or real_event_count < 200 or days_span < 14:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"Production retraining requires at least {MIN_REAL_EVENTS_RETRAIN_THRESHOLD} real buyer interaction events. "
-                f"Current recorded events: {real_event_count}. Model remains on cold-start bootstrap state."
+                f"Production retraining requires at least 20 published products, 200 buyer events, and 14 days of telemetry. "
+                f"Current status: {published_count}/20 products, {real_event_count}/200 events, {days_span}/14 days span. "
+                "Model remains on the domain-informed bootstrap baseline."
             )
         )
 

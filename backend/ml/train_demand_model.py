@@ -131,76 +131,112 @@ def generate_chronological_snapshot_dataset(n_products: int = 100, n_timesteps: 
     
     return X, y, timestamps, feature_names
 
+MIN_PRODUCTION_PRODUCTS = 20
+MIN_PRODUCTION_EVENTS = 200
+MIN_PRODUCTION_DAYS = 14
+
 def extract_db_dataset(db):
     """
-    Extracts time-series snapshot dataset directly from database products and events.
-    Enforces T -> T+7 separation between features and future demand targets.
+    Extracts chronological time-series snapshot dataset directly from database products and events.
+    Strictly enforces T -> T+7 forward calendar window:
+      - Snapshot Cutoff T: specific calendar checkpoint
+      - Historical Features X(T): interaction events in [T - 30d, T]
+      - Forward Target y(T): realized conversion events in (T, T + 7d]
+      - Snapshot timestamp: T.timestamp() (real temporal sequence for holdout split)
+
+    Requires minimum dataset thresholds (20 published products, 200 events, 14 days telemetry)
+    to qualify for genuine production model training.
     """
+    from datetime import timedelta
     from backend.app.models import Product, Event
-    products = db.query(Product).all()
-    if not products:
+    
+    # 1. Check volume prerequisites
+    published_products = db.query(Product).filter(
+        Product.status.in_(["PUBLISHED", "ACTIVE"])
+    ).all()
+    
+    total_events = db.query(Event).filter(Event.timestamp != None).all()
+    if len(published_products) < MIN_PRODUCTION_PRODUCTS or len(total_events) < MIN_PRODUCTION_EVENTS:
+        return None, None, None, None, 0
+
+    earliest_event = min(e.timestamp for e in total_events if e.timestamp)
+    latest_event = max(e.timestamp for e in total_events if e.timestamp)
+    if (latest_event - earliest_event).days < MIN_PRODUCTION_DAYS:
         return None, None, None, None, 0
 
     cat_map = {cat.lower(): idx for idx, cat in enumerate(STANDARD_CATEGORIES)}
     rows = []
 
-    for p in products:
-        mat = float(p.material_cost or 0.0)
-        lab = float(p.labour_cost or 0.0)
-        pkg = float(p.packaging_cost or 0.0)
-        oth = float(p.other_cost or 0.0)
-        tot = mat + lab + pkg + oth
-        price = float(p.price or 0.0)
-        p_ratio = round(price / max(tot, 1.0), 3)
-        stock = int(p.stock or 0)
-        cat_idx = cat_map.get((p.category or "").lower(), len(STANDARD_CATEGORIES) - 1)
-        
-        # Enforce chronological separation: features measured up to split, target measured in subsequent window
-        n_events = len(events)
-        if n_events >= 4:
-            split_idx = max(2, int(n_events * 0.6))
-            hist_events = events[:split_idx]
-            future_events = events[split_idx:]
-            
+    # Generate sliding weekly checkpoints: T = earliest + 7d, 14d, 21d... up to latest - 7d
+    current_T = earliest_event + timedelta(days=7)
+    max_T = latest_event - timedelta(days=7)
+
+    while current_T <= max_T:
+        for p in published_products:
+            mat = float(p.material_cost or 0.0)
+            lab = float(p.labour_cost or 0.0)
+            pkg = float(p.packaging_cost or 0.0)
+            oth = float(p.other_cost or 0.0)
+            tot = mat + lab + pkg + oth
+            price = float(p.price or 0.0)
+            p_ratio = round(price / max(tot, 1.0), 3)
+            stock = int(p.stock or 0)
+            cat_idx = cat_map.get((p.category or "").lower(), len(STANDARD_CATEGORIES) - 1)
+
+            # Historical window: [T - 30d, T]
+            hist_start = current_T - timedelta(days=30)
+            hist_events = db.query(Event).filter(
+                Event.product_id == p.id,
+                Event.timestamp >= hist_start,
+                Event.timestamp <= current_T
+            ).all()
+
             views = sum(1 for e in hist_events if e.event_type == "VIEW")
             saves = sum(1 for e in hist_events if e.event_type == "SAVE")
             enquiries = sum(1 for e in hist_events if e.event_type == "ENQUIRY")
             orders = sum(1 for e in hist_events if e.event_type == "ORDER")
-            
-            f_views = sum(1 for e in future_events if e.event_type == "VIEW")
-            f_saves = sum(1 for e in future_events if e.event_type == "SAVE")
-            f_enquiries = sum(1 for e in future_events if e.event_type == "ENQUIRY")
-            f_orders = sum(1 for e in future_events if e.event_type == "ORDER")
-        else:
-            views = sum(1 for e in events if e.event_type == "VIEW")
-            saves = sum(1 for e in events if e.event_type == "SAVE")
-            enquiries = sum(1 for e in events if e.event_type == "ENQUIRY")
-            orders = sum(1 for e in events if e.event_type == "ORDER")
-            f_views, f_saves, f_enquiries, f_orders = views, saves, enquiries, orders
-        
-        # Realized target (subsequent demand score realized in post-feature window)
-        future_conversion_factor = (f_views * 0.05) + (f_saves * 0.20) + (f_enquiries * 0.40) + (f_orders * 0.80)
-        p_factor = 1.15 if 1.2 <= p_ratio <= 1.6 else (0.85 if p_ratio > 2.0 else 1.0)
-        scarcity = 1.10 if (0 < stock <= 5 and (views + saves) > 20) else 1.0
-        raw_demand = future_conversion_factor * p_factor * scarcity * 12.0
-        target_score = float(max(0.0, min(100.0, round(100.0 * (1.0 - math.exp(-raw_demand / 75.0)), 2))))
-        
-        rows.append({
-            "t": p.id, # Monotonic ordering identifier
-            "material_cost": mat,
-            "labour_cost": lab,
-            "packaging_cost": pkg,
-            "other_cost": oth,
-            "total_cost": tot,
-            "price_to_cost_ratio": p_ratio,
-            "stock": stock,
-            "category_encoded": cat_idx,
-            "views": views,
-            "saves": saves,
-            "enquiries": enquiries,
-            "orders": orders,
-            "target": target_score
-        })
+
+            # Forward 7-day window: (T, T + 7d]
+            fwd_end = current_T + timedelta(days=7)
+            fwd_events = db.query(Event).filter(
+                Event.product_id == p.id,
+                Event.timestamp > current_T,
+                Event.timestamp <= fwd_end
+            ).all()
+
+            f_views = sum(1 for e in fwd_events if e.event_type == "VIEW")
+            f_saves = sum(1 for e in fwd_events if e.event_type == "SAVE")
+            f_enquiries = sum(1 for e in fwd_events if e.event_type == "ENQUIRY")
+            f_orders = sum(1 for e in fwd_events if e.event_type == "ORDER")
+
+            # Target Score: realized conversion in [T, T + 7d]
+            future_conversion = (f_views * 0.08) + (f_saves * 0.40) + (f_enquiries * 1.20) + (f_orders * 4.50)
+            p_factor = 1.15 if 1.2 <= p_ratio <= 1.6 else (0.85 if p_ratio > 2.0 else 1.0)
+            scarcity = 1.10 if (0 < stock <= 5 and (views + saves) > 15) else 1.0
+            raw_demand = future_conversion * p_factor * scarcity * 10.0
+            target_score = float(max(0.0, min(100.0, round(100.0 * (1.0 - math.exp(-raw_demand / 60.0)), 2))))
+
+            rows.append({
+                "t": current_T.timestamp(),  # Genuine chronological float timestamp
+                "material_cost": mat,
+                "labour_cost": lab,
+                "packaging_cost": pkg,
+                "other_cost": oth,
+                "total_cost": tot,
+                "price_to_cost_ratio": p_ratio,
+                "stock": stock,
+                "category_encoded": cat_idx,
+                "views": views,
+                "saves": saves,
+                "enquiries": enquiries,
+                "orders": orders,
+                "target": target_score
+            })
+
+        current_T += timedelta(days=7)
+
+    if not rows:
+        return None, None, None, None, 0
 
     feature_names = [
         "material_cost", "labour_cost", "packaging_cost", "other_cost",
@@ -222,11 +258,11 @@ def train_and_save_model(output_dir: str = None, db: Any = None):
     
     if db is not None:
         X_db, y_db, ts_db, f_names, n_db = extract_db_dataset(db)
-        if n_db >= 5:
+        if n_db >= 20:
             X, y, timestamps, feature_names = X_db, y_db, ts_db, f_names
             training_mode = "PRODUCTION_REAL_EVENTS_TIME_SERIES"
 
-    if X is None or len(X) < 5:
+    if X is None or len(X) < 20:
         X, y, timestamps, feature_names = generate_chronological_snapshot_dataset(n_products=100, n_timesteps=15, random_state=42)
         training_mode = "DOMAIN_INFORMED_SNAPSHOT_SERIES"
 
@@ -283,7 +319,9 @@ def train_and_save_model(output_dir: str = None, db: Any = None):
         "categories": STANDARD_CATEGORIES,
         "feature_names": feature_names,
         "feature_importances": importances,
-        "training_mode": training_mode
+        "training_mode": training_mode,
+        "target_horizon": "7_DAYS_FORWARD",
+        "target_description": "Projected consumer demand score (0-100) realized in subsequent 7-day window [T, T+7]"
     }
     
     with open(meta_path, "w", encoding="utf-8") as f:
@@ -297,4 +335,10 @@ def train_and_save_model(output_dir: str = None, db: Any = None):
     return metadata
 
 if __name__ == "__main__":
-    train_and_save_model()
+    try:
+        from backend.app.database import SessionLocal
+        with SessionLocal() as db:
+            train_and_save_model(db=db)
+    except Exception as e:
+        print(f"Running standalone training without live DB: {e}")
+        train_and_save_model()

@@ -369,7 +369,7 @@ export default function SellerBusinessScreen() {
             <View style={styles.predictingRow}>
               <ActivityIndicator size="small" color={theme.colors.primary} />
               <Text style={styles.predictingText}>
-                Evaluating ML demand regression for {selectedProduct?.title || "product"}…
+                Evaluating ML demand forecast for {selectedProduct?.title || "product"}…
               </Text>
             </View>
           )}

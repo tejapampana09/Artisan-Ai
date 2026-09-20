@@ -277,7 +277,10 @@ def calculate_price_recommendation_from_inputs(
         _df = Decimal(str(demand_factor))
         _applies_to = (not has_artisan_price) or (pricing_case == "CASE_2_BELOW_MARKET") or auto_smart_pricing_enabled
         if _applies_to:
-            anchor_to_adjust = base_price if (auto_smart_pricing_enabled and base_price is not None and base_price > 0) else raw_recommended
+            if pricing_case in ("CASE_3_INSIDE_MARKET", "CASE_4_ABOVE_MARKET") and auto_smart_pricing_enabled and base_price is not None and base_price > 0:
+                anchor_to_adjust = base_price
+            else:
+                anchor_to_adjust = raw_recommended
             raw_recommended = (anchor_to_adjust * _df).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if demand_factor > 1.0:
                 reasoning.append(
