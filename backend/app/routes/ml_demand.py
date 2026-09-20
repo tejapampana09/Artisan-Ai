@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 
@@ -9,8 +10,9 @@ from backend.app.services.auth import get_current_user, get_current_user_strict,
 from backend.app.services.ml_demand_engine import MLDemandEngine, predict_product_demand
 
 router = APIRouter(prefix="/api/ml", tags=["ML Demand Engine"])
+logger = logging.getLogger(__name__)
 
-MIN_REAL_EVENTS_RETRAIN_THRESHOLD = 20
+
 
 class PredictDemandRequest(BaseModel):
     product_id: int = Field(..., description="ID of an active published catalog product with interaction telemetry")
@@ -147,8 +149,9 @@ def retrain_model(
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
+        logger.exception("ML model retraining failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Model retraining failed: {str(e)}"
+            detail="Model retraining failed. Check server logs for details."
         )

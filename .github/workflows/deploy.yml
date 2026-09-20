@@ -66,7 +66,10 @@ jobs:
       - name: Show current Alembic revision (before migration)
         env:
           DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
-          ENVIRONMENT: production
+          # Use ENVIRONMENT=ci (not production) so config.py's validate_production_config()
+          # does not fire at import time. The migration runner only needs DATABASE_URL —
+          # it does not need JWT_SECRET_KEY or any other production-only secret.
+          ENVIRONMENT: ci
           PYTHONPATH: .
         run: |
           if [ -z "$DATABASE_URL" ]; then
@@ -79,7 +82,7 @@ jobs:
       - name: Run Alembic Migrations
         env:
           DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
-          ENVIRONMENT: production
+          ENVIRONMENT: ci
           PYTHONPATH: .
         run: |
           if [ -z "$DATABASE_URL" ]; then
@@ -92,7 +95,7 @@ jobs:
       - name: Show revision after migration
         env:
           DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
-          ENVIRONMENT: production
+          ENVIRONMENT: ci
           PYTHONPATH: .
         run: |
           if [ -z "$DATABASE_URL" ]; then
