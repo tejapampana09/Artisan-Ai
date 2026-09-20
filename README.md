@@ -10,7 +10,7 @@
 [![AWS Elastic Beanstalk](https://img.shields.io/badge/AWS%20Elastic%20Beanstalk-v1.1.6%20(t3.small)-FF9900.svg?logo=amazon-aws)](https://dd8bq7j24onss.cloudfront.net)
 [![AWS S3 + CloudFront CDN](https://img.shields.io/badge/AWS%20CloudFront-Live%20CDN-232F3E.svg?logo=amazon-aws)](https://dd8bq7j24onss.cloudfront.net)
 [![CI/CD Auto Deploy](https://github.com/tejapampana09/Artisan-Ai/actions/workflows/deploy.yml/badge.svg)](https://github.com/tejapampana09/Artisan-Ai/actions/workflows/deploy.yml)
-[![Test Suite](https://img.shields.io/badge/Tests-173%2F173%20Passing-brightgreen.svg)]()
+[![Test Suite](https://img.shields.io/badge/Tests-204%2F204%20Passing-brightgreen.svg)]()
 
 
 Artisan AI is a production-grade digital marketplace, multimodal smart cataloging engine, live delivery tracking system, and explainable business intelligence copilot designed for rural and marginalized Indian artisans. The platform eliminates digital literacy barriers by combining **Voice-First Multilingual Cataloging (Hindi, Telugu, Tamil, Bengali, English)**, **Parallel Multimodal Gemini Vision (`POST /api/ai/process-catalog`)**, **Scikit-Learn ML Demand Forecasting Engine (`RandomForestRegressor`)**, **Real-Time Live Market Research & Comparables Intelligence**, **Explainable Dynamic Pricing with Sovereign Cost Floor Protection**, **Real-Time Targeted Buyer Delivery Notifications**, **Instant Mobile Cache & Offline Batch Synchronization**, and **Enterprise AWS Cloud Infrastructure (Elastic Beanstalk t3.small + 2GB Swap + Classic ELB Cross-Zone + S3 CloudFront CDN)**.
