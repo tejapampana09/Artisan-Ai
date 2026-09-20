@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import User, Product, Event
-from backend.app.services.auth import get_current_user
+from backend.app.services.auth import get_current_user, get_optional_current_user
 from backend.app.services.ml_demand_engine import MLDemandEngine, predict_product_demand
 
 router = APIRouter(prefix="/api/ml", tags=["ML Demand Engine"])
@@ -14,6 +14,34 @@ MIN_REAL_EVENTS_RETRAIN_THRESHOLD = 20
 
 class PredictDemandRequest(BaseModel):
     product_id: int = Field(..., description="ID of an active published catalog product with interaction telemetry")
+
+def _validate_product_for_ml_demand(product: Optional[Product], product_id: int, current_user: Optional[User]) -> Product:
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with ID {product_id} not found."
+        )
+
+    # Verify seller ownership if requester is an authenticated seller
+    if current_user and getattr(current_user, "role", "") == "seller":
+        if product.seller_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to view demand telemetry for this product."
+            )
+
+    # Verify PUBLISHED or ACTIVE status
+    status_str = str(getattr(product, "status", "")).upper()
+    if status_str and status_str not in ["PUBLISHED", "ACTIVE"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Product #{product_id} is in '{status_str}' status. "
+                "ML Demand forecasting requires a PUBLISHED or ACTIVE catalog product with real marketplace interaction telemetry."
+            )
+        )
+
+    return product
 
 @router.get("/model-info", summary="Get active ML demand model metadata")
 def get_model_info():
@@ -29,38 +57,32 @@ def get_model_info():
         "metadata": engine.metadata
     }
 
-@router.post("/predict-demand", summary="Predict 7-day demand for a published catalog product")
+@router.post("/predict-demand", summary="Predict demand score for a published catalog product")
 def predict_demand(
     payload: PredictDemandRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """
-    Predicts 7-day consumer demand for an authentic published catalog product.
+    Predicts consumer demand score for an authentic published catalog product.
     Requires genuine buyer interaction telemetry (views, saves, enquiries, orders).
     """
     product = db.query(Product).filter(Product.id == payload.product_id).first()
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Product with ID {payload.product_id} not found."
-        )
-    return predict_product_demand(product, db)
+    valid_product = _validate_product_for_ml_demand(product, payload.product_id, current_user)
+    return predict_product_demand(valid_product, db)
 
-@router.get("/predict-demand/{product_id}", summary="Get 7-day demand prediction for a specific product ID")
+@router.get("/predict-demand/{product_id}", summary="Get demand prediction for a specific product ID")
 def get_product_demand_prediction(
     product_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """
-    Convenience GET endpoint to retrieve 7-day ML demand prediction for a specific product ID.
+    Convenience GET endpoint to retrieve ML demand prediction for a specific product ID.
     """
     product = db.query(Product).filter(Product.id == product_id).first()
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Product with ID {product_id} not found."
-        )
-    return predict_product_demand(product, db)
+    valid_product = _validate_product_for_ml_demand(product, product_id, current_user)
+    return predict_product_demand(valid_product, db)
 
 @router.post("/retrain", summary="Trigger ML model retraining (Requires Auth & Real Event Threshold)")
 def retrain_model(

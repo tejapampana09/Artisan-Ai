@@ -330,10 +330,10 @@ export default function SellerBusinessScreen() {
           </Card>
         )}
 
-        {/* ─── SECTION 2: ML DEMAND FORECASTING (PREDICTIVE REGRESSION) ─── */}
+        {/* ─── SECTION 2: ML DEMAND FORECASTING (RANDOM FOREST ENGINE) ─── */}
         <SectionHeader
-          title="Predictive ML Demand Forecasting"
-          subtitle="Server-side neural regression predicting consumer demand multiplier"
+          title="Random Forest Demand Forecast"
+          subtitle="Machine learning demand forecasting grounded in actual buyer telemetry"
         />
 
         <Card style={styles.mlCard}>

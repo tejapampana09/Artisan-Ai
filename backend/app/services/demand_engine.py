@@ -1,3 +1,19 @@
+"""
+Marketplace Aggregate Demand & Seller Opportunities Engine (Aggregate Domain)
+=============================================================================
+Responsibility:
+- Aggregated craft category demand calculation (`calculate_category_demand`)
+  Aggregates buyer event velocity across the marketplace (SEARCH, VIEW, SAVE, ENQUIRY, ORDER)
+  to determine macro category demand shares (%) and live catalog price benchmarks.
+- Seller Copilot & Opportunities generation (`generate_seller_opportunities`)
+  Synthesizes macro category trends, artisan stock levels, pricing recommendations,
+  and product-level ML demand scores into high-priority seller actions.
+
+Distinct from:
+- `backend/app/services/ml_demand_engine.py`: Focused strictly on per-product
+  RandomForest regression inference over individual product telemetry.
+"""
+
 import logging
 from typing import Dict, List, Any, cast
 from sqlalchemy.orm import Session

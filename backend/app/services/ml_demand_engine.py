@@ -1,3 +1,19 @@
+"""
+Product-Level Random Forest ML Demand Forecasting Engine (Micro Domain)
+======================================================================
+Responsibility:
+- Per-product RandomForestRegressor inference (`predict`, `predict_product_demand`)
+  Extracts 12 structured economic and telemetry features (material/labour/packaging costs,
+  price-to-cost ratio, stock, category encoding, and real VIEW/SAVE/ENQUIRY/ORDER events).
+- Produces individual product demand score (0–100), demand tier (NORMAL/MODERATE/HIGH),
+  and dynamic pricing multiplier (0.95x–1.15x).
+- Exclusively operates post-publication on authentic database products.
+
+Distinct from:
+- `backend/app/services/demand_engine.py`: Macro-level category velocity aggregation
+  and seller restock opportunities synthesis.
+"""
+
 import os
 import json
 import logging
@@ -125,168 +141,6 @@ class MLDemandEngine:
         
         return features, feature_dict
 
-    def predict_from_inputs(
-        self,
-        category: Optional[str],
-        material_cost: float = 0.0,
-        labour_cost: float = 0.0,
-        packaging_cost: float = 0.0,
-        other_cost: float = 0.0,
-        selling_price: float = 0.0,
-        stock: int = 0,
-        db: Optional[Session] = None
-    ) -> Dict[str, Any]:
-        """
-        Runs RandomForestRegressor inference using raw cost/category inputs
-        WITHOUT requiring a DB Product row. Used during AI Catalog draft creation.
-
-        If `db` is supplied, queries average engagement events for the category
-        to approximate views/saves/enquiries/orders for a new product.
-        """
-        mat_cost = float(material_cost or 0.0)
-        lab_cost = float(labour_cost or 0.0)
-        pkg_cost = float(packaging_cost or 0.0)
-        oth_cost = float(other_cost or 0.0)
-        tot_cost = mat_cost + lab_cost + pkg_cost + oth_cost
-
-        price = float(selling_price or 0.0)
-        p_ratio = round(price / max(tot_cost, 1.0), 3) if tot_cost > 0 else 1.0
-        cat_encoded = self.get_category_encoding(category)
-
-        # Try to pull category-level average engagement from DB as proxy for new products
-        views = saves = enquiries = orders = 0
-        if db is not None:
-            try:
-                from backend.app.models import Event
-                from sqlalchemy import func as sqlfunc
-                # Average engagement counts across all products in same category
-                cat_avg = (
-                    db.query(
-                        sqlfunc.avg(
-                            db.query(Event).filter(
-                                Event.category == category,
-                                Event.event_type == "VIEW"
-                            ).count()
-                        )
-                    ).scalar()
-                )
-                # Simple per-category event totals as proxy
-                views = db.query(Event).filter(Event.category == category, Event.event_type == "VIEW").count()
-                saves = db.query(Event).filter(Event.category == category, Event.event_type == "SAVE").count()
-                enquiries = db.query(Event).filter(Event.category == category, Event.event_type == "ENQUIRY").count()
-                orders = db.query(Event).filter(Event.category == category, Event.event_type == "ORDER").count()
-                # Scale down to single-product approximation (assume 10 products average)
-                divisor = max(1, db.query(Event).filter(Event.category == category).count() // max(1, views + 1))
-                views = max(0, views // max(1, divisor))
-                saves = max(0, saves // max(1, divisor))
-                enquiries = max(0, enquiries // max(1, divisor))
-                orders = max(0, orders // max(1, divisor))
-            except Exception:
-                views = saves = enquiries = orders = 0
-
-        features = [
-            mat_cost,
-            lab_cost,
-            pkg_cost,
-            oth_cost,
-            tot_cost,
-            p_ratio,
-            stock,
-            cat_encoded,
-            views,
-            saves,
-            enquiries,
-            orders
-        ]
-
-        feature_dict = {
-            "material_cost": mat_cost,
-            "labour_cost": lab_cost,
-            "packaging_cost": pkg_cost,
-            "other_cost": oth_cost,
-            "total_cost": tot_cost,
-            "price_to_cost_ratio": p_ratio,
-            "stock": stock,
-            "category": category or "Other",
-            "category_encoded": cat_encoded,
-            "views": views,
-            "saves": saves,
-            "enquiries": enquiries,
-            "orders": orders
-        }
-
-        if not self.is_available():
-            return {
-                "predicted_demand_score": 0.0,
-                "demand_level": "NORMAL",
-                "ml_demand_multiplier": 1.00,
-                "features": feature_dict,
-                "model_source": "RULE_BASED_FALLBACK",
-                "model_info": {
-                    "available": False,
-                    "reason": "Model artifacts not initialized"
-                }
-            }
-
-        model = self.model
-        metadata = self.metadata
-        if model is None or metadata is None:
-            return {
-                "predicted_demand_score": 0.0,
-                "demand_level": "NORMAL",
-                "ml_demand_multiplier": 1.00,
-                "features": feature_dict,
-                "model_source": "RULE_BASED_FALLBACK",
-                "model_info": {
-                    "available": False,
-                    "reason": "Model artifacts unavailable"
-                }
-            }
-
-        try:
-            raw_prediction = float(model.predict([features])[0])
-            score = max(0.0, min(100.0, round(raw_prediction, 2)))
-
-            if score >= 45.0:
-                level = "HIGH"
-            elif score >= 20.0:
-                level = "MODERATE"
-            else:
-                level = "NORMAL"
-
-            multiplier = round(0.95 + (score / 100.0) * 0.20, 3)
-            multiplier = max(0.95, min(1.15, multiplier))
-
-            return {
-                "predicted_demand_score": score,
-                "demand_level": level,
-                "ml_demand_multiplier": multiplier,
-                "features": feature_dict,
-                "model_source": "TRAINED_ML_MODEL",
-                "model_info": {
-                    "available": True,
-                    "model_name": metadata.get("model_name"),
-                    "n_estimators": metadata.get("n_estimators"),
-                    "trained_at": metadata.get("trained_at"),
-                    "r2_score": metadata.get("r2_score"),
-                    "mae": metadata.get("mae"),
-                    "training_mode": metadata.get("training_mode"),
-                    "feature_importances": metadata.get("feature_importances", {})
-                }
-            }
-        except Exception as e:
-            logger.error("ML Inference (from_inputs) error for category=%s: %s", category, e)
-            return {
-                "predicted_demand_score": 0.0,
-                "demand_level": "NORMAL",
-                "ml_demand_multiplier": 1.00,
-                "features": feature_dict,
-                "model_source": "RULE_BASED_FALLBACK",
-                "model_info": {
-                    "available": False,
-                    "reason": f"Inference exception: {str(e)}"
-                }
-            }
 
     def predict(self, product: Product, db: Session) -> Dict[str, Any]:
         """

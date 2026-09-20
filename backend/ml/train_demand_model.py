@@ -155,14 +155,31 @@ def extract_db_dataset(db):
         stock = int(p.stock or 0)
         cat_idx = cat_map.get((p.category or "").lower(), len(STANDARD_CATEGORIES) - 1)
         
-        events = db.query(Event).filter(Event.product_id == p.id).order_by(Event.created_at.asc()).all()
-        views = sum(1 for e in events if e.event_type == "VIEW")
-        saves = sum(1 for e in events if e.event_type == "SAVE")
-        enquiries = sum(1 for e in events if e.event_type == "ENQUIRY")
-        orders = sum(1 for e in events if e.event_type == "ORDER")
+        # Enforce chronological separation: features measured up to split, target measured in subsequent window
+        n_events = len(events)
+        if n_events >= 4:
+            split_idx = max(2, int(n_events * 0.6))
+            hist_events = events[:split_idx]
+            future_events = events[split_idx:]
+            
+            views = sum(1 for e in hist_events if e.event_type == "VIEW")
+            saves = sum(1 for e in hist_events if e.event_type == "SAVE")
+            enquiries = sum(1 for e in hist_events if e.event_type == "ENQUIRY")
+            orders = sum(1 for e in hist_events if e.event_type == "ORDER")
+            
+            f_views = sum(1 for e in future_events if e.event_type == "VIEW")
+            f_saves = sum(1 for e in future_events if e.event_type == "SAVE")
+            f_enquiries = sum(1 for e in future_events if e.event_type == "ENQUIRY")
+            f_orders = sum(1 for e in future_events if e.event_type == "ORDER")
+        else:
+            views = sum(1 for e in events if e.event_type == "VIEW")
+            saves = sum(1 for e in events if e.event_type == "SAVE")
+            enquiries = sum(1 for e in events if e.event_type == "ENQUIRY")
+            orders = sum(1 for e in events if e.event_type == "ORDER")
+            f_views, f_saves, f_enquiries, f_orders = views, saves, enquiries, orders
         
-        # Realized target (T -> T+7 demand score)
-        future_conversion_factor = (views * 0.05) + (saves * 0.20) + (enquiries * 0.40) + (orders * 0.80)
+        # Realized target (subsequent demand score realized in post-feature window)
+        future_conversion_factor = (f_views * 0.05) + (f_saves * 0.20) + (f_enquiries * 0.40) + (f_orders * 0.80)
         p_factor = 1.15 if 1.2 <= p_ratio <= 1.6 else (0.85 if p_ratio > 2.0 else 1.0)
         scarcity = 1.10 if (0 < stock <= 5 and (views + saves) > 20) else 1.0
         raw_demand = future_conversion_factor * p_factor * scarcity * 12.0
