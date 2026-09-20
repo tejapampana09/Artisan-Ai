@@ -63,45 +63,62 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Show current Alembic revision (before migration)
+      - name: Validate RDS_DATABASE_URL secret
         env:
           DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
-          # Use ENVIRONMENT=ci (not production) so config.py's validate_production_config()
-          # does not fire at import time. The migration runner only needs DATABASE_URL —
-          # it does not need JWT_SECRET_KEY or any other production-only secret.
+        run: |
+          # Guard 1: secret not set at all → skip gracefully
+          if [ -z "$DATABASE_URL" ]; then
+            echo "SKIP_MIGRATION=true" >> $GITHUB_ENV
+            echo "⚠ RDS_DATABASE_URL secret is not configured — migration skipped (no-op)."
+            echo "  To enable: Settings → Secrets → Actions → New secret: RDS_DATABASE_URL"
+            echo "  Value format: postgresql://user:password@xxx.rds.amazonaws.com:5432/dbname"
+            exit 0
+          fi
+          # Guard 2: secret still contains placeholder text (e.g. <your-rds-endpoint>)
+          if echo "$DATABASE_URL" | grep -qiE '<[^>]+>|your-rds-endpoint|example\.com'; then
+            echo "SKIP_MIGRATION=true" >> $GITHUB_ENV
+            echo "⚠ RDS_DATABASE_URL contains placeholder text ('<your-rds-endpoint>') — skipping migration (no-op)."
+            echo "  To run live RDS migrations in CI:"
+            echo "  1. Set up an AWS RDS PostgreSQL instance in ap-south-1"
+            echo "  2. Go to GitHub Repo -> Settings -> Secrets and variables -> Actions"
+            echo "  3. Update RDS_DATABASE_URL with your actual endpoint:"
+            echo "     postgresql://<db_user>:<db_password>@<your-db-identifier>.xxxx.ap-south-1.rds.amazonaws.com:5432/<db_name>"
+            echo "  Continuing deployment..."
+            exit 0
+          fi
+          echo "SKIP_MIGRATION=false" >> $GITHUB_ENV
+          echo "✓ RDS_DATABASE_URL looks valid — proceeding with migration."
+
+      - name: Show current Alembic revision (before migration)
+        if: env.SKIP_MIGRATION == 'false'
+        env:
+          DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
+          # ENVIRONMENT=ci: bypasses validate_production_config() JWT check at import time.
+          # The migration runner only needs DATABASE_URL — not JWT_SECRET_KEY.
           ENVIRONMENT: ci
           PYTHONPATH: .
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "RDS_DATABASE_URL secret not configured — skipping migration (no-op)."
-            exit 0
-          fi
           echo "=== Current RDS Alembic revision ==="
           python -m alembic current || echo "(no revision yet — fresh database)"
 
       - name: Run Alembic Migrations
+        if: env.SKIP_MIGRATION == 'false'
         env:
           DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
           ENVIRONMENT: ci
           PYTHONPATH: .
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "RDS_DATABASE_URL secret not configured — skipping migration (no-op)."
-            exit 0
-          fi
           echo "=== Running: alembic upgrade head ==="
           python -m alembic upgrade head
 
       - name: Show revision after migration
+        if: env.SKIP_MIGRATION == 'false'
         env:
           DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
           ENVIRONMENT: ci
           PYTHONPATH: .
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "Skipped — RDS_DATABASE_URL not configured."
-            exit 0
-          fi
           echo "=== Applied migration. Current revision: ==="
           python -m alembic current
 
