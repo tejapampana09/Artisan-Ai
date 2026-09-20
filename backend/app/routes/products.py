@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from typing import List, Optional, cast
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -309,6 +310,8 @@ def transition_product_status(
 
     old_status = product.status
     product.status = new_status
+    if new_status == "PUBLISHED" and getattr(product, "published_at", None) is None:
+        product.published_at = datetime.now(timezone.utc)
     if is_admin:
         record_audit_log(
             db=db,

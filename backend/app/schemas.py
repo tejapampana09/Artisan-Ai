@@ -168,6 +168,7 @@ class ProductResponse(ProductBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    published_at: Optional[datetime] = None
 
 # Step 4: Event & Marketplace Schemas
 class EventCreate(BaseModel):

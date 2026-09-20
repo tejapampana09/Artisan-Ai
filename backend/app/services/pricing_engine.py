@@ -283,10 +283,12 @@ def calculate_price_recommendation_from_inputs(
                 anchor_to_adjust = raw_recommended
             raw_recommended = (anchor_to_adjust * _df).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if demand_factor > 1.0:
+                _score = (ml_info.get('predicted_demand_score') if ml_info else None)
+                _score_str = f"{float(_score):.0f}/100" if _score is not None else "N/A"
                 reasoning.append(
                     f"ML demand multiplier {float(demand_factor):.3f}x applied "
                     f"({'Autonomous dynamic pricing surge' if auto_smart_pricing_enabled else 'to AI-recommended price'}, "
-                    f"demand score {ml_info.get('predicted_demand_score', 0.0) if ml_info else 0:.0f}/100)."
+                    f"demand score {_score_str})."
                 )
             elif demand_factor < 1.0:
                 reasoning.append(

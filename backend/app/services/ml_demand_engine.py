@@ -102,11 +102,28 @@ class MLDemandEngine:
         stock = int(getattr(product, "stock", 0) or 0)
         cat_encoded = self.get_category_encoding(getattr(product, "category", None))
         
-        # Real buyer engagement counts from events table (aligned with training window: rolling 30-day velocity)
         from datetime import datetime, timezone, timedelta
         now = datetime.now(timezone.utc)
-        window_start = now - timedelta(days=30)
+
+        # Canonical publication timestamp handling:
+        # Prefer published_at; fall back to earliest interaction event, then created_at
+        pub_time = getattr(product, "published_at", None)
+        if not pub_time:
+            earliest_event = db.query(Event).filter(Event.product_id == product.id).order_by(Event.timestamp.asc()).first()
+            if earliest_event and earliest_event.timestamp:
+                pub_time = earliest_event.timestamp
+            else:
+                pub_time = getattr(product, "created_at", None)
+
+        if pub_time:
+            if pub_time.tzinfo is None:
+                pub_time = pub_time.replace(tzinfo=timezone.utc)
+            days_active = max(0, (now - pub_time).days)
+        else:
+            days_active = 0
         
+        # Real buyer engagement counts from events table (aligned with training window: rolling 30-day velocity)
+        window_start = now - timedelta(days=30)
         recent_events = db.query(Event).filter(
             Event.product_id == product.id,
             Event.timestamp >= window_start
@@ -120,6 +137,7 @@ class MLDemandEngine:
         saves = sum(1 for e in recent_events if e.event_type == "SAVE")
         enquiries = sum(1 for e in recent_events if e.event_type == "ENQUIRY")
         orders = sum(1 for e in recent_events if e.event_type == "ORDER")
+        total_interactions = views + saves + enquiries + orders
         
         features = [
             mat_cost,
@@ -130,6 +148,7 @@ class MLDemandEngine:
             p_ratio,
             stock,
             cat_encoded,
+            min(365, days_active),
             views,
             saves,
             enquiries,
@@ -146,6 +165,8 @@ class MLDemandEngine:
             "stock": stock,
             "category": getattr(product, "category", "Handcrafted"),
             "category_encoded": cat_encoded,
+            "days_active": days_active,
+            "total_interactions": total_interactions,
             "views": views,
             "saves": saves,
             "enquiries": enquiries,
@@ -157,32 +178,94 @@ class MLDemandEngine:
 
     def predict(self, product: Product, db: Session) -> Dict[str, Any]:
         """
-        Runs RandomForestRegressor inference on product features.
-        Returns predicted demand score (0-100), level, ML demand multiplier (0.95-1.15), and model metadata.
+        Runs RandomForestRegressor inference on product features with explicit cold-start guard.
+        Differentiates between:
+          1. INSUFFICIENT_HISTORY / COLD_START:
+             days_active < 7 OR (days_active < 14 AND total_interactions < 5).
+             Safely holds demand multiplier at 1.000x (neutral baseline) without unfair penalties.
+          2. ESTABLISHED_LOW_DEMAND:
+             Active listing (days_active >= 14 with 0 saves/orders).
+             Real zero-demand signal; model predicts low demand score and bounded softening factor.
+          3. ACTIVE_TELEMETRY:
+             Active listing with conversion events; model predicts dynamic demand.
+
+        Evidence-based confidence scale (based on total interaction sample size):
+          - 0-9 interactions: LOW / INSUFFICIENT
+          - 10-49 interactions: MEDIUM
+          - 50+ interactions: HIGH
         """
         features, feature_dict = self.extract_features(product, db)
+        days_active = feature_dict.get("days_active", 0)
+        views = feature_dict.get("views", 0)
+        saves = feature_dict.get("saves", 0)
+        enquiries = feature_dict.get("enquiries", 0)
+        orders = feature_dict.get("orders", 0)
+        total_interactions = feature_dict.get("total_interactions", 0)
+
+        metadata = self.metadata or {}
+        training_mode = metadata.get("training_mode", "DOMAIN_INFORMED_BOOTSTRAP")
+        is_real_mkt = bool(metadata.get("is_real_marketplace_data", False))
+        training_source = metadata.get("training_data_source", "Domain-Informed Prior (Bootstrap Series)")
         
-        if not self.is_available():
-            # Graceful Fallback if model not loaded
+        model_info = {
+            "available": self.is_available(),
+            "model_name": metadata.get("model_name", "RandomForestRegressor"),
+            "n_estimators": metadata.get("n_estimators", 100),
+            "trained_at": metadata.get("trained_at"),
+            "r2_score": metadata.get("r2_score"),
+            "mae": metadata.get("mae"),
+            "training_mode": training_mode,
+            "training_data_source": training_source,
+            "is_real_marketplace_data": is_real_mkt,
+            "feature_importances": metadata.get("feature_importances", {}),
+            "cold_start_policy": metadata.get("cold_start_policy", {
+                "min_active_days": 7,
+                "min_interactions": 5,
+                "neutral_multiplier": 1.000
+            })
+        }
+
+        # -----------------------------------------------------------------
+        # COLD-START GUARD (Clean, non-redundant rule)
+        # -----------------------------------------------------------------
+        is_cold_start = (days_active < 7) or (days_active < 14 and total_interactions < 5)
+
+        if is_cold_start:
             return {
                 "product_id": product.id,
                 "product_title": getattr(product, "title", f"Product #{product.id}"),
                 "category": getattr(product, "category", "Handcrafted"),
                 "current_price": float(getattr(product, "price", 0.0)),
-                "predicted_demand_score": 0.0,
-                "demand_level": "NORMAL",
-                "ml_demand_multiplier": 1.00,
+                "predicted_demand_score": None,
+                "demand_level": "COLD_START",
+                "ml_demand_multiplier": 1.000,
+                "is_cold_start": True,
+                "telemetry_status": "COLD_START_INSUFFICIENT_HISTORY",
+                "confidence": "COLD_START",
+                "explanation": (
+                    f"Newly published listing (active {days_active}d, {total_interactions} interactions). "
+                    "Dynamic demand adjustment is safely held at neutral baseline (1.000x) until sufficient buyer telemetry accumulates."
+                ),
                 "features": feature_dict,
-                "model_source": "RULE_BASED_FALLBACK",
-                "model_info": {
-                    "available": False,
-                    "reason": "Model artifacts not initialized"
-                }
+                "model_source": "COLD_START_NEUTRAL_BASELINE",
+                "model_info": model_info
             }
 
+        # -----------------------------------------------------------------
+        # EVIDENCE-BASED CONFIDENCE SCALE
+        # -----------------------------------------------------------------
+        if total_interactions < 10:
+            confidence = "LOW"
+        elif total_interactions < 50:
+            confidence = "MEDIUM"
+        else:
+            confidence = "HIGH"
+
+        is_zero_conversion = (saves == 0 and enquiries == 0 and orders == 0)
+        telemetry_status = "ESTABLISHED_LOW_DEMAND" if is_zero_conversion else "ACTIVE_TELEMETRY"
+
         model = self.model
-        metadata = self.metadata
-        if model is None or metadata is None:
+        if model is None or not self.is_available():
             return {
                 "product_id": product.id,
                 "product_title": getattr(product, "title", f"Product #{product.id}"),
@@ -190,13 +273,14 @@ class MLDemandEngine:
                 "current_price": float(getattr(product, "price", 0.0)),
                 "predicted_demand_score": 0.0,
                 "demand_level": "NORMAL",
-                "ml_demand_multiplier": 1.00,
+                "ml_demand_multiplier": 1.000,
+                "is_cold_start": False,
+                "telemetry_status": telemetry_status,
+                "confidence": confidence,
+                "explanation": "Model artifacts unavailable; using neutral baseline.",
                 "features": feature_dict,
                 "model_source": "RULE_BASED_FALLBACK",
-                "model_info": {
-                    "available": False,
-                    "reason": "Model artifacts are unavailable"
-                }
+                "model_info": model_info
             }
 
         try:
@@ -208,12 +292,23 @@ class MLDemandEngine:
             elif score >= 20.0:
                 level = "MODERATE"
             else:
-                level = "NORMAL"
+                level = "LOW" if is_zero_conversion else "NORMAL"
                 
             # Scale score into bounded demand factor [0.95, 1.15]
             multiplier = round(0.95 + (score / 100.0) * 0.20, 3)
             multiplier = max(0.95, min(1.15, multiplier))
-            
+
+            if is_zero_conversion:
+                explanation = (
+                    f"Product active for {days_active} days with {views} views and 0 conversions "
+                    f"({confidence} confidence). Softening multiplier applied to stimulate buyer interest."
+                )
+            else:
+                explanation = (
+                    f"Active buyer engagement ({views} views, {saves} saves, {enquiries} enquiries, {orders} orders) "
+                    f"over {days_active} days yields projected demand score {score:.0f}/100 ({confidence} confidence)."
+                )
+
             return {
                 "product_id": product.id,
                 "product_title": getattr(product, "title", f"Product #{product.id}"),
@@ -222,18 +317,13 @@ class MLDemandEngine:
                 "predicted_demand_score": score,
                 "demand_level": level,
                 "ml_demand_multiplier": multiplier,
+                "is_cold_start": False,
+                "telemetry_status": telemetry_status,
+                "confidence": confidence,
+                "explanation": explanation,
                 "features": feature_dict,
                 "model_source": "TRAINED_ML_MODEL",
-                "model_info": {
-                    "available": True,
-                    "model_name": metadata.get("model_name"),
-                    "n_estimators": metadata.get("n_estimators"),
-                    "trained_at": metadata.get("trained_at"),
-                    "r2_score": metadata.get("r2_score"),
-                    "mae": metadata.get("mae"),
-                    "training_mode": metadata.get("training_mode"),
-                    "feature_importances": metadata.get("feature_importances", {})
-                }
+                "model_info": model_info
             }
         except Exception as e:
             logger.error("ML Inference error for product ID %s: %s", product.id, e)
@@ -244,13 +334,14 @@ class MLDemandEngine:
                 "current_price": float(getattr(product, "price", 0.0)),
                 "predicted_demand_score": 0.0,
                 "demand_level": "NORMAL",
-                "ml_demand_multiplier": 1.00,
+                "ml_demand_multiplier": 1.000,
+                "is_cold_start": False,
+                "telemetry_status": telemetry_status,
+                "confidence": "FALLBACK",
+                "explanation": f"Inference exception: {str(e)}",
                 "features": feature_dict,
                 "model_source": "RULE_BASED_FALLBACK",
-                "model_info": {
-                    "available": False,
-                    "reason": f"Inference exception: {str(e)}"
-                }
+                "model_info": model_info
             }
 
 def predict_product_demand(product: Product, db: Session) -> Dict[str, Any]:

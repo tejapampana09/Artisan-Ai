@@ -46,8 +46,10 @@ def generate_chronological_snapshot_dataset(n_products: int = 100, n_timesteps: 
         price = tot_cost * margin_mult
         p_ratio = price / max(tot_cost, 1.0)
         
-        # Product intrinsic baseline popularity
-        base_popularity = np.random.uniform(0.5, 3.0)
+        # Product intrinsic baseline popularity:
+        # 20% of products represent established zero/low demand (catalog presence with zero conversions)
+        is_established_zero_demand = (pid % 5 == 0)
+        base_popularity = 0.05 if is_established_zero_demand else np.random.uniform(0.5, 3.0)
         
         # Accumulators over time
         cum_views = 0
@@ -58,6 +60,7 @@ def generate_chronological_snapshot_dataset(n_products: int = 100, n_timesteps: 
         
         for t in range(n_timesteps):
             # Time t features (strictly historical snapshot up to t)
+            days_active_at_t = int(7 + t * 7)  # Timestep t corresponds to (7, 14, 21, ... 105) active days
             views_at_t = cum_views
             saves_at_t = cum_saves
             enquiries_at_t = cum_enquiries
@@ -65,31 +68,38 @@ def generate_chronological_snapshot_dataset(n_products: int = 100, n_timesteps: 
             stock_at_t = current_stock
             
             # Ground-truth demand realized in the subsequent 7-day window [t, t+1]
-            # Driven by intrinsic popularity, price competitiveness, seasonal trend, and accumulated interest
-            seasonal_trend = 1.0 + 0.3 * math.sin(2 * math.pi * t / 12.0)
-            price_factor = 1.20 if 1.2 <= p_ratio <= 1.6 else (0.80 if p_ratio > 2.0 else 1.0)
-            scarcity_boost = 1.15 if (0 < stock_at_t <= 5 and (views_at_t + saves_at_t) > 15) else 1.0
-            
-            # Non-linear conversion rate for future 7-day period
-            future_demand_rate = (
-                base_popularity * seasonal_trend * price_factor * scarcity_boost *
-                (1.0 + math.log1p(views_at_t) * 0.15 + saves_at_t * 0.05 + enquiries_at_t * 0.10)
-            )
-            
-            # Realized future 7-day conversion outcome (T -> T+7)
-            future_orders_next_7d = np.random.poisson(max(0.1, future_demand_rate * 1.5))
-            future_views_next_7d = int(future_orders_next_7d * np.random.uniform(8.0, 15.0) + np.random.randint(5, 20))
-            future_saves_next_7d = int(future_orders_next_7d * np.random.uniform(1.5, 3.0))
-            future_enquiries_next_7d = int(future_orders_next_7d * np.random.uniform(0.5, 1.5))
-            
-            # Target Score (0-100) based strictly on realized future 7-day conversion outcome [t, t+1]
-            raw_target_demand = (
-                future_views_next_7d * 0.08 +
-                future_saves_next_7d * 0.40 +
-                future_enquiries_next_7d * 1.20 +
-                future_orders_next_7d * 4.50
-            )
-            target_score_next_7d = float(max(0.0, min(100.0, round(100.0 * (1.0 - math.exp(-raw_target_demand / 60.0)), 2))))
+            if is_established_zero_demand:
+                # Active product with zero conversions represents genuine low demand
+                future_orders_next_7d = 0
+                future_saves_next_7d = 0
+                future_enquiries_next_7d = 0
+                future_views_next_7d = int(np.random.choice([0, 1, 2]))
+                target_score_next_7d = float(round(future_views_next_7d * 0.4, 2))
+            else:
+                seasonal_trend = 1.0 + 0.3 * math.sin(2 * math.pi * t / 12.0)
+                price_factor = 1.20 if 1.2 <= p_ratio <= 1.6 else (0.80 if p_ratio > 2.0 else 1.0)
+                scarcity_boost = 1.15 if (0 < stock_at_t <= 5 and (views_at_t + saves_at_t) > 15) else 1.0
+                
+                # Non-linear conversion rate for future 7-day period
+                future_demand_rate = (
+                    base_popularity * seasonal_trend * price_factor * scarcity_boost *
+                    (1.0 + math.log1p(views_at_t) * 0.15 + saves_at_t * 0.05 + enquiries_at_t * 0.10)
+                )
+                
+                # Realized future 7-day conversion outcome (T -> T+7)
+                future_orders_next_7d = np.random.poisson(max(0.1, future_demand_rate * 1.5))
+                future_views_next_7d = int(future_orders_next_7d * np.random.uniform(8.0, 15.0) + np.random.randint(5, 20))
+                future_saves_next_7d = int(future_orders_next_7d * np.random.uniform(1.5, 3.0))
+                future_enquiries_next_7d = int(future_orders_next_7d * np.random.uniform(0.5, 1.5))
+                
+                # Target Score (0-100) based strictly on realized future 7-day conversion outcome [t, t+1]
+                raw_target_demand = (
+                    future_views_next_7d * 0.08 +
+                    future_saves_next_7d * 0.40 +
+                    future_enquiries_next_7d * 1.20 +
+                    future_orders_next_7d * 4.50
+                )
+                target_score_next_7d = float(max(0.0, min(100.0, round(100.0 * (1.0 - math.exp(-raw_target_demand / 60.0)), 2))))
             
             rows.append({
                 "t": t,
@@ -102,6 +112,7 @@ def generate_chronological_snapshot_dataset(n_products: int = 100, n_timesteps: 
                 "price_to_cost_ratio": p_ratio,
                 "stock": stock_at_t,
                 "category_encoded": cat_idx,
+                "days_active": days_active_at_t,
                 "views": views_at_t,
                 "saves": saves_at_t,
                 "enquiries": enquiries_at_t,
@@ -122,7 +133,7 @@ def generate_chronological_snapshot_dataset(n_products: int = 100, n_timesteps: 
     feature_names = [
         "material_cost", "labour_cost", "packaging_cost", "other_cost",
         "total_cost", "price_to_cost_ratio", "stock", "category_encoded",
-        "views", "saves", "enquiries", "orders"
+        "days_active", "views", "saves", "enquiries", "orders"
     ]
     
     X = np.array([[r[f] for f in feature_names] for r in rows])
@@ -134,13 +145,16 @@ def generate_chronological_snapshot_dataset(n_products: int = 100, n_timesteps: 
 MIN_PRODUCTION_PRODUCTS = 20
 MIN_PRODUCTION_EVENTS = 200
 MIN_PRODUCTION_DAYS = 14
+MIN_ACTIVE_DAYS_FOR_SNAPSHOT = 7
 
 def extract_db_dataset(db):
     """
     Extracts chronological time-series snapshot dataset directly from database products and events.
-    Strictly enforces T -> T+7 forward calendar window:
+    Strictly enforces T -> T+7 forward calendar window with cold-start filtering:
       - Snapshot Cutoff T: specific calendar checkpoint
-      - Historical Features X(T): interaction events in [T - 30d, T]
+      - Product Existence Guard: p.created_at <= T (eliminates ghost snapshots)
+      - Cold-Start Coverage Filter: product must have existed for >= 7 days before T (days_active >= 7)
+      - Historical Features X(T): interaction events in [T - 30d, T] + days_active
       - Forward Target y(T): realized conversion events in (T, T + 7d]
       - Snapshot timestamp: T.timestamp() (real temporal sequence for holdout split)
 
@@ -173,6 +187,36 @@ def extract_db_dataset(db):
 
     while current_T <= max_T:
         for p in published_products:
+            # 1. Product existence check: Product must have existed at current_T
+            created_at = getattr(p, "created_at", None)
+            if created_at:
+                c_at = created_at
+                if c_at.tzinfo is None and current_T.tzinfo is not None:
+                    c_at = c_at.replace(tzinfo=timezone.utc)
+                elif c_at.tzinfo is not None and current_T.tzinfo is None:
+                    c_at = c_at.replace(tzinfo=None)
+                if c_at > current_T:
+                    continue  # Product did not exist yet at snapshot time T
+                days_active_at_t = max(0, (current_T - c_at).days)
+            else:
+                first_event = db.query(Event).filter(Event.product_id == p.id).order_by(Event.timestamp.asc()).first()
+                if first_event and first_event.timestamp:
+                    fe_ts = first_event.timestamp
+                    if fe_ts.tzinfo is None and current_T.tzinfo is not None:
+                        fe_ts = fe_ts.replace(tzinfo=timezone.utc)
+                    elif fe_ts.tzinfo is not None and current_T.tzinfo is None:
+                        fe_ts = fe_ts.replace(tzinfo=None)
+                    if fe_ts > current_T:
+                        continue
+                    days_active_at_t = max(0, (current_T - fe_ts).days)
+                else:
+                    days_active_at_t = 0
+
+            # 2. Cold-start coverage guard:
+            # Require at least 7 days of exposure before taking an ML training snapshot
+            if days_active_at_t < MIN_ACTIVE_DAYS_FOR_SNAPSHOT:
+                continue
+
             mat = float(p.material_cost or 0.0)
             lab = float(p.labour_cost or 0.0)
             pkg = float(p.packaging_cost or 0.0)
@@ -226,6 +270,7 @@ def extract_db_dataset(db):
                 "price_to_cost_ratio": p_ratio,
                 "stock": stock,
                 "category_encoded": cat_idx,
+                "days_active": min(365, days_active_at_t),
                 "views": views,
                 "saves": saves,
                 "enquiries": enquiries,
@@ -241,7 +286,7 @@ def extract_db_dataset(db):
     feature_names = [
         "material_cost", "labour_cost", "packaging_cost", "other_cost",
         "total_cost", "price_to_cost_ratio", "stock", "category_encoded",
-        "views", "saves", "enquiries", "orders"
+        "days_active", "views", "saves", "enquiries", "orders"
     ]
     X = np.array([[r[f] for f in feature_names] for r in rows])
     y = np.array([r["target"] for r in rows])
@@ -253,7 +298,7 @@ def train_and_save_model(output_dir: str = None, db: Any = None):
         output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ml")
     os.makedirs(output_dir, exist_ok=True)
     
-    training_mode = "DOMAIN_INFORMED_SNAPSHOT_SERIES"
+    training_mode = "DOMAIN_INFORMED_BOOTSTRAP"
     X, y, timestamps, feature_names = None, None, None, None
     
     if db is not None:
@@ -264,7 +309,7 @@ def train_and_save_model(output_dir: str = None, db: Any = None):
 
     if X is None or len(X) < 20:
         X, y, timestamps, feature_names = generate_chronological_snapshot_dataset(n_products=100, n_timesteps=15, random_state=42)
-        training_mode = "DOMAIN_INFORMED_SNAPSHOT_SERIES"
+        training_mode = "DOMAIN_INFORMED_BOOTSTRAP"
 
     # Strict Chronological Time Cutoff Split (Train: past 80% time steps -> Validation: future 20% holdout)
     unique_t = np.unique(timestamps)
@@ -305,6 +350,12 @@ def train_and_save_model(output_dir: str = None, db: Any = None):
     
     joblib.dump(rf, model_path)
     
+    is_real_mkt = ("PRODUCTION" in training_mode)
+    training_data_source = (
+        "Production Marketplace Telemetry" if is_real_mkt
+        else "Domain-Informed Prior (Bootstrap Series)"
+    )
+
     metadata = {
         "model_name": "RandomForestRegressor",
         "n_estimators": 100,
@@ -320,6 +371,13 @@ def train_and_save_model(output_dir: str = None, db: Any = None):
         "feature_names": feature_names,
         "feature_importances": importances,
         "training_mode": training_mode,
+        "training_data_source": training_data_source,
+        "is_real_marketplace_data": is_real_mkt,
+        "cold_start_policy": {
+            "min_active_days": 7,
+            "min_interactions": 5,
+            "neutral_multiplier": 1.000
+        },
         "target_horizon": "7_DAYS_FORWARD",
         "target_description": "Projected consumer demand score (0-100) realized in subsequent 7-day window [T, T+7]"
     }
