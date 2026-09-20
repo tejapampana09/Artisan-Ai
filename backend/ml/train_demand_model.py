@@ -147,7 +147,12 @@ MIN_PRODUCTION_EVENTS = 200
 MIN_PRODUCTION_DAYS = 14
 MIN_ACTIVE_DAYS_FOR_SNAPSHOT = 7
 
-def extract_db_dataset(db):
+def extract_db_dataset(
+    db, 
+    min_products: int = MIN_PRODUCTION_PRODUCTS, 
+    min_events: int = MIN_PRODUCTION_EVENTS, 
+    min_days: int = MIN_PRODUCTION_DAYS
+):
     """
     Extracts chronological time-series snapshot dataset directly from database products and events.
     Strictly enforces T -> T+7 forward calendar window with cold-start filtering:
@@ -170,12 +175,12 @@ def extract_db_dataset(db):
     ).all()
     
     total_events = db.query(Event).filter(Event.timestamp != None).all()
-    if len(published_products) < MIN_PRODUCTION_PRODUCTS or len(total_events) < MIN_PRODUCTION_EVENTS:
+    if len(published_products) < min_products or len(total_events) < min_events:
         return None, None, None, None, 0
 
     earliest_event = min(e.timestamp for e in total_events if e.timestamp)
     latest_event = max(e.timestamp for e in total_events if e.timestamp)
-    if (latest_event - earliest_event).days < MIN_PRODUCTION_DAYS:
+    if (latest_event - earliest_event).days < min_days:
         return None, None, None, None, 0
 
     cat_map = {cat.lower(): idx for idx, cat in enumerate(STANDARD_CATEGORIES)}
@@ -311,16 +316,47 @@ def train_and_save_model(output_dir: str = None, db: Any = None):
         X, y, timestamps, feature_names = generate_chronological_snapshot_dataset(n_products=100, n_timesteps=15, random_state=42)
         training_mode = "DOMAIN_INFORMED_BOOTSTRAP"
 
-    # Strict Chronological Time Cutoff Split (Train: past 80% time steps -> Validation: future 20% holdout)
+    # -------------------------------------------------------------------------
+    # TEMPORAL MULTI-FOLD CROSS-VALIDATION (TimeSeriesSplit with 1-Step Forecast Gap)
+    # -------------------------------------------------------------------------
+    from sklearn.model_selection import TimeSeriesSplit
+    tscv = TimeSeriesSplit(n_splits=3, gap=1)
+    cv_r2_scores = []
+    cv_mae_scores = []
+
+    for fold, (train_idx, val_idx) in enumerate(tscv.split(X)):
+        rf_cv = RandomForestRegressor(
+            n_estimators=50,
+            max_depth=10,
+            random_state=42
+        )
+        rf_cv.fit(X[train_idx], y[train_idx])
+        preds_cv = rf_cv.predict(X[val_idx])
+        cv_r2_scores.append(float(r2_score(y[val_idx], preds_cv)))
+        cv_mae_scores.append(float(mean_absolute_error(y[val_idx], preds_cv)))
+
+    temporal_cv_r2_mean = float(round(float(np.mean(cv_r2_scores)), 4))
+    temporal_cv_mae_mean = float(round(float(np.mean(cv_mae_scores)), 4))
+
+    # -------------------------------------------------------------------------
+    # CHRONOLOGICAL HOLDOUT EVALUATION WITH EXPLICIT 7-DAY FORECAST GAP
+    # Prevents adjacent target period overlap across the train/test boundary
+    # -------------------------------------------------------------------------
     unique_t = np.unique(timestamps)
     unique_t.sort()
-    cutoff_idx = int(len(unique_t) * 0.8)
-    cutoff_time = unique_t[cutoff_idx] if len(unique_t) > 1 else unique_t[0]
+    n_t = len(unique_t)
 
-    train_mask = timestamps < cutoff_time
-    test_mask = timestamps >= cutoff_time
+    if n_t >= 5:
+        train_cutoff_idx = int(n_t * 0.75)
+        test_start_idx = train_cutoff_idx + 1  # 1-step (7-day) forecast gap
+        train_mask = timestamps <= unique_t[train_cutoff_idx]
+        test_mask = timestamps >= unique_t[test_start_idx]
+        cutoff_time = unique_t[train_cutoff_idx]
+    else:
+        cutoff_time = unique_t[int(n_t * 0.8)] if n_t > 1 else unique_t[0]
+        train_mask = timestamps < cutoff_time
+        test_mask = timestamps >= cutoff_time
 
-    # Fallback if split yields empty set
     if not np.any(train_mask) or not np.any(test_mask):
         split_idx = int(len(X) * 0.8)
         X_train, X_test = X[:split_idx], X[split_idx:]
@@ -364,6 +400,15 @@ def train_and_save_model(output_dir: str = None, db: Any = None):
         "n_samples": len(X),
         "time_series_split": True,
         "temporal_cutoff_time": float(cutoff_time),
+        "forecast_horizon_gap_steps": 1,
+        "evaluation_protocol": "TEMPORAL_TIMESERIESSPLIT_WITH_7D_FORECAST_GAP",
+        "evaluation_scope": "TEMPORAL_HOLDOUT_ON_ESTABLISHED_PRODUCTS",
+        "evaluation_notes": (
+            "Temporal holdout evaluates future 7-day demand projections on established products "
+            "with an explicit 7-day forecast gap between train and test windows to prevent lookahead target overlap."
+        ),
+        "temporal_cv_r2_mean": temporal_cv_r2_mean,
+        "temporal_cv_mae_mean": temporal_cv_mae_mean,
         "r2_score": round(r2, 4),
         "mae": round(mae, 4),
         "rmse": round(rmse, 4),

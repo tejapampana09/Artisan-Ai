@@ -37,8 +37,8 @@ DEMO_MODE=false
 # Database Configuration (SQLite default for local development)
 DATABASE_URL=sqlite:///./artisan_ai.db
 
-# Security / JWT
-JWT_SECRET_KEY=artisan_ai_dev_secret_key_marginalized_artisans_safety_first
+# Security / JWT (Generate using: openssl rand -hex 32)
+JWT_SECRET_KEY=your_local_secret_key_minimum_32_characters_here
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 

@@ -179,3 +179,8 @@ def make_artisan_via_admin(client_fixture, admin_headers_arg, uid=None):
     assert login_res.status_code == 200, f"artisan studio login failed: {login_res.text}"
     token = login_res.json()["access_token"]
     return email, password, token, {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture
+def client():
+    from fastapi.testclient import TestClient
+    return TestClient(app)

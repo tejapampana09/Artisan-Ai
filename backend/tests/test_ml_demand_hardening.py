@@ -157,3 +157,143 @@ def test_ml_evidence_based_confidence_medium_and_high(db: Session):
 
 def test_ml_db_dataset_extraction_constants():
     assert MIN_ACTIVE_DAYS_FOR_SNAPSHOT == 7
+
+def test_temporal_cv_and_forecast_gap_metadata():
+    import json
+    import os
+    meta_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ml", "model_meta.json")
+    assert os.path.exists(meta_path)
+    with open(meta_path, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+    
+    assert meta["evaluation_protocol"] == "TEMPORAL_TIMESERIESSPLIT_WITH_7D_FORECAST_GAP"
+    assert meta["evaluation_scope"] == "TEMPORAL_HOLDOUT_ON_ESTABLISHED_PRODUCTS"
+    assert meta["forecast_horizon_gap_steps"] == 1
+    assert "temporal_cv_r2_mean" in meta
+    assert len(meta["feature_names"]) == 13
+    assert "days_active" in meta["feature_names"]
+    assert meta["target_horizon"] == "7_DAYS_FORWARD"
+
+def test_retrain_endpoint_requires_admin_authorization(client, artisan_headers, admin_headers):
+    # 1. Unauthenticated -> 401
+    res_unauth = client.post("/api/ml/retrain")
+    assert res_unauth.status_code == 401
+
+    # 2. Artisan -> 403 Forbidden
+    res_artisan = client.post("/api/ml/retrain", headers=artisan_headers)
+    assert res_artisan.status_code == 403
+
+    # 3. Buyer -> 403 Forbidden
+    from backend.tests.conftest import make_buyer
+    _, _, _, buyer_headers = make_buyer(client)
+    res_buyer = client.post("/api/ml/retrain", headers=buyer_headers)
+    assert res_buyer.status_code == 403
+
+    # 4. Admin -> Reaches retraining operation, rejected with 400 because threshold not met
+    res_admin = client.post("/api/ml/retrain", headers=admin_headers)
+    assert res_admin.status_code == 400
+    assert "Production retraining requires at least" in res_admin.json()["detail"]
+
+
+def test_extract_db_dataset_product_created_after_snapshot_is_excluded(db: Session):
+    now = datetime.now(timezone.utc)
+    anchor_prod = Product(
+        title="Anchor Product",
+        category="Kalamkari",
+        price=Decimal("1000.00"),
+        material_cost=Decimal("300.00"),
+        stock=5,
+        status="PUBLISHED",
+        created_at=now - timedelta(days=25),
+        published_at=now - timedelta(days=25)
+    )
+    db.add(anchor_prod)
+    db.commit()
+
+    db.add(Event(product_id=anchor_prod.id, event_type="VIEW", timestamp=now - timedelta(days=20)))
+    db.add(Event(product_id=anchor_prod.id, event_type="ORDER", timestamp=now - timedelta(days=1)))
+    db.commit()
+
+    late_prod = Product(
+        title="Late Created Product",
+        category="Wooden Toys",
+        price=Decimal("500.00"),
+        material_cost=Decimal("150.00"),
+        stock=3,
+        status="PUBLISHED",
+        created_at=now - timedelta(days=2),
+        published_at=now - timedelta(days=2)
+    )
+    db.add(late_prod)
+    db.commit()
+
+    X, y, ts, features, count = extract_db_dataset(db, min_products=1, min_events=2, min_days=14)
+    assert count >= 1
+    categories = [r[7] for r in X]  # category_encoded is index 7
+    assert all(cat == 0 for cat in categories), "Late product created after T must not appear in snapshot"
+
+
+def test_extract_db_dataset_excludes_products_with_under_7_days_active(db: Session):
+    now = datetime.now(timezone.utc)
+    prod = Product(
+        title="Young Product",
+        category="Bidriware",
+        price=Decimal("2000.00"),
+        material_cost=Decimal("700.00"),
+        stock=2,
+        status="PUBLISHED",
+        created_at=now - timedelta(days=8),
+        published_at=now - timedelta(days=8)
+    )
+    db.add(prod)
+    db.commit()
+
+    db.add(Event(product_id=prod.id, event_type="VIEW", timestamp=now - timedelta(days=25)))
+    db.add(Event(product_id=prod.id, event_type="VIEW", timestamp=now - timedelta(days=1)))
+    db.commit()
+
+    X, y, ts, features, count = extract_db_dataset(db, min_products=1, min_events=2, min_days=14)
+    assert count == 0, "Products with < 7 days active exposure must be excluded from training"
+
+
+def test_events_telemetry_isolation_admin_artisan_buyer(client, db: Session, admin_headers, artisan_headers):
+    # 1. Buyer is forbidden from querying GET /api/events
+    from backend.tests.conftest import make_buyer
+    _, _, _, buyer_headers = make_buyer(client)
+    res_buyer = client.get("/api/events", headers=buyer_headers)
+    assert res_buyer.status_code == 403
+    assert "Buyers and unprivileged users are not authorized" in res_buyer.json()["detail"]
+
+    # 2. Artisan can query, but only sees their own products
+    artisan_prod = db.query(Product).filter(Product.seller_id != None).first()
+    assert artisan_prod is not None
+
+    db.add(Event(product_id=artisan_prod.id, event_type="VIEW", timestamp=datetime.now(timezone.utc)))
+    other_prod = Product(
+        title="Unrelated Artisan Vase",
+        category="Blue Pottery",
+        price=Decimal("1500.00"),
+        material_cost=Decimal("500.00"),
+        stock=5,
+        status="PUBLISHED",
+        seller_id=99999,
+        created_at=datetime.now(timezone.utc)
+    )
+    db.add(other_prod)
+    db.commit()
+    db.refresh(other_prod)
+    db.add(Event(product_id=other_prod.id, event_type="VIEW", timestamp=datetime.now(timezone.utc)))
+    db.commit()
+
+    res_art = client.get("/api/events", headers=artisan_headers)
+    assert res_art.status_code == 200
+    events_data = res_art.json()
+    assert all(e["product_id"] != other_prod.id for e in events_data)
+
+    res_art_forbidden = client.get(f"/api/events?product_id={other_prod.id}", headers=artisan_headers)
+    assert res_art_forbidden.status_code == 403
+
+    res_admin = client.get(f"/api/events?product_id={other_prod.id}", headers=admin_headers)
+    assert res_admin.status_code == 200
+    assert len(res_admin.json()) >= 1
+

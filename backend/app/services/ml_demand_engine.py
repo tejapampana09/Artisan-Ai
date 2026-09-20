@@ -3,8 +3,8 @@ Product-Level Random Forest ML Demand Forecasting Engine (Micro Domain)
 ======================================================================
 Responsibility:
 - Per-product RandomForestRegressor inference (`predict`, `predict_product_demand`)
-  Extracts 12 structured economic and telemetry features (material/labour/packaging costs,
-  price-to-cost ratio, stock, category encoding, and real VIEW/SAVE/ENQUIRY/ORDER events).
+  Extracts 13 structured economic and telemetry features (material/labour/packaging costs,
+  price-to-cost ratio, stock, category encoding, days_active product lifespan, and real VIEW/SAVE/ENQUIRY/ORDER events).
 - Produces individual product demand score (0–100), demand tier (NORMAL/MODERATE/HIGH),
   and dynamic pricing multiplier (0.95x–1.15x).
 - Exclusively operates post-publication on authentic database products.

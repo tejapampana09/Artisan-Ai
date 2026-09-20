@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import User, Product, Event
-from backend.app.services.auth import get_current_user, get_optional_current_user
+from backend.app.services.auth import get_current_user, get_optional_current_user, require_admin
 from backend.app.services.ml_demand_engine import MLDemandEngine, predict_product_demand
 
 router = APIRouter(prefix="/api/ml", tags=["ML Demand Engine"])
@@ -84,10 +84,10 @@ def get_product_demand_prediction(
     valid_product = _validate_product_for_ml_demand(product, product_id, current_user)
     return predict_product_demand(valid_product, db)
 
-@router.post("/retrain", summary="Trigger ML model retraining (Requires Auth & Real Event Threshold)")
+@router.post("/retrain", summary="Trigger ML model retraining (Admin Only & Real Event Threshold)")
 def retrain_model(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_admin)
 ):
     """
     Safely triggers ML demand model retraining.
@@ -114,6 +114,14 @@ def retrain_model(
     try:
         from backend.ml.train_demand_model import train_and_save_model
         new_metadata = train_and_save_model(db=db)
+        if not new_metadata.get("is_real_marketplace_data", False):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Insufficient post-filter valid snapshots (<20 snapshots with >=7 days active exposure). "
+                    "Model remains on domain-informed baseline."
+                )
+            )
         engine = MLDemandEngine()
         engine.load_model()
         return {
@@ -121,11 +129,14 @@ def retrain_model(
             "message": "ML Demand model retrained and updated successfully.",
             "metrics": {
                 "r2_score": new_metadata.get("r2_score"),
+                "temporal_cv_r2_mean": new_metadata.get("temporal_cv_r2_mean"),
                 "mae": new_metadata.get("mae"),
                 "trained_at": new_metadata.get("trained_at"),
                 "n_samples": new_metadata.get("n_samples")
             }
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

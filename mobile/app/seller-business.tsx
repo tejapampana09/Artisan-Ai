@@ -480,7 +480,7 @@ export default function SellerBusinessScreen() {
                   </Text>
                 </View>
                 <Text style={styles.modelMetaText}>
-                  Engine: {modelInfo.metadata.model_name || "RandomForestRegressor"} · R²: {modelInfo.metadata.r2_score != null ? `${Math.round(modelInfo.metadata.r2_score * 100)}%` : "Active"} ({modelInfo.metadata.n_samples || 0} real event samples)
+                  Engine: {modelInfo.metadata.model_name || "RandomForestRegressor"} · Temporal CV R²: {modelInfo.metadata.temporal_cv_r2_mean != null ? `${Math.round(modelInfo.metadata.temporal_cv_r2_mean * 100)}%` : (modelInfo.metadata.r2_score != null ? `${Math.round(modelInfo.metadata.r2_score * 100)}%` : "Active")} ({modelInfo.metadata.n_samples || 0} real event snapshots)
                 </Text>
               </View>
             ) : (
@@ -492,7 +492,7 @@ export default function SellerBusinessScreen() {
                   </Text>
                 </View>
                 <Text style={styles.modelMetaText}>
-                  Engine: {modelInfo?.metadata?.model_name || "RandomForestRegressor"} · R²: {modelInfo?.metadata?.r2_score != null ? `${Math.round(modelInfo.metadata.r2_score * 100)}%` : "98%"} · Eligible for live retraining once marketplace telemetry reaches ≥20 published items, ≥200 buyer events, and ≥14 days span.
+                  Engine: {modelInfo?.metadata?.model_name || "RandomForestRegressor"} · Validation: Domain-Informed Prior Baseline · Marketplace validation: Not yet available (Awaiting live telemetry set: ≥20 products, ≥200 events, ≥14 days span)
                 </Text>
               </View>
             )}

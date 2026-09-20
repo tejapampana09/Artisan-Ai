@@ -37,7 +37,11 @@ else:
     DATABASE_URL = normalize_database_url(raw_db_url)
 
 # JWT Authentication
-DEV_FALLBACK_JWT_SECRET: str = "artisan_ai_dev_secret_key_marginalized_artisans_safety_first"
+RETIRED_EXPOSED_SECRETS = {
+    "artisan_ai_prod_secret_key_marginalized_artisans_safety_first_2026",
+    "artisan_ai_dev_secret_key_marginalized_artisans_safety_first",
+}
+DEV_FALLBACK_JWT_SECRET: str = "artisan_ai_dev_fallback_insecure_local_development_only_rot_2026_09"
 _env_jwt_secret = os.getenv("JWT_SECRET_KEY") or os.getenv("JWT_SECRET")
 JWT_SECRET_KEY: str = _env_jwt_secret if _env_jwt_secret else DEV_FALLBACK_JWT_SECRET
 
@@ -45,10 +49,10 @@ def validate_production_config(env: str, demo_mode: bool = False, database_url: 
     if env == "production":
         if demo_mode:
             raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: DEMO_MODE cannot be enabled in production!")
-        if not jwt_secret or jwt_secret == DEV_FALLBACK_JWT_SECRET:
+        if not jwt_secret or jwt_secret == DEV_FALLBACK_JWT_SECRET or jwt_secret in RETIRED_EXPOSED_SECRETS:
             raise RuntimeError(
-                "CRITICAL SECURITY ERROR: JWT_SECRET_KEY is not set or is using the insecure dev fallback. "
-                "Generate a strong secret with: openssl rand -hex 32"
+                "CRITICAL SECURITY ERROR: JWT_SECRET_KEY is missing or uses an insecure/retired secret. "
+                "Rotate to a fresh secret with: openssl rand -hex 32 and inject via AWS Secrets Manager."
             )
         if len(jwt_secret) < 32:
             raise RuntimeError(

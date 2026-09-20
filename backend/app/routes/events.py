@@ -87,13 +87,39 @@ def get_events(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(Event)
+    """
+    Retrieves activity events with role-based data isolation:
+    - ADMIN: Full access to marketplace telemetry across all products/categories.
+    - ARTISAN: Restricted to telemetry for their own published/drafted products.
+    - BUYER: Forbidden from querying internal marketplace telemetry.
+    """
+    if current_user.role == "ADMIN":
+        query = db.query(Event)
+        if product_id:
+            query = query.filter(Event.product_id == product_id)
+    elif current_user.role == "ARTISAN":
+        artisan_prod_ids = [r[0] for r in db.query(Product.id).filter(Product.seller_id == current_user.id).all()]
+        if product_id:
+            if product_id not in artisan_prod_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Artisans can only query telemetry for their own products."
+                )
+            query = db.query(Event).filter(Event.product_id == product_id)
+        else:
+            if not artisan_prod_ids:
+                return []
+            query = db.query(Event).filter(Event.product_id.in_(artisan_prod_ids))
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Buyers and unprivileged users are not authorized to query internal marketplace event telemetry."
+        )
+
     if event_type:
         query = query.filter(Event.event_type == event_type)
     if category:
         query = query.filter(Event.category == category)
-    if product_id:
-        query = query.filter(Event.product_id == product_id)
     return query.order_by(Event.id.desc()).limit(limit).all()
 
 @router.post("/marketplace/enquire", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
