@@ -395,11 +395,11 @@ export const api = {
     return request<any>("/ml/predict-demand", {
       method: "POST",
       body: JSON.stringify(payload)
-    });
+    }, "STUDIO");
   },
 
   async predictProductDemand(productId: number) {
-    return request<any>(`/ml/predict-demand/${productId}`);
+    return request<any>(`/ml/predict-demand/${productId}`, {}, "STUDIO");
   },
 
   // -------------------------------------------------------------

@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import User, Product, Event
-from backend.app.services.auth import get_current_user, get_optional_current_user, require_admin
+from backend.app.services.auth import get_current_user, get_current_user_strict, get_optional_current_user, require_admin
 from backend.app.services.ml_demand_engine import MLDemandEngine, predict_product_demand
 
 router = APIRouter(prefix="/api/ml", tags=["ML Demand Engine"])
@@ -15,20 +15,30 @@ MIN_REAL_EVENTS_RETRAIN_THRESHOLD = 20
 class PredictDemandRequest(BaseModel):
     product_id: int = Field(..., description="ID of an active published catalog product with interaction telemetry")
 
-def _validate_product_for_ml_demand(product: Optional[Product], product_id: int, current_user: Optional[User]) -> Product:
+def _validate_product_for_ml_demand(product: Optional[Product], product_id: int, current_user: User) -> Product:
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product with ID {product_id} not found."
         )
 
-    # Verify seller ownership if requester is an authenticated seller
-    if current_user and getattr(current_user, "role", "") == "seller":
+    # Scoped authorization:
+    # ADMIN -> Full access to any product's prediction & telemetry
+    # ARTISAN -> Strictly restricted to their own products
+    # BUYER / unprivileged -> 403 Forbidden (telemetry is seller-private)
+    if current_user.role == "ADMIN":
+        pass
+    elif current_user.role == "ARTISAN":
         if product.seller_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to view demand telemetry for this product."
             )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Demand forecasting and product telemetry are restricted to the owning artisan or administrator."
+        )
 
     # Verify PUBLISHED or ACTIVE status
     status_str = str(getattr(product, "status", "")).upper()
@@ -61,7 +71,7 @@ def get_model_info():
 def predict_demand(
     payload: PredictDemandRequest,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    current_user: User = Depends(get_current_user_strict)
 ):
     """
     Predicts consumer demand score for an authentic published catalog product.
@@ -75,7 +85,7 @@ def predict_demand(
 def get_product_demand_prediction(
     product_id: int,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    current_user: User = Depends(get_current_user_strict)
 ):
     """
     Convenience GET endpoint to retrieve ML demand prediction for a specific product ID.

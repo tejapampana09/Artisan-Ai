@@ -297,3 +297,48 @@ def test_events_telemetry_isolation_admin_artisan_buyer(client, db: Session, adm
     assert res_admin.status_code == 200
     assert len(res_admin.json()) >= 1
 
+
+def test_predict_demand_scoped_authorization_isolation(client, db: Session, admin_headers, artisan_headers):
+    # 1. Unauthenticated request -> 401 Unauthorized
+    artisan_prod = db.query(Product).filter(Product.seller_id != None).first()
+    assert artisan_prod is not None
+
+    res_unauth = client.get(f"/api/ml/predict-demand/{artisan_prod.id}")
+    assert res_unauth.status_code == 401
+
+    # 2. Buyer request -> 403 Forbidden
+    from backend.tests.conftest import make_buyer
+    _, _, _, buyer_headers = make_buyer(client)
+    res_buyer = client.get(f"/api/ml/predict-demand/{artisan_prod.id}", headers=buyer_headers)
+    assert res_buyer.status_code == 403
+    assert "restricted to the owning artisan or administrator" in res_buyer.json()["detail"]
+
+    # 3. Another artisan's product -> 403 Forbidden
+    foreign_prod = Product(
+        title="Foreign Artisan Silk Saree",
+        category="Pochampally Ikat",
+        price=Decimal("4500.00"),
+        material_cost=Decimal("1500.00"),
+        stock=3,
+        status="PUBLISHED",
+        seller_id=99999,
+        created_at=datetime.now(timezone.utc)
+    )
+    db.add(foreign_prod)
+    db.commit()
+    db.refresh(foreign_prod)
+
+    res_cross = client.get(f"/api/ml/predict-demand/{foreign_prod.id}", headers=artisan_headers)
+    assert res_cross.status_code == 403
+    assert "do not have permission to view demand telemetry" in res_cross.json()["detail"]
+
+    # 4. Owning artisan -> 200 OK
+    res_owner = client.get(f"/api/ml/predict-demand/{artisan_prod.id}", headers=artisan_headers)
+    assert res_owner.status_code == 200
+    assert "predicted_demand_score" in res_owner.json() or "ml_demand_multiplier" in res_owner.json()
+
+    # 5. Admin request for any product -> 200 OK
+    res_admin = client.get(f"/api/ml/predict-demand/{foreign_prod.id}", headers=admin_headers)
+    assert res_admin.status_code == 200
+    assert "ml_demand_multiplier" in res_admin.json()
+

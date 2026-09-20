@@ -6,6 +6,9 @@ on:
       - main
 
 jobs:
+  # ════════════════════════════════════════════════════════════════════════════
+  # 1. Backend Test Gate — must pass before any deploy step runs
+  # ════════════════════════════════════════════════════════════════════════════
   test-backend:
     name: Backend Pytest Suite Gate
     runs-on: ubuntu-latest
@@ -34,6 +37,63 @@ jobs:
         run: |
           python -m pytest backend/tests
 
+  # ════════════════════════════════════════════════════════════════════════════
+  # 2. RDS Schema Migration — runs AFTER tests, BEFORE backend EB deploy
+  #    Applies `alembic upgrade head` against the production PostgreSQL RDS.
+  #    If migration fails, the backend deploy is blocked automatically.
+  # ════════════════════════════════════════════════════════════════════════════
+  migrate-rds:
+    name: RDS Schema Migration (alembic upgrade head)
+    needs: test-backend
+    runs-on: ubuntu-latest
+    # Only run migration when RDS_DATABASE_URL secret is set (skip for forks/PRs)
+    if: ${{ secrets.RDS_DATABASE_URL != '' }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Backend Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Show current Alembic revision (before migration)
+        env:
+          DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
+          ENVIRONMENT: production
+          PYTHONPATH: .
+        run: |
+          echo "=== Current RDS Alembic revision ==="
+          python -m alembic current || echo "(no revision yet — fresh database)"
+
+      - name: Run Alembic Migrations
+        env:
+          DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
+          ENVIRONMENT: production
+          PYTHONPATH: .
+        run: |
+          echo "=== Running: alembic upgrade head ==="
+          python -m alembic upgrade head
+
+      - name: Show revision after migration
+        env:
+          DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
+          ENVIRONMENT: production
+          PYTHONPATH: .
+        run: |
+          echo "=== Applied migration. Current revision: ==="
+          python -m alembic current
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # 3. Frontend Build & S3 Deploy — runs in parallel with migrate-rds
+  #    Only depends on test-backend, not the migration (frontend is independent)
+  # ════════════════════════════════════════════════════════════════════════════
   deploy-frontend:
     name: Build & Deploy Frontend to S3
     needs: test-backend
@@ -69,18 +129,30 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      - name: Deploy to S3 Bucket
+      - name: Deploy Static Assets to S3 (immutable cache)
         run: |
-          aws s3 sync frontend/dist s3://artisan-ai-frontend-ap-south-1-339954341605 --delete --exclude "index.html" --cache-control "public, max-age=31536000, immutable"
-          aws s3 cp frontend/dist/index.html s3://artisan-ai-frontend-ap-south-1-339954341605/index.html --cache-control "public, max-age=0, s-maxage=60, must-revalidate"
+          aws s3 sync frontend/dist s3://artisan-ai-frontend-ap-south-1-339954341605 \
+            --delete \
+            --exclude "index.html" \
+            --cache-control "public, max-age=31536000, immutable"
+
+      - name: Upload index.html (short TTL for instant rollout)
+        run: |
+          aws s3 cp frontend/dist/index.html \
+            s3://artisan-ai-frontend-ap-south-1-339954341605/index.html \
+            --cache-control "public, max-age=0, s-maxage=60, must-revalidate"
 
       - name: Invalidate CloudFront Cache
         run: |
           aws cloudfront create-invalidation --distribution-id E8OV8X242WBXH --paths "/*"
 
+  # ════════════════════════════════════════════════════════════════════════════
+  # 4. Backend EB Deploy — waits for BOTH tests AND migration to succeed
+  #    This guarantees schema is up-to-date before new app code goes live.
+  # ════════════════════════════════════════════════════════════════════════════
   deploy-backend:
     name: Package & Deploy Backend to Elastic Beanstalk (Mumbai)
-    needs: test-backend
+    needs: [test-backend, migrate-rds]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -98,11 +170,14 @@ jobs:
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           VERSION_LABEL="v-auto-${{ github.run_number }}-${SHORT_SHA}"
           echo "VERSION_LABEL=${VERSION_LABEL}" >> $GITHUB_ENV
-          zip -r "deploy-${VERSION_LABEL}.zip" backend requirements.txt Procfile .ebextensions -x "*.pyc" "*__pycache__*" "*test_ci.db*" "*.db"
+          zip -r "deploy-${VERSION_LABEL}.zip" backend requirements.txt Procfile .ebextensions \
+            -x "*.pyc" "*__pycache__*" "*test_ci.db*" "*.db" "*.db-shm" "*.db-wal" "backend/tests/*"
 
       - name: Upload Zip to S3
         run: |
-          aws s3 cp "deploy-${VERSION_LABEL}.zip" "s3://artisan-ai-eb-ap-south-1-339954341605/deploy-${VERSION_LABEL}.zip" --region ap-south-1
+          aws s3 cp "deploy-${VERSION_LABEL}.zip" \
+            "s3://artisan-ai-eb-ap-south-1-339954341605/deploy-${VERSION_LABEL}.zip" \
+            --region ap-south-1
 
       - name: Create Elastic Beanstalk Application Version
         run: |
@@ -119,3 +194,27 @@ jobs:
             --environment-name artisan-ai-backend-prod \
             --version-label "${VERSION_LABEL}" \
             --region ap-south-1
+
+      - name: Poll EB Environment Health (wait for Green)
+        run: |
+          echo "Waiting for EB environment to reach Ready/Green state..."
+          MAX_WAIT=300
+          ELAPSED=0
+          while [[ $ELAPSED -lt $MAX_WAIT ]]; do
+            RESULT=$(aws elasticbeanstalk describe-environments \
+              --environment-names artisan-ai-backend-prod \
+              --region ap-south-1 \
+              --query "Environments[0].{Status:Status,Health:Health}" \
+              --output text)
+            STATUS=$(echo "$RESULT" | awk '{print $1}')
+            HEALTH=$(echo "$RESULT" | awk '{print $2}')
+            echo "  Status=${STATUS} Health=${HEALTH} (${ELAPSED}s elapsed)"
+            if [[ "$STATUS" == "Ready" && "$HEALTH" == "Green" ]]; then
+              echo "✓ EB environment is Ready and Green!"
+              exit 0
+            fi
+            sleep 15
+            ELAPSED=$((ELAPSED + 15))
+          done
+          echo "⚠ Timed out waiting for EB to reach Green. Check AWS console."
+          exit 1
