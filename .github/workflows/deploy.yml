@@ -206,7 +206,7 @@ jobs:
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           VERSION_LABEL="v-auto-${{ github.run_number }}-${SHORT_SHA}"
           echo "VERSION_LABEL=${VERSION_LABEL}" >> $GITHUB_ENV
-          zip -r "deploy-${VERSION_LABEL}.zip" backend requirements.txt Procfile .ebextensions \
+          zip -r "deploy-${VERSION_LABEL}.zip" backend requirements.txt Procfile .ebextensions alembic.ini alembic \
             -x "*.pyc" "*__pycache__*" "*test_ci.db*" "*.db" "*.db-shm" "*.db-wal" "backend/tests/*"
 
       - name: Upload Zip to S3
