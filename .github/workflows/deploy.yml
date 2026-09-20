@@ -233,13 +233,16 @@ jobs:
           MAX_WAIT=300
           ELAPSED=0
           while [[ $ELAPSED -lt $MAX_WAIT ]]; do
-            RESULT=$(aws elasticbeanstalk describe-environments \
+            STATUS=$(aws elasticbeanstalk describe-environments \
               --environment-names artisan-ai-backend-prod \
               --region ap-south-1 \
-              --query "Environments[0].{Status:Status,Health:Health}" \
+              --query "Environments[0].Status" \
               --output text)
-            STATUS=$(echo "$RESULT" | awk '{print $1}')
-            HEALTH=$(echo "$RESULT" | awk '{print $2}')
+            HEALTH=$(aws elasticbeanstalk describe-environments \
+              --environment-names artisan-ai-backend-prod \
+              --region ap-south-1 \
+              --query "Environments[0].Health" \
+              --output text)
             echo "  Status=${STATUS} Health=${HEALTH} (${ELAPSED}s elapsed)"
             if [[ "$STATUS" == "Ready" && "$HEALTH" == "Green" ]]; then
               echo "✓ EB environment is Ready and Green!"

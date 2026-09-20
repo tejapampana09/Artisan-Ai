@@ -197,13 +197,16 @@ if ! $FRONTEND_ONLY; then
   ELAPSED=0
   POLL_INTERVAL=15
   while [[ $ELAPSED -lt $TIMEOUT ]]; do
-    HEALTH=$(aws elasticbeanstalk describe-environments \
+    STATUS=$(aws elasticbeanstalk describe-environments \
       --environment-names "$EB_ENV" \
       --region "$AWS_REGION" \
-      --query "Environments[0].{Health:Health,Status:Status}" \
-      --output text 2>/dev/null | tr '\t' ' ')
-    STATUS=$(echo "$HEALTH" | awk '{print $1}')
-    HEALTH_COLOR=$(echo "$HEALTH" | awk '{print $2}')
+      --query "Environments[0].Status" \
+      --output text 2>/dev/null)
+    HEALTH_COLOR=$(aws elasticbeanstalk describe-environments \
+      --environment-names "$EB_ENV" \
+      --region "$AWS_REGION" \
+      --query "Environments[0].Health" \
+      --output text 2>/dev/null)
     echo -ne "\r  ${CYAN}[deploy]${NC} Status: ${STATUS} | Health: ${HEALTH_COLOR}  (${ELAPSED}s / ${TIMEOUT}s)   "
     if [[ "$STATUS" == "Ready" && "$HEALTH_COLOR" == "Green" ]]; then
       echo ""

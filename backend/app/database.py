@@ -118,6 +118,18 @@ def ensure_schema_migrations(eng):
                     conn.execute(text("ALTER TABLE products ADD COLUMN craft_story_en TEXT"))
                 if "translations" not in prod_cols:
                     conn.execute(text("ALTER TABLE products ADD COLUMN translations TEXT"))
+                if "published_at" not in prod_cols:
+                    conn.execute(text("ALTER TABLE products ADD COLUMN published_at TIMESTAMP"))
+                if "created_at" not in prod_cols:
+                    conn.execute(text("ALTER TABLE products ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"))
+                if "updated_at" not in prod_cols:
+                    conn.execute(text("ALTER TABLE products ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"))
+                if "seller_id" not in prod_cols:
+                    conn.execute(text("ALTER TABLE products ADD COLUMN seller_id INTEGER"))
+                if "enhanced_image_url" not in prod_cols:
+                    conn.execute(text("ALTER TABLE products ADD COLUMN enhanced_image_url VARCHAR"))
+                if "min_margin_pct" not in prod_cols:
+                    conn.execute(text("ALTER TABLE products ADD COLUMN min_margin_pct NUMERIC(5, 4) DEFAULT 0.2000"))
 
             # Check orders table columns
             res_ord = conn.execute(text("PRAGMA table_info(orders)")).fetchall()
@@ -178,12 +190,20 @@ def ensure_schema_migrations(eng):
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS description_en TEXT;"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS craft_story_en TEXT;"))
             conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS translations TEXT;"))
+            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS published_at TIMESTAMP;"))
+            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;"))
+            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;"))
+            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS seller_id INTEGER;"))
+            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS enhanced_image_url VARCHAR;"))
+            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS min_margin_pct NUMERIC(5, 4) DEFAULT 0.2000;"))
             conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR DEFAULT 'UNPAID';"))
             conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancellation_status VARCHAR DEFAULT 'NONE';"))
             conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;"))
             conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_history TEXT;"))
             conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR DEFAULT 'UPI';"))
             conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_tx_id VARCHAR;"))
+            conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;"))
+            conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id INTEGER;"))
             conn.commit()
 
 ensure_sqlite_schema = ensure_schema_migrations
