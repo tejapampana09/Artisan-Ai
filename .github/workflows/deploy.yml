@@ -50,8 +50,7 @@ jobs:
     name: RDS Schema Migration (alembic upgrade head)
     needs: test-backend
     runs-on: ubuntu-latest
-    # NOTE: No job-level `if` using secrets — that is not allowed by GitHub Actions.
-    # Instead each step guards itself: if DATABASE_URL is empty it skips gracefully.
+    # Blocks deploy if RDS_DATABASE_URL secret is missing or if alembic migration fails.
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -73,22 +72,18 @@ jobs:
         run: |
           # Guard 1: secret must be set for production
           if [ -z "$DATABASE_URL" ]; then
-            echo "⚠️  RDS_DATABASE_URL secret is not configured — skipping migration (dev/demo mode)."
-            echo "skip_migration=true" >> $GITHUB_OUTPUT
-            exit 0
+            echo "❌ ERROR: RDS_DATABASE_URL secret is not configured in GitHub Secrets."
+            echo "   Production deployment cannot proceed without running schema migrations."
+            exit 1
           fi
           # Guard 2: secret must not contain placeholder text
           if echo "$DATABASE_URL" | grep -qiE '<[^>]+>|your-rds-endpoint|example\.com'; then
-            echo "⚠️  RDS_DATABASE_URL contains placeholder text — skipping migration (dev/demo mode)."
-            echo "skip_migration=true" >> $GITHUB_OUTPUT
-            exit 0
+            echo "❌ ERROR: RDS_DATABASE_URL contains placeholder text."
+            exit 1
           fi
-          echo "✓ RDS_DATABASE_URL looks valid — proceeding with migration."
-          echo "skip_migration=false" >> $GITHUB_OUTPUT
-        id: validate_rds
+          echo "✓ RDS_DATABASE_URL is configured and valid — proceeding with migration."
 
       - name: Run Alembic Migrations
-        if: steps.validate_rds.outputs.skip_migration != 'true'
         env:
           DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
           ENVIRONMENT: ci
@@ -98,7 +93,6 @@ jobs:
           python -m alembic upgrade head
           
       - name: Smoke Test Migration State
-        if: steps.validate_rds.outputs.skip_migration != 'true'
         env:
           DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
           ENVIRONMENT: ci
