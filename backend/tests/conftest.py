@@ -16,7 +16,7 @@ TEST_DB_URL = "sqlite:///:memory:"
 os.environ["DATABASE_URL"] = TEST_DB_URL
 os.environ["DEMO_MODE"] = "true"
 
-from backend.app.database import Base, get_db, ensure_sqlite_schema
+from backend.app.database import Base, get_db
 import backend.app.database as db_module
 
 test_engine = create_engine(
@@ -39,7 +39,6 @@ def setup_test_database():
     # In-memory: drop-and-recreate each test for full isolation
     Base.metadata.drop_all(bind=test_engine)
     Base.metadata.create_all(bind=test_engine)
-    ensure_sqlite_schema(test_engine)
 
     from backend.app.services.auth import hash_password
     from backend.app.seed import seed_sample_products

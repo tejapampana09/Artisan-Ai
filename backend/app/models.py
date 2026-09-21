@@ -17,7 +17,6 @@ class User(Base):
     location = Column(String, nullable=True)
     craft = Column(String, nullable=True)
     token_version = Column(Integer, default=1, nullable=False)
-    active_mode = Column(String, default="BUYER", nullable=True)
     
     # Profile & Verification extensions
     avatar_url = Column(String, nullable=True)
@@ -35,6 +34,8 @@ class User(Base):
     enquiries = relationship("Enquiry", back_populates="user")
     reviews = relationship("Review", back_populates="buyer")
     notifications = relationship("Notification", back_populates="user")
+    addresses = relationship("Address", back_populates="user", cascade="all, delete-orphan")
+    payout_account = relationship("PayoutAccount", back_populates="artisan", uselist=False, cascade="all, delete-orphan")
 
 class Product(Base):
     __tablename__ = "products"
@@ -295,5 +296,38 @@ class DraftCatalog(Base):
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+class Address(Base):
+    """Saved delivery addresses for buyers."""
+    __tablename__ = "addresses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    name = Column(String, nullable=False)
+    phone = Column(String, nullable=True)
+    pincode = Column(String(10), nullable=False)
+    address_line = Column(Text, nullable=False)
+    city = Column(String, nullable=True)
+    state = Column(String, nullable=True)
+    tag = Column(String, default="HOME", nullable=False)  # HOME, WORK, OTHER
+    is_default = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="addresses")
 
 
+class PayoutAccount(Base):
+    """Artisan payout / bank & UPI settlement details."""
+    __tablename__ = "payout_accounts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    artisan_id = Column(Integer, ForeignKey("users.id"), unique=True, index=True, nullable=False)
+    upi_id = Column(String, nullable=True)
+    account_holder_name = Column(String, nullable=True)
+    account_number = Column(String, nullable=True)
+    ifsc_code = Column(String, nullable=True)
+    bank_name = Column(String, nullable=True)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    artisan = relationship("User", back_populates="payout_account")

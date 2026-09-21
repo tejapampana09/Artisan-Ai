@@ -18,7 +18,7 @@ import {
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../src/theme";
-import { getCart, updateQuantity, removeFromCart, clearCart, CartItem } from "../src/cart";
+import { getCart, updateQuantity, removeFromCart, clearCart, syncCartWithLatestStock, CartItem } from "../src/cart";
 import { api } from "../src/api";
 import { getSession } from "../src/storage";
 import { useRoleGuard } from "../src/authGuard";
@@ -36,7 +36,13 @@ export default function BuyerCart() {
   const [paymentMode, setPaymentMode] = useState<"COD" | "RAZORPAY">("COD");
 
   const refreshCart = async () => {
-    const list = await getCart();
+    let list = await getCart();
+    try {
+      const allProducts = await api.products();
+      if (Array.isArray(allProducts) && allProducts.length > 0) {
+        list = await syncCartWithLatestStock(allProducts);
+      }
+    } catch {}
     setItems(list);
     setLoading(false);
   };
@@ -77,6 +83,17 @@ export default function BuyerCart() {
   const handlePlaceOrder = async () => {
     if (items.length === 0) {
       Alert.alert("Empty Cart", "Add some handcrafted products first.");
+      return;
+    }
+
+    // Guard against out of stock products in bag
+    const outOfStockItems = items.filter((item) => item.stock !== undefined && item.stock <= 0);
+    if (outOfStockItems.length > 0) {
+      Alert.alert(
+        "Out of Stock Items in Bag",
+        `"${outOfStockItems[0].title}" is currently out of stock. Please remove it from your bag to proceed with checkout.`,
+        [{ text: "OK" }]
+      );
       return;
     }
 
@@ -209,56 +226,91 @@ export default function BuyerCart() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Out of Stock Warning Banner */}
+          {items.some((i) => i.stock !== undefined && i.stock <= 0) && (
+            <View style={styles.outOfStockBanner}>
+              <Ionicons name="alert-circle" size={20} color="#DC2626" style={{ marginRight: 8 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.outOfStockBannerTitle}>Out of Stock Warning</Text>
+                <Text style={styles.outOfStockBannerSub}>
+                  One or more items in your bag are currently out of stock. Please remove them to proceed with checkout.
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* Cart Items List */}
           <View style={styles.itemsSection}>
-            {items.map((item) => (
-              <View key={item.id} style={styles.cartCard}>
-                <View style={styles.thumbWrapper}>
-                  {item.image_url ? (
-                    <Image source={{ uri: item.image_url }} style={styles.thumbnail} resizeMode="cover" />
-                  ) : (
-                    <View style={styles.noThumb}>
-                      <Ionicons name="image-outline" size={24} color={theme.border} />
-                    </View>
-                  )}
-                </View>
+            {items.map((item) => {
+              const isOutOfStock = item.stock !== undefined && item.stock <= 0;
+              return (
+                <View key={item.id} style={[styles.cartCard, isOutOfStock && styles.cartCardOutOfStock]}>
+                  <View style={styles.thumbWrapper}>
+                    {item.image_url ? (
+                      <Image source={{ uri: item.image_url }} style={styles.thumbnail} resizeMode="cover" />
+                    ) : (
+                      <View style={styles.noThumb}>
+                        <Ionicons name="image-outline" size={24} color={theme.border} />
+                      </View>
+                    )}
+                    {isOutOfStock && (
+                      <View style={styles.thumbOutOfStockBadge}>
+                        <Text style={styles.thumbOutOfStockText}>OUT OF STOCK</Text>
+                      </View>
+                    )}
+                  </View>
 
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemCategory}>{item.category || "Handmade"}</Text>
-                  <Text style={styles.itemTitle} numberOfLines={2}>
-                    {item.title}
-                  </Text>
-                  <Text style={styles.itemPrice}>₹{item.price}</Text>
-
-                  {/* Quantity and Delete Controls */}
-                  <View style={styles.controlsRow}>
-                    <View style={styles.stepper}>
-                      <Pressable
-                        style={styles.stepBtn}
-                        onPress={() => handleUpdateQty(item.id, -1)}
-                      >
-                        <Ionicons name="remove" size={14} color={theme.ink} />
-                      </Pressable>
-                      <Text style={styles.qtyText}>{item.quantity}</Text>
-                      <Pressable
-                        style={styles.stepBtn}
-                        onPress={() => handleUpdateQty(item.id, 1)}
-                      >
-                        <Ionicons name="add" size={14} color={theme.ink} />
-                      </Pressable>
+                  <View style={styles.itemInfo}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                      <Text style={styles.itemCategory}>{item.category || "Handmade"}</Text>
+                      {isOutOfStock && (
+                        <View style={styles.outOfStockPill}>
+                          <Text style={styles.outOfStockPillText}>Sold Out</Text>
+                        </View>
+                      )}
                     </View>
 
-                    <Pressable
-                      style={styles.deleteBtn}
-                      onPress={() => handleRemove(item.id)}
-                      hitSlop={10}
-                    >
-                      <Ionicons name="trash-outline" size={18} color="#C62828" />
-                    </Pressable>
+                    <Text style={[styles.itemTitle, isOutOfStock && { color: "#777" }]} numberOfLines={2}>
+                      {item.title}
+                    </Text>
+                    <Text style={[styles.itemPrice, isOutOfStock && { color: "#999" }]}>₹{item.price}</Text>
+
+                    {/* Quantity and Delete Controls */}
+                    <View style={styles.controlsRow}>
+                      <View style={[styles.stepper, isOutOfStock && { opacity: 0.5 }]}>
+                        <Pressable
+                          style={styles.stepBtn}
+                          onPress={() => handleUpdateQty(item.id, -1)}
+                        >
+                          <Ionicons name="remove" size={14} color={theme.ink} />
+                        </Pressable>
+                        <Text style={styles.qtyText}>{item.quantity}</Text>
+                        <Pressable
+                          style={styles.stepBtn}
+                          onPress={() => {
+                            if (isOutOfStock) {
+                              Alert.alert("Out of Stock", "This craft is currently sold out and unavailable.");
+                              return;
+                            }
+                            handleUpdateQty(item.id, 1);
+                          }}
+                        >
+                          <Ionicons name="add" size={14} color={theme.ink} />
+                        </Pressable>
+                      </View>
+
+                      <Pressable
+                        style={styles.deleteBtn}
+                        onPress={() => handleRemove(item.id)}
+                        hitSlop={10}
+                      >
+                        <Ionicons name="trash-outline" size={18} color="#C62828" />
+                      </Pressable>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
 
           {/* Guest Login Alert Banner */}
@@ -532,7 +584,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 10 : 16,
+    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 4 : 10,
     paddingBottom: 16,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
@@ -1007,5 +1059,55 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: "#8A726A"
+  },
+  outOfStockBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 14
+  },
+  outOfStockBannerTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#DC2626"
+  },
+  outOfStockBannerSub: {
+    fontSize: 11,
+    color: "#7F1D1D",
+    marginTop: 1
+  },
+  cartCardOutOfStock: {
+    borderColor: "#FECACA",
+    backgroundColor: "#FFFBFB"
+  },
+  thumbOutOfStockBadge: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(220, 38, 38, 0.9)",
+    paddingVertical: 2,
+    alignItems: "center"
+  },
+  thumbOutOfStockText: {
+    fontSize: 8,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    letterSpacing: 0.5
+  },
+  outOfStockPill: {
+    backgroundColor: "#FEE2E2",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6
+  },
+  outOfStockPillText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#DC2626"
   }
 });

@@ -117,6 +117,8 @@ export default function Login() {
       setGoogleBusy(true);
       try {
         await nativeAuth.GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        // Force account chooser prompt by signing out any cached Google session
+        await nativeAuth.GoogleSignin.signOut().catch(() => {});
         const result = await nativeAuth.GoogleSignin.signIn();
 
         if (result.type !== "success" || !result.data?.idToken) {
@@ -427,7 +429,7 @@ export default function Login() {
 const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 14 : 20,
+    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 6 : 14,
     paddingBottom: 40
   },
   topNav: {

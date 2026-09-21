@@ -564,7 +564,9 @@ def update_order_status(
                         target_buyer_id = u.id
                         break
 
-        # 1. Notify dedicated buyer on seller-driven status changes
+        # 1. Notify dedicated buyer on seller-driven status changes (CONFIRMED, PROCESSING, SHIPPED, DELIVERED)
+        # Note: Sellers only receive New Order Received, New Enquiry, or Customer Cancellation notifications;
+        # status transitions are strictly buyer-facing delivery updates.
         if target_buyer_id is not None and is_seller:
             create_and_dispatch_notification(
                 db=db,
@@ -573,17 +575,6 @@ def update_order_status(
                 message=msg_tpl.format(**label),
                 type="ORDER",
                 data={"order_id": order.id, "status": new_status, "role": "buyer"}
-            )
-
-        # 2. Notify artisan/seller ONLY on successful final delivery milestone (no redundant self-echoes on intermediate steps)
-        if prod.seller_id and is_seller and new_status == "DELIVERED":
-            create_and_dispatch_notification(
-                db=db,
-                user_id=prod.seller_id,
-                title=f"🎉 Order #{order.id} Delivered Successfully!",
-                message=f"Order #{order.id} for '{prod.title}' was delivered to {order.buyer_name or 'customer'}. Great job!",
-                type="ORDER",
-                data={"order_id": order.id, "status": new_status, "role": "seller"}
             )
 
         # 3. Handle cancellation notifications

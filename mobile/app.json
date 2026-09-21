@@ -27,7 +27,13 @@
       "expo-font",
       "expo-asset",
       "expo-web-browser",
-      "expo-speech-recognition"
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/clean-logo-mark.png",
+          "color": "#9F3C16"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -9,6 +9,7 @@ export interface CartItem {
   image_url?: string;
   category?: string;
   quantity: number;
+  stock?: number;
 }
 
 let cartListeners: (() => void)[] = [];
@@ -36,9 +37,13 @@ export async function getCart(): Promise<CartItem[]> {
 export async function addToCart(product: any, qty = 1): Promise<CartItem[]> {
   const cart = await getCart();
   const existingIndex = cart.findIndex((i) => i.id === product.id);
+  const stockVal = product.stock !== undefined ? Number(product.stock) : undefined;
 
   if (existingIndex > -1) {
     cart[existingIndex].quantity += qty;
+    if (stockVal !== undefined) {
+      cart[existingIndex].stock = stockVal;
+    }
   } else {
     cart.push({
       id: product.id,
@@ -46,12 +51,32 @@ export async function addToCart(product: any, qty = 1): Promise<CartItem[]> {
       price: Number(product.price) || 0,
       image_url: product.enhanced_image_url || product.image_url || undefined,
       category: product.category || "Handmade",
-      quantity: qty
+      quantity: qty,
+      stock: stockVal
     });
   }
 
   await AsyncStorage.setItem(CART_KEY, JSON.stringify(cart));
   notifyListeners();
+  return cart;
+}
+
+export async function syncCartWithLatestStock(products: any[]): Promise<CartItem[]> {
+  const cart = await getCart();
+  if (!Array.isArray(products) || products.length === 0) return cart;
+  let changed = false;
+  const prodMap = new Map(products.map((p) => [p.id, p]));
+  for (const item of cart) {
+    const p = prodMap.get(item.id);
+    if (p && p.stock !== undefined && item.stock !== Number(p.stock)) {
+      item.stock = Number(p.stock);
+      changed = true;
+    }
+  }
+  if (changed) {
+    await AsyncStorage.setItem(CART_KEY, JSON.stringify(cart));
+    notifyListeners();
+  }
   return cart;
 }
 

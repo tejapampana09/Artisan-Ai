@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -14,27 +14,28 @@ import {
   Platform
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons, AntDesign, Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
-import { clearSession } from "../src/storage";
+import { clearSession, getSession } from "../src/storage";
 import { addToCart, getCartCount, subscribeCart } from "../src/cart";
 import { getWishlist, subscribeWishlist, toggleWishlist } from "../src/wishlist";
-import { BottomNavigation, LanguageSelectorModal } from "../src/components";
+import { BottomNavigation, LanguageSelectorModal, DeliveryAddressModal } from "../src/components";
 import { subscribeNotifications } from "../src/notifications";
 import { useI18n } from "../src/i18n";
 import { useRoleGuard } from "../src/authGuard";
+import { getActiveDeliveryAddress } from "../src/address";
 
 const CACHE_KEY = "artisan_cached_marketplace_products";
-const CATEGORIES = [
+const FALLBACK_CATEGORIES = [
   "All Crafts",
-  "Kalamkari",
-  "Wooden Toys",
-  "Blue Pottery",
-  "Bidriware",
-  "Pochampally Ikat"
+  "Handicraft",
+  "Apparel & Sarees",
+  "Electronics Accessories",
+  "Jewellery & Metalware",
+  "Home & Living"
 ];
 
 function getLocalizedProductTitle(item: any, lang: string): string {
@@ -69,10 +70,25 @@ export default function BuyerScreen() {
   const [cartCount, setCartCount] = useState(0);
   const [addedToast, setAddedToast] = useState("");
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [userName, setUserName] = useState("Teja");
+  const [userAddress, setUserAddress] = useState("");
+  const [deliveryModalVisible, setDeliveryModalVisible] = useState(false);
+
+  // Dynamically derive categories strictly from available products in the live database
+  const categories = useMemo(() => {
+    const raw = Array.from(
+      new Set(
+        products
+          .map((p) => (p.category || "").trim())
+          .filter(Boolean)
+      )
+    );
+    return ["All Crafts", ...(raw.length > 0 ? raw : FALLBACK_CATEGORIES.slice(1))];
+  }, [products]);
 
   useEffect(() => {
     if (params.category) {
-      const match = CATEGORIES.find(
+      const match = categories.find(
         (c) => c.toLowerCase() === (params.category || "").toLowerCase()
       );
       setSelectedCategory(match || params.category);
@@ -80,11 +96,39 @@ export default function BuyerScreen() {
     if (params.search) {
       setSearchQuery(params.search);
     }
-  }, [params.category, params.search]);
+  }, [params.category, params.search, categories]);
+
+  const loadUserProfileAndAddress = async () => {
+    try {
+      const sess = await getSession();
+      if (sess?.user) {
+        const name = sess.user.full_name || sess.user.name || sess.user.username;
+        if (name) setUserName(name.split(" ")[0]);
+      }
+      const activeAddr = await getActiveDeliveryAddress();
+      if (activeAddr) {
+        if (activeAddr.name) setUserName(activeAddr.name.split(" ")[0]);
+        setUserAddress(`${activeAddr.addressLine}${activeAddr.pincode ? `, ${activeAddr.pincode}` : ""}`);
+      } else {
+        const addr = await AsyncStorage.getItem("artisan_saved_delivery_address");
+        if (addr) {
+          setUserAddress(addr);
+        }
+      }
+    } catch {}
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadUserProfileAndAddress();
+      updateCart();
+    }, [])
+  );
 
   useEffect(() => {
     loadProducts();
     updateCart();
+    loadUserProfileAndAddress();
     getWishlist().then((items) => setSavedProductIds(new Set(items.map((item) => item.id)))).catch(() => {});
     const unsub = subscribeCart(() => updateCart());
     const unsubWishlist = subscribeWishlist(() => {
@@ -279,73 +323,133 @@ export default function BuyerScreen() {
         onClose={() => setLangModalVisible(false)}
       />
 
-      {/* Top Navbar */}
-      <View style={styles.topBar}>
-        <View style={styles.brandRow}>
-          <Image
-            source={require("../assets/clean-logo-mark.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <View>
-            <Text style={styles.brandTitle}>{t("artisanAi")}</Text>
-            <Text style={styles.brandTag}>{t("ruralCommerce")}</Text>
+      <DeliveryAddressModal
+        visible={deliveryModalVisible}
+        onClose={() => setDeliveryModalVisible(false)}
+        onAddressSelected={(addr) => {
+          if (addr.name) setUserName(addr.name.split(" ")[0]);
+          setUserAddress(`${addr.addressLine}${addr.pincode ? `, ${addr.pincode}` : ""}`);
+        }}
+      />
+
+      {/* Myntra-Style Compact Header */}
+      <View style={styles.headerContainer}>
+        {/* Row 1: Delivery Address Strip & Bag Wallet Pill */}
+        <View style={styles.addressRow}>
+          <Pressable
+            style={styles.addressBtn}
+            onPress={() => setDeliveryModalVisible(true)}
+            hitSlop={6}
+          >
+            <Ionicons name="location-sharp" size={16} color={theme.accent} />
+            <Text style={styles.addressText} numberOfLines={1}>
+              Deliver to <Text style={styles.addressUserBold}>{userName}</Text> - {userAddress || "Set Delivery Location"}
+            </Text>
+            <Ionicons name="chevron-down" size={13} color="#57534E" style={{ marginLeft: 2 }} />
+          </Pressable>
+
+          <Pressable
+            style={styles.bagWalletPill}
+            onPress={() => router.push("/buyer-cart" as any)}
+            hitSlop={6}
+          >
+            <Ionicons name="bag-handle-outline" size={14} color={theme.accent} />
+            <Text style={styles.bagWalletText}>
+              {cartCount > 0 ? `${cartCount} ${cartCount === 1 ? "Item" : "Items"}` : "Bag"}
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Row 2: Search Bar with Embedded Logo & Right Action Icons */}
+        <View style={styles.searchRow}>
+          <Pressable
+            style={({ pressed }) => [styles.searchPillBtn, pressed && { opacity: 0.85 }]}
+            onPress={() => router.push("/search" as any)}
+          >
+            <View style={styles.searchLogoBox}>
+              <Image
+                source={require("../assets/clean-logo-mark.png")}
+                style={styles.searchLogo}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.searchPlaceholderText} numberOfLines={1}>
+              Search handicrafts, sarees, toys...
+            </Text>
+            <Ionicons name="mic-outline" size={17} color="#A8A29E" style={{ marginLeft: 4 }} />
+          </Pressable>
+
+          {/* Right Action Icons: Notification, Wishlist, Profile */}
+          <View style={styles.headerActions}>
+            <Pressable
+              style={styles.headerActionBtn}
+              onPress={() => router.push("/notifications" as any)}
+              hitSlop={6}
+              accessibilityLabel="Notifications"
+            >
+              <Ionicons name="notifications-outline" size={22} color="#1C1917" />
+              {unreadNotifs > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>
+                    {unreadNotifs > 99 ? "99+" : unreadNotifs}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+
+            <Pressable
+              style={styles.headerActionBtn}
+              onPress={() => router.push("/buyer-wishlist" as any)}
+              hitSlop={6}
+              accessibilityLabel="Wishlist"
+            >
+              <Ionicons name="heart-outline" size={22} color="#1C1917" />
+              {savedProductIds.size > 0 && (
+                <View style={styles.wishlistDot} />
+              )}
+            </Pressable>
+
+            <Pressable
+              style={styles.headerActionBtn}
+              onPress={() => router.push("/settings" as any)}
+              hitSlop={6}
+              accessibilityLabel="Account"
+            >
+              <Ionicons name="person-outline" size={22} color="#1C1917" />
+            </Pressable>
           </View>
         </View>
 
-        <View style={styles.topActions}>
-          <Pressable
-            style={styles.langPill}
-            onPress={() => setLangModalVisible(true)}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Change Language"
+        {/* Row 3: Sleek Horizontal Category Tabs */}
+        <View style={styles.categoryTabsContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryTabsScroll}
           >
-            <Text style={styles.langPillText}>🌐 {language.toUpperCase()}</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.topIconBtn}
-            onPress={() => router.push("/notifications")}
-            hitSlop={8}
-            accessibilityLabel="Notifications"
-          >
-            <Ionicons name="notifications-outline" size={21} color={theme.ink} />
-            {unreadNotifs > 0 && (
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>
-                  {unreadNotifs > 99 ? "99+" : unreadNotifs}
-                </Text>
-              </View>
-            )}
-          </Pressable>
-
-          <Pressable
-            style={styles.topIconBtn}
-            onPress={() => router.push("/settings" as any)}
-            hitSlop={8}
-          >
-            <Ionicons name="settings-outline" size={21} color={theme.ink} />
-          </Pressable>
+            {categories.map((c) => {
+              const isSelected = selectedCategory.toLowerCase() === c.toLowerCase();
+              const label = c === "All Crafts" ? "ALL" : getCategory(c).toUpperCase();
+              return (
+                <Pressable
+                  key={"tab-" + c}
+                  onPress={() => setSelectedCategory(c)}
+                  style={[styles.categoryTabBtn, isSelected && styles.categoryTabBtnActive]}
+                >
+                  <Text
+                    style={[
+                      styles.categoryTabText,
+                      isSelected && styles.categoryTabTextActive
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                  {isSelected && <View style={styles.categoryTabIndicator} />}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
-      </View>
-
-      {/* Mode Switcher Pills (Web Match: Buy Crafts vs Sell as Artisan) */}
-      <View style={styles.modePillContainer}>
-        <Pressable style={[styles.modePill, styles.modePillActive]}>
-          <Ionicons name="bag-handle" size={14} color="#fff" style={{ marginRight: 6 }} />
-          <Text style={styles.modePillTextActive}>{t("buyCrafts")}</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.modePill}
-          onPress={() => {
-            router.push({ pathname: "/login", params: { role: "seller" } });
-          }}
-        >
-          <Ionicons name="storefront-outline" size={14} color={theme.muted} style={{ marginRight: 6 }} />
-          <Text style={styles.modePillText}>{t("sellAsArtisan")}</Text>
-        </Pressable>
       </View>
 
       {/* Added to Bag Toast */}
@@ -369,51 +473,13 @@ export default function BuyerScreen() {
           loadProducts();
         }}
         ListHeaderComponent={
-          <View>
-            {/* Search Bar with Pill Shape */}
-            <View style={styles.searchWrapper}>
-              <Ionicons name="search-outline" size={18} color="#8C7A6B" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder={t("searchCraftsPlaceholder")}
-                placeholderTextColor="#9E9E9E"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <Pressable onPress={() => setSearchQuery("")} style={styles.clearSearchBtn}>
-                  <Ionicons name="close-circle" size={18} color="#8C7A6B" />
-                </Pressable>
-              )}
-            </View>
-
-            {/* Horizontal Category Carousel */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.categoryScroll}
-              contentContainerStyle={{ paddingHorizontal: 20 }}
-            >
-              {CATEGORIES.map((cat) => {
-                const active = selectedCategory === cat;
-                return (
-                  <Pressable
-                    key={cat}
-                    onPress={() => setSelectedCategory(cat)}
-                    style={[styles.categoryChip, active && styles.categoryChipActive]}
-                  >
-                    <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>
-                      {getCategory(cat)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
-            {/* Sort & Price Filter Row */}
+          <View style={{ paddingTop: 8 }}>
+            {/* Clean E-Commerce Sort Bar */}
             <View style={styles.sortBar}>
-              <Text style={styles.sortLabel}>{t("sort")}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+              <View style={styles.sortIconBox}>
+                <Ionicons name="swap-vertical" size={14} color={theme.accent} />
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 16 }}>
                 {(
                   [
                     { id: "POPULAR", label: t("popular") },
@@ -495,9 +561,44 @@ export default function BuyerScreen() {
             </View>
           ) : (
             <View style={styles.emptyBox}>
-              <Ionicons name="bag-outline" size={48} color="#D1C7BD" />
-              <Text style={styles.emptyTitle}>No crafts found</Text>
-              <Text style={styles.emptyText}>Try adjusting your search or selecting "All Crafts".</Text>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="search-outline" size={36} color={theme.accent} />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {searchQuery ? `No crafts matching "${searchQuery}"` : "No crafts found"}
+              </Text>
+              <Text style={styles.emptyText}>
+                {searchQuery
+                  ? "Try checking your spelling or explore the categories below:"
+                  : "Try adjusting your filters or browse all craft categories."}
+              </Text>
+              {categories.length > 1 && (
+                <View style={styles.emptySuggestedCats}>
+                  {categories.slice(1, 4).map((c) => (
+                    <Pressable
+                      key={"empty-cat-" + c}
+                      style={styles.emptyCatBtn}
+                      onPress={() => {
+                        setSelectedCategory(c);
+                        setSearchQuery("");
+                      }}
+                    >
+                      <Text style={styles.emptyCatBtnText}>{c}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              {(searchQuery || selectedCategory !== "All Crafts") && (
+                <Pressable
+                  style={styles.resetFiltersBtn}
+                  onPress={() => {
+                    setSearchQuery("");
+                    setSelectedCategory("All Crafts");
+                  }}
+                >
+                  <Text style={styles.resetFiltersText}>View All Available Crafts</Text>
+                </Pressable>
+              )}
             </View>
           )
         }
@@ -514,75 +615,154 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FAF9F6"
   },
-  topBar: {
+  headerContainer: {
+    backgroundColor: "#FAF9F6",
+    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 2 : 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EAE7E1"
+  },
+  addressRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 10 : 14,
-    paddingBottom: 14,
-    backgroundColor: "#FAF9F6",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E8E5DF"
+    paddingHorizontal: 16,
+    paddingBottom: 5
   },
-  brandRow: {
-    flexDirection: "row",
-    alignItems: "center"
-  },
-  logo: {
-    width: 32,
-    height: 32,
-    marginRight: 8
-  },
-  brandTitle: {
-    fontSize: 15,
-    fontWeight: "900",
-    letterSpacing: 2,
-    color: theme.accent
-  },
-  brandTag: {
-    fontSize: 9,
-    fontWeight: "600",
-    color: theme.muted
-  },
-  topActions: {
+  addressBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8
+    flex: 1,
+    marginRight: 12
   },
-  langPill: {
-    backgroundColor: "#F4EBE1",
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#EADFCF",
+  addressText: {
+    fontSize: 12,
+    color: "#292524",
+    marginLeft: 4,
+    marginRight: 4,
+    fontWeight: "500",
+    flexShrink: 1
+  },
+  addressUserBold: {
+    fontWeight: "800",
+    color: "#1C1917"
+  },
+  bagWalletPill: {
     flexDirection: "row",
-    alignItems: "center"
+    alignItems: "center",
+    backgroundColor: "#F5EFEB",
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E8DDD5",
+    gap: 4
   },
-  langPillText: {
+  bagWalletText: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#8B4513"
+    color: theme.accent
   },
-  topIconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 7,
+    gap: 8
+  },
+  searchPillBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#FFFFFF",
+    height: 42,
+    borderRadius: 21,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#E2DDD6",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1
+  },
+  searchLogoBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#FDFBF7",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#E8E5DF"
+    marginRight: 8
   },
-  notifDot: {
+  searchLogo: {
+    width: 20,
+    height: 20
+  },
+  searchPlaceholderText: {
+    flex: 1,
+    fontSize: 12.5,
+    color: "#78716C",
+    fontWeight: "400"
+  },
+  searchInnerActions: {
+    flexDirection: "row",
+    alignItems: "center"
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12
+  },
+  headerActionBtn: {
+    position: "relative",
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  wishlistDot: {
     position: "absolute",
-    top: 7,
-    right: 7,
+    top: 4,
+    right: 4,
     width: 7,
     height: 7,
     borderRadius: 3.5,
     backgroundColor: "#E11D48"
+  },
+  categoryTabsContainer: {
+    borderTopWidth: 0.5,
+    borderTopColor: "#EDEAE4",
+    backgroundColor: "#FAF9F6"
+  },
+  categoryTabsScroll: {
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    gap: 16
+  },
+  categoryTabBtn: {
+    paddingBottom: 8,
+    position: "relative",
+    alignItems: "center"
+  },
+  categoryTabBtnActive: {},
+  categoryTabText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#78716C",
+    letterSpacing: 0.8
+  },
+  categoryTabTextActive: {
+    color: theme.accent,
+    fontWeight: "900"
+  },
+  categoryTabIndicator: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2.5,
+    backgroundColor: theme.accent,
+    borderRadius: 2
   },
   modePillContainer: {
     flexDirection: "row",
@@ -615,91 +795,43 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#FFFFFF"
   },
-  searchWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 20,
-    marginTop: 8,
-    marginBottom: 12,
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: "#E8E5DF",
-    shadowColor: "#000",
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1
-  },
-  searchIcon: {
-    marginRight: 8
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 10,
-    fontSize: 13,
-    color: theme.ink
-  },
-  clearSearchBtn: {
-    padding: 4
-  },
-  categoryScroll: {
-    marginBottom: 14
-  },
-  categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#FFFFFF",
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: "#E8E5DF"
-  },
-  categoryChipActive: {
-    backgroundColor: theme.accent,
-    borderColor: theme.accent
-  },
-  categoryChipText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: theme.ink
-  },
-  categoryChipTextActive: {
-    color: "#FFFFFF"
-  },
   sortBar: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
-    marginBottom: 14,
+    paddingHorizontal: 16,
+    marginBottom: 12,
     gap: 8
   },
-  sortLabel: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: theme.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.5
+  sortIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#FBF3F0",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#DEC0B7"
   },
   sortPill: {
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 14,
-    backgroundColor: "#F3EFEA",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E5DFD5"
+    borderColor: "#EAE6DF"
   },
   sortPillActive: {
-    backgroundColor: "#2C1810",
-    borderColor: "#2C1810"
+    backgroundColor: theme.accent,
+    borderColor: theme.accent
   },
   sortPillText: {
     fontSize: 11,
-    fontWeight: "700",
-    color: theme.ink
+    fontWeight: "600",
+    color: "#57534E"
   },
   sortPillTextActive: {
-    color: "#FFFFFF"
+    color: "#FFFFFF",
+    fontWeight: "800"
   },
   trendingSection: {
     marginBottom: 16
@@ -1001,7 +1133,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.muted,
     textAlign: "center",
-    marginTop: 4
+    marginTop: 4,
+    lineHeight: 18
+  },
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#F7EFEA",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6
+  },
+  emptySuggestedCats: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 14,
+    justifyContent: "center"
+  },
+  emptyCatBtn: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E3DACB"
+  },
+  emptyCatBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: theme.accent
+  },
+  resetFiltersBtn: {
+    marginTop: 16,
+    backgroundColor: theme.accent,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 20
+  },
+  resetFiltersText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800"
   },
   modalBackdrop: {
     flex: 1,

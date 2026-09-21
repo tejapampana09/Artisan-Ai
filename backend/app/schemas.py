@@ -510,6 +510,63 @@ class AuditLogResponse(BaseModel):
     created_at: datetime
 
 
+# ─── Delivery Address Schemas ───────────────────────────────────────────────
+
+class AddressCreate(BaseModel):
+    name: str = Field(..., min_length=2, max_length=100)
+    phone: Optional[str] = Field(default=None, max_length=20)
+    pincode: str = Field(..., min_length=6, max_length=10)
+    address_line: str = Field(..., min_length=5, max_length=300)
+    city: Optional[str] = Field(default=None, max_length=100)
+    state: Optional[str] = Field(default=None, max_length=100)
+    tag: Optional[str] = Field(default="HOME")  # HOME, WORK, OTHER
+    is_default: Optional[bool] = False
+
+class AddressUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=100)
+    phone: Optional[str] = Field(default=None, max_length=20)
+    pincode: Optional[str] = Field(default=None, max_length=10)
+    address_line: Optional[str] = Field(default=None, max_length=300)
+    city: Optional[str] = None
+    state: Optional[str] = None
+    tag: Optional[str] = None
+    is_default: Optional[bool] = None
+
+class AddressResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    name: str
+    phone: Optional[str] = None
+    pincode: str
+    address_line: str
+    city: Optional[str] = None
+    state: Optional[str] = None
+    tag: str = "HOME"
+    is_default: bool = False
+    created_at: datetime
 
 
+# ─── Payout Account Schemas ─────────────────────────────────────────────────
+
+class PayoutAccountUpdate(BaseModel):
+    upi_id: Optional[str] = Field(default=None, max_length=100)
+    account_holder_name: Optional[str] = Field(default=None, max_length=150)
+    account_number: Optional[str] = Field(default=None, max_length=30)
+    ifsc_code: Optional[str] = Field(default=None, max_length=20)
+    bank_name: Optional[str] = Field(default=None, max_length=100)
+
+class PayoutAccountResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    artisan_id: int
+    upi_id: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    bank_name: Optional[str] = None
+    is_verified: bool = False
+    updated_at: Optional[datetime] = None
 

@@ -7,7 +7,7 @@ import {
   Image,
   RefreshControl,
   ScrollView,
-  Alert
+  Modal
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
@@ -112,25 +112,15 @@ export default function SellerDashboard() {
   };
   const productPerformance = dashboard?.product_performance || [];
 
-  const handleSignOut = () => {
-    Alert.alert(
-      language === "te" ? "సైన్ అవుట్" : "Sign Out",
-      language === "te"
-        ? "మీరు నిజంగా ఆర్టిసాన్ స్టూడియో నుండి నిష్క్రమించాలనుకుంటున్నారా?"
-        : "Are you sure you want to sign out of Artisan Studio?",
-      [
-        { text: language === "te" ? "రద్దు" : "Cancel", style: "cancel" },
-        {
-          text: language === "te" ? "సైన్ అవుట్" : "Sign Out",
-          style: "destructive",
-          onPress: async () => {
-            await clearSession("STUDIO");
-            await clearSession();
-            router.replace("/buyer");
-          }
-        }
-      ]
-    );
+  const [signOutModalVisible, setSignOutModalVisible] = useState(false);
+
+  const handleSignOut = () => setSignOutModalVisible(true);
+
+  const doSignOut = async () => {
+    setSignOutModalVisible(false);
+    await clearSession("STUDIO");
+    await clearSession();
+    router.replace("/buyer");
   };
 
   const pendingOrders = orders.filter((o) => {
@@ -151,76 +141,66 @@ export default function SellerDashboard() {
         onClose={() => setLangModalVisible(false)}
       />
 
-      {/* Header */}
-      <Header
-        title={t("artisanStudio")}
-        subtitle={t("ruralCommerce")}
-        roleBadge="ARTISAN"
-        showNotificationBell={false}
-        rightAction={
-          <View style={styles.headerActions}>
-            <Pressable
-              style={styles.langPill}
-              onPress={() => setLangModalVisible(true)}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Change Language"
-            >
-              <Text style={styles.langPillText}>🌐 {language.toUpperCase()}</Text>
-            </Pressable>
-
-            {/* Profile Action */}
-            <Pressable
-              style={styles.iconBtn}
-              onPress={() => router.push("/settings")}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Profile"
-            >
-              <Ionicons name="person-circle-outline" size={20} color={theme.colors.ink} />
-            </Pressable>
-
-            {/* Notifications Action */}
-            <Pressable
-              style={styles.iconBtn}
-              onPress={() => router.push("/notifications")}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Notifications"
-            >
-              <Ionicons name="notifications-outline" size={18} color={theme.colors.ink} />
-              {unreadNotifs > 0 && (
-                <View style={styles.notifBadge}>
-                  <Text style={styles.notifBadgeText}>
-                    {unreadNotifs > 99 ? "99+" : unreadNotifs}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
-
-            {/* Sign Out Button */}
-            <Pressable
-              style={styles.signOutBtn}
-              onPress={handleSignOut}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Sign Out"
-            >
-              <Ionicons name="log-out-outline" size={13} color="#C92A2A" />
-              <Text style={styles.signOutBtnText}>
-                {language === "te" ? "లాగౌట్" : "Sign Out"}
-              </Text>
-            </Pressable>
+      {/* Sleek Studio Header */}
+      <View style={styles.cleanHeader}>
+        <View style={styles.headerLeft}>
+          <Image
+            source={{ uri: avatarUrl }}
+            style={styles.headerAvatar}
+            resizeMode="cover"
+          />
+          <View style={styles.headerTitleBox}>
+            <View style={styles.headerNameRow}>
+              <Text style={styles.headerName} numberOfLines={1}>{artisanName}</Text>
+              <View style={styles.verifiedTag}>
+                <Ionicons name="checkmark-circle" size={13} color="#2563EB" />
+                <Text style={styles.verifiedTagText}>STUDIO</Text>
+              </View>
+            </View>
+            <Text style={styles.headerSub} numberOfLines={1}>{craftSpecialty}</Text>
           </View>
-        }
-      />
+        </View>
+
+        <View style={styles.headerRightActions}>
+          <Pressable
+            style={styles.headerIconBtn}
+            onPress={() => setLangModalVisible(true)}
+            hitSlop={6}
+          >
+            <Ionicons name="globe-outline" size={19} color="#1C1917" />
+          </Pressable>
+
+          <Pressable
+            style={styles.headerIconBtn}
+            onPress={() => router.push("/notifications")}
+            hitSlop={6}
+          >
+            <Ionicons name="notifications-outline" size={19} color="#1C1917" />
+            {unreadNotifs > 0 && (
+              <View style={styles.cleanNotifBadge}>
+                <Text style={styles.cleanNotifBadgeText}>
+                  {unreadNotifs > 99 ? "99+" : unreadNotifs}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+
+          <Pressable
+            style={styles.headerIconBtn}
+            onPress={() => router.push("/seller-profile" as any)}
+            hitSlop={6}
+          >
+            <Ionicons name="person-outline" size={19} color="#1C1917" />
+          </Pressable>
+        </View>
+      </View>
 
       {loading && !refreshing ? (
         <View style={styles.loadingContainer}>
-          <SkeletonBox height={90} borderRadius={theme.radius.lg} style={{ marginBottom: 16 }} />
+          <SkeletonBox height={100} borderRadius={theme.radius.lg} style={{ marginBottom: 16 }} />
           <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
-            <SkeletonBox height={90} style={{ flex: 1 }} borderRadius={theme.radius.md} />
-            <SkeletonBox height={90} style={{ flex: 1 }} borderRadius={theme.radius.md} />
+            <SkeletonBox height={80} style={{ flex: 1 }} borderRadius={theme.radius.md} />
+            <SkeletonBox height={80} style={{ flex: 1 }} borderRadius={theme.radius.md} />
           </View>
           <SkeletonBox height={140} borderRadius={theme.radius.lg} style={{ marginBottom: 16 }} />
         </View>
@@ -228,201 +208,134 @@ export default function SellerDashboard() {
         <ErrorState message={errorMessage} onRetry={loadData} />
       ) : (
         <>
-          {/* Artisan Profile Card */}
-          <View style={styles.profileCard}>
-            <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" />
-            <View style={styles.profileInfo}>
-              <View style={styles.verifiedRow}>
-                <Text style={styles.verifiedBadge}>{t("verifiedMasterArtisan")}</Text>
+          {/* Revenue & Growth Hero Card */}
+          <View style={styles.revenueHeroCard}>
+            <View style={styles.revenueHeroTop}>
+              <View>
+                <Text style={styles.revenueHeroLabel}>TOTAL REVENUE</Text>
+                <Text style={styles.revenueHeroValue}>₹{totalRevenue.toLocaleString("en-IN")}</Text>
               </View>
-              <Text style={styles.artisanName} numberOfLines={1}>
-                {artisanName}
-              </Text>
-              <Text style={styles.craftSpecialty} numberOfLines={1}>
-                {craftSpecialty}
-              </Text>
+              <View style={styles.revenueBadge}>
+                <Ionicons name="trending-up" size={14} color="#16A34A" />
+                <Text style={styles.revenueBadgeText}>{unitsSold} Items Sold</Text>
+              </View>
             </View>
+
+            <View style={styles.revenueHeroDivider} />
+
+            <View style={styles.revenueHeroStatsRow}>
+              <Pressable
+                style={styles.revenueSubStat}
+                onPress={() => router.push("/seller-orders")}
+              >
+                <Text style={styles.revenueSubVal}>{pendingOrders.length}</Text>
+                <Text style={styles.revenueSubLabel}>Pending Orders</Text>
+              </Pressable>
+
+              <View style={styles.revenueSubDivider} />
+
+              <Pressable
+                style={styles.revenueSubStat}
+                onPress={() => router.push("/seller-enquiries")}
+              >
+                <Text style={styles.revenueSubVal}>{totalEnquiries}</Text>
+                <Text style={styles.revenueSubLabel}>Buyer Inquiries</Text>
+              </Pressable>
+
+              <View style={styles.revenueSubDivider} />
+
+              <View style={styles.revenueSubStat}>
+                <Text style={styles.revenueSubVal}>{totalViews}</Text>
+                <Text style={styles.revenueSubLabel}>Craft Views</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Clean Quick Studio Actions */}
+          <View style={styles.cleanActionRow}>
             <Pressable
-              style={styles.editProfileBtn}
-              onPress={() => router.push("/settings")}
-              hitSlop={8}
+              style={styles.primaryStudioAction}
+              onPress={() => router.push("/seller-ai")}
             >
-              <Ionicons name="create-outline" size={18} color={theme.colors.primary} />
+              <View style={styles.actionIconPill}>
+                <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.primaryActionTitle}>AI Craft Studio</Text>
+                <Text style={styles.primaryActionSub}>Photo, voice & story listing</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+            </Pressable>
+
+            <Pressable
+              style={styles.secondaryStudioAction}
+              onPress={() => router.push("/product-editor" as any)}
+            >
+              <Ionicons name="add" size={20} color={theme.accent} />
+              <Text style={styles.secondaryActionText}>Manual Add</Text>
             </Pressable>
           </View>
 
-          {/* Key Metrics Grid */}
-          <View style={styles.metricsGrid}>
-            <StatCard
-              label={t("totalRevenue")}
-              value={`₹${totalRevenue.toLocaleString("en-IN")}`}
-              subtitle={`${unitsSold} ${t("itemsFulfilled")}`}
-              icon="wallet-outline"
-              iconColor={theme.colors.primary}
-              style={{ flex: 1 }}
-            />
-            <StatCard
-              label={t("pendingOrders")}
-              value={pendingOrders.length}
-              subtitle={pendingOrders.length > 0 ? t("requiresDispatch") : t("allDispatched")}
-              icon="cube-outline"
-              iconColor={theme.colors.accentDark}
-              onPress={() => router.push("/seller-orders")}
-              style={{ flex: 1 }}
-            />
-          </View>
-
-          <View style={styles.metricsGrid}>
-            <StatCard
-              label={t("buyerEnquiries")}
-              value={totalEnquiries}
-              subtitle={t("directLeads")}
-              icon="chatbubbles-outline"
-              iconColor={theme.colors.info}
-              onPress={() => router.push("/seller-enquiries")}
-              style={{ flex: 1 }}
-            />
-            <StatCard
-              label={t("catalogViews")}
-              value={totalViews}
-              subtitle={t("consumerInterest")}
-              icon="eye-outline"
-              iconColor={theme.colors.success}
-              style={{ flex: 1 }}
-            />
-          </View>
-
-          {/* Readiness Score Banner */}
+          {/* Readiness Progress Bar (if available) */}
           {readiness && (
-            <View style={styles.readinessCard}>
-              <View style={styles.readinessHeader}>
-                <View style={styles.readinessScoreBox}>
-                  <Text style={styles.readinessScoreText}>
-                    {readiness.score != null ? `${readiness.score}%` : "0%"}
-                  </Text>
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.readinessTitle}>{t("catalogueReadiness")}</Text>
-                  <Text style={styles.readinessSub}>
-                    {readiness.next_best_action || "List products to boost discoverability."}
-                  </Text>
-                </View>
+            <View style={styles.cleanReadinessBox}>
+              <View style={styles.cleanReadinessTop}>
+                <Text style={styles.cleanReadinessTitle}>Catalogue Readiness</Text>
+                <Text style={styles.cleanReadinessPct}>
+                  {readiness.score != null ? `${readiness.score}%` : "0%"}
+                </Text>
               </View>
-              {Array.isArray(readiness.improvements) && readiness.improvements.length > 0 && (
-                <View style={styles.readinessAdvice}>
-                  <Ionicons name="sparkles" size={13} color={theme.colors.accentDark} style={{ marginRight: 6 }} />
-                  <Text style={styles.readinessAdviceText} numberOfLines={1}>
-                    Next: {readiness.improvements[0]}
-                  </Text>
-                </View>
-              )}
+              <View style={styles.progressBarTrack}>
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    { width: `${Math.min(100, Math.max(0, readiness.score || 0))}%` }
+                  ]}
+                />
+              </View>
+              <Text style={styles.cleanReadinessHint} numberOfLines={1}>
+                {readiness.next_best_action || "Add high quality photos to improve discovery"}
+              </Text>
             </View>
           )}
 
-          {/* Quick Actions Grid */}
-          <SectionHeader title={t("quickActions")} />
-          <View style={styles.quickGrid}>
-            <Pressable
-              style={styles.quickActionPrimary}
-              onPress={() => router.push("/seller-ai")}
-              accessibilityRole="button"
-            >
-              <View style={styles.quickActionIconCircle}>
-                <Ionicons name="sparkles" size={20} color="#FFFFFF" />
-              </View>
-              <Text style={styles.quickActionPrimaryTitle}>{t("createWithAi")}</Text>
-              <Text style={styles.quickActionPrimarySub}>{t("photoVoiceStory")}</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.quickActionSecondary}
-              onPress={() => router.push("/product-editor" as any)}
-              accessibilityRole="button"
-            >
-              <Ionicons name="add-circle-outline" size={22} color={theme.colors.primary} />
-              <Text style={styles.quickActionSecondaryTitle}>{t("addCraft")}</Text>
-              <Text style={styles.quickActionSecondarySub}>{t("manualForm")}</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.quickActionSecondary}
-              onPress={() => router.push("/seller-business" as any)}
-              accessibilityRole="button"
-            >
-              <Ionicons name="trending-up" size={22} color={theme.colors.accentDark} />
-              <Text style={styles.quickActionSecondaryTitle}>{t("marketIntelligence")}</Text>
-              <Text style={styles.quickActionSecondarySub}>{t("marketAndMl")}</Text>
+          {/* Delivery Stages Grid */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionHeaderMain}>Order Fulfillment Pipeline</Text>
+            <Pressable onPress={() => router.push("/seller-orders")}>
+              <Text style={styles.sectionHeaderAction}>View All Orders →</Text>
             </Pressable>
           </View>
 
-          {/* AI Catalog Studio Hero Card */}
-          <Pressable
-            style={styles.heroBanner}
-            onPress={() => router.push("/seller-ai")}
-            accessibilityRole="button"
-          >
-            <View style={styles.heroBadge}>
-              <Ionicons name="sparkles" size={12} color="#FFFFFF" />
-              <Text style={styles.heroBadgeText}>{t("voiceFirstAi")}</Text>
+          <View style={styles.stagesRow}>
+            <View style={styles.stageCol}>
+              <View style={[styles.stageBadgeCircle, { backgroundColor: "#EFF6FF" }]}>
+                <Text style={[styles.stageCount, { color: "#2563EB" }]}>{deliveryStatus.confirmed ?? 0}</Text>
+              </View>
+              <Text style={styles.stageTitle}>Confirmed</Text>
             </View>
-            <Text style={styles.heroTitle}>
-              {t("heroAiTitle")}
-            </Text>
-            <Text style={styles.heroDesc}>
-              {t("heroAiDesc")}
-            </Text>
-            <View style={styles.heroButtonRow}>
-              <Text style={styles.heroButtonText}>{t("launchAiStudio")}</Text>
-            </View>
-          </Pressable>
 
-          {/* Delivery Pipeline Breakdown (Exact Match to Web Dashboard) */}
-          <SectionHeader
-            title={language === "te" ? "డెలివరీ ప్రగతి / పైప్‌లైన్" : "Delivery Pipeline Breakdown"}
-            subtitle={language === "te" ? "ఆర్డర్ల రవాణా స్థితిగతులు" : "Live status of your orders across fulfillment stages"}
-          />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pipelineScroll}>
-            <View style={[styles.pipelineCard, { borderLeftColor: theme.colors.info }]}>
-              <Text style={styles.pipelineLabel}>
-                {language === "te" ? "ఖరారైంది" : "CONFIRMED"}
-              </Text>
-              <Text style={[styles.pipelineValue, { color: theme.colors.info }]}>
-                {deliveryStatus.confirmed ?? 0}
-              </Text>
+            <View style={styles.stageCol}>
+              <View style={[styles.stageBadgeCircle, { backgroundColor: "#FFF7ED" }]}>
+                <Text style={[styles.stageCount, { color: "#EA580C" }]}>{deliveryStatus.processing ?? 0}</Text>
+              </View>
+              <Text style={styles.stageTitle}>Packed</Text>
             </View>
-            <View style={[styles.pipelineCard, { borderLeftColor: "#E67700" }]}>
-              <Text style={styles.pipelineLabel}>
-                {language === "te" ? "ప్యాకింగ్" : "PACKED"}
-              </Text>
-              <Text style={[styles.pipelineValue, { color: "#E67700" }]}>
-                {deliveryStatus.processing ?? 0}
-              </Text>
+
+            <View style={styles.stageCol}>
+              <View style={[styles.stageBadgeCircle, { backgroundColor: "#FDF2F8" }]}>
+                <Text style={[styles.stageCount, { color: "#DB2777" }]}>{deliveryStatus.shipped ?? 0}</Text>
+              </View>
+              <Text style={styles.stageTitle}>Shipped</Text>
             </View>
-            <View style={[styles.pipelineCard, { borderLeftColor: theme.colors.primary }]}>
-              <Text style={styles.pipelineLabel}>
-                {language === "te" ? "రవాణాలో" : "IN TRANSIT"}
-              </Text>
-              <Text style={[styles.pipelineValue, { color: theme.colors.primary }]}>
-                {deliveryStatus.shipped ?? 0}
-              </Text>
+
+            <View style={styles.stageCol}>
+              <View style={[styles.stageBadgeCircle, { backgroundColor: "#F0FDF4" }]}>
+                <Text style={[styles.stageCount, { color: "#16A34A" }]}>{deliveryStatus.delivered ?? 0}</Text>
+              </View>
+              <Text style={styles.stageTitle}>Delivered</Text>
             </View>
-            <View style={[styles.pipelineCard, { borderLeftColor: theme.colors.success }]}>
-              <Text style={styles.pipelineLabel}>
-                {language === "te" ? "చేరింది" : "DELIVERED"}
-              </Text>
-              <Text style={[styles.pipelineValue, { color: theme.colors.success }]}>
-                {deliveryStatus.delivered ?? 0}
-              </Text>
-            </View>
-            <View style={[styles.pipelineCard, { borderLeftColor: theme.colors.error }]}>
-              <Text style={styles.pipelineLabel}>
-                {language === "te" ? "రద్దు" : "CANCELLED"}
-              </Text>
-              <Text style={[styles.pipelineValue, { color: theme.colors.error }]}>
-                {deliveryStatus.cancelled ?? 0}
-              </Text>
-            </View>
-          </ScrollView>
+          </View>
 
           {/* Per-Product Sales & View Metrics (Exact Match to Web Dashboard) */}
           <SectionHeader
@@ -567,6 +480,42 @@ export default function SellerDashboard() {
 
       {/* Persistent Bottom Nav */}
       <BottomNavigation role="seller" />
+
+      {/* Sign-Out Confirmation Modal */}
+      <Modal
+        visible={signOutModalVisible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setSignOutModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setSignOutModalVisible(false)}
+        >
+          <Pressable style={styles.signOutModal} onPress={() => {}}>
+            <View style={styles.signOutIconCircle}>
+              <Ionicons name="log-out-outline" size={32} color="#E11D48" />
+            </View>
+            <Text style={styles.signOutModalTitle}>Sign out of Studio?</Text>
+            <Text style={styles.signOutModalBody}>
+              You'll be taken back to the Buyer Marketplace. Your studio data and products stay safe.
+            </Text>
+            <View style={styles.signOutModalActions}>
+              <Pressable
+                style={styles.signOutCancelBtn}
+                onPress={() => setSignOutModalVisible(false)}
+              >
+                <Text style={styles.signOutCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.signOutConfirmBtn} onPress={doSignOut}>
+                <Ionicons name="log-out-outline" size={15} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={styles.signOutConfirmText}>Yes, Sign Out</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -576,256 +525,321 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.sm
   },
-  headerActions: {
+  cleanHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.sm
+    justifyContent: "space-between",
+    backgroundColor: "#FAF9F6",
+    paddingVertical: 12,
+    marginBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EAE7E1"
   },
-  signOutBtn: {
-    backgroundColor: "#FFF5F5",
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: theme.radius.full,
-    borderWidth: 1,
-    borderColor: "#FFC9C9",
+  headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3
-  },
-  signOutBtnText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#C92A2A"
-  },
-  langPill: {
-    backgroundColor: "#F4EBE1",
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: theme.radius.full,
-    borderWidth: 1,
-    borderColor: "#EADFCF",
-    flexDirection: "row",
-    alignItems: "center"
-  },
-  langPillText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#8B4513"
-  },
-  iconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  notifBadge: {
-    position: "absolute",
-    top: -2,
-    right: -4,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 9,
-    minWidth: 16,
-    height: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-    borderWidth: 1.5,
-    borderColor: "#FAF9F6"
-  },
-  notifBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 9,
-    fontWeight: "800"
-  },
-  loadingContainer: {
-    marginTop: theme.spacing.md
-  },
-  profileCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.borderLight,
-    ...theme.shadows.sm,
-    marginBottom: theme.spacing.md
-  },
-  avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: theme.colors.surfaceMuted,
-    borderWidth: 2,
-    borderColor: theme.colors.primaryLight
-  },
-  profileInfo: {
     flex: 1,
-    marginLeft: theme.spacing.md
+    marginRight: 12
   },
-  verifiedRow: {
-    flexDirection: "row",
-    alignItems: "center"
-  },
-  verifiedBadge: {
-    fontSize: 9,
-    fontWeight: "800",
-    color: theme.colors.primary,
-    letterSpacing: 0.6
-  },
-  artisanName: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.ink,
-    marginTop: 1
-  },
-  craftSpecialty: {
-    fontSize: theme.typography.sizes.xs,
-    color: theme.colors.inkMuted,
-    marginTop: 1
-  },
-  editProfileBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  metricsGrid: {
-    flexDirection: "row",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.sm
-  },
-  readinessCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: theme.spacing.sm,
-    ...theme.shadows.sm
-  },
-  readinessHeader: {
-    flexDirection: "row",
-    alignItems: "center"
-  },
-  readinessScoreBox: {
+  headerAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: theme.colors.accentLight,
-    alignItems: "center",
-    justifyContent: "center"
+    backgroundColor: "#E8DDD5",
+    borderWidth: 1.5,
+    borderColor: theme.accent
   },
-  readinessScoreText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: theme.colors.accentDark
-  },
-  readinessTitle: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: "700",
-    color: theme.colors.ink
-  },
-  readinessSub: {
-    fontSize: 11,
-    color: theme.colors.inkMuted,
-    marginTop: 2
-  },
-  readinessAdvice: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.colors.surfaceMuted,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: theme.radius.xs,
-    marginTop: 8
-  },
-  readinessAdviceText: {
-    fontSize: 11,
-    color: theme.colors.ink,
-    fontWeight: "500",
+  headerTitleBox: {
+    marginLeft: 10,
     flex: 1
   },
-  quickGrid: {
+  headerNameRow: {
     flexDirection: "row",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md
+    alignItems: "center",
+    gap: 6
   },
-  quickActionPrimary: {
-    flex: 1.3,
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
-    ...theme.shadows.sm
+  headerName: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: "#1C1917"
   },
-  quickActionIconCircle: {
+  verifiedTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+    gap: 3
+  },
+  verifiedTagText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#2563EB",
+    letterSpacing: 0.5
+  },
+  headerSub: {
+    fontSize: 11,
+    color: "#78716C",
+    fontWeight: "500",
+    marginTop: 2
+  },
+  headerRightActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10
+  },
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E5E1D8"
+  },
+  cleanNotifBadge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    backgroundColor: "#E11D48",
+    borderRadius: 8,
+    minWidth: 15,
+    height: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3
+  },
+  cleanNotifBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 8.5,
+    fontWeight: "900"
+  },
+  loadingContainer: {
+    marginTop: 16
+  },
+  revenueHeroCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E8E5DF",
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2
+  },
+  revenueHeroTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start"
+  },
+  revenueHeroLabel: {
+    fontSize: 10.5,
+    fontWeight: "800",
+    letterSpacing: 1,
+    color: "#78716C",
+    marginBottom: 2
+  },
+  revenueHeroValue: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: "#1C1917"
+  },
+  revenueBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0FDF4",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    gap: 4
+  },
+  revenueBadgeText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#16A34A"
+  },
+  revenueHeroDivider: {
+    height: 1,
+    backgroundColor: "#F5F5F4",
+    marginVertical: 14
+  },
+  revenueHeroStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  revenueSubStat: {
+    flex: 1,
+    alignItems: "center"
+  },
+  revenueSubVal: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1C1917"
+  },
+  revenueSubLabel: {
+    fontSize: 10.5,
+    color: "#78716C",
+    fontWeight: "600",
+    marginTop: 2
+  },
+  revenueSubDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: "#E7E5E4"
+  },
+  cleanActionRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16
+  },
+  primaryStudioAction: {
+    flex: 1.5,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.accent,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+    shadowColor: theme.accent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3
+  },
+  actionIconPill: {
     width: 32,
     height: 32,
     borderRadius: 16,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 6
-  },
-  quickActionPrimaryTitle: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: theme.typography.sizes.sm
-  },
-  quickActionPrimarySub: {
-    color: "rgba(255, 255, 255, 0.85)",
-    fontSize: 10,
-    marginTop: 2
-  },
-  quickActionSecondary: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
     justifyContent: "center"
   },
-  quickActionSecondaryTitle: {
-    color: theme.colors.ink,
-    fontWeight: "700",
-    fontSize: theme.typography.sizes.xs,
-    marginTop: 4
+  primaryActionTitle: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800"
   },
-  quickActionSecondarySub: {
-    color: theme.colors.inkSubtle,
-    fontSize: 9,
-    marginTop: 1
+  primaryActionSub: {
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 9.5,
+    fontWeight: "500"
   },
-  heroBanner: {
-    backgroundColor: "#2A1E17",
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
-    ...theme.shadows.md
-  },
-  heroBadge: {
+  secondaryStudioAction: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: theme.radius.xs,
-    gap: 4,
-    marginBottom: 8
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E5E1D8",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 6
   },
-  heroBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 9,
+  secondaryActionText: {
+    fontSize: 12,
     fontWeight: "800",
-    letterSpacing: 0.6
+    color: "#1C1917"
+  },
+  cleanReadinessBox: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#E8E5DF",
+    marginBottom: 16
+  },
+  cleanReadinessTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6
+  },
+  cleanReadinessTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1C1917"
+  },
+  cleanReadinessPct: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: theme.accent
+  },
+  progressBarTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#F5F5F4",
+    overflow: "hidden",
+    marginBottom: 6
+  },
+  progressBarFill: {
+    height: "100%",
+    backgroundColor: theme.accent,
+    borderRadius: 3
+  },
+  cleanReadinessHint: {
+    fontSize: 10.5,
+    color: "#78716C",
+    fontWeight: "500"
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+    marginTop: 4
+  },
+  sectionHeaderMain: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1C1917"
+  },
+  sectionHeaderAction: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: theme.accent
+  },
+  stagesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: "#E8E5DF",
+    marginBottom: 18
+  },
+  stageCol: {
+    flex: 1,
+    alignItems: "center"
+  },
+  stageBadgeCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4
+  },
+  stageCount: {
+    fontSize: 15,
+    fontWeight: "900"
+  },
+  stageTitle: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#78716C"
   },
   heroTitle: {
     color: "#FFFFFF",
@@ -1038,5 +1052,78 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.inkMuted,
     textAlign: "center"
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingBottom: 32
+  },
+  signOutModal: {
+    width: "92%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 28,
+    alignItems: "center",
+    elevation: 20
+  },
+  signOutIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#FFF1F2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: "#FECDD3"
+  },
+  signOutModalTitle: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#1C1917",
+    marginBottom: 8,
+    textAlign: "center"
+  },
+  signOutModalBody: {
+    fontSize: 13.5,
+    color: "#78716C",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 28,
+    paddingHorizontal: 8
+  },
+  signOutModalActions: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%"
+  },
+  signOutCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: "#F5F0EC",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  signOutCancelText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#57534E"
+  },
+  signOutConfirmBtn: {
+    flex: 1,
+    flexDirection: "row",
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: "#E11D48",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  signOutConfirmText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#fff"
   }
 });

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from backend.app.database import engine, Base, get_db, ensure_sqlite_schema
+from backend.app.database import engine, Base, get_db
 from backend.app.models import User, Product, Order, Enquiry, Event, PricingDecision, ProcessedOperation
 from backend.app.schemas import HealthResponse, ReadyResponse, UserResponse
 from backend.app.config import get_cors_origins, ENVIRONMENT
@@ -34,19 +34,24 @@ from backend.app.routes.channels import router as channels_router
 from backend.app.routes.reviews import router as reviews_router
 from backend.app.routes.notifications import router as notifications_router
 from backend.app.routes.artisan import router as artisan_router
+from backend.app.routes.addresses import router as addresses_router
 from backend.app.routes.ml_demand import router as ml_demand_router
 from backend.app.routes.tts import router as tts_router
 from backend.app.routes.ondc import router as ondc_router, ondc_network_router
-# Always ensure database schema is created and default artisan/admin accounts are seeded
-try:
-    Base.metadata.create_all(bind=engine)
-    ensure_sqlite_schema(engine)
-    from backend.app.database import SessionLocal
-    from backend.app.seed import seed_initial_database
-    with SessionLocal() as db_session:
-        seed_initial_database(db_session)
-except Exception as db_init_err:
-    logging.getLogger("artisan_ai").warning("Startup DB schema/seed warning: %s", db_init_err)
+# Explicit database initialization only in non-production environments
+if ENVIRONMENT in ["development", "test"]:
+    try:
+        from backend.app.database import SessionLocal
+        
+        # Only for SQLite dev/test DBs
+        if engine.url.drivername.startswith("sqlite"):
+            from backend.app.seed import seed_initial_database
+            Base.metadata.create_all(bind=engine)
+            
+            with SessionLocal() as db_session:
+                seed_initial_database(db_session)
+    except Exception as db_init_err:
+        logging.getLogger("artisan_ai").warning("Dev-mode DB schema/seed warning: %s", db_init_err)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -127,6 +132,7 @@ app.include_router(channels_router)
 app.include_router(reviews_router)
 app.include_router(notifications_router)
 app.include_router(artisan_router)
+app.include_router(addresses_router)
 app.include_router(ml_demand_router)
 app.include_router(tts_router)
 app.include_router(ondc_router)

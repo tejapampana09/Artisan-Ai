@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import {
   ScrollView,
@@ -32,6 +32,7 @@ export default function ProductDetail() {
   const { language, t, getCategory } = useI18n();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [similarProducts, setSimilarProducts] = useState<any[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [isSaved, setIsSaved] = useState(false);
   const [addedToast, setAddedToast] = useState(false);
@@ -154,6 +155,16 @@ export default function ProductDetail() {
             category: data?.category,
             metadata_info: `Buyer viewed ${data?.title || 'craft'}`
           });
+
+          // Fetch similar crafts from the marketplace
+          api
+            .products()
+            .then((all) => {
+              if (Array.isArray(all)) {
+                setSimilarProducts(all);
+              }
+            })
+            .catch(() => {});
         })
         .catch((err) => console.warn("Product fetch error:", err))
         .finally(() => setLoading(false));
@@ -163,6 +174,20 @@ export default function ProductDetail() {
       Speech.stop().catch(() => {});
     };
   }, [id]);
+
+  const relatedCrafts = useMemo(() => {
+    if (!product || !similarProducts.length) return [];
+    const currentId = Number(product.id || id);
+    const others = similarProducts.filter((p) => p.id !== currentId);
+    const sameCat = others.filter(
+      (p) =>
+        p.category &&
+        product.category &&
+        p.category.toLowerCase().trim() === product.category.toLowerCase().trim()
+    );
+    if (sameCat.length >= 2) return sameCat.slice(0, 6);
+    return others.slice(0, 6);
+  }, [product, similarProducts, id]);
 
   const handleOpenArtisanModal = async () => {
     setShowArtisanModal(true);
@@ -227,10 +252,31 @@ export default function ProductDetail() {
     await addToCart(product, quantity);
     setAddedToast(true);
     setTimeout(() => setAddedToast(false), 2000);
+    if (product.stock !== undefined && Number(product.stock) <= 0) {
+      Alert.alert(
+        "Out of Stock Notice",
+        `"${product.title}" has been added to your shopping bag. Please note this craft is currently out of stock / sold out, and checkout will require removing it or placing a custom order inquiry.`,
+        [
+          { text: "View Bag", onPress: () => router.push("/buyer-cart") },
+          { text: "OK" }
+        ]
+      );
+    }
   };
 
   const handleBuyNow = async () => {
     if (!product) return;
+    if (product.stock !== undefined && Number(product.stock) <= 0) {
+      Alert.alert(
+        "Craft Out of Stock",
+        `"${product.title}" is currently sold out and unavailable for immediate checkout. Would you like to message the master artisan directly to request a custom made-to-order piece?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Inquire with Artisan", onPress: () => setShowEnquiryModal(true) }
+        ]
+      );
+      return;
+    }
     await addToCart(product, quantity);
     router.push("/buyer-cart");
   };
@@ -454,9 +500,9 @@ export default function ProductDetail() {
                 <Text style={styles.priceCurrent}>₹{Number(product.price || 0).toLocaleString("en-IN")}</Text>
               </View>
 
-              <View style={styles.stockBox}>
-                <Text style={styles.stockBoxText}>
-                  {product.stock > 0 ? "✓ " + product.stock + " " + t("inStock") : t("preOrder")}
+              <View style={[styles.stockBox, product.stock !== undefined && Number(product.stock) <= 0 && styles.stockBoxOutOfStock]}>
+                <Text style={[styles.stockBoxText, product.stock !== undefined && Number(product.stock) <= 0 && styles.stockBoxOutOfStockText]}>
+                  {product.stock !== undefined && Number(product.stock) > 0 ? "✓ " + product.stock + " " + t("inStock") : "SOLD OUT / OUT OF STOCK"}
                 </Text>
               </View>
             </View>
@@ -520,6 +566,68 @@ export default function ProductDetail() {
               <Text style={[styles.specVal, { color: "#2E7D32", fontWeight: "800" }]}>{t("fairTradeProtected")}</Text>
             </View>
           </View>
+
+          {/* Similar Crafts / Recommendations Section (Flipkart / Myntra Style) */}
+          {relatedCrafts.length > 0 && (
+            <View style={styles.similarSection}>
+              <View style={styles.similarHeader}>
+                <View>
+                  <Text style={styles.similarTitle}>Similar Crafts You May Like</Text>
+                  <Text style={styles.similarSub}>Handcrafted by authentic Indian master artisans</Text>
+                </View>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.similarScrollContent}
+              >
+                {relatedCrafts.map((item) => (
+                  <Pressable
+                    key={"similar-" + item.id}
+                    style={styles.similarCard}
+                    onPress={() => {
+                      router.push({
+                        pathname: "/product",
+                        params: { id: String(item.id) }
+                      } as any);
+                    }}
+                  >
+                    <View style={styles.similarImgBox}>
+                      <Image
+                        source={{ uri: item.image_url || "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=400" }}
+                        style={styles.similarImg}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.similarCatTag}>
+                        <Text style={styles.similarCatText} numberOfLines={1}>
+                          {item.category || "Craft"}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.similarInfo}>
+                      <Text style={styles.similarArtisan} numberOfLines={1}>
+                        {item.artisan_name || "MASTER ARTISAN"}
+                      </Text>
+                      <Text style={styles.similarItemTitle} numberOfLines={2}>
+                        {item.title}
+                      </Text>
+                      <View style={styles.similarPriceRow}>
+                        <Text style={styles.similarPrice}>
+                          ₹{Number(item.price || 0).toLocaleString("en-IN")}
+                        </Text>
+                        {item.original_price && item.original_price > item.price && (
+                          <Text style={styles.similarOrigPrice}>
+                            ₹{Number(item.original_price).toLocaleString("en-IN")}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
 
           {/* Verified Customer Reviews Section */}
           <View style={styles.reviewsCard}>
@@ -633,8 +741,16 @@ export default function ProductDetail() {
         </Pressable>
 
         {/* Buy Now Button */}
-        <Pressable style={styles.buyNowBtn} onPress={handleBuyNow}>
-          <Text style={styles.buyNowText}>{t("buyNow")}</Text>
+        <Pressable
+          style={[
+            styles.buyNowBtn,
+            product?.stock !== undefined && Number(product.stock) <= 0 && { backgroundColor: "#6B7280" }
+          ]}
+          onPress={handleBuyNow}
+        >
+          <Text style={styles.buyNowText}>
+            {product?.stock !== undefined && Number(product.stock) <= 0 ? "Sold Out" : t("buyNow")}
+          </Text>
         </Pressable>
       </View>
 
@@ -892,7 +1008,7 @@ const styles = StyleSheet.create({
   },
   imageNavRow: {
     position: "absolute",
-    top: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 12 : 16,
+    top: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 4 : 10,
     left: 20,
     right: 20,
     flexDirection: "row",
@@ -1017,6 +1133,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "800",
     color: "#2E7D32"
+  },
+  stockBoxOutOfStock: {
+    backgroundColor: "#FEE2E2",
+    borderColor: "#FECACA"
+  },
+  stockBoxOutOfStockText: {
+    color: "#DC2626"
   },
   ondcRow: {
     flexDirection: "row",
@@ -1500,5 +1623,99 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#8B4513",
     fontWeight: "700"
+  },
+  similarSection: {
+    marginTop: 20,
+    marginBottom: 8
+  },
+  similarHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12
+  },
+  similarTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: theme.ink
+  },
+  similarSub: {
+    fontSize: 11,
+    color: theme.muted,
+    marginTop: 2
+  },
+  similarScrollContent: {
+    gap: 12,
+    paddingRight: 10
+  },
+  similarCard: {
+    width: 155,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#EAE2D5",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 2
+  },
+  similarImgBox: {
+    position: "relative",
+    width: "100%",
+    height: 140,
+    backgroundColor: "#F2EDE4"
+  },
+  similarImg: {
+    width: "100%",
+    height: "100%"
+  },
+  similarCatTag: {
+    position: "absolute",
+    bottom: 6,
+    left: 6,
+    backgroundColor: "rgba(28, 28, 28, 0.8)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4
+  },
+  similarCatText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#FFFFFF"
+  },
+  similarInfo: {
+    padding: 10
+  },
+  similarArtisan: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: theme.accent,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2
+  },
+  similarItemTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: theme.ink,
+    lineHeight: 16,
+    minHeight: 32
+  },
+  similarPriceRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    marginTop: 6,
+    gap: 6
+  },
+  similarPrice: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: theme.accent
+  },
+  similarOrigPrice: {
+    fontSize: 10,
+    color: "#9E9E9E",
+    textDecorationLine: "line-through"
   }
 });

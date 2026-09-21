@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from backend.app.database import get_db
-from backend.app.models import User, Product, Review
-from backend.app.schemas import ArtisanProfileResponse, ArtisanProfileUpdate, ProductResponse, UserResponse, AdminCreateSellerRequest
+from backend.app.models import User, Product, Review, PayoutAccount
+from backend.app.schemas import ArtisanProfileResponse, ArtisanProfileUpdate, ProductResponse, UserResponse, AdminCreateSellerRequest, PayoutAccountUpdate, PayoutAccountResponse
 from backend.app.services.auth import get_current_user, require_admin, require_artisan
 
 router = APIRouter(prefix="/api/artisan", tags=["Artisan Profile & Verification"])
@@ -120,7 +120,6 @@ def admin_create_seller(
             hashed_password=hash_password(payload.password),
             role="ARTISAN",
             status="ACTIVE",
-            active_mode="BUYER",
             location=payload.location or "India",
             craft=payload.craft or "Handicrafts",
             bio=payload.bio or f"Master artisan specializing in traditional {payload.craft or 'handicrafts'}.",
@@ -309,3 +308,48 @@ def admin_seed_account(
             "location": user.location
         }
     }
+
+
+# ─── Payout Account Endpoints ────────────────────────────────────────────────
+
+@router.get("/payout", response_model=PayoutAccountResponse)
+def get_payout_account(
+    db: Session = Depends(get_db),
+    current_artisan: User = Depends(require_artisan),
+):
+    """Get or initialise payout / bank account details for the current artisan."""
+    payout = db.query(PayoutAccount).filter(PayoutAccount.artisan_id == current_artisan.id).first()
+    if not payout:
+        payout = PayoutAccount(artisan_id=current_artisan.id)
+        db.add(payout)
+        db.commit()
+        db.refresh(payout)
+    return payout
+
+
+@router.put("/payout", response_model=PayoutAccountResponse)
+def update_payout_account(
+    payload: PayoutAccountUpdate,
+    db: Session = Depends(get_db),
+    current_artisan: User = Depends(require_artisan),
+):
+    """Create or update the payout / bank & UPI account for the current artisan."""
+    payout = db.query(PayoutAccount).filter(PayoutAccount.artisan_id == current_artisan.id).first()
+    if not payout:
+        payout = PayoutAccount(artisan_id=current_artisan.id)
+        db.add(payout)
+
+    if payload.upi_id is not None:
+        payout.upi_id = payload.upi_id.strip() or None
+    if payload.account_holder_name is not None:
+        payout.account_holder_name = payload.account_holder_name.strip() or None
+    if payload.account_number is not None:
+        payout.account_number = payload.account_number.strip() or None
+    if payload.ifsc_code is not None:
+        payout.ifsc_code = payload.ifsc_code.strip().upper() or None
+    if payload.bank_name is not None:
+        payout.bank_name = payload.bank_name.strip() or None
+
+    db.commit()
+    db.refresh(payout)
+    return payout

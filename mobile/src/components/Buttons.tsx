@@ -41,11 +41,12 @@ export const PrimaryButton: React.FC<ButtonProps> = ({
 
   return (
     <Pressable
-      style={[
+      style={({ pressed }) => [
         styles.baseButton,
         styles.primaryButton,
         { paddingVertical },
         isInactive && styles.disabledButton,
+        pressed && !isInactive && { opacity: theme.press.opacity, transform: [{ scale: theme.press.scale }] },
         style
       ]}
       onPress={onPress}
@@ -100,11 +101,12 @@ export const SecondaryButton: React.FC<ButtonProps> = ({
 
   return (
     <Pressable
-      style={[
+      style={({ pressed }) => [
         styles.baseButton,
         styles.secondaryButton,
         { paddingVertical },
         isInactive && styles.disabledButton,
+        pressed && !isInactive && { opacity: theme.press.opacity, transform: [{ scale: theme.press.scale }] },
         style
       ]}
       onPress={onPress}
@@ -159,11 +161,12 @@ export const OutlineButton: React.FC<ButtonProps> = ({
 
   return (
     <Pressable
-      style={[
+      style={({ pressed }) => [
         styles.baseButton,
         styles.outlineButton,
         { paddingVertical },
         isInactive && styles.disabledButton,
+        pressed && !isInactive && { opacity: theme.press.opacity, transform: [{ scale: theme.press.scale }] },
         style
       ]}
       onPress={onPress}
@@ -222,9 +225,10 @@ export const IconButton: React.FC<IconButtonProps> = ({
 }) => {
   return (
     <Pressable
-      style={[
+      style={({ pressed }) => [
         styles.iconButton,
         { backgroundColor, width: size * 1.8, height: size * 1.8, borderRadius: (size * 1.8) / 2 },
+        pressed && { opacity: theme.press.opacity, transform: [{ scale: theme.press.scale }] },
         style
       ]}
       onPress={onPress}

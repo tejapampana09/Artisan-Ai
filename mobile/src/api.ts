@@ -642,5 +642,86 @@ export const api = {
       },
       "STUDIO"
     );
-  }
+  },
+
+  // -------------------------------------------------------------
+  // DELIVERY ADDRESSES
+  // -------------------------------------------------------------
+  async getAddresses() {
+    return request<any[]>("/marketplace/addresses", {}, "MARKETPLACE");
+  },
+
+  async createAddress(payload: {
+    name: string;
+    phone?: string;
+    pincode: string;
+    address_line: string;
+    city?: string;
+    state?: string;
+    tag?: string;
+    is_default?: boolean;
+  }) {
+    return request<any>(
+      "/marketplace/addresses",
+      { method: "POST", body: JSON.stringify(payload) },
+      "MARKETPLACE"
+    );
+  },
+
+  async updateAddress(
+    id: number,
+    payload: Partial<{
+      name: string;
+      phone: string;
+      pincode: string;
+      address_line: string;
+      city: string;
+      state: string;
+      tag: string;
+      is_default: boolean;
+    }>
+  ) {
+    return request<any>(
+      `/marketplace/addresses/${id}`,
+      { method: "PUT", body: JSON.stringify(payload) },
+      "MARKETPLACE"
+    );
+  },
+
+  async setDefaultAddress(id: number) {
+    return request<any>(
+      `/marketplace/addresses/${id}/default`,
+      { method: "POST" },
+      "MARKETPLACE"
+    );
+  },
+
+  async deleteAddress(id: number) {
+    return request<null>(
+      `/marketplace/addresses/${id}`,
+      { method: "DELETE" },
+      "MARKETPLACE"
+    );
+  },
+
+  // -------------------------------------------------------------
+  // PAYOUT ACCOUNT (ARTISAN STUDIO)
+  // -------------------------------------------------------------
+  async getPayoutAccount() {
+    return request<any>("/artisan/payout", {}, "STUDIO");
+  },
+
+  async updatePayoutAccount(payload: {
+    upi_id?: string;
+    account_holder_name?: string;
+    account_number?: string;
+    ifsc_code?: string;
+    bank_name?: string;
+  }) {
+    return request<any>(
+      "/artisan/payout",
+      { method: "PUT", body: JSON.stringify(payload) },
+      "STUDIO"
+    );
+  },
 };

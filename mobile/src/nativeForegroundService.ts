@@ -1,6 +1,6 @@
 import { NativeModules, Platform } from "react-native";
 import { BASE_URL } from "./api";
-import { getSession, AuthDomain } from "./storage";
+import type { AuthDomain } from "./storage";
 
 const { ArtisanNotificationModule } = NativeModules;
 
@@ -10,6 +10,7 @@ export async function startNativeForegroundService(domainOverride?: AuthDomain):
   }
 
   try {
+    const { getSession } = require("./storage");
     const session = await getSession(domainOverride);
     const token = session?.token;
     if (!token || token === "guest_buyer_token") {

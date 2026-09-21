@@ -61,156 +61,24 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-def ensure_schema_migrations(eng):
-    driver = eng.url.drivername.lower()
-    if driver.startswith("sqlite"):
-        with eng.connect() as conn:
-            # Check users table columns
-            res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
-            user_cols = [row[1] for row in res]
-            if user_cols:
-                if "status" not in user_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN status VARCHAR DEFAULT 'ACTIVE'"))
-                if "token_version" not in user_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 1"))
-                if "avatar_url" not in user_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url TEXT"))
-                if "bio" not in user_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN bio TEXT"))
-                if "craft_specialization" not in user_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN craft_specialization VARCHAR"))
-                if "experience_years" not in user_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN experience_years INTEGER DEFAULT 0"))
-                if "verification_status" not in user_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN verification_status VARCHAR DEFAULT 'UNVERIFIED'"))
-                if "active_mode" not in user_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN active_mode VARCHAR DEFAULT 'BUYER'"))
-                if "push_token" not in user_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN push_token VARCHAR"))
-
-            # Check products table columns
-            res_prod = conn.execute(text("PRAGMA table_info(products)")).fetchall()
-            prod_cols = [row[1] for row in res_prod]
-            if prod_cols:
-                if "status" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN status VARCHAR DEFAULT 'DRAFT'"))
-                if "craft_process" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN craft_process TEXT"))
-                if "region_of_origin" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN region_of_origin VARCHAR"))
-                if "handmade_pct" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN handmade_pct INTEGER DEFAULT 100"))
-                if "production_time_days" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN production_time_days INTEGER DEFAULT 3"))
-                if "secondary_images" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN secondary_images TEXT"))
-                if "verification_status" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN verification_status VARCHAR DEFAULT 'UNVERIFIED'"))
-                if "other_cost" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN other_cost NUMERIC(12, 2) DEFAULT 0.00"))
-                if "auto_smart_pricing_enabled" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN auto_smart_pricing_enabled BOOLEAN DEFAULT 0"))
-                if "title_en" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN title_en VARCHAR"))
-                if "description_en" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN description_en TEXT"))
-                if "craft_story_en" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN craft_story_en TEXT"))
-                if "translations" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN translations TEXT"))
-                if "published_at" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN published_at TIMESTAMP"))
-                if "created_at" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"))
-                if "updated_at" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"))
-                if "seller_id" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN seller_id INTEGER"))
-                if "enhanced_image_url" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN enhanced_image_url VARCHAR"))
-                if "min_margin_pct" not in prod_cols:
-                    conn.execute(text("ALTER TABLE products ADD COLUMN min_margin_pct NUMERIC(5, 4) DEFAULT 0.2000"))
-
-            # Check orders table columns
-            res_ord = conn.execute(text("PRAGMA table_info(orders)")).fetchall()
-            ord_cols = [row[1] for row in res_ord]
-            if ord_cols:
-                if "payment_status" not in ord_cols:
-                    conn.execute(text("ALTER TABLE orders ADD COLUMN payment_status VARCHAR DEFAULT 'UNPAID'"))
-                if "cancellation_status" not in ord_cols:
-                    conn.execute(text("ALTER TABLE orders ADD COLUMN cancellation_status VARCHAR DEFAULT 'NONE'"))
-                if "cancellation_reason" not in ord_cols:
-                    conn.execute(text("ALTER TABLE orders ADD COLUMN cancellation_reason TEXT"))
-                if "tracking_history" not in ord_cols:
-                    conn.execute(text("ALTER TABLE orders ADD COLUMN tracking_history TEXT"))
-                if "payment_method" not in ord_cols:
-                    conn.execute(text("ALTER TABLE orders ADD COLUMN payment_method VARCHAR DEFAULT 'UPI'"))
-                if "payment_tx_id" not in ord_cols:
-                    conn.execute(text("ALTER TABLE orders ADD COLUMN payment_tx_id VARCHAR"))
-
-            # Check draft_catalogs table columns
-            res_draft = conn.execute(text("PRAGMA table_info(draft_catalogs)")).fetchall()
-            draft_cols = [row[1] for row in res_draft]
-            if draft_cols:
-                if "is_consumed" not in draft_cols:
-                    conn.execute(text("ALTER TABLE draft_catalogs ADD COLUMN is_consumed BOOLEAN DEFAULT 0 NOT NULL"))
-
-            conn.commit()
-    elif "postgresql" in driver or "postgres" in driver:
-        with eng.connect() as conn:
-            conn.execute(text("ALTER TABLE draft_catalogs ADD COLUMN IF NOT EXISTS is_consumed BOOLEAN DEFAULT FALSE NOT NULL;"))
-            try:
-                conn.execute(text("ALTER TABLE users ALTER COLUMN active_mode DROP NOT NULL;"))
-                conn.execute(text("ALTER TABLE users ALTER COLUMN active_mode SET DEFAULT 'BUYER';"))
-            except Exception as e:
-                logger.warning("[Database] Could not adjust users.active_mode column: %s", e)
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'ACTIVE';"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT 1;"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR;"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS craft_specialization VARCHAR;"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS experience_years INTEGER DEFAULT 0;"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_status VARCHAR DEFAULT 'UNVERIFIED';"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token VARCHAR(512);"))
-            try:
-                conn.execute(text("CREATE INDEX IF NOT EXISTS idx_users_push_token ON users(push_token);"))
-            except Exception:
-                pass
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'DRAFT';"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS craft_process TEXT;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS region_of_origin VARCHAR;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS handmade_pct INTEGER DEFAULT 100;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS production_time_days INTEGER DEFAULT 3;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS secondary_images TEXT;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS verification_status VARCHAR DEFAULT 'UNVERIFIED';"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS other_cost NUMERIC(12, 2) DEFAULT 0.00;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS auto_smart_pricing_enabled BOOLEAN DEFAULT FALSE;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS title_en VARCHAR;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS description_en TEXT;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS craft_story_en TEXT;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS translations TEXT;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS published_at TIMESTAMP;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS seller_id INTEGER;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS enhanced_image_url VARCHAR;"))
-            conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS min_margin_pct NUMERIC(5, 4) DEFAULT 0.2000;"))
-            conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR DEFAULT 'UNPAID';"))
-            conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancellation_status VARCHAR DEFAULT 'NONE';"))
-            conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;"))
-            conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_history TEXT;"))
-            conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR DEFAULT 'UPI';"))
-            conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_tx_id VARCHAR;"))
-            conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;"))
-            conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id INTEGER;"))
-            conn.commit()
-
-ensure_sqlite_schema = ensure_schema_migrations
-
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+
+def ensure_schema_migrations(engine):
+    """Ensure schema_migrations table exists (for PostgreSQL compatibility)."""
+    from sqlalchemy import inspect, text
+    inspector = inspect(engine)
+    if not inspector.has_table("schema_migrations"):
+        with engine.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE schema_migrations (
+                    version VARCHAR(255) PRIMARY KEY,
+                    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.commit()

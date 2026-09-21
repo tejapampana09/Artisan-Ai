@@ -55,7 +55,6 @@ def admin_create_artisan(
             hashed_password=hash_password(payload.password),
             role="ARTISAN",
             status="ACTIVE",
-            active_mode="BUYER",
             location=payload.location.strip() if payload.location else "India",
             craft=payload.craft.strip() if payload.craft else "Handicrafts",
             craft_specialization=payload.craft.strip() if payload.craft else "Handicrafts",

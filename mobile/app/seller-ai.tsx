@@ -22,10 +22,6 @@ import {
   createAudioPlayer,
   AudioPlayer
 } from "expo-audio";
-import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent
-} from "expo-speech-recognition";
 import { Ionicons } from "@expo/vector-icons";
 import { api, BASE_URL } from "../src/api";
 import { imageAssetToApiSource } from "../src/media";
@@ -292,40 +288,29 @@ export default function SellerAICatalogStudio() {
   // ─── Native Speech-to-Text Recognition ───
   const [isRecognizing, setIsRecognizing] = useState(false);
 
-  useSpeechRecognitionEvent("start", () => {
-    setIsRecognizing(true);
-  });
-
-  useSpeechRecognitionEvent("end", () => {
-    setIsRecognizing(false);
-  });
-
-  useSpeechRecognitionEvent("result", (event) => {
-    const transcript = event.results[0]?.transcript;
-    if (transcript) {
-      const activeQ = QNA_QUESTIONS[activeQnaIndex];
-      setQnaAnswers((prev) => ({
-        ...prev,
-        [activeQ.id]: transcript
-      }));
-    }
-  });
-
-  useSpeechRecognitionEvent("error", (event) => {
-    console.warn("Speech recognition error:", event.error, event.message);
-    setIsRecognizing(false);
-  });
-
   const handleToggleSpeech = async () => {
     try {
+      let SpeechModule: any = null;
+      try {
+        SpeechModule = require("expo-speech-recognition")?.ExpoSpeechRecognitionModule;
+      } catch {}
+
+      if (!SpeechModule) {
+        Alert.alert(
+          "Voice Input in Expo Go",
+          "In Expo Go, voice typing is powered by your mobile keyboard's microphone. Tap any question text box and tap the microphone icon on your keyboard to speak in your language."
+        );
+        return;
+      }
+
       if (isRecognizing) {
-        await ExpoSpeechRecognitionModule.stop();
+        await SpeechModule.stop();
         setIsRecognizing(false);
         return;
       }
 
-      const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      if (!result.granted) {
+      const result = await SpeechModule.requestPermissionsAsync();
+      if (!result?.granted) {
         return Alert.alert(
           "Microphone Permission",
           "Microphone access is required to speak your answer."
@@ -344,7 +329,7 @@ export default function SellerAICatalogStudio() {
       };
       const langCode = localeMap[selectedLang] || "te-IN";
 
-      await ExpoSpeechRecognitionModule.start({
+      await SpeechModule.start({
         lang: langCode,
         interimResults: true,
         maxAlternatives: 1,
@@ -352,9 +337,9 @@ export default function SellerAICatalogStudio() {
         requiresOnDeviceRecognition: false,
         addsPunctuation: true,
       });
+      setIsRecognizing(true);
     } catch (err: any) {
-      console.warn("Failed to start speech recognition:", err);
-      Alert.alert("Speech Error", err?.message || "Could not start speech recognition.");
+      console.warn("Speech recognition notice:", err);
       setIsRecognizing(false);
     }
   };

@@ -5,11 +5,11 @@ export const theme = {
     primaryLight: "#FBF3F0",
     primaryMuted: "#DEC0B7",
     
-    accent: "#D97706", // Ochre Brass
-    accentLight: "#FEF3C7",
-    accentDark: "#B45309",
+    accent: "#9F3C16", // Terracotta Artisan Accent
+    accentLight: "#FBF3F0",
+    accentDark: "#7B2E10",
 
-    bg: "#FAF9F6", // Natural Warm Off-White
+    bg: "#FAF9F6", // Natural Warm Off-White Heritage Linen
     surface: "#FFFFFF",
     surfaceMuted: "#F5F3EF",
     card: "#FFFFFF",
@@ -126,6 +126,11 @@ export const theme = {
     xl: 20,
     xxl: 28,
     full: 9999
+  },
+
+  press: {
+    opacity: 0.85,
+    scale: 0.98
   },
 
   shadows: {

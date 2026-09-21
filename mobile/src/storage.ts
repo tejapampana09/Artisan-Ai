@@ -1,7 +1,5 @@
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { resetNotificationHistory, syncPushTokenWithBackend } from "./notifications";
-import { startNativeForegroundService, stopNativeForegroundService } from "./nativeForegroundService";
 
 const STUDIO_TOKEN_KEY = "artisan_ai_studio_token";
 const MARKETPLACE_TOKEN_KEY = "artisan_ai_marketplace_token";
@@ -22,7 +20,11 @@ export async function saveSession(
   domain: AuthDomain,
   user: unknown
 ): Promise<void> {
-  resetNotificationHistory();
+  try {
+    const { resetNotificationHistory } = require("./notifications");
+    resetNotificationHistory();
+  } catch {}
+
   if (domain === "STUDIO") {
     // Purge any opposing marketplace/buyer session (strict mutual exclusion)
     await SecureStore.deleteItemAsync(MARKETPLACE_TOKEN_KEY).catch(() => {});
@@ -39,8 +41,16 @@ export async function saveSession(
     await AsyncStorage.setItem(MARKETPLACE_USER_KEY, JSON.stringify(user ?? null));
   }
   await AsyncStorage.setItem(ACTIVE_DOMAIN_KEY, domain);
-  syncPushTokenWithBackend(domain).catch(() => {});
-  startNativeForegroundService(domain).catch(() => {});
+
+  try {
+    const { syncPushTokenWithBackend } = require("./notifications");
+    syncPushTokenWithBackend(domain).catch(() => {});
+  } catch {}
+
+  try {
+    const { startNativeForegroundService } = require("./nativeForegroundService");
+    startNativeForegroundService(domain).catch(() => {});
+  } catch {}
 }
 
 export async function getSession(requestedDomain?: AuthDomain): Promise<UserSession> {
@@ -71,7 +81,10 @@ export async function setActiveDomain(domain: AuthDomain): Promise<void> {
 }
 
 export async function clearSession(domain?: AuthDomain): Promise<void> {
-  resetNotificationHistory();
+  try {
+    const { resetNotificationHistory } = require("./notifications");
+    resetNotificationHistory();
+  } catch {}
   if (!domain || domain === "STUDIO") {
     await SecureStore.deleteItemAsync(STUDIO_TOKEN_KEY).catch(() => {});
     await AsyncStorage.removeItem(STUDIO_USER_KEY).catch(() => {});
@@ -88,7 +101,24 @@ export async function clearSession(domain?: AuthDomain): Promise<void> {
       await AsyncStorage.removeItem(ACTIVE_DOMAIN_KEY).catch(() => {});
     }
   }
-  stopNativeForegroundService().catch(() => {});
+  try {
+    const { stopNativeForegroundService } = require("./nativeForegroundService");
+    stopNativeForegroundService().catch(() => {});
+  } catch {}
+
+  // Disconnect / Sign out from Google Play Services to ensure Account Picker modal is shown on next login
+  try {
+    const { TurboModuleRegistry, NativeModules } = require("react-native");
+    const isAvailable =
+      (TurboModuleRegistry?.get && TurboModuleRegistry.get("RNGoogleSignin")) ||
+      NativeModules?.RNGoogleSignin;
+    if (isAvailable) {
+      const { GoogleSignin } = require("@react-native-google-signin/google-signin");
+      if (GoogleSignin) {
+        await GoogleSignin.signOut().catch(() => {});
+      }
+    }
+  } catch {}
 }
 
 /**

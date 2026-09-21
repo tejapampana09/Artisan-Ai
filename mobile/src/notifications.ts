@@ -1,6 +1,7 @@
 import "./init";
 import { Platform, AppState, AppStateStatus } from "react-native";
 import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
 import { getSession, AuthDomain } from "./storage";
@@ -23,6 +24,41 @@ export interface NotificationItem {
 
 const PUSH_TOKEN_KEY = "artisan_push_token";
 const NOTIFICATIONS_CACHE_KEY = "artisan_cached_notifications";
+const SHOWN_NOTIFS_KEY = "artisan_shown_notification_ids";
+
+// Persistent deduplication set to guarantee notifications NEVER fire twice
+const shownNotificationIds = new Set<number>();
+AsyncStorage.getItem(SHOWN_NOTIFS_KEY).then((raw) => {
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        for (const id of arr) {
+          shownNotificationIds.add(Number(id));
+        }
+      }
+    } catch {}
+  }
+}).catch(() => {});
+
+async function recordNotificationShown(id: number) {
+  shownNotificationIds.add(id);
+  const arr = Array.from(shownNotificationIds).slice(-200);
+  await AsyncStorage.setItem(SHOWN_NOTIFS_KEY, JSON.stringify(arr)).catch(() => {});
+}
+
+// Listen for notifications delivered directly via Expo Push Server (app active/background)
+Notifications.addNotificationReceivedListener((notification) => {
+  const data = notification?.request?.content?.data as any;
+  const notifId = data?.notification_id || data?.id;
+  if (notifId) {
+    const num = Number(notifId);
+    recordNotificationShown(num);
+    for (const d of ["STUDIO", "MARKETPLACE"] as AuthDomain[]) {
+      domainCaches[d].knownIds.add(num);
+    }
+  }
+});
 
 // Configure how incoming notifications appear while the app is foregrounded
 Notifications.setNotificationHandler({
@@ -162,7 +198,12 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     // Try fetching push token (Expo Push Token or native Device/FCM Token)
     let token: string | null = null;
     try {
-      const expoToken = await Notifications.getExpoPushTokenAsync();
+      const projectId =
+        Constants?.expoConfig?.extra?.eas?.projectId ??
+        (Constants as any)?.easConfig?.projectId;
+      const expoToken = projectId
+        ? await Notifications.getExpoPushTokenAsync({ projectId })
+        : await Notifications.getExpoPushTokenAsync();
       if (expoToken?.data) {
         token = expoToken.data;
       }
@@ -228,15 +269,26 @@ export async function syncPushTokenWithBackend(domainOverride?: AuthDomain): Pro
 }
 
 /**
- * Send an immediate local notification with heads-up banner, sound, and vibration
+ * Send an immediate local notification with heads-up banner, sound, and vibration.
+ * Uses deterministic identifier and persistent deduplication to guarantee notifications NEVER trigger twice.
  */
 export async function sendLocalNotification(
   title: string,
   body: string,
-  data?: Record<string, unknown>
+  data?: Record<string, unknown>,
+  notificationId?: number | string
 ) {
   try {
+    if (notificationId) {
+      const numId = Number(notificationId);
+      if (shownNotificationIds.has(numId)) {
+        return; // Already shown or received! Never alert twice.
+      }
+      await recordNotificationShown(numId);
+    }
+    const identifier = notificationId ? `artisan_notif_${notificationId}` : undefined;
     await Notifications.scheduleNotificationAsync({
+      identifier,
       content: {
         title,
         body,
@@ -270,6 +322,21 @@ export async function fetchNotifications(domainOverride?: AuthDomain): Promise<N
     activeDomain = domain;
     const cache = domainCaches[domain];
 
+    // Seed knownIds from local cache on cold start before network fetch
+    if (!cache.hasInitializedHistory && cache.knownIds.size === 0) {
+      try {
+        const local = await AsyncStorage.getItem(`${NOTIFICATIONS_CACHE_KEY}_${domain.toLowerCase()}`);
+        if (local) {
+          const parsed: NotificationItem[] = JSON.parse(local);
+          if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+              cache.knownIds.add(item.id);
+            }
+          }
+        }
+      } catch {}
+    }
+
     const res = await api.notifications(domain);
     if (Array.isArray(res)) {
       // Check if new unread items appeared compared to previous cache
@@ -282,6 +349,10 @@ export async function fetchNotifications(domainOverride?: AuthDomain): Promise<N
       // Trigger native notifications for new arrivals if session is already active
       if (cache.hasInitializedHistory && newlyReceived.length > 0) {
         for (const item of newlyReceived) {
+          // Never trigger if push notification already presented this to user
+          if (shownNotificationIds.has(item.id)) {
+            continue;
+          }
           let allowLocal = true;
           try {
             const rawSettings = await AsyncStorage.getItem("artisan_notifications_settings");
@@ -302,11 +373,16 @@ export async function fetchNotifications(domainOverride?: AuthDomain): Promise<N
           } catch {}
 
           if (allowLocal) {
-            await sendLocalNotification(item.title, item.message, {
-              id: item.id,
-              type: item.type,
-              role: domain === "STUDIO" ? "seller" : "buyer"
-            });
+            await sendLocalNotification(
+              item.title,
+              item.message,
+              {
+                id: item.id,
+                type: item.type,
+                role: domain === "STUDIO" ? "seller" : "buyer"
+              },
+              item.id
+            );
           }
         }
       }

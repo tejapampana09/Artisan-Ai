@@ -9,10 +9,12 @@ import {
   Alert,
   TextInput,
   StatusBar,
-  Platform
+  Platform,
+  Modal
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../src/theme";
 import { getSession, clearSession } from "../src/storage";
@@ -37,7 +39,9 @@ export default function SettingsScreen() {
   const [promoNotifs, setPromoNotifs] = useState<boolean>(true);
   const [aiTipsNotifs, setAiTipsNotifs] = useState<boolean>(true);
 
-  const [cacheClearedToast, setCacheClearedToast] = useState<boolean>(false);
+  const [showSignOutModal, setShowSignOutModal] = useState<boolean>(false);
+  const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
+  const [showCouponsModal, setShowCouponsModal] = useState<boolean>(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -73,10 +77,14 @@ export default function SettingsScreen() {
   };
 
   const handleSaveAddress = async () => {
-    setSavedAddress(tempAddress);
-    await AsyncStorage.setItem(SETTINGS_ADDR_KEY, tempAddress);
+    if (!tempAddress.trim()) {
+      Alert.alert("Address Empty", "Please enter a valid delivery address.");
+      return;
+    }
+    setSavedAddress(tempAddress.trim());
+    await AsyncStorage.setItem(SETTINGS_ADDR_KEY, tempAddress.trim());
     setEditingAddress(false);
-    Alert.alert("Saved", "Your default delivery address has been updated.");
+    Alert.alert("Saved", "Your delivery address has been updated.");
   };
 
   const toggleNotif = async (key: "order" | "promo" | "aiTips", val: boolean) => {
@@ -101,29 +109,6 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleClearCache = async () => {
-    Alert.alert(
-      "Clear Local Cache?",
-      "This will refresh product listings and clear temporary app data. Your login session will remain active.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Clear Now",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await AsyncStorage.removeItem("artisan_cached_marketplace_products");
-              setCacheClearedToast(true);
-              setTimeout(() => setCacheClearedToast(false), 3000);
-            } catch (e) {
-              Alert.alert("Error", "Could not clear cache");
-            }
-          }
-        }
-      ]
-    );
-  };
-
   const isLoggedIn = Boolean(
     session.token &&
     session.token !== "guest_buyer_token" &&
@@ -140,26 +125,11 @@ export default function SettingsScreen() {
         .toUpperCase()
     : "?";
 
-  const handleSignOut = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out from Artisan AI?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          await clearSession();
-          setSession({ token: null, domain: null, user: null });
-          router.replace("/buyer");
-        }
-      }
-    ]);
-  };
-
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAF6F0" />
-      
-      {/* Top Bar */}
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      {/* Myntra-style Top App Bar */}
       <View style={styles.topBar}>
         <Pressable
           onPress={() => {
@@ -167,349 +137,527 @@ export default function SettingsScreen() {
             else router.replace("/buyer");
           }}
           style={styles.backBtn}
+          hitSlop={12}
         >
-          <Text style={styles.backText}>‹ Back</Text>
+          <Ionicons name="arrow-back" size={22} color="#282C3F" />
         </Pressable>
-        <Text style={styles.pageTitle}>
-          {isSeller ? (language === "te" ? "ప్రొఫైల్ & ఖాతా" : "Artisan Profile") : (language === "te" ? "సెట్టింగ్‌లు & ప్రొఫైల్" : "Settings & Profile")}
+        <Text style={styles.topBarTitle}>
+          {language === "te" ? "ప్రొఫైల్ & ఖాతా" : "Profile"}
         </Text>
-        <View style={{ width: 50 }} />
+        <Pressable
+          onPress={() => router.push("/buyer-cart")}
+          style={styles.cartIconBtn}
+          hitSlop={10}
+        >
+          <Ionicons name="bag-outline" size={22} color="#282C3F" />
+        </Pressable>
       </View>
 
-      {cacheClearedToast && (
-        <View style={styles.toast}>
-          <Text style={styles.toastText}>✓ Local cache cleared successfully</Text>
-        </View>
-      )}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={[styles.avatar, !isLoggedIn && { backgroundColor: "#8C7E72" }]}>
-            <Text style={styles.avatarText}>{isLoggedIn ? userInitials : "👤"}</Text>
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>
-              {isLoggedIn
-                ? (user?.full_name || user?.name || (isSeller ? "Master Artisan" : "Customer"))
-                : "Not Logged In"}
-            </Text>
-            <Text style={styles.profileEmail}>
-              {isLoggedIn
-                ? (user?.email || "Active Session")
-                : "Guest Visitor"}
-            </Text>
-            {isSeller && (user?.craft || user?.craft_specialization) && (
-              <Text style={{ fontSize: 12, color: theme.colors.primary, fontWeight: "600", marginTop: 2 }}>
-                🎨 {user?.craft || user?.craft_specialization}
-              </Text>
-            )}
-            {isSeller && user?.phone && (
-              <Text style={{ fontSize: 11, color: theme.colors.inkMuted, marginTop: 1 }}>
-                📞 {user.phone}
-              </Text>
-            )}
-            <View style={[
-              styles.roleBadge,
-              !isLoggedIn
-                ? styles.guestBadge
-                : isSeller
-                ? styles.sellerBadge
-                : styles.buyerBadge
-            ]}>
-              <Text style={[
-                styles.roleBadgeText,
-                !isLoggedIn
-                  ? styles.guestBadgeText
-                  : isSeller
-                  ? styles.sellerBadgeText
-                  : styles.buyerBadgeText
-              ]}>
-                {!isLoggedIn
-                  ? "🔒 Guest Mode"
-                  : isSeller
-                  ? "🎨 Verified Artisan Studio"
-                  : "🛍️ Heritage Marketplace (Buyer)"}
-              </Text>
+        {/* 1. Myntra Profile Header Card */}
+        <View style={styles.profileHeaderCard}>
+          <View style={styles.profileTopRow}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitial}>{isLoggedIn ? userInitials : "👤"}</Text>
             </View>
-          </View>
-        </View>
+            <View style={styles.profileDetailsCol}>
+              <Text style={styles.profileUserName} numberOfLines={1}>
+                {isLoggedIn
+                  ? user?.full_name || user?.name || (isSeller ? "Master Artisan" : "Verified Customer")
+                  : "Welcome to Artisan AI"}
+              </Text>
+              <Text style={styles.profileUserContact} numberOfLines={1}>
+                {isLoggedIn
+                  ? user?.email || user?.phone || "Active Member"
+                  : "Sign in for the best handcrafted shopping"}
+              </Text>
 
-        {!isLoggedIn && (
-          <Pressable
-            style={styles.signInCardBtn}
-            onPress={() => router.push("/login")}
-          >
-            <Text style={styles.signInCardBtnText}>✨ Sign In to Artisan AI</Text>
-            <Text style={styles.signInCardBtnSub}>Access orders, saved wishlist & direct artisan enquiries</Text>
-          </Pressable>
-        )}
-
-        {/* Quick Nav Switcher */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>WORKSPACE / QUICK ACCESS</Text>
-          <View style={styles.cardBox}>
-            {isSeller ? (
-              <>
-                <Pressable
-                  style={styles.menuRow}
-                  onPress={() => router.push("/seller-products")}
-                >
-                  <View style={styles.menuIconBox}>
-                    <Text style={styles.menuEmoji}>📦</Text>
-                  </View>
-                  <View style={styles.menuTextBox}>
-                    <Text style={styles.menuTitle}>{language === "te" ? "హస్తకళల జాబితా" : "Craft Catalog"}</Text>
-                    <Text style={styles.menuDesc}>{language === "te" ? "ఉత్పత్తుల స్టాక్ మరియు ధరలను నిర్వహించండి" : "Manage stock, prices & catalog items"}</Text>
-                  </View>
-                  <Text style={styles.chevron}>›</Text>
-                </Pressable>
-
-                <Pressable
-                  style={styles.menuRow}
-                  onPress={() => router.push("/seller-orders")}
-                >
-                  <View style={styles.menuIconBox}>
-                    <Text style={styles.menuEmoji}>🚚</Text>
-                  </View>
-                  <View style={styles.menuTextBox}>
-                    <Text style={styles.menuTitle}>{language === "te" ? "కస్టమర్ ఆర్డర్లు" : "Customer Orders"}</Text>
-                    <Text style={styles.menuDesc}>{language === "te" ? "ఆర్డర్ డెలివరీ మరియు ప్యాకింగ్ వివరాలు" : "Track dispatch & fulfillment status"}</Text>
-                  </View>
-                  <Text style={styles.chevron}>›</Text>
-                </Pressable>
-
-                <Pressable
-                  style={styles.menuRow}
-                  onPress={() => router.push("/seller-business")}
-                >
-                  <View style={styles.menuIconBox}>
-                    <Text style={styles.menuEmoji}>📈</Text>
-                  </View>
-                  <View style={styles.menuTextBox}>
-                    <Text style={styles.menuTitle}>{language === "te" ? "వ్యాపార విశ్లేషణ" : "Market Intelligence"}</Text>
-                    <Text style={styles.menuDesc}>{language === "te" ? "కస్టమర్ డిమాండ్ మరియు మార్కెట్ ట్రెండ్స్" : "View demand forecast & category trends"}</Text>
-                  </View>
-                  <Text style={styles.chevron}>›</Text>
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <Pressable
-                  style={styles.menuRow}
-                  onPress={() => router.push("/buyer-orders")}
-                >
-                  <View style={styles.menuIconBox}>
-                    <Text style={styles.menuEmoji}>📦</Text>
-                  </View>
-                  <View style={styles.menuTextBox}>
-                    <Text style={styles.menuTitle}>My Orders & Tracking</Text>
-                    <Text style={styles.menuDesc}>View live ONDC dispatch status</Text>
-                  </View>
-                  <Text style={styles.chevron}>›</Text>
-                </Pressable>
-
-                <View style={styles.divider} />
-
-                <Pressable
-                  style={styles.menuRow}
-                  onPress={() => router.push("/buyer-cart")}
-                >
-                  <View style={styles.menuIconBox}>
-                    <Text style={styles.menuEmoji}>🛒</Text>
-                  </View>
-                  <View style={styles.menuTextBox}>
-                    <Text style={styles.menuTitle}>Shopping Bag</Text>
-                    <Text style={styles.menuDesc}>Review cart and checkout items</Text>
-                  </View>
-                  <Text style={styles.chevron}>›</Text>
-                </Pressable>
-
-                <View style={styles.divider} />
-
-                <Pressable
-                  style={styles.menuRow}
-                  onPress={() => router.push("/buyer-assistant")}
-                >
-                  <View style={styles.menuIconBox}>
-                    <Text style={styles.menuEmoji}>✨</Text>
-                  </View>
-                  <View style={styles.menuTextBox}>
-                    <Text style={styles.menuTitle}>Gemini Craft Assistant</Text>
-                    <Text style={styles.menuDesc}>AI Heritage & art recommendation chat</Text>
-                  </View>
-                  <Text style={styles.chevron}>›</Text>
-                </Pressable>
-              </>
-            )}
-          </View>
-        </View>
-
-        {/* Preferences: Language */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>{t("preferences").toUpperCase()}</Text>
-          <View style={styles.cardBox}>
-            <Text style={styles.settingLabel}>{t("appLanguage")}</Text>
-            <Text style={styles.settingSub}>{t("selectInterfaceLanguage")}</Text>
-            <View style={styles.langGrid}>
-              {[
-                { label: t("english"), code: "en" as AppLanguage },
-                { label: t("telugu"), code: "te" as AppLanguage },
-                { label: t("hindi"), code: "hi" as AppLanguage },
-                { label: t("tamil"), code: "ta" as AppLanguage },
-                { label: t("bengali"), code: "bn" as AppLanguage }
-              ].map(item => {
-                const active = language === item.code;
-                return (
-                  <Pressable
-                    key={item.code}
-                    onPress={() => handleSelectLanguage(item.code)}
-                    style={[styles.langChip, active && styles.langChipActive]}
-                  >
-                    <Text style={[styles.langChipText, active && styles.langChipTextActive]}>
-                      {item.label}
+              {isLoggedIn ? (
+                <View style={styles.badgeRow}>
+                  <View style={[styles.rolePill, isSeller ? styles.rolePillSeller : styles.rolePillBuyer]}>
+                    <Text style={[styles.rolePillText, isSeller ? styles.rolePillTextSeller : styles.rolePillTextBuyer]}>
+                      {isSeller ? "Verified Artisan Studio" : "Verified Buyer"}
                     </Text>
-                  </Pressable>
-                );
-              })}
+                  </View>
+                </View>
+              ) : null}
             </View>
+          </View>
 
-            <View style={styles.divider} />
+          {/* Not logged in CTA */}
+          {!isLoggedIn && (
+            <Pressable
+              style={styles.loginBannerBtn}
+              onPress={() => router.push("/login")}
+            >
+              <Text style={styles.loginBannerBtnText}>LOG IN / SIGN UP</Text>
+            </Pressable>
+          )}
+        </View>
 
-            {/* Saved Delivery Address */}
-            <View style={styles.addressHeader}>
-              <View>
-                <Text style={styles.settingLabel}>{t("savedDeliveryAddress")}</Text>
-                <Text style={styles.settingSub}>{t("usedForCheckout")}</Text>
-              </View>
+        {/* 2. Myntra Top 4 Quick Actions Grid */}
+        <View style={styles.quickGridCard}>
+          <Pressable
+            style={styles.quickGridItem}
+            onPress={() => {
+              if (isSeller) router.push("/seller-orders");
+              else router.push("/buyer-orders");
+            }}
+          >
+            <View style={[styles.quickGridIconCircle, { backgroundColor: "#FFF1F2" }]}>
+              <Ionicons name="cube-outline" size={22} color="#E11D48" />
+            </View>
+            <Text style={styles.quickGridLabel}>Orders</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.quickGridItem}
+            onPress={() => router.push("/buyer")}
+          >
+            <View style={[styles.quickGridIconCircle, { backgroundColor: "#FFF7ED" }]}>
+              <Ionicons name="heart-outline" size={22} color="#EA580C" />
+            </View>
+            <Text style={styles.quickGridLabel}>Wishlist</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.quickGridItem}
+            onPress={() => setShowCouponsModal(true)}
+          >
+            <View style={[styles.quickGridIconCircle, { backgroundColor: "#FEFCE8" }]}>
+              <Ionicons name="pricetag-outline" size={22} color="#CA8A04" />
+            </View>
+            <Text style={styles.quickGridLabel}>Coupons</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.quickGridItem}
+            onPress={() => setShowHelpModal(true)}
+          >
+            <View style={[styles.quickGridIconCircle, { backgroundColor: "#F0FDF4" }]}>
+              <Ionicons name="headset-outline" size={22} color="#16A34A" />
+            </View>
+            <Text style={styles.quickGridLabel}>Help Center</Text>
+          </Pressable>
+        </View>
+
+        {/* 3. Artisan Studio Section (If Seller) */}
+        {isSeller && (
+          <View style={styles.sectionGroup}>
+            <Text style={styles.sectionTitle}>ARTISAN STUDIO TOOLS</Text>
+            <View style={styles.groupCard}>
               <Pressable
-                onPress={() => setEditingAddress(!editingAddress)}
-                style={styles.editBtn}
+                style={styles.menuItem}
+                onPress={() => router.push("/seller-products")}
               >
-                <Text style={styles.editBtnText}>{editingAddress ? t("cancel") : t("edit")}</Text>
+                <View style={[styles.menuItemIconCircle, { backgroundColor: "#FEF3C7" }]}>
+                  <Ionicons name="grid-outline" size={18} color="#D97706" />
+                </View>
+                <View style={styles.menuItemTextCol}>
+                  <Text style={styles.menuItemTitle}>Craft Catalog & Stock</Text>
+                  <Text style={styles.menuItemDesc}>Add crafts, manage prices, and stock inventory</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+              </Pressable>
+
+              <View style={styles.menuSeparator} />
+
+              <Pressable
+                style={styles.menuItem}
+                onPress={() => router.push("/seller-orders")}
+              >
+                <View style={[styles.menuItemIconCircle, { backgroundColor: "#EDE9FE" }]}>
+                  <Ionicons name="bicycle-outline" size={18} color="#7C3AED" />
+                </View>
+                <View style={styles.menuItemTextCol}>
+                  <Text style={styles.menuItemTitle}>Customer Orders & Dispatch</Text>
+                  <Text style={styles.menuItemDesc}>View packing list and update ONDC dispatch</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+              </Pressable>
+
+              <View style={styles.menuSeparator} />
+
+              <Pressable
+                style={styles.menuItem}
+                onPress={() => router.push("/seller-business")}
+              >
+                <View style={[styles.menuItemIconCircle, { backgroundColor: "#DCFCE7" }]}>
+                  <Ionicons name="trending-up-outline" size={18} color="#15803D" />
+                </View>
+                <View style={styles.menuItemTextCol}>
+                  <Text style={styles.menuItemTitle}>Artisan Market Intelligence</Text>
+                  <Text style={styles.menuItemDesc}>Customer demand, pricing advice & trend forecast</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
               </Pressable>
             </View>
+          </View>
+        )}
 
-            {editingAddress ? (
-              <View style={styles.editAddressBox}>
+        {/* 4. Account Settings */}
+        <View style={styles.sectionGroup}>
+          <Text style={styles.sectionTitle}>ACCOUNT SETTINGS</Text>
+          <View style={styles.groupCard}>
+
+            {/* Saved Delivery Address */}
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => setEditingAddress(!editingAddress)}
+            >
+              <View style={[styles.menuItemIconCircle, { backgroundColor: "#EFF6FF" }]}>
+                <Ionicons name="location-outline" size={18} color="#2563EB" />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuItemTitle}>{t("savedDeliveryAddress")}</Text>
+                <Text style={styles.menuItemDesc} numberOfLines={1}>
+                  {savedAddress ? savedAddress : "Add your home or studio delivery address"}
+                </Text>
+              </View>
+              <Text style={styles.editLinkText}>{editingAddress ? "Cancel" : (savedAddress ? "Edit" : "Add")}</Text>
+            </Pressable>
+
+            {/* Inline Address Edit Form */}
+            {editingAddress && (
+              <View style={styles.inlineAddressBox}>
                 <TextInput
-                  style={styles.addressInput}
+                  style={styles.addressTextInput}
                   value={tempAddress}
                   onChangeText={setTempAddress}
-                  placeholder="Enter house no, street, landmark, city, pincode"
+                  placeholder="Flat / House No, Street, Landmark, City, PIN code"
+                  placeholderTextColor="#9CA3AF"
                   multiline
                 />
-                <Pressable onPress={handleSaveAddress} style={styles.saveAddressBtn}>
-                  <Text style={styles.saveAddressBtnText}>{t("saveAddress")}</Text>
+                <Pressable onPress={handleSaveAddress} style={styles.saveAddressButton}>
+                  <Text style={styles.saveAddressButtonText}>SAVE ADDRESS</Text>
                 </Pressable>
               </View>
-            ) : (
-              <Text style={styles.addressDisplay}>
-                {savedAddress || "No default address saved yet. Tap 'Edit' to add one."}
-              </Text>
             )}
-          </View>
-        </View>
 
-        {/* Notifications */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>NOTIFICATIONS</Text>
-          <View style={styles.cardBox}>
-            <View style={styles.switchRow}>
-              <View style={styles.switchTextCol}>
-                <Text style={styles.settingLabel}>Order Status Alerts</Text>
-                <Text style={styles.settingSub}>Instant updates when artisans ship your craft</Text>
+            <View style={styles.menuSeparator} />
+
+            {/* Language Selector */}
+            <View style={styles.menuItemNoNav}>
+              <View style={[styles.menuItemIconCircle, { backgroundColor: "#FDF2F8" }]}>
+                <Ionicons name="language-outline" size={18} color="#DB2777" />
               </View>
-              <Switch
-                value={orderNotifs}
-                onValueChange={v => toggleNotif("order", v)}
-                trackColor={{ false: "#E2D9CC", true: theme.accent }}
-                thumbColor="#fff"
-              />
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.switchRow}>
-              <View style={styles.switchTextCol}>
-                <Text style={styles.settingLabel}>Heritage Craft Specials</Text>
-                <Text style={styles.settingSub}>Exclusive GI-tagged product drops</Text>
-              </View>
-              <Switch
-                value={promoNotifs}
-                onValueChange={v => toggleNotif("promo", v)}
-                trackColor={{ false: "#E2D9CC", true: theme.accent }}
-                thumbColor="#fff"
-              />
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.switchRow}>
-              <View style={styles.switchTextCol}>
-                <Text style={styles.settingLabel}>AI Assistant Advice</Text>
-                <Text style={styles.settingSub}>Proactive pricing insights & craft care guides</Text>
-              </View>
-              <Switch
-                value={aiTipsNotifs}
-                onValueChange={v => toggleNotif("aiTips", v)}
-                trackColor={{ false: "#E2D9CC", true: theme.accent }}
-                thumbColor="#fff"
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* System & Cache */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>SYSTEM & DATA</Text>
-          <View style={styles.cardBox}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Cloud Backend</Text>
-              <View style={styles.badgeRow}>
-                <View style={styles.onlineDot} />
-                <Text style={styles.infoValue}>CloudFront Live</Text>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuItemTitle}>{t("appLanguage")}</Text>
+                <Text style={styles.menuItemDesc}>{t("selectInterfaceLanguage")}</Text>
+                <View style={styles.langPillsRow}>
+                  {[
+                    { label: "English", code: "en" as AppLanguage },
+                    { label: "తెలుగు", code: "te" as AppLanguage },
+                    { label: "हिन्दी", code: "hi" as AppLanguage },
+                    { label: "தமிழ்", code: "ta" as AppLanguage },
+                    { label: "বাংলা", code: "bn" as AppLanguage }
+                  ].map((item) => {
+                    const active = language === item.code;
+                    return (
+                      <Pressable
+                        key={item.code}
+                        onPress={() => handleSelectLanguage(item.code)}
+                        style={[styles.langChip, active && styles.langChipActive]}
+                      >
+                        <Text style={[styles.langChipText, active && styles.langChipTextActive]}>
+                          {item.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
             </View>
 
-            <View style={styles.divider} />
+            <View style={styles.menuSeparator} />
 
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>AI Model</Text>
-              <Text style={styles.infoValue}>Google Gemini 2.5 Flash</Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>App Version</Text>
-              <Text style={styles.infoValue}>v1.0.0 (Production)</Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <Pressable style={styles.cacheBtn} onPress={handleClearCache}>
-              <Text style={styles.cacheBtnText}>🧹 Clear Local Cache</Text>
+            {/* Direct AI Craft Assistant */}
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => router.push("/buyer-assistant")}
+            >
+              <View style={[styles.menuItemIconCircle, { backgroundColor: "#F3E8FF" }]}>
+                <Ionicons name="sparkles" size={18} color="#9333EA" />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuItemTitle}>Gemini AI Craft Assistant</Text>
+                <Text style={styles.menuItemDesc}>Voice & text heritage art recommendation</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
             </Pressable>
           </View>
         </View>
 
-        {/* Sign Out / Sign In Action */}
+        {/* 5. Notifications & Alerts */}
+        <View style={styles.sectionGroup}>
+          <Text style={styles.sectionTitle}>ALERTS & NOTIFICATIONS</Text>
+          <View style={styles.groupCard}>
+            <View style={styles.switchRow}>
+              <View style={styles.switchTextCol}>
+                <Text style={styles.switchTitle}>Order Status Alerts</Text>
+                <Text style={styles.switchDesc}>Get updates when artisan packs & ships craft</Text>
+              </View>
+              <Switch
+                value={orderNotifs}
+                onValueChange={(v) => toggleNotif("order", v)}
+                trackColor={{ false: "#E5E7EB", true: theme.accent }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.menuSeparator} />
+
+            <View style={styles.switchRow}>
+              <View style={styles.switchTextCol}>
+                <Text style={styles.switchTitle}>Heritage Craft Specials</Text>
+                <Text style={styles.switchDesc}>New GI-tagged artisan craft arrivals and discounts</Text>
+              </View>
+              <Switch
+                value={promoNotifs}
+                onValueChange={(v) => toggleNotif("promo", v)}
+                trackColor={{ false: "#E5E7EB", true: theme.accent }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.menuSeparator} />
+
+            <View style={styles.switchRow}>
+              <View style={styles.switchTextCol}>
+                <Text style={styles.switchTitle}>AI Heritage Advice</Text>
+                <Text style={styles.switchDesc}>Care guides & historical stories for your collection</Text>
+              </View>
+              <Switch
+                value={aiTipsNotifs}
+                onValueChange={(v) => toggleNotif("aiTips", v)}
+                trackColor={{ false: "#E5E7EB", true: theme.accent }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* 6. Legal & Support */}
+        <View style={styles.sectionGroup}>
+          <Text style={styles.sectionTitle}>HELP & LEGAL</Text>
+          <View style={styles.groupCard}>
+            <Pressable style={styles.menuItem} onPress={() => setShowHelpModal(true)}>
+              <View style={[styles.menuItemIconCircle, { backgroundColor: "#F1F5F9" }]}>
+                <Ionicons name="help-circle-outline" size={18} color="#475569" />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuItemTitle}>FAQs & Customer Care</Text>
+                <Text style={styles.menuItemDesc}>Frequently asked questions & 24x7 support</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+            </Pressable>
+
+            <View style={styles.menuSeparator} />
+
+            <Pressable
+              style={styles.menuItem}
+              onPress={() =>
+                Alert.alert(
+                  "Terms of Use",
+                  "Artisan AI connects verified Indian craftspeople directly with buyers through fair-trade principles and ONDC standards."
+                )
+              }
+            >
+              <View style={[styles.menuItemIconCircle, { backgroundColor: "#F1F5F9" }]}>
+                <Ionicons name="document-text-outline" size={18} color="#475569" />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuItemTitle}>Terms of Use</Text>
+                <Text style={styles.menuItemDesc}>Fair trade, buyer protection & artisan policy</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+            </Pressable>
+
+            <View style={styles.menuSeparator} />
+
+            <Pressable
+              style={styles.menuItem}
+              onPress={() =>
+                Alert.alert(
+                  "Privacy Policy",
+                  "We prioritize your privacy. Your personal information and addresses are encrypted and never shared with third parties without consent."
+                )
+              }
+            >
+              <View style={[styles.menuItemIconCircle, { backgroundColor: "#F1F5F9" }]}>
+                <Ionicons name="shield-checkmark-outline" size={18} color="#475569" />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuItemTitle}>Privacy Policy</Text>
+                <Text style={styles.menuItemDesc}>Data security & privacy compliance</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* 7. Myntra-style Bottom Action: LOG OUT or LOG IN */}
         {isLoggedIn ? (
-          <Pressable style={styles.signOutBtn} onPress={handleSignOut}>
-            <Text style={styles.signOutText}>Sign Out from Artisan AI</Text>
+          <Pressable style={styles.myntraLogoutBtn} onPress={() => setShowSignOutModal(true)}>
+            <Text style={styles.myntraLogoutBtnText}>LOG OUT</Text>
           </Pressable>
         ) : (
-          <Pressable style={styles.signInBottomBtn} onPress={() => router.push("/login")}>
-            <Text style={styles.signInBottomText}>Sign In / Create Account</Text>
+          <Pressable style={styles.myntraLoginBtn} onPress={() => router.push("/login")}>
+            <Text style={styles.myntraLoginBtnText}>LOG IN / SIGN UP</Text>
           </Pressable>
         )}
 
-        <Text style={styles.footerNote}>
-          Artisan AI · Empowering Indian Heritage Artisans with GenAI & ONDC
-        </Text>
+        {/* Brand App Version Footer */}
+        <View style={styles.footerWrap}>
+          <Text style={styles.footerVersion}>App Version 1.2.0 (Build 204)</Text>
+          <Text style={styles.footerTagline}>
+            Made with ❤️ for Indian Heritage Artisans • ONDC Network
+          </Text>
+        </View>
       </ScrollView>
+
+      {/* Modern Signout Confirmation Modal */}
+      <Modal
+        visible={showSignOutModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSignOutModal(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowSignOutModal(false)}>
+          <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.signOutBadge}>
+              <Ionicons name="log-out-outline" size={26} color="#DC2626" />
+            </View>
+            <Text style={styles.sheetTitle}>Sign Out from Artisan AI?</Text>
+            <Text style={styles.sheetSub}>
+              Are you sure you want to sign out? You will need to log in again to manage your orders, bag, and artisan enquiries.
+            </Text>
+
+            {isLoggedIn && (
+              <View style={styles.accountChip}>
+                <View style={styles.accountChipAvatar}>
+                  <Text style={styles.accountChipAvatarText}>{userInitials}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.accountChipName} numberOfLines={1}>
+                    {user?.full_name || user?.name || "Artisan Member"}
+                  </Text>
+                  <Text style={styles.accountChipEmail} numberOfLines={1}>
+                    {user?.email || "Logged in"}
+                  </Text>
+                </View>
+                <View style={styles.accountChipRole}>
+                  <Text style={styles.accountChipRoleText}>
+                    {isSeller ? "Artisan" : "Buyer"}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.sheetActions}>
+              <Pressable
+                style={styles.cancelModalBtn}
+                onPress={() => setShowSignOutModal(false)}
+              >
+                <Text style={styles.cancelModalText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.confirmSignOutBtn}
+                onPress={async () => {
+                  setShowSignOutModal(false);
+                  await clearSession();
+                  setSession({ token: null, domain: null, user: null });
+                  router.replace("/buyer");
+                }}
+              >
+                <Text style={styles.confirmSignOutText}>Log Out</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Coupons Modal */}
+      <Modal
+        visible={showCouponsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCouponsModal(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowCouponsModal(false)}>
+          <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Artisan Heritage Offers</Text>
+            <Text style={styles.sheetSub}>Enjoy exclusive promotions on GI-tagged authentic crafts.</Text>
+
+            <View style={styles.couponCard}>
+              <View style={styles.couponBadge}>
+                <Text style={styles.couponBadgeText}>FLAT 15% OFF</Text>
+              </View>
+              <Text style={styles.couponCode}>HERITAGE15</Text>
+              <Text style={styles.couponDesc}>Valid on Kalamkari paintings and Kondapalli wooden toys above ₹1,000</Text>
+            </View>
+
+            <View style={styles.couponCard}>
+              <View style={[styles.couponBadge, { backgroundColor: "#15803D" }]}>
+                <Text style={styles.couponBadgeText}>FREE SHIPPING</Text>
+              </View>
+              <Text style={styles.couponCode}>ONDCFREESHIP</Text>
+              <Text style={styles.couponDesc}>Zero delivery fee on all direct-artisan dispatched orders nationwide</Text>
+            </View>
+
+            <Pressable style={styles.closeModalBtn} onPress={() => setShowCouponsModal(false)}>
+              <Text style={styles.closeModalBtnText}>Done</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Help Center Modal */}
+      <Modal
+        visible={showHelpModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowHelpModal(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowHelpModal(false)}>
+          <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>24x7 Customer & Artisan Support</Text>
+            <Text style={styles.sheetSub}>We are here to help you with orders, returns, and artisan connections.</Text>
+
+            <View style={styles.helpRow}>
+              <Ionicons name="mail-outline" size={20} color={theme.accent} />
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text style={styles.helpRowTitle}>Email Support</Text>
+                <Text style={styles.helpRowSub}>support@artisanai.in</Text>
+              </View>
+            </View>
+
+            <View style={styles.helpRow}>
+              <Ionicons name="call-outline" size={20} color={theme.accent} />
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text style={styles.helpRowTitle}>Toll-Free Helpline</Text>
+                <Text style={styles.helpRowSub}>1800-ARTISAN (9 AM - 8 PM IST)</Text>
+              </View>
+            </View>
+
+            <View style={styles.helpRow}>
+              <Ionicons name="chatbubbles-outline" size={20} color={theme.accent} />
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text style={styles.helpRowTitle}>Direct Artisan Enquiry</Text>
+                <Text style={styles.helpRowSub}>Contact artisan directly on any product page</Text>
+              </View>
+            </View>
+
+            <Pressable style={styles.closeModalBtn} onPress={() => setShowHelpModal(false)}>
+              <Text style={styles.closeModalBtnText}>Close</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -517,378 +665,545 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#FAF6F0"
+    backgroundColor: "#FAF9F6"
   },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 10 : 14,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 4 : 10,
     paddingBottom: 14,
-    backgroundColor: "#FAF6F0",
+    backgroundColor: "#FAF9F6",
     borderBottomWidth: 1,
-    borderBottomColor: "#EAE2D5"
+    borderBottomColor: "#E8E5DF"
   },
   backBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 8
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center"
   },
-  backText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: theme.accent
-  },
-  pageTitle: {
-    fontSize: 18,
+  topBarTitle: {
+    fontSize: 17,
     fontWeight: "800",
-    color: theme.ink
+    color: theme.ink,
+    letterSpacing: -0.2
   },
-  toast: {
-    backgroundColor: "#2E7D32",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    alignItems: "center"
+  cartIconBtn: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center"
   },
-  toastText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 13
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+  scrollContent: {
     paddingBottom: 40
   },
-  profileCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 18,
+
+  /* Profile Header Card */
+  profileHeaderCard: {
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 12,
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     borderWidth: 1,
-    borderColor: "#EAE2D5",
-    marginBottom: 20,
+    borderColor: "#E8E5DF",
+    elevation: 1,
     shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2
+    shadowOpacity: 0.02,
+    shadowRadius: 4
   },
-  avatar: {
+  profileTopRow: {
+    flexDirection: "row",
+    alignItems: "center"
+  },
+  avatarCircle: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "#B85D19",
+    backgroundColor: theme.accent,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 16
+    marginRight: 14,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4
   },
-  avatarText: {
+  avatarInitial: {
     fontSize: 22,
-    fontWeight: "900",
-    color: "#fff"
+    fontWeight: "800",
+    color: "#FFFFFF"
   },
-  profileInfo: {
+  profileDetailsCol: {
     flex: 1
   },
-  profileName: {
-    fontSize: 18,
+  profileUserName: {
+    fontSize: 17,
     fontWeight: "800",
     color: theme.ink,
     marginBottom: 2
   },
-  profileEmail: {
+  profileUserContact: {
     fontSize: 13,
     color: theme.muted,
-    marginBottom: 8
+    marginBottom: 6
   },
-  roleBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8
+  badgeRow: {
+    flexDirection: "row"
   },
-  sellerBadge: {
-    backgroundColor: "#FCEEE3"
+  rolePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
   },
-  buyerBadge: {
-    backgroundColor: "#E8F5E9"
+  rolePillSeller: {
+    backgroundColor: "#FEF3C7"
   },
-  roleBadgeText: {
+  rolePillBuyer: {
+    backgroundColor: "#F0FDF4"
+  },
+  rolePillText: {
     fontSize: 11,
-    fontWeight: "800"
+    fontWeight: "700"
   },
-  sellerBadgeText: {
-    color: "#B85D19"
+  rolePillTextSeller: {
+    color: "#B45309"
   },
-  buyerBadgeText: {
-    color: "#2E7D32"
+  rolePillTextBuyer: {
+    color: "#15803D"
   },
-  section: {
-    marginBottom: 20
+  loginBannerBtn: {
+    backgroundColor: theme.accent,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 12
   },
-  sectionHeader: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: theme.muted,
-    letterSpacing: 1.2,
-    marginBottom: 8,
-    marginLeft: 4
+  loginBannerBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.8
   },
-  cardBox: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 16,
+
+  /* Quick 4 Grid */
+  quickGridCard: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 16,
+    borderRadius: 16,
+    paddingVertical: 14,
     borderWidth: 1,
-    borderColor: "#EAE2D5",
+    borderColor: "#E8E5DF",
+    marginBottom: 12,
+    elevation: 1,
     shadowColor: "#000",
     shadowOpacity: 0.02,
-    shadowRadius: 5,
-    elevation: 1
+    shadowRadius: 4
   },
-  menuRow: {
+  quickGridItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  quickGridIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6
+  },
+  quickGridLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: theme.ink
+  },
+
+  /* Section Groups */
+  sectionGroup: {
+    marginBottom: 14
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: theme.muted,
+    letterSpacing: 1,
+    paddingHorizontal: 20,
+    marginBottom: 6
+  },
+  groupCard: {
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E8E5DF",
+    paddingHorizontal: 16,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOpacity: 0.02,
+    shadowRadius: 4
+  },
+  menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8
+    paddingVertical: 13
   },
-  menuIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#FAF6F0",
+  menuItemNoNav: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingVertical: 13
+  },
+  menuItemIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 14
   },
-  menuEmoji: {
-    fontSize: 20
+  menuItemTextCol: {
+    flex: 1,
+    paddingRight: 8
   },
-  menuTextBox: {
-    flex: 1
-  },
-  menuTitle: {
-    fontSize: 15,
+  menuItemTitle: {
+    fontSize: 14,
     fontWeight: "700",
     color: theme.ink
   },
-  menuDesc: {
+  menuItemDesc: {
     fontSize: 12,
     color: theme.muted,
     marginTop: 2
   },
-  chevron: {
-    fontSize: 20,
-    color: "#BDBDBD",
-    fontWeight: "700",
-    marginLeft: 8
-  },
-  divider: {
+  menuSeparator: {
     height: 1,
-    backgroundColor: "#F2ECE1",
-    marginVertical: 12
+    backgroundColor: "#F5F3EF",
+    marginLeft: 50
   },
-  settingLabel: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: theme.ink
-  },
-  settingSub: {
-    fontSize: 12,
-    color: theme.muted,
-    marginTop: 2,
-    marginBottom: 8
-  },
-  langGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 4
-  },
-  langChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "#FAF6F0",
-    borderWidth: 1,
-    borderColor: "#EAE2D5"
-  },
-  langChipActive: {
-    backgroundColor: "#B85D19",
-    borderColor: "#B85D19"
-  },
-  langChipText: {
+  editLinkText: {
     fontSize: 13,
-    fontWeight: "700",
-    color: theme.ink
-  },
-  langChipTextActive: {
-    color: "#fff"
-  },
-  addressHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start"
-  },
-  editBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: "#FAF6F0",
-    borderWidth: 1,
-    borderColor: "#EAE2D5"
-  },
-  editBtnText: {
-    fontSize: 12,
     fontWeight: "700",
     color: theme.accent
   },
-  addressDisplay: {
-    fontSize: 13,
-    color: theme.ink,
-    lineHeight: 18,
-    marginTop: 6,
-    fontStyle: "italic"
-  },
-  editAddressBox: {
-    marginTop: 8
-  },
-  addressInput: {
-    backgroundColor: "#FAF6F0",
+
+  /* Inline address edit */
+  inlineAddressBox: {
+    backgroundColor: "#FAF9F6",
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#EAE2D5",
     padding: 10,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: "#E8E5DF"
+  },
+  addressTextInput: {
     fontSize: 13,
     color: theme.ink,
-    minHeight: 60,
+    minHeight: 56,
     textAlignVertical: "top"
   },
-  saveAddressBtn: {
+  saveAddressButton: {
     backgroundColor: theme.accent,
-    borderRadius: 10,
+    borderRadius: 8,
     paddingVertical: 9,
     alignItems: "center",
     marginTop: 8
   },
-  saveAddressBtnText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 13
+  saveAddressButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.6
   },
+
+  /* Language pills */
+  langPillsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8
+  },
+  langChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#FAF9F6",
+    borderWidth: 1,
+    borderColor: "#E8E5DF"
+  },
+  langChipActive: {
+    backgroundColor: theme.accent,
+    borderColor: theme.accent
+  },
+  langChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: theme.ink
+  },
+  langChipTextActive: {
+    color: "#FFFFFF"
+  },
+
+  /* Switches */
   switchRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between"
+    justifyContent: "space-between",
+    paddingVertical: 12
   },
   switchTextCol: {
     flex: 1,
-    paddingRight: 10
+    paddingRight: 12
   },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 4
-  },
-  infoLabel: {
+  switchTitle: {
     fontSize: 14,
+    fontWeight: "700",
+    color: theme.ink
+  },
+  switchDesc: {
+    fontSize: 12,
     color: theme.muted,
-    fontWeight: "600"
+    marginTop: 2
   },
-  infoValue: {
-    fontSize: 14,
-    color: theme.ink,
-    fontWeight: "700"
-  },
-  badgeRow: {
-    flexDirection: "row",
-    alignItems: "center"
-  },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#2E7D32",
-    marginRight: 6
-  },
-  cacheBtn: {
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "#FAF6F0",
-    borderWidth: 1,
-    borderColor: "#EAE2D5",
+
+  /* Logout Button */
+  myntraLogoutBtn: {
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 16,
+    marginTop: 10,
+    paddingVertical: 14,
     alignItems: "center",
-    marginTop: 4
+    justifyContent: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOpacity: 0.02,
+    shadowRadius: 3
   },
-  cacheBtnText: {
+  myntraLogoutBtnText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#DC2626",
+    letterSpacing: 1
+  },
+  myntraLoginBtn: {
+    backgroundColor: theme.accent,
+    marginHorizontal: 16,
+    marginTop: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12
+  },
+  myntraLoginBtnText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    letterSpacing: 1
+  },
+
+  /* Footer */
+  footerWrap: {
+    alignItems: "center",
+    marginTop: 24,
+    marginBottom: 20
+  },
+  footerVersion: {
+    fontSize: 11,
+    color: "#94969F",
+    fontWeight: "600",
+    marginBottom: 4
+  },
+  footerTagline: {
+    fontSize: 11,
+    color: "#A1A1AA"
+  },
+
+  /* Modals */
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end"
+  },
+  modalSheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === "ios" ? 36 : 24
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#D1D5DB",
+    alignSelf: "center",
+    marginBottom: 16
+  },
+  signOutBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#FEE2E2",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginBottom: 12
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1F2937",
+    textAlign: "center",
+    marginBottom: 6
+  },
+  sheetSub: {
+    fontSize: 13,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 18,
+    marginBottom: 16
+  },
+  accountChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 12,
+    marginBottom: 18
+  },
+  accountChipAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10
+  },
+  accountChipAvatarText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 14
+  },
+  accountChipName: {
     fontSize: 13,
     fontWeight: "700",
-    color: theme.accent
+    color: "#1F2937"
   },
-  signOutBtn: {
-    backgroundColor: "#FEE2E2",
-    borderRadius: 16,
-    paddingVertical: 15,
-    alignItems: "center",
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: "#FECACA"
+  accountChipEmail: {
+    fontSize: 11,
+    color: "#6B7280"
   },
-  signOutText: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#DC2626"
+  accountChipRole: {
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
   },
-  guestBadge: {
-    backgroundColor: "#F0EBE1",
-    borderColor: "#DCD2C6"
+  accountChipRoleText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#4B5563"
   },
-  guestBadgeText: {
-    color: "#6B5B51",
-    fontWeight: "700"
+  sheetActions: {
+    flexDirection: "row",
+    gap: 12
   },
-  signInCardBtn: {
-    backgroundColor: "#FAF6F0",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1.5,
-    borderColor: theme.accent,
-    marginBottom: 20,
+  cancelModalBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: "#F3F4F6",
     alignItems: "center"
   },
-  signInCardBtnText: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: theme.accent
+  cancelModalText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#4B5563"
   },
-  signInCardBtnSub: {
-    fontSize: 12,
-    color: "#796A5F",
-    marginTop: 4,
-    textAlign: "center"
+  confirmSignOutBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: "#DC2626",
+    alignItems: "center"
   },
-  signInBottomBtn: {
-    backgroundColor: theme.accent,
-    borderRadius: 16,
-    paddingVertical: 15,
-    alignItems: "center",
-    marginTop: 10,
-    shadowColor: theme.accent,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3
-  },
-  signInBottomText: {
-    fontSize: 15,
+  confirmSignOutText: {
+    fontSize: 14,
     fontWeight: "800",
     color: "#FFFFFF"
   },
-  footerNote: {
-    textAlign: "center",
-    fontSize: 11,
-    color: theme.muted,
-    marginTop: 20,
-    lineHeight: 16
+
+  /* Coupons & Help */
+  couponCard: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderStyle: "dashed",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12
+  },
+  couponBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: theme.accent,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginBottom: 6
+  },
+  couponBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#FFFFFF"
+  },
+  couponCode: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginBottom: 2
+  },
+  couponDesc: {
+    fontSize: 12,
+    color: "#64748B"
+  },
+  helpRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9"
+  },
+  helpRowTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1E293B"
+  },
+  helpRowSub: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 1
+  },
+  closeModalBtn: {
+    backgroundColor: theme.accent,
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: "center",
+    marginTop: 14
+  },
+  closeModalBtnText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800"
   }
 });
