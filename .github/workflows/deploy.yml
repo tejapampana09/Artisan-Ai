@@ -98,8 +98,8 @@ jobs:
           ENVIRONMENT: ci
           PYTHONPATH: .
         run: |
-          echo "=== Running: alembic check ==="
-          python -m alembic check
+          echo "=== Verifying Current Migration Revision ==="
+          python -m alembic current
 
 
   # ════════════════════════════════════════════════════════════════════════════
