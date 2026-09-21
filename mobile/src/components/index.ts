@@ -19,3 +19,4 @@ export * from "./Toast";
 export * from "./SectionHeader";
 export * from "./LanguageSelectorModal";
 export * from "./DeliveryAddressModal";
+export * from "./CustomAlertModal";

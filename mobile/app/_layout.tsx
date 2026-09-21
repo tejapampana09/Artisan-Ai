@@ -13,6 +13,7 @@ import {
 } from "../src/notifications";
 import { getSession } from "../src/storage";
 import { startNativeForegroundService } from "../src/nativeForegroundService";
+import { CustomAlertModal } from "../src/components";
 
 let lastHandledNotificationId: string | number | null = null;
 
@@ -90,6 +91,7 @@ export default function Layout() {
           <Stack.Screen name="oauth2redirect" options={{ headerShown: false }} />
           <Stack.Screen name="+not-found" options={{ headerShown: false }} />
         </Stack>
+        <CustomAlertModal />
       </SafeAreaProvider>
     </I18nProvider>
   );

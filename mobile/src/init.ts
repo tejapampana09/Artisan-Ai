@@ -1,4 +1,7 @@
 import { LogBox } from "react-native";
+import { initCustomAlert } from "./alertService";
+
+initCustomAlert();
 
 LogBox.ignoreLogs([
   "expo-notifications",

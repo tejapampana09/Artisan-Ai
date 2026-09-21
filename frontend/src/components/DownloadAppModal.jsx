@@ -1,7 +1,9 @@
-import React from 'react';
-import { X, Smartphone, Download, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Smartphone, Download, CheckCircle2, Info } from 'lucide-react';
 
 export default function DownloadAppModal({ isOpen, onClose }) {
+  const [showInstructions, setShowInstructions] = useState(false);
+
   if (!isOpen) return null;
 
   const handleInstallPWA = () => {
@@ -11,7 +13,7 @@ export default function DownloadAppModal({ isOpen, onClose }) {
         window.deferredPrompt = null;
       });
     } else {
-      alert('To install Artisan AI App on your phone:\n1. Open browser menu (3 dots or share button)\n2. Tap "Add to Home Screen" or "Install App"');
+      setShowInstructions(true);
     }
   };
 
@@ -60,6 +62,19 @@ export default function DownloadAppModal({ isOpen, onClose }) {
           <Download className="w-4 h-4" />
           <span>Install App / Add to Home Screen</span>
         </button>
+
+        {showInstructions && (
+          <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200/80 text-xs text-stone-800 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="flex items-center space-x-1.5 font-bold text-[#A6533B]">
+              <Info className="w-4 h-4" />
+              <span>Easy Manual Install:</span>
+            </div>
+            <p className="leading-relaxed">
+              1. Tap your browser menu (<span className="font-bold">⋮</span> on Android, or <span className="font-bold">Share ⎋</span> on iOS Safari).<br />
+              2. Select <span className="font-bold">"Add to Home Screen"</span> or <span className="font-bold">"Install App"</span>.
+            </p>
+          </div>
+        )}
 
         <div className="text-center">
           <button
