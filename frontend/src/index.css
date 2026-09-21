@@ -3,6 +3,28 @@
 
 html {
   scroll-behavior: smooth;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE & Edge */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
 .font-serif-luxury {
@@ -46,6 +68,8 @@ body {
   min-height: 100vh;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 #root {
@@ -53,6 +77,8 @@ body {
   display: flex;
   flex-direction: column;
   background-color: var(--background);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 /* Mobile Native Touch Targets & Bottom Sheet Utilities */

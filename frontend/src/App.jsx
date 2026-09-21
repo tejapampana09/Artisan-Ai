@@ -26,6 +26,8 @@ import ProfileView from './components/ProfileView';
 import CartView from './components/CartView';
 import Footer from './components/Footer';
 import AdminView from './components/AdminView';
+import LegalView from './components/LegalView';
+import BecomeArtisanView from './components/BecomeArtisanView';
 
 const roleDomain = (role) => (
   role === 'ARTISAN' ? 'STUDIO' : role === 'ADMIN' ? 'ADMIN' : role === 'BUYER' ? 'BUYER' : null
@@ -35,8 +37,27 @@ const roleHomeMode = (role) => (
   role === 'ARTISAN' ? 'SELL' : role === 'ADMIN' ? 'ADMIN' : 'BUY'
 );
 
+const getInitialModeFromUrl = () => {
+  try {
+    const hash = window.location.hash.toLowerCase().replace('#', '');
+    const path = window.location.pathname.toLowerCase();
+    const route = hash || path;
+    if (route.includes('privacy')) return 'PRIVACY';
+    if (route.includes('terms')) return 'TERMS';
+    if (route.includes('refund') || route.includes('cancellation')) return 'REFUND';
+    if (route.includes('contact') || route.includes('support')) return 'CONTACT';
+    if (route.includes('become-artisan') || route.includes('seller-onboarding') || route.includes('artisan-guide')) return 'BECOME_ARTISAN';
+    if (route.includes('story')) return 'STORY';
+    if (route.includes('artisans')) return 'ARTISANS';
+    if (route.includes('collections')) return 'COLLECTIONS';
+    return 'HOME';
+  } catch {
+    return 'HOME';
+  }
+};
+
 function AppContent() {
-  const [activeMode, setActiveMode] = useState('HOME'); // 'HOME' | 'BUY' | 'SELL' | 'STORY' | 'ARTISANS'
+  const [activeMode, setActiveMode] = useState(getInitialModeFromUrl);
   const [user, setUser] = useState(getStoredUser());
   const [readyStatus, setReadyStatus] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -61,6 +82,21 @@ function AppContent() {
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }, [activeMode, sellerTab]);
+
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const mode = getInitialModeFromUrl();
+      if (mode && mode !== 'HOME') {
+        setActiveMode(mode);
+      }
+    };
+    window.addEventListener('hashchange', handleUrlChange);
+    window.addEventListener('popstate', handleUrlChange);
+    return () => {
+      window.removeEventListener('hashchange', handleUrlChange);
+      window.removeEventListener('popstate', handleUrlChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (showSplash) {
@@ -107,13 +143,14 @@ function AppContent() {
         }
         setUser(userData);
         setStoredUser(userData);
-        if (userData.role === 'BUYER') {
-          setActiveMode('BUY');
-        } else if (userData.role === 'ADMIN') {
-          setActiveMode('ADMIN');
-        } else {
-          setActiveMode('SELL');
-        }
+
+        const publicPages = ['TERMS', 'PRIVACY', 'REFUND', 'CONTACT', 'BECOME_ARTISAN', 'STORY', 'ARTISANS', 'COLLECTIONS'];
+        setActiveMode(prev => {
+          if (publicPages.includes(prev)) return prev;
+          if (userData.role === 'BUYER') return 'BUY';
+          if (userData.role === 'ADMIN') return 'ADMIN';
+          return 'SELL';
+        });
       } else {
         setUser(null);
       }
@@ -147,6 +184,31 @@ function AppContent() {
       }
     }
     setActiveMode(targetMode);
+
+    try {
+      const modeToHash = {
+        'HOME': '',
+        'BUY': 'shop',
+        'SELL': 'studio',
+        'STORY': 'story',
+        'ARTISANS': 'artisans',
+        'COLLECTIONS': 'collections',
+        'TERMS': 'terms',
+        'PRIVACY': 'privacy',
+        'REFUND': 'refund-cancellation',
+        'CONTACT': 'contact',
+        'BECOME_ARTISAN': 'become-artisan'
+      };
+      if (modeToHash[targetMode] !== undefined) {
+        const hashVal = modeToHash[targetMode] ? `#${modeToHash[targetMode]}` : '';
+        if (!hashVal) {
+          window.history.replaceState(null, '', window.location.pathname);
+        } else {
+          window.history.replaceState(null, '', hashVal);
+        }
+      }
+    } catch {}
+
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
@@ -211,10 +273,10 @@ function AppContent() {
       )}
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 md:pb-6 overflow-x-hidden">
+      <main className={`flex-1 w-full ${activeMode === 'HOME' ? 'p-0 m-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 md:pb-6'} overflow-x-hidden`}>
         <OfflineSyncBanner />
 
-        <div>
+        <div className={activeMode === 'HOME' ? 'w-full p-0 m-0' : ''}>
           {activeMode === 'HOME' ? (
             <LandingPage
               onSelectMode={handleToggleMode}
@@ -235,6 +297,18 @@ function AppContent() {
             />
           ) : activeMode === 'COLLECTIONS' ? (
             <CollectionsView
+              onSelectMode={handleToggleMode}
+              onOpenAuth={handleOpenAuth}
+            />
+          ) : activeMode === 'BECOME_ARTISAN' ? (
+            <BecomeArtisanView
+              user={user}
+              onSelectMode={handleToggleMode}
+              onOpenAuth={handleOpenAuth}
+            />
+          ) : ['TERMS', 'PRIVACY', 'REFUND', 'CONTACT'].includes(activeMode) ? (
+            <LegalView
+              initialTab={activeMode}
               onSelectMode={handleToggleMode}
               onOpenAuth={handleOpenAuth}
             />

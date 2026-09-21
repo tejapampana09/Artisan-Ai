@@ -79,6 +79,23 @@ class UserRegister(BaseModel):
     location: Optional[str] = "India"
     craft: Optional[str] = "Traditional Crafts"
 
+class ArtisanRegister(BaseModel):
+    name: str = Field(..., min_length=2)
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    password: str = Field(..., min_length=6)
+    craft: Optional[str] = "Traditional Handicrafts"
+    location: Optional[str] = "India"
+    bio: Optional[str] = None
+    experience_years: Optional[int] = 0
+
+class ArtisanApplicationResponse(BaseModel):
+    application_id: Optional[int] = None
+    status: str = "PENDING"
+    verification_status: str = "PENDING_VERIFICATION"
+    message: str
+    user: UserResponse
+
 class AdminCreateSellerRequest(BaseModel):
     name: str = Field(..., min_length=2)
     email: Optional[str] = None

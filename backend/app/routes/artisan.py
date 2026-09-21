@@ -1,12 +1,24 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from backend.app.database import get_db
 from backend.app.models import User, Product, Review, PayoutAccount
-from backend.app.schemas import ArtisanProfileResponse, ArtisanProfileUpdate, ProductResponse, UserResponse, AdminCreateSellerRequest, PayoutAccountUpdate, PayoutAccountResponse
-from backend.app.services.auth import get_current_user, require_admin, require_artisan
+from backend.app.schemas import (
+    ArtisanProfileResponse, 
+    ArtisanProfileUpdate, 
+    ProductResponse, 
+    UserResponse, 
+    AdminCreateSellerRequest, 
+    PayoutAccountUpdate, 
+    PayoutAccountResponse,
+    ArtisanRegister,
+    ArtisanApplicationResponse,
+    TokenResponse
+)
+from backend.app.services.auth import get_current_user, require_admin, require_artisan, hash_password, create_domain_token
+from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
 
 router = APIRouter(prefix="/api/artisan", tags=["Artisan Profile & Verification"])
 
@@ -74,6 +86,65 @@ def update_artisan_profile(
     db.refresh(current_artisan)
 
     return get_artisan_public_profile(current_artisan.id, db)
+
+@router.post("/register", response_model=ArtisanApplicationResponse, status_code=status.HTTP_201_CREATED)
+def register_artisan(payload: ArtisanRegister, request: Request, db: Session = Depends(get_db)):
+    """
+    Public Artisan Registration endpoint for creators joining the marketplace.
+    Creates an artisan account in PENDING verification status. The profile must be
+    verified and approved by Platform Administrator before Studio login is permitted.
+    """
+    rate_limiter.check_rate_limit(f"reg_artisan:{get_client_identifier(request)}", max_requests=5, window_seconds=60)
+
+    clean_email = payload.email.strip().lower() if (payload.email and payload.email.strip()) else None
+    clean_phone = payload.phone.strip() if (payload.phone and payload.phone.strip()) else None
+
+    if not clean_email and not clean_phone:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please provide an email address or phone number for artisan registration."
+        )
+
+    filters = []
+    if clean_email:
+        filters.append(User.email == clean_email)
+    if clean_phone:
+        filters.append(User.phone == clean_phone)
+
+    if filters:
+        existing = db.query(User).filter(or_(*filters)).first()
+        if existing:
+            conflict = "email" if (clean_email and existing.email == clean_email) else "phone number"
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"An account with this {conflict} is already registered."
+            )
+
+    new_artisan = User(
+        name=payload.name.strip(),
+        email=clean_email,
+        phone=clean_phone,
+        hashed_password=hash_password(payload.password),
+        role="ARTISAN",
+        status="PENDING",
+        location=payload.location.strip() if payload.location else "India",
+        craft=payload.craft.strip() if payload.craft else "Handicrafts",
+        craft_specialization=payload.craft.strip() if payload.craft else "Handicrafts",
+        bio=payload.bio.strip() if payload.bio else f"Master artisan specializing in traditional {payload.craft or 'handicrafts'}.",
+        verification_status="PENDING_VERIFICATION",
+        experience_years=payload.experience_years or 0
+    )
+    db.add(new_artisan)
+    db.commit()
+    db.refresh(new_artisan)
+
+    return ArtisanApplicationResponse(
+        application_id=new_artisan.id,
+        status="PENDING",
+        verification_status="PENDING_VERIFICATION",
+        message="Artisan application submitted successfully! Your application is currently pending admin verification. Once approved by the administrator, you can log in to your Studio.",
+        user=new_artisan
+    )
 
 @router.post("/admin/create-seller", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def admin_create_seller(

@@ -77,10 +77,38 @@ export default function Footer({ onSelectMode, onOpenAuth, user }) {
         <div className="space-y-2.5">
           <h4 className="font-bold text-[#1C1C1C] text-xs uppercase tracking-wider">Support</h4>
           <ul className="space-y-2 text-xs">
-            <li><span className="hover:text-[#A6533B] transition-colors cursor-pointer">Contact Us</span></li>
-            <li><span className="hover:text-[#A6533B] transition-colors cursor-pointer">Terms of Service</span></li>
-            <li><span className="hover:text-[#A6533B] transition-colors cursor-pointer">Privacy Policy</span></li>
-            <li><span className="hover:text-[#A6533B] transition-colors cursor-pointer">Cancellation & Refund</span></li>
+            <li>
+              <button 
+                onClick={() => handleNav('CONTACT')} 
+                className="hover:text-[#A6533B] transition-colors cursor-pointer text-left"
+              >
+                Contact Us & Help
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => handleNav('TERMS')} 
+                className="hover:text-[#A6533B] transition-colors cursor-pointer text-left"
+              >
+                Terms of Service
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => handleNav('PRIVACY')} 
+                className="hover:text-[#A6533B] transition-colors cursor-pointer text-left"
+              >
+                Privacy Policy
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => handleNav('REFUND')} 
+                className="hover:text-[#A6533B] transition-colors cursor-pointer text-left"
+              >
+                Cancellation & Refund
+              </button>
+            </li>
             <li>
               <button 
                 onClick={() => handleNav('ADMIN')}
@@ -98,11 +126,19 @@ export default function Footer({ onSelectMode, onOpenAuth, user }) {
           <ul className="space-y-2 text-xs">
             <li>
               <button 
-                onClick={handleSellerClick}
+                onClick={() => handleNav('BECOME_ARTISAN')}
                 className="inline-flex items-center space-x-2 text-[#A6533B] font-bold hover:underline transition-all cursor-pointer"
               >
                 <Store className="w-4 h-4" />
-                <span>Become a Seller / Seller Studio</span>
+                <span>Become an Artisan / Onboarding</span>
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={handleSellerClick}
+                className="hover:text-[#A6533B] text-[#1C1C1C] font-medium transition-colors cursor-pointer text-left"
+              >
+                {user && (user.role === 'ARTISAN' || user.role === 'ADMIN') ? 'Open Seller Studio →' : 'Seller Studio Login →'}
               </button>
             </li>
             <li className="text-[#6B6B6B] text-[11px] leading-relaxed pt-1">

@@ -106,6 +106,20 @@ export async function adminDeleteArtisan(artisanId) {
   });
 }
 
+export async function adminApproveArtisan(artisanId) {
+  return await apiRequest(`/admin/artisans/${artisanId}/approve`, {
+    method: 'POST',
+    domain: 'ADMIN',
+  });
+}
+
+export async function adminRejectArtisan(artisanId) {
+  return await apiRequest(`/admin/artisans/${artisanId}/reject`, {
+    method: 'POST',
+    domain: 'ADMIN',
+  });
+}
+
 export async function downloadAnalyticsCSV() {
   const token = getAuthToken('STUDIO');
   if (!token) throw new Error('Authentication required');

@@ -88,6 +88,18 @@ export async function googleAuthBuyer(googleData) {
 }
 
 // 2. Artisan Studio Auth
+export async function registerArtisan(artisanData) {
+  const data = await apiRequest('/artisan/register', {
+    method: 'POST',
+    body: JSON.stringify(artisanData),
+  });
+  if (data && data.access_token && data.user?.status === 'ACTIVE') {
+    activateSingleRoleSession('STUDIO', data.access_token);
+    setStoredUser(data.user, 'STUDIO');
+  }
+  return data;
+}
+
 export async function loginArtisan(credentials) {
   const data = await studioRequest('/studio/auth/login', {
     method: 'POST',

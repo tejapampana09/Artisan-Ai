@@ -144,6 +144,76 @@ def admin_reset_artisan_password(
         "artisan_id": artisan.id
     }
 
+@admin_ops_router.post("/artisans/{artisan_id}/approve", response_model=UserResponse)
+def admin_approve_artisan(
+    artisan_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """
+    Admin verifies and approves a pending artisan seller profile.
+    Sets status="ACTIVE" and verification_status="VERIFIED_ARTISAN", allowing Studio access.
+    """
+    artisan = db.query(User).filter(User.id == artisan_id).first()
+    if not artisan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Artisan not found."
+        )
+    if artisan.role != "ARTISAN":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Target user account is not an artisan."
+        )
+
+    artisan.status = "ACTIVE"
+    artisan.verification_status = "VERIFIED_ARTISAN"
+    record_audit_log(
+        db=db,
+        actor=current_admin,
+        action="ARTISAN_APPROVE",
+        resource_type="USER",
+        resource_id=str(artisan.id),
+        before_state="PENDING",
+        after_state="ACTIVE (VERIFIED_ARTISAN)",
+        commit=True
+    )
+    db.commit()
+    db.refresh(artisan)
+    return artisan
+
+@admin_ops_router.post("/artisans/{artisan_id}/reject", response_model=UserResponse)
+def admin_reject_artisan(
+    artisan_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """
+    Admin rejects or suspends an artisan seller profile.
+    """
+    artisan = db.query(User).filter(User.id == artisan_id).first()
+    if not artisan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Artisan not found."
+        )
+
+    artisan.status = "SUSPENDED"
+    artisan.verification_status = "REJECTED"
+    record_audit_log(
+        db=db,
+        actor=current_admin,
+        action="ARTISAN_REJECT",
+        resource_type="USER",
+        resource_id=str(artisan.id),
+        before_state=artisan.status,
+        after_state="SUSPENDED (REJECTED)",
+        commit=True
+    )
+    db.commit()
+    db.refresh(artisan)
+    return artisan
+
 @admin_ops_router.delete("/artisans/{artisan_id}")
 def admin_delete_artisan(
     artisan_id: int,

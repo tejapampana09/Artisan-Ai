@@ -14,7 +14,9 @@ import {
   adminSuspendProduct, 
   adminDeleteProduct,
   adminResetArtisanPassword,
-  adminDeleteArtisan
+  adminDeleteArtisan,
+  adminApproveArtisan,
+  adminRejectArtisan
 } from '../api/index.js';
 import { getAdminToken } from '../api/client.js';
 import { logoutAdmin } from '../api/auth.js';
@@ -54,6 +56,8 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
   const [resetPasswordValue, setResetPasswordValue] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [deletingArtisanId, setDeletingArtisanId] = useState(null);
+  const [approvingArtisanId, setApprovingArtisanId] = useState(null);
+  const [rejectingArtisanId, setRejectingArtisanId] = useState(null);
 
   // Product Governance & Approval Queue state
   const [products, setProducts] = useState([]);
@@ -249,6 +253,35 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
     }
   };
 
+  const handleApproveArtisan = async (artisan) => {
+    setApprovingArtisanId(artisan.id);
+    try {
+      await adminApproveArtisan(artisan.id);
+      toast.success(`Artisan "${artisan.name}" APPROVED! Account is now ACTIVE and can access Studio.`);
+      fetchSellers();
+    } catch (err) {
+      toast.error(err.message || 'Failed to approve artisan application.');
+    } finally {
+      setApprovingArtisanId(null);
+    }
+  };
+
+  const handleRejectArtisan = async (artisan) => {
+    const confirmMsg = `Are you sure you want to REJECT / SUSPEND application for artisan "${artisan.name}"?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setRejectingArtisanId(artisan.id);
+    try {
+      await adminRejectArtisan(artisan.id);
+      toast.warning(`Artisan "${artisan.name}" application rejected / suspended.`);
+      fetchSellers();
+    } catch (err) {
+      toast.error(err.message || 'Failed to reject artisan application.');
+    } finally {
+      setRejectingArtisanId(null);
+    }
+  };
+
   // Product Action Handlers
   const handleApproveProduct = async (id, title) => {
     setProcessingActionId(id);
@@ -305,6 +338,9 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
   };
 
   // Calculated Dashboard Stats
+  const pendingArtisans = sellers.filter(s => s.status === 'PENDING' || s.verification_status === 'PENDING_VERIFICATION');
+  const activeArtisans = sellers.filter(s => s.status !== 'PENDING' && s.verification_status !== 'PENDING_VERIFICATION');
+
   const pendingCount = products.filter(p => p.status === 'PENDING_APPROVAL' || p.status === 'DRAFT').length;
   const approvedCount = products.filter(p => p.status === 'APPROVED').length;
   const publishedCount = products.filter(p => p.status === 'PUBLISHED').length;
@@ -442,7 +478,14 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
       {/* Metrics Cards Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-[#E8E5DF] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-[#6B6B6B] uppercase tracking-wider block">Provisioned Artisans</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-[#6B6B6B] uppercase tracking-wider block">Artisans ({activeArtisans.length} Active)</span>
+            {pendingArtisans.length > 0 && (
+              <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-extrabold px-1.5 py-0.2 rounded-full">
+                {pendingArtisans.length} Pending
+              </span>
+            )}
+          </div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-extrabold text-[#1C1C1C]">{sellers.length}</span>
             <Users className="w-4 h-4 text-[#A6533B]" />
@@ -474,8 +517,8 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
         </div>
       </div>
 
-      {/* Admin Navigation Tabs */}
-      <div className="flex items-center space-x-2 border-b border-[#E8E5DF] pb-2">
+      {/* Tabs Bar */}
+      <div className="flex items-center space-x-2 border-b border-[#E8E5DF] pb-3 overflow-x-auto">
         <button
           onClick={() => setAdminTab('PRODUCTS')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
@@ -497,7 +540,12 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
           }`}
         >
           <Users className="w-4 h-4 text-amber-400" />
-          <span>Provision Artisans ({sellers.length})</span>
+          <span>Artisans & Applications ({sellers.length})</span>
+          {pendingArtisans.length > 0 && (
+            <span className="bg-amber-400 text-stone-950 font-extrabold px-1.5 py-0.5 rounded-full text-[10px] animate-pulse">
+              {pendingArtisans.length} PENDING
+            </span>
+          )}
         </button>
 
         <button
@@ -655,11 +703,98 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
         </div>
       )}
 
-      {/* TAB 2: PROVISION ARTISAN SELLERS */}
+      {/* TAB 2: PROVISION ARTISAN SELLERS & VERIFICATION QUEUE */}
       {adminTab === 'SELLERS' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Column: Provision Form */}
-          <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-[#E8E5DF] shadow-xs space-y-4">
+        <div className="space-y-6">
+          {/* Pending Artisan Applications Queue */}
+          {pendingArtisans.length > 0 && (
+            <div className="bg-amber-50/70 border-2 border-amber-300 rounded-3xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-amber-200 pb-3 flex-wrap gap-2">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-xs">
+                    <Clock className="w-5 h-5 text-stone-900 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-[#1C1C1C]">
+                      Pending Artisan Applications ({pendingArtisans.length})
+                    </h3>
+                    <p className="text-xs text-amber-900 mt-0.5">
+                      Review craft authenticity credentials and approve to grant Artisan Studio login access.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-extrabold bg-amber-200 text-amber-950 px-2.5 py-1 rounded-full border border-amber-400">
+                  ACTION REQUIRED • {pendingArtisans.length} WAITING
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {pendingArtisans.map((artisan) => (
+                  <div
+                    key={artisan.id}
+                    className="bg-white rounded-2xl border border-amber-200 p-4 shadow-xs space-y-3 flex flex-col justify-between"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold text-sm text-[#1C1C1C]">{artisan.name}</span>
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                              PENDING REVIEW
+                            </span>
+                          </div>
+                          <span className="text-xs font-semibold text-[#A6533B] block mt-0.5">
+                            {artisan.craft || 'Traditional Handicrafts'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-stone-400 font-mono">App #{artisan.id}</span>
+                      </div>
+
+                      <div className="text-[11px] text-[#6B6B6B] space-y-1 bg-stone-50 p-2.5 rounded-xl border border-stone-100">
+                        <div>
+                          <strong>Login ID:</strong> <span className="font-mono text-[#1C1C1C]">{artisan.phone || artisan.email || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <strong>Workshop / Location:</strong> {artisan.location || 'India'}
+                        </div>
+                        {artisan.bio && (
+                          <p className="italic text-stone-600 line-clamp-2 mt-1">
+                            "{artisan.bio}"
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2 pt-2 border-t border-stone-100">
+                      <button
+                        type="button"
+                        onClick={() => handleApproveArtisan(artisan)}
+                        disabled={approvingArtisanId === artisan.id}
+                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{approvingArtisanId === artisan.id ? 'Approving...' : 'Approve & Activate Studio'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRejectArtisan(artisan)}
+                        disabled={rejectingArtisanId === artisan.id}
+                        className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-xl text-xs flex items-center justify-center space-x-1 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                        <span>{rejectingArtisanId === artisan.id ? '...' : 'Reject'}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left Column: Provision Form */}
+            <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-[#E8E5DF] shadow-xs space-y-4">
             <div className="border-b border-[#E8E5DF] pb-3 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <PlusCircle className="w-5 h-5 text-[#A6533B]" />
@@ -790,20 +925,20 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
               <div className="flex items-center justify-between border-b border-[#E8E5DF] pb-3">
                 <div className="flex items-center space-x-2">
                   <Users className="w-4 h-4 text-[#1C1C1C]" />
-                  <h3 className="font-bold text-sm text-[#1C1C1C]">Provisioned Sellers ({sellers.length})</h3>
+                  <h3 className="font-bold text-sm text-[#1C1C1C]">Active Provisioned Sellers ({activeArtisans.length})</h3>
                 </div>
                 <span className="text-[10px] text-[#6B6B6B]">Studio Access Enabled</span>
               </div>
 
               {loadingSellers ? (
                 <div className="py-8 text-center text-[#6B6B6B]">Loading seller profiles...</div>
-              ) : sellers.length === 0 ? (
+              ) : activeArtisans.length === 0 ? (
                 <div className="py-8 text-center text-[#6B6B6B]">
-                  No artisan sellers provisioned yet.
+                  No active artisan sellers provisioned yet.
                 </div>
               ) : (
                 <div className="divide-y divide-[#E8E5DF] max-h-96 overflow-y-auto pr-1">
-                  {sellers.map((s) => (
+                  {activeArtisans.map((s) => (
                     <div key={s.id} className="py-3 flex items-center justify-between gap-2">
                       <div className="flex items-center space-x-3 overflow-hidden min-w-0">
                         <div className="w-8 h-8 rounded-full bg-[#A6533B] text-white font-bold flex items-center justify-center text-xs shrink-0">
@@ -854,7 +989,8 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
             </div>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
       {/* TAB 3: SYSTEM READINESS & SECURITY */}
       {adminTab === 'SYSTEM' && (

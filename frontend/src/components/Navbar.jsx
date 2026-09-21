@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Store, ShoppingBag, Sparkles, UserCheck, Wifi, WifiOff, Home, 
   Bell, Globe, User, Smartphone, MoreVertical, Package, Heart, 
-  MessageSquare, BookOpen, Users, LogOut, ArrowRight, Search, X, Loader2
+  MessageSquare, BookOpen, Users, LogOut, ArrowRight, Search, X, Loader2,
+  HelpCircle, FileText
 } from 'lucide-react';
 import { useOffline } from '../context/OfflineContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -56,6 +57,21 @@ export default function Navbar({
       setCartCount(0);
     }
   };
+
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    if (activeMode !== 'HOME') {
+      setIsScrolled(true);
+      return;
+    }
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 40);
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [activeMode]);
 
   useEffect(() => {
     updateCartCount();
@@ -268,6 +284,8 @@ export default function Navbar({
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
+  const isOverCarousel = activeMode === 'HOME' && !isScrolled;
+
   return (
     <>
       {/* Top Mobile Push Notification Banner Prompt */}
@@ -288,8 +306,14 @@ export default function Navbar({
         </div>
       )}
 
-      {/* Top Fixed Header (Blends Seamlessly with Page Background, No Border Line) */}
-      <header className="bg-[#FAF9F6] sticky top-0 z-40 w-full h-[64px] flex items-center">
+      {/* Top Header - Overlaid transparently on carousel in HOME mode; solid on scroll and on other pages */}
+      <header className={`w-full h-[64px] flex items-center transition-all duration-300 z-40 ${
+        activeMode === 'HOME'
+          ? (isScrolled 
+              ? 'fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md shadow-sm border-b border-[#E8DFD5] text-[#1C1C1C]' 
+              : 'fixed top-0 left-0 right-0 bg-gradient-to-b from-black/80 via-black/35 to-transparent text-white border-b-0')
+          : 'sticky top-0 bg-[#FAF9F6] text-[#1C1C1C]'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex justify-between items-center gap-4">
           {/* Brand Logo & Name */}
           <div 
@@ -297,10 +321,12 @@ export default function Navbar({
             className="flex items-center space-x-2.5 cursor-pointer group shrink-0"
             title={!user ? "Return to Home" : user.role === 'BUYER' ? "Go to Marketplace" : "Go to Artisan Studio"}
           >
-            <div className="w-9 h-9 rounded-xl bg-white border border-[#E8E5DF] p-1 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="w-9 h-9 flex items-center justify-center shrink-0">
               <img src="/artisan-logo.png" alt="Artisan AI Logo" className="w-full h-full object-contain" />
             </div>
-            <span className="font-extrabold text-xl tracking-tight text-[#1C1C1C] group-hover:text-[#A6533B] transition-colors">
+            <span className={`font-extrabold text-xl tracking-tight transition-colors ${
+              isOverCarousel ? 'text-white drop-shadow-sm' : 'text-[#1C1C1C] group-hover:text-[#A6533B]'
+            }`}>
               ARTISAN AI
             </span>
           </div>
@@ -316,9 +342,13 @@ export default function Navbar({
             <div className="hidden sm:flex items-center">
               <button
                 onClick={() => onToggleMode('BUY')}
-                className="flex items-center space-x-2 text-sm font-bold text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer bg-white border border-[#E8E5DF] px-4 py-1.5 rounded-lg shadow-2xs hover:border-[#A6533B]"
+                className={`flex items-center space-x-2 text-sm font-bold transition-all cursor-pointer px-4 py-1.5 rounded-lg shadow-2xs ${
+                  isOverCarousel 
+                    ? 'bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-md' 
+                    : 'bg-white hover:bg-stone-50 text-[#1C1C1C] hover:text-[#A6533B] border border-[#E8E5DF] hover:border-[#A6533B]'
+                }`}
               >
-                <ShoppingBag className="w-4 h-4 text-[#A6533B]" />
+                <ShoppingBag className={`w-4 h-4 ${isOverCarousel ? 'text-amber-300' : 'text-[#A6533B]'}`} />
                 <span>Shop</span>
               </button>
             </div>
@@ -426,11 +456,15 @@ export default function Navbar({
             {/* Language Switcher */}
             <button
               onClick={() => setIsSelectingLanguage(true)}
-              className="p-1.5 text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer flex items-center space-x-1 font-bold text-xs"
+              className={`p-1.5 transition-colors cursor-pointer flex items-center space-x-1 font-bold text-xs ${
+                isOverCarousel ? 'text-white hover:text-amber-300' : 'text-[#1C1C1C] hover:text-[#A6533B]'
+              }`}
               title="Change Language / భాషను మార్చుకోండి"
             >
-              <Globe className="w-5 h-5 text-[#A6533B]" />
-              <span className="text-[11px] font-extrabold px-1.5 py-0.5 rounded-md bg-[#F4EBE1] text-[#933D1E] border border-[#EADFCF]">
+              <Globe className={`w-5 h-5 ${isOverCarousel ? 'text-amber-300' : 'text-[#A6533B]'}`} />
+              <span className={`text-[11px] font-extrabold px-1.5 py-0.5 rounded-md border ${
+                isOverCarousel ? 'bg-white/20 text-white border-white/30 backdrop-blur-md' : 'bg-[#F4EBE1] text-[#933D1E] border-[#EADFCF]'
+              }`}>
                 {language === 'te' ? 'తెలుగు' : language === 'hi' ? 'हिन्दी' : language === 'ta' ? 'தமிழ்' : language === 'bn' ? 'বাংলা' : 'EN'}
               </span>
             </button>
@@ -439,7 +473,9 @@ export default function Navbar({
             {user && activeMode !== 'ADMIN' && (
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="p-1.5 text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer relative"
+                className={`p-1.5 transition-colors cursor-pointer relative ${
+                  isOverCarousel ? 'text-white hover:text-amber-300' : 'text-[#1C1C1C] hover:text-[#A6533B]'
+                }`}
                 title="Notifications"
               >
                 <Bell className="w-5 h-5" />
@@ -455,7 +491,9 @@ export default function Navbar({
             {activeMode !== 'ADMIN' && (
               <button
                 onClick={() => onOpenAuth('CART')}
-                className="p-1.5 text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer relative"
+                className={`p-1.5 transition-colors cursor-pointer relative ${
+                  isOverCarousel ? 'text-white hover:text-amber-300' : 'text-[#1C1C1C] hover:text-[#A6533B]'
+                }`}
                 title="View Shopping Bag"
               >
                 <ShoppingBag className="w-5 h-5" />
@@ -471,7 +509,9 @@ export default function Navbar({
             {activeMode !== 'ADMIN' && (
               <button
                 onClick={() => onOpenAuth('PROFILE')}
-                className="p-1.5 text-[#1C1C1C] hover:text-[#A6533B] transition-colors cursor-pointer"
+                className={`p-1.5 transition-colors cursor-pointer ${
+                  isOverCarousel ? 'text-white hover:text-amber-300' : 'text-[#1C1C1C] hover:text-[#A6533B]'
+                }`}
                 title="Account Settings"
               >
                 <User className="w-5 h-5" />
@@ -720,6 +760,17 @@ export default function Navbar({
                 <ArrowRight className="w-3.5 h-3.5 text-[#6B6B6B]" />
               </button>
 
+              <button
+                onClick={() => { setShowMoreMenu(false); onToggleMode('BECOME_ARTISAN'); }}
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF9F6] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
+              >
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-4 h-4 text-[#A6533B]" />
+                  <span>Become an Artisan (Guide)</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-[#6B6B6B]" />
+              </button>
+
               {/* Artisan Studio Access / Login */}
               <button
                 onClick={() => {
@@ -784,6 +835,31 @@ export default function Navbar({
                   <span>Download Mobile App</span>
                 </div>
                 <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">PWA</span>
+              </button>
+            </div>
+
+            {/* Help & Policies */}
+            <div className="space-y-1 border-t border-[#E8E5DF] pt-2">
+              <button
+                onClick={() => { setShowMoreMenu(false); onToggleMode('CONTACT'); }}
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF9F6] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
+              >
+                <div className="flex items-center space-x-2">
+                  <HelpCircle className="w-4 h-4 text-[#6B6B6B]" />
+                  <span>Contact Us & Help</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-[#6B6B6B]" />
+              </button>
+
+              <button
+                onClick={() => { setShowMoreMenu(false); onToggleMode('TERMS'); }}
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF9F6] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
+              >
+                <div className="flex items-center space-x-2">
+                  <FileText className="w-4 h-4 text-[#6B6B6B]" />
+                  <span>Terms & Policies</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-[#6B6B6B]" />
               </button>
             </div>
 
