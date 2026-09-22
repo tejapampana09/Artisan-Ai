@@ -46,5 +46,10 @@ scratch_*
 cf_*.json
 *.apk
 
-
-
+# IDE & Local Tool Configs
+.vscode/
+.idea/
+pyrefly.toml
+pyrightconfig.json
+*.swp
+*.swo
