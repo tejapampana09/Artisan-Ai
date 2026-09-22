@@ -74,7 +74,7 @@ jobs:
           EXPO_PUBLIC_APP_VERSION: 1.0.${{ github.run_number }}
         run: |
           cd mobile/android
-          ./gradlew assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
+          ./gradlew assembleRelease -PappVersionCode=${{ github.run_number }} -PappVersionName="1.0.${{ github.run_number }}" --no-daemon -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
 
       - name: Prepare APK Artifact & Release Metadata
         run: |
