@@ -10,7 +10,8 @@ import {
   TextInput,
   StatusBar,
   Platform,
-  Modal
+  Modal,
+  ActivityIndicator
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -19,6 +20,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../src/theme";
 import { getSession, clearSession } from "../src/storage";
 import { AppLanguage, useI18n } from "../src/i18n";
+import { AppUpdateModal } from "../src/components";
+import {
+  checkForAppUpdate,
+  AppUpdateInfo,
+  CURRENT_APP_VERSION
+} from "../src/services/appUpdater";
 
 const SETTINGS_ADDR_KEY = "artisan_saved_delivery_address";
 const SETTINGS_NOTIFS_KEY = "artisan_notifications_settings";
@@ -42,6 +49,29 @@ export default function SettingsScreen() {
   const [showSignOutModal, setShowSignOutModal] = useState<boolean>(false);
   const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
   const [showCouponsModal, setShowCouponsModal] = useState<boolean>(false);
+
+  const [checkingUpdate, setCheckingUpdate] = useState<boolean>(false);
+  const [manualUpdateInfo, setManualUpdateInfo] = useState<AppUpdateInfo | null>(null);
+  const [showManualUpdateModal, setShowManualUpdateModal] = useState<boolean>(false);
+
+  const handleManualCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    const res = await checkForAppUpdate(false);
+    setCheckingUpdate(false);
+    if (res.hasUpdate && res.updateInfo) {
+      setManualUpdateInfo(res.updateInfo);
+      setShowManualUpdateModal(true);
+    } else {
+      Alert.alert(
+        language === "te" ? "తాజా వెర్షన్!" : language === "hi" ? "नवीनतम संस्करण!" : "Up to Date!",
+        language === "te"
+          ? "మీరు Artisan AI తాజా వెర్షన్‌ను ఉపయోగిస్తున్నారు."
+          : language === "hi"
+          ? "आप Artisan AI का नवीनतम संस्करण उपयोग कर रहे हैं।"
+          : "You are already using the latest version of Artisan AI."
+      );
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -510,7 +540,27 @@ export default function SettingsScreen() {
 
         {/* Brand App Version Footer */}
         <View style={styles.footerWrap}>
-          <Text style={styles.footerVersion}>App Version 1.2.0 (Build 204)</Text>
+          <Pressable
+            style={styles.checkUpdateBtn}
+            onPress={handleManualCheckUpdate}
+            disabled={checkingUpdate}
+          >
+            {checkingUpdate ? (
+              <ActivityIndicator size="small" color="#D97706" />
+            ) : (
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Ionicons name="sparkles" size={14} color="#D97706" style={{ marginRight: 6 }} />
+                <Text style={styles.checkUpdateBtnText}>
+                  {language === "te"
+                    ? "అప్‌డేట్‌లు పరిశీలించండి"
+                    : language === "hi"
+                    ? "अपडेट जांचें"
+                    : "Check for App Updates"}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+          <Text style={styles.footerVersion}>App Version {CURRENT_APP_VERSION} (Build 1)</Text>
           <Text style={styles.footerTagline}>
             Made with ❤️ for Indian Heritage Artisans • ONDC Network
           </Text>
@@ -658,6 +708,12 @@ export default function SettingsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <AppUpdateModal
+        visible={showManualUpdateModal}
+        updateInfo={manualUpdateInfo}
+        onClose={() => setShowManualUpdateModal(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -1013,6 +1069,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 24,
     marginBottom: 20
+  },
+  checkUpdateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 20,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#FDE68A"
+  },
+  checkUpdateBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#B45309"
   },
   footerVersion: {
     fontSize: 11,

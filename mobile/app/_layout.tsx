@@ -1,5 +1,5 @@
 import "../src/init";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -13,11 +13,14 @@ import {
 } from "../src/notifications";
 import { getSession } from "../src/storage";
 import { startNativeForegroundService } from "../src/nativeForegroundService";
-import { CustomAlertModal } from "../src/components";
+import { CustomAlertModal, AppUpdateModal } from "../src/components";
+import { checkForAppUpdate, AppUpdateInfo } from "../src/services/appUpdater";
 
 let lastHandledNotificationId: string | number | null = null;
 
 export default function Layout() {
+  const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   useEffect(() => {
     // Register push notification permissions & Android channels
     registerForPushNotificationsAsync().catch(() => {});
@@ -68,7 +71,20 @@ export default function Layout() {
       }
     });
 
+    // Non-intrusive update check 2.5 seconds after launch
+    const updateTimer = setTimeout(() => {
+      checkForAppUpdate(true)
+        .then((res) => {
+          if (res.hasUpdate && res.updateInfo) {
+            setUpdateInfo(res.updateInfo);
+            setShowUpdateModal(true);
+          }
+        })
+        .catch(() => {});
+    }, 2500);
+
     return () => {
+      clearTimeout(updateTimer);
       stopPolling();
       responseSubscription.remove();
     };
@@ -92,6 +108,11 @@ export default function Layout() {
           <Stack.Screen name="+not-found" options={{ headerShown: false }} />
         </Stack>
         <CustomAlertModal />
+        <AppUpdateModal
+          visible={showUpdateModal}
+          updateInfo={updateInfo}
+          onClose={() => setShowUpdateModal(false)}
+        />
       </SafeAreaProvider>
     </I18nProvider>
   );

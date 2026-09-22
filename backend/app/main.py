@@ -162,4 +162,21 @@ def readiness_check(db: Session = Depends(get_db)):
             detail="Database temporarily unavailable. Please try again shortly."
         )
 
+@app.get("/api/app/version")
+def get_latest_app_metadata():
+    """
+    Returns latest mobile app version metadata for in-app auto updates.
+    Enables mobile app to detect releases without hitting GitHub rate limits.
+    """
+    return {
+        "version": "1.0.1",
+        "version_code": 2,
+        "min_supported_version_code": 1,
+        "release_url": "https://github.com/tejapampana09/Artisan-Ai/releases/download/latest/ArtisanAI-Release.apk",
+        "release_notes": "Enhanced AI Assistant with multi-language voice guide, refined craft catalog, and real-time offline sync.",
+        "release_notes_te": "మల్టీ-లాంగ్వేజ్ వాయిస్ గైడ్, కళల క్యాటలాగ్ మరియు ఆఫ్‌లైన్ సింక్‌తో మెరుగైన AI అసిస్టెంట్.",
+        "release_notes_hi": "मल्टी-लैंग्वेज वॉयस गाइड और बेहतर हस्तशिल्प कैटलॉग के साथ नया AI असिस्टेंट।"
+    }
+
+
 
