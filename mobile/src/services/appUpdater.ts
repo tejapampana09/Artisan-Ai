@@ -4,14 +4,18 @@ import { api, BASE_URL } from "../api";
 
 export const CURRENT_APP_VERSION = "1.0.0";
 export const CURRENT_APP_VERSION_CODE = 1;
+export const CURRENT_BUILD_TIMESTAMP = new Date("2026-09-22T18:55:00Z").getTime();
+export const CURRENT_RELEASE_ID = 394025111;
 
 const DISMISSED_UPDATE_KEY = "artisan_ai_dismissed_update_code";
+const DISMISSED_RELEASE_ID_KEY = "artisan_ai_dismissed_release_id";
 export const DEFAULT_APK_RELEASE_URL =
   "https://github.com/tejapampana09/Artisan-Ai/releases/download/latest/ArtisanAI-Release.apk";
 
 export interface AppUpdateInfo {
   version: string;
   version_code: number;
+  release_id?: number;
   release_url: string;
   release_notes?: string;
   release_notes_te?: string;
@@ -30,6 +34,9 @@ export interface CheckUpdateResult {
  */
 export async function checkForAppUpdate(silent: boolean = false): Promise<CheckUpdateResult> {
   try {
+    const dismissedCode = await AsyncStorage.getItem(DISMISSED_UPDATE_KEY);
+    const dismissedReleaseId = await AsyncStorage.getItem(DISMISSED_RELEASE_ID_KEY);
+
     // 1. Try Backend API
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 6000);
@@ -42,11 +49,8 @@ export async function checkForAppUpdate(silent: boolean = false): Promise<CheckU
     if (response && response.ok) {
       const data: AppUpdateInfo = await response.json();
       if (data.version_code > CURRENT_APP_VERSION_CODE) {
-        if (silent) {
-          const dismissedCode = await AsyncStorage.getItem(DISMISSED_UPDATE_KEY);
-          if (dismissedCode && Number(dismissedCode) >= data.version_code) {
-            return { hasUpdate: false, updateInfo: null };
-          }
+        if (silent && dismissedCode && Number(dismissedCode) >= data.version_code) {
+          return { hasUpdate: false, updateInfo: null };
         }
         return { hasUpdate: true, updateInfo: data };
       }
@@ -61,16 +65,34 @@ export async function checkForAppUpdate(silent: boolean = false): Promise<CheckU
 
     if (ghRes && ghRes.ok) {
       const release = await ghRes.json();
-      const tagName = release.tag_name || "";
-      // If tag is not current version e.g. "v1.0.1" or has release assets
+      const tagName = (release.tag_name || "").trim();
+      const releaseId = release.id ? Number(release.id) : 0;
+      const publishedTime = release.published_at ? new Date(release.published_at).getTime() : 0;
       const apkAsset = release.assets?.find((a: any) =>
         a.name?.endsWith(".apk")
       );
+      const assetUpdatedTime = apkAsset?.updated_at ? new Date(apkAsset.updated_at).getTime() : 0;
+      const latestReleaseTime = Math.max(publishedTime, assetUpdatedTime);
+
+      // Only prompt if there is an actual newer release than the current build
+      const isNewer =
+        (releaseId > CURRENT_RELEASE_ID && latestReleaseTime > CURRENT_BUILD_TIMESTAMP) ||
+        (tagName && tagName !== "latest" && tagName !== `v${CURRENT_APP_VERSION}` && tagName !== CURRENT_APP_VERSION && latestReleaseTime > CURRENT_BUILD_TIMESTAMP);
+
+      if (!isNewer) {
+        return { hasUpdate: false, updateInfo: null };
+      }
+
+      if (silent && dismissedReleaseId && Number(dismissedReleaseId) === releaseId) {
+        return { hasUpdate: false, updateInfo: null };
+      }
+
       const downloadUrl = apkAsset?.browser_download_url || DEFAULT_APK_RELEASE_URL;
 
       const ghUpdateInfo: AppUpdateInfo = {
-        version: tagName.replace(/^v/, "") || "1.0.1",
+        version: tagName && tagName !== "latest" ? tagName.replace(/^v/, "") : "1.0.1",
         version_code: CURRENT_APP_VERSION_CODE + 1,
+        release_id: releaseId,
         release_url: downloadUrl,
         release_notes: release.body || "New features, bug fixes, and AI assistant improvements.",
         release_notes_te: "కొత్త ఫీచర్లు మరియు AI అసిస్టెంట్ అప్‌డేట్‌లు అందుబాటులో ఉన్నాయి.",
@@ -80,7 +102,6 @@ export async function checkForAppUpdate(silent: boolean = false): Promise<CheckU
       return { hasUpdate: true, updateInfo: ghUpdateInfo };
     }
   } catch (err) {
-    // Non-blocking: update check errors should never disrupt the app
     if (!silent) {
       console.warn("App update check warning:", err);
     }
@@ -92,9 +113,14 @@ export async function checkForAppUpdate(silent: boolean = false): Promise<CheckU
 /**
  * Dismisses an update for the current version so user isn't spammed on every launch.
  */
-export async function dismissUpdateForNow(versionCode: number): Promise<void> {
+export async function dismissUpdateForNow(versionCode?: number, releaseId?: number): Promise<void> {
   try {
-    await AsyncStorage.setItem(DISMISSED_UPDATE_KEY, String(versionCode));
+    if (versionCode) {
+      await AsyncStorage.setItem(DISMISSED_UPDATE_KEY, String(versionCode));
+    }
+    if (releaseId) {
+      await AsyncStorage.setItem(DISMISSED_RELEASE_ID_KEY, String(releaseId));
+    }
   } catch {}
 }
 

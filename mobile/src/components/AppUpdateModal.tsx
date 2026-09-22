@@ -35,13 +35,14 @@ export function AppUpdateModal({
 
   const handleUpdate = async () => {
     setDownloading(true);
+    await dismissUpdateForNow(updateInfo.version_code, updateInfo.release_id);
     await openAppUpdate(updateInfo.release_url);
     setDownloading(false);
     onClose();
   };
 
   const handleDismiss = async () => {
-    await dismissUpdateForNow(updateInfo.version_code);
+    await dismissUpdateForNow(updateInfo.version_code, updateInfo.release_id);
     onClose();
   };
 
