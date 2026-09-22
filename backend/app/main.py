@@ -169,13 +169,13 @@ def get_latest_app_metadata():
     Enables mobile app to detect releases without hitting GitHub rate limits.
     """
     return {
-        "version": "1.0.0",
-        "version_code": 1,
+        "version": "1.0.1",
+        "version_code": 2,
         "min_supported_version_code": 1,
         "release_url": "https://github.com/tejapampana09/Artisan-Ai/releases/download/latest/ArtisanAI-Release.apk",
-        "release_notes": "All latest features, AI Assistant guide, and direct updates.",
-        "release_notes_te": "తాజా ఫీచర్లు, AI అసిస్టెంట్ మరియు అప్‌డేట్‌లు.",
-        "release_notes_hi": "नवीनतम सुविधाएं, AI असिस्टेंट और अपडेट।"
+        "release_notes": "Live Popup Test: AI Assistant enhancements, Telugu voice support, and fast craft search.",
+        "release_notes_te": "లైవ్ టెస్ట్: సరికొత్త AI అసిస్టెంట్, తెలుగు వాయిస్ సపోర్ట్ మరియు వేగవంతమైన శోధన అందుబాటులోకి వచ్చింది! 🚀",
+        "release_notes_hi": "लाइव टेस्ट: बेहतर AI असिस्टेंट और नए फीचर्स उपलब्ध हैं!"
     }
 
 
