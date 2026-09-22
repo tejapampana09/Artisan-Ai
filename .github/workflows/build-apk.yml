@@ -20,6 +20,8 @@ jobs:
   build-apk:
     name: Build Release APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Repository
@@ -78,16 +80,23 @@ jobs:
           path: build-output/ArtisanAI-Release.apk
           retention-days: 30
 
-      - name: Create GitHub Release (On Tag Push)
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Publish Direct Download Release
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && format('Release {0}', github.ref_name) || 'Artisan AI Mobile App (Latest Build)' }}
+          draft: false
+          prerelease: false
           files: build-output/ArtisanAI-Release.apk
-          name: Release ${{ github.ref_name }}
           body: |
-            ## Artisan AI Android Mobile App
-            - **Download**: [ArtisanAI-Release.apk](build-output/ArtisanAI-Release.apk)
-            - **Backend Connected**: Production AWS CloudFront (`https://dd8bq7j24onss.cloudfront.net`)
-            - **Architecture**: Pre-built Android native package with Hermes engine and offline sync support.
+            ## 📱 Artisan AI Android APK (Direct Download)
+            
+            Click below to download the APK directly to your phone:
+            👉 **[Download ArtisanAI-Release.apk](https://github.com/tejapampana09/Artisan-Ai/releases/download/latest/ArtisanAI-Release.apk)**
+            
+            - **Commit**: `${{ github.sha }}`
+            - **Backend**: AWS CloudFront (`https://dd8bq7j24onss.cloudfront.net`)
+            - **Build Type**: Release (Hermes Engine, Prebuilt Native)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
