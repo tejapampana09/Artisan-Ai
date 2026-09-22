@@ -54,26 +54,43 @@ jobs:
 
       - name: Inject Environment Variables
         run: |
-          cat << 'EOF' > mobile/.env
+          cat << EOF > mobile/.env
           EXPO_PUBLIC_API_URL=${{ github.event.inputs.api_url || vars.EXPO_PUBLIC_API_URL || 'https://dd8bq7j24onss.cloudfront.net' }}
           EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ vars.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '26058075206-0jbhgsg44uh3irp9l4ucs3krv1adibng.apps.googleusercontent.com' }}
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ vars.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '26058075206-on14bkf0hlrenshpogiglj07ftb8qgba.apps.googleusercontent.com' }}
+          EXPO_PUBLIC_APP_VERSION_CODE=${{ github.run_number }}
+          EXPO_PUBLIC_APP_VERSION=1.0.${{ github.run_number }}
           EOF
-          echo "Generated mobile/.env with API URL:"
-          cat mobile/.env | grep EXPO_PUBLIC_API_URL
+          echo "Generated mobile/.env with version metadata:"
+          cat mobile/.env
 
       - name: Make Gradle Wrapper Executable
         run: chmod +x mobile/android/gradlew
 
       - name: Build Android Release APK
+        env:
+          EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url || vars.EXPO_PUBLIC_API_URL || 'https://dd8bq7j24onss.cloudfront.net' }}
+          EXPO_PUBLIC_APP_VERSION_CODE: ${{ github.run_number }}
+          EXPO_PUBLIC_APP_VERSION: 1.0.${{ github.run_number }}
         run: |
           cd mobile/android
           ./gradlew assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
 
-      - name: Prepare APK Artifact
+      - name: Prepare APK Artifact & Release Metadata
         run: |
           mkdir -p build-output
           cp mobile/android/app/build/outputs/apk/release/app-release.apk build-output/ArtisanAI-Release.apk
+          cat << 'EOF' > build-output/version.json
+          {
+            "version": "1.0.${{ github.run_number }}",
+            "version_code": ${{ github.run_number }},
+            "min_supported_version_code": 1,
+            "release_url": "https://github.com/tejapampana09/Artisan-Ai/releases/download/latest/ArtisanAI-Release.apk",
+            "release_notes": "Build #${{ github.run_number }}: AI assistant enhancements, faster catalog navigation, and performance improvements.",
+            "release_notes_te": "బిల్డ్ #${{ github.run_number }}: సరికొత్త AI అసిస్టెంట్, వేగవంతమైన శోధన మరియు మెరుగైన స్థిరత్వం.",
+            "release_notes_hi": "बिल्ड #${{ github.run_number }}: बेहतर AI असिस्टेंट और नए अपडेट उपलब्ध हैं।"
+          }
+          EOF
           ls -lh build-output/
 
       - name: Upload APK to GitHub Artifacts
@@ -88,18 +105,21 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
-          name: ${{ startsWith(github.ref, 'refs/tags/') && format('Release {0}', github.ref_name) || 'Artisan AI Mobile App (Latest Build)' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && format('Release {0}', github.ref_name) || format('Artisan AI Mobile App (Build {0})', github.run_number) }}
           draft: false
           prerelease: false
-          files: build-output/ArtisanAI-Release.apk
+          files: |
+            build-output/ArtisanAI-Release.apk
+            build-output/version.json
           body: |
             ## 📱 Artisan AI Android APK (Direct Download)
             
-            Click below to download the APK directly to your phone:
-            👉 **[Download ArtisanAI-Release.apk](https://github.com/tejapampana09/Artisan-Ai/releases/download/latest/ArtisanAI-Release.apk)**
-            
+            - **Version**: `1.0.${{ github.run_number }}` (Build `${{ github.run_number }}`)
             - **Commit**: `${{ github.sha }}`
             - **Backend**: AWS CloudFront (`https://dd8bq7j24onss.cloudfront.net`)
             - **Build Type**: Release (Hermes Engine, Prebuilt Native)
+            
+            Click below to download the APK directly to your phone:
+            👉 **[Download ArtisanAI-Release.apk](https://github.com/tejapampana09/Artisan-Ai/releases/download/latest/ArtisanAI-Release.apk)**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

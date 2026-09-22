@@ -92,8 +92,13 @@ android {
         applicationId 'com.artisanai.mobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
+        def envCode = System.getenv('EXPO_PUBLIC_APP_VERSION_CODE')
+        def propCode = findProperty('appVersionCode')
+        versionCode (propCode ?: envCode ?: 1).toInteger()
+
+        def envName = System.getenv('EXPO_PUBLIC_APP_VERSION')
+        def propName = findProperty('appVersionName')
+        versionName (propName ?: envName ?: "1.0.0")
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }

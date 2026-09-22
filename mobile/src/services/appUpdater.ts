@@ -2,8 +2,10 @@ import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api, BASE_URL } from "../api";
 
-export const CURRENT_APP_VERSION = "1.0.0";
-export const CURRENT_APP_VERSION_CODE = 1;
+export const CURRENT_APP_VERSION = process.env.EXPO_PUBLIC_APP_VERSION || "1.0.0";
+export const CURRENT_APP_VERSION_CODE = process.env.EXPO_PUBLIC_APP_VERSION_CODE
+  ? Number(process.env.EXPO_PUBLIC_APP_VERSION_CODE)
+  : 1;
 export const CURRENT_BUILD_TIMESTAMP = new Date("2026-09-22T18:55:00Z").getTime();
 export const CURRENT_RELEASE_ID = 394025111;
 
@@ -11,6 +13,8 @@ const DISMISSED_UPDATE_KEY = "artisan_ai_dismissed_update_code";
 const DISMISSED_RELEASE_ID_KEY = "artisan_ai_dismissed_release_id";
 export const DEFAULT_APK_RELEASE_URL =
   "https://github.com/tejapampana09/Artisan-Ai/releases/download/latest/ArtisanAI-Release.apk";
+export const VERSION_METADATA_URL =
+  "https://github.com/tejapampana09/Artisan-Ai/releases/download/latest/version.json";
 
 export interface AppUpdateInfo {
   version: string;
@@ -30,7 +34,8 @@ export interface CheckUpdateResult {
 /**
  * Checks if a newer version of the mobile app is available.
  * 1. Queries backend /api/app/version (fast, no rate-limits via CloudFront).
- * 2. Fallbacks to GitHub Releases API if backend is unavailable.
+ * 2. Fallbacks to GitHub Releases version.json static CDN asset.
+ * 3. Fallbacks to GitHub Releases API.
  */
 export async function checkForAppUpdate(silent: boolean = false): Promise<CheckUpdateResult> {
   try {
@@ -48,6 +53,19 @@ export async function checkForAppUpdate(silent: boolean = false): Promise<CheckU
 
     if (response && response.ok) {
       const data: AppUpdateInfo = await response.json();
+      if (data.version_code > CURRENT_APP_VERSION_CODE) {
+        if (silent && dismissedCode && Number(dismissedCode) >= data.version_code) {
+          return { hasUpdate: false, updateInfo: null };
+        }
+        return { hasUpdate: true, updateInfo: data };
+      }
+      return { hasUpdate: false, updateInfo: null };
+    }
+
+    // 2. Direct GitHub Release version.json check (CDN asset, no API rate-limits)
+    const vRes = await fetch(VERSION_METADATA_URL).catch(() => null);
+    if (vRes && vRes.ok) {
+      const data: AppUpdateInfo = await vRes.json();
       if (data.version_code > CURRENT_APP_VERSION_CODE) {
         if (silent && dismissedCode && Number(dismissedCode) >= data.version_code) {
           return { hasUpdate: false, updateInfo: null };

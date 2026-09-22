@@ -1,6 +1,7 @@
 import logging
 import time
 import uuid
+import httpx
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 
@@ -162,21 +163,47 @@ def readiness_check(db: Session = Depends(get_db)):
             detail="Database temporarily unavailable. Please try again shortly."
         )
 
+_VERSION_METADATA_FALLBACK = {
+    "version": "1.0.0",
+    "version_code": 1,
+    "min_supported_version_code": 1,
+    "release_url": "https://github.com/tejapampana09/Artisan-Ai/releases/download/latest/ArtisanAI-Release.apk",
+    "release_notes": "Latest updates, AI Assistant guide, and performance enhancements.",
+    "release_notes_te": "సరికొత్త ఫీచర్లు, AI అసిస్టెంట్ మరియు అప్‌డేట్‌లు అందుబాటులో ఉన్నాయి.",
+    "release_notes_hi": "नवीनतम सुविधाएं और AI असिस्टेंट सुधार उपलब्ध हैं।"
+}
+
+_version_cache = {
+    "data": _VERSION_METADATA_FALLBACK,
+    "expires_at": 0
+}
+
+
 @app.get("/api/app/version")
-def get_latest_app_metadata():
+async def get_latest_app_metadata():
     """
     Returns latest mobile app version metadata for in-app auto updates.
-    Enables mobile app to detect releases without hitting GitHub rate limits.
+    Dynamically loads latest version.json published by GitHub Actions CI/CD with 60s cache.
     """
-    return {
-        "version": "1.0.1",
-        "version_code": 2,
-        "min_supported_version_code": 1,
-        "release_url": "https://github.com/tejapampana09/Artisan-Ai/releases/download/latest/ArtisanAI-Release.apk",
-        "release_notes": "Live Popup Test: AI Assistant enhancements, Telugu voice support, and fast craft search.",
-        "release_notes_te": "లైవ్ టెస్ట్: సరికొత్త AI అసిస్టెంట్, తెలుగు వాయిస్ సపోర్ట్ మరియు వేగవంతమైన శోధన అందుబాటులోకి వచ్చింది! 🚀",
-        "release_notes_hi": "लाइव टेस्ट: बेहतर AI असिस्टेंट और नए फीचर्स उपलब्ध हैं!"
-    }
+    now = time.time()
+    if now < _version_cache["expires_at"]:
+        return _version_cache["data"]
+
+    try:
+        async with httpx.AsyncClient(timeout=3.0, follow_redirects=True) as client:
+            resp = await client.get(
+                "https://github.com/tejapampana09/Artisan-Ai/releases/download/latest/version.json"
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                if "version_code" in data:
+                    _version_cache["data"] = data
+                    _version_cache["expires_at"] = now + 60
+                    return data
+    except Exception:
+        pass
+
+    return _version_cache["data"]
 
 
 
