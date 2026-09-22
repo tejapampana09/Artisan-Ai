@@ -246,6 +246,22 @@ def export_seller_analytics_csv(
 
 from backend.app.services.ai_adapter import extract_buyer_intent, generate_buyer_explanation
 
+def detect_query_language(text: str, default_lang: Optional[str] = "te") -> str:
+    """Detects native script (Telugu, Hindi, Tamil, Bengali) from text or defaults to requested language."""
+    if not text:
+        return (default_lang or "te").lower()
+    for ch in text:
+        cp = ord(ch)
+        if 0x0C00 <= cp <= 0x0C7F:
+            return "te"
+        if 0x0900 <= cp <= 0x097F:
+            return "hi"
+        if 0x0B80 <= cp <= 0x0BFF:
+            return "ta"
+        if 0x0980 <= cp <= 0x09FF:
+            return "bn"
+    return (default_lang or "te").lower()
+
 @router.post("/buyer/copilot-chat", response_model=BuyerCopilotResponse)
 async def buyer_copilot_chat(
     req: BuyerCopilotRequest,
@@ -258,10 +274,12 @@ async def buyer_copilot_chat(
     - Honest Fallback: Distinguishes direct search matches from fallback popular items with explicit notices (no false GI claims).
     - Conversational Explanation: Uses Gemini LLM or localized templates to summarize recommendations.
     """
+    active_lang = detect_query_language(req.message, req.language)
+
     # 1. Hybrid Intent Extraction
     intent = await extract_buyer_intent(
         message=req.message,
-        language=req.language or "te",
+        language=active_lang,
         category_hint=req.category,
         max_budget_hint=req.max_budget
     )
@@ -270,19 +288,35 @@ async def buyer_copilot_chat(
     budget = intent.get("max_budget")
     keywords = intent.get("keywords", [])
 
+    from sqlalchemy import or_
+
+    msg_lower = (req.message or "").lower()
+    is_shopping = any(k in msg_lower for k in [
+        "buy", "shop", "price", "cost", "under", "below", "gift", "gifts", "purchase", "order",
+        "kavali", "chupinchu", "chudu", "dharalu", "ammukondi", "ammandi", "lopu", "budget",
+        "ఎంత", "ధర", "కావాలి", "చూపించు", "కొనాలి", "బహుమతి", "కొనుగోలు",
+        "खरीदना", "दिखाओ", "दाम", "कीमत", "उपहार", "बजट"
+    ]) or (budget is not None and budget > 0)
+
     # 2. Perform Live Database Query
     query = db.query(Product).filter(Product.status == "PUBLISHED")
 
     if matched_cat:
-        query = query.filter(Product.category == matched_cat)
+        cat_tokens = [t for t in matched_cat.split() if len(t) > 2]
+        cat_conds = [Product.category.ilike(f"%{matched_cat}%")]
+        for tok in cat_tokens:
+            cat_conds.append(Product.category.ilike(f"%{tok}%"))
+            cat_conds.append(Product.title.ilike(f"%{tok}%"))
+        query = query.filter(or_(*cat_conds))
 
     if budget and budget > 0:
         query = query.filter(Product.price <= budget)
 
-    if keywords:
-        from sqlalchemy import or_
+    # Clean non-search keywords like 'art', 'craft'
+    clean_kws = [k for k in keywords if k.lower() not in {"art", "craft", "crafts", "heritage", "story", "info", "details", "tell", "about", "what", "how", "item", "items"}]
+    if clean_kws:
         filters = []
-        for word in keywords:
+        for word in clean_kws:
             filters.append(Product.title.ilike(f"%{word}%"))
             filters.append(Product.description.ilike(f"%{word}%"))
             filters.append(Product.category.ilike(f"%{word}%"))
@@ -290,12 +324,29 @@ async def buyer_copilot_chat(
         query = query.filter(or_(*filters))
 
     matching_products = query.order_by(Product.id.desc()).limit(6).all()
+
+    # If category was matched but combined keywords/budget yielded 0, retry category alone
+    if matched_cat and not matching_products:
+        cat_query = db.query(Product).filter(Product.status == "PUBLISHED")
+        cat_conds = [Product.category.ilike(f"%{matched_cat}%")]
+        for tok in [t for t in matched_cat.split() if len(t) > 2]:
+            cat_conds.append(Product.category.ilike(f"%{tok}%"))
+            cat_conds.append(Product.title.ilike(f"%{tok}%"))
+        matching_products = cat_query.filter(or_(*cat_conds)).order_by(Product.id.desc()).limit(6).all()
+
     is_fallback = False
 
-    # 3. Fallback to top published products if specific search yielded no results
+    # 3. Fallback logic:
+    # Only fall back to other products if the user was shopping or browsing generally.
+    # If the user asked an educational/heritage question for a craft with no current listings,
+    # DO NOT attach unrelated fallback products!
     if not matching_products:
-        is_fallback = True
-        matching_products = db.query(Product).filter(Product.status == "PUBLISHED").order_by(Product.id.desc()).limit(6).all()
+        if is_shopping or not matched_cat:
+            is_fallback = True
+            matching_products = db.query(Product).filter(Product.status == "PUBLISHED").order_by(Product.id.desc()).limit(6).all()
+        else:
+            is_fallback = False
+            matching_products = []
 
     match_count = len(matching_products)
     product_titles = [p.title for p in matching_products]
@@ -303,7 +354,7 @@ async def buyer_copilot_chat(
     # 4. Generate Natural Language Conversational Explanation
     reply = await generate_buyer_explanation(
         user_message=req.message,
-        language=req.language or "te",
+        language=active_lang,
         product_titles=product_titles,
         match_count=0 if is_fallback else match_count,
         is_fallback=is_fallback
@@ -311,7 +362,7 @@ async def buyer_copilot_chat(
 
     return BuyerCopilotResponse(
         reply_text=reply,
-        language=(req.language or "te").lower(),
+        language=active_lang,
         recommended_products=[
             ProductResponse.model_validate(p) for p in matching_products
         ],

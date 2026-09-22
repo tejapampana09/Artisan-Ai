@@ -38,24 +38,58 @@ interface ChatMessage {
   products?: ProductCardData[];
 }
 
-const SUGGESTIONS = [
-  "Tell me about Kalamkari art",
-  "What are GI tagged products?",
-  "Handmade gifts under ₹2,000",
-  "How to identify pure Chanderi silk?",
-  "Custom Terracotta Vase",
-  "Organic Glaze Recipes",
-  "Order Status & Delivery"
-];
+const SUGGESTIONS_BY_LANG: Record<string, string[]> = {
+  te: [
+    "కలంకారి కళ గురించి చెప్పు",
+    "జిఐ (GI) ట్యాగ్ అంటే ఏమిటి?",
+    "₹2,000 లోపు చేతివృత్తుల బహుమతులు",
+    "చెన్నపట్న బొమ్మల విశిష్టత ఏమిటి?",
+    "స్వచ్ఛమైన చందేరి పట్టు ఎలా గుర్తించాలి?",
+    "ఆర్డర్ స్టేటస్ & డెలివరీ"
+  ],
+  hi: [
+    "कलमकारी कला के बारे में बताएं",
+    "जीआई (GI) टैग क्या है?",
+    "₹2,000 से कम के हस्तशिल्प उपहार",
+    "चन्नापटना खिलौनों की क्या खासियत है?",
+    "शुद्ध चंदेरी रेशम की पहचान कैसे करें?",
+    "ऑर्डर स्टेटस और डिलीवरी"
+  ],
+  en: [
+    "Tell me about Kalamkari art",
+    "What are GI tagged products?",
+    "Handmade gifts under ₹2,000",
+    "How to identify pure Chanderi silk?",
+    "Channapatna Wooden Toys history",
+    "Order Status & Delivery"
+  ]
+};
 
 export default function BuyerAssistant() {
   useRoleGuard("buyer");
   const { language } = useI18n();
+
+  const getGreeting = () => {
+    if (language === "te") {
+      return "నమస్కారం! 🙏 నేను మీ ఆర్టిసన్ AI గైడ్. సంప్రదాయ భారతీయ హస్తకళలు, GI గుర్తింపు పొందిన కళారూపాలు, సహజసిద్ధమైన ఉత్పత్తుల గురించి నన్ను అడగండి.";
+    }
+    if (language === "hi") {
+      return "नमस्ते! 🙏 मैं आपका कारीगर AI साथी हूँ। पारंपरिक भारतीय हस्तशिल्प, जीआई टैग कलाकृतियों और प्राकृतिक उत्पादों के बारे में मुझसे पूछें।";
+    }
+    if (language === "ta") {
+      return "வணக்கம்! 🙏 நான் உங்கள் கைவினை AI வழிகாட்டி. பாரம்பரிய இந்திய கைவினைப்பொருட்கள் மற்றும் புவிசார் குறியீடு கலைகள் பற்றி என்னிடம் கேளுங்கள்.";
+    }
+    if (language === "bn") {
+      return "নমস্কার! 🙏 আমি আপনার কারিগর AI সহায়ক। ভারতের ঐতিহ্যবাহী হস্তশিল্প এবং জিআই স্বীকৃত পণ্য সম্পর্কে যেকোনো প্রশ্ন করতে পারেন।";
+    }
+    return "Namaste! 🙏 I am your Artisan AI Companion. I can help you discover authentic traditional Indian craft forms, explore GI tagged heritages, find the perfect handmade creations, or answer questions about natural materials and artisans.";
+  };
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "intro",
       sender: "ai",
-      text: "Namaste! 🙏 I am your Artisan AI Companion. I can help you discover authentic traditional Indian craft forms, explore GI tagged heritages, find the perfect handmade creations, or answer questions about natural materials and artisans.",
+      text: getGreeting(),
       timestamp: "Just now"
     }
   ]);
@@ -134,7 +168,7 @@ export default function BuyerAssistant() {
     }, 100);
 
     try {
-      const res = await api.buyerCopilot({ message: query, language: "en" });
+      const res = await api.buyerCopilot({ message: query, language });
       const answerText =
         res?.reply_text ||
         res?.response ||
@@ -142,7 +176,9 @@ export default function BuyerAssistant() {
         res?.reply ||
         (typeof res === "string"
           ? res
-          : "I found some heritage crafts for you in our marketplace. Explore the recommendations below.");
+          : (language === "te"
+              ? "మా మార్కెట్‌ప్లేస్‌లో మీకోసం కొన్ని అథెంటిక్ కళారూపాలు లభించాయి. కింద చూడవచ్చు."
+              : "I found some heritage crafts for you in our marketplace. Explore the recommendations below."));
 
       const aiMsg: ChatMessage = {
         id: String(Date.now() + 1),
@@ -251,7 +287,9 @@ export default function BuyerAssistant() {
                 {/* Embedded Product Cards (Stitch Design) */}
                 {m.products && m.products.length > 0 && (
                   <View style={styles.productsContainer}>
-                    <Text style={styles.productsHeader}>Recommended Crafts:</Text>
+                    <Text style={styles.productsHeader}>
+                      {language === "te" ? "సిఫార్సు చేయబడిన కళారూపాలు:" : language === "hi" ? "सुझाए गए हस्तशिल्प:" : "Recommended Crafts:"}
+                    </Text>
                     {m.products.slice(0, 3).map((prod) => {
                       const img = prod.enhanced_image_url || prod.image_url;
                       return (
@@ -309,7 +347,9 @@ export default function BuyerAssistant() {
                           speakingMsgId === m.id && { color: theme.colors.primary }
                         ]}
                       >
-                        {speakingMsgId === m.id ? "Speaking…" : "Listen"}
+                        {speakingMsgId === m.id
+                          ? (language === "te" ? "వివరిస్తోంది…" : "Speaking…")
+                          : (language === "te" ? "వినండి" : "Listen")}
                       </Text>
                     </Pressable>
                   )}
@@ -340,7 +380,11 @@ export default function BuyerAssistant() {
               <View style={[styles.bubble, styles.aiBubble, styles.loadingBubble]}>
                 <ActivityIndicator size="small" color={theme.accent} />
                 <Text style={styles.thinkingText}>
-                  Searching heritage archives & craft lineage…
+                  {language === "te"
+                    ? "సాంప్రదాయ కళాఖండాల వివరాలు పరిశీలిస్తోంది…"
+                    : language === "hi"
+                    ? "पारंपरिक कलाकृतियों की जानकारी खोजी जा रही है…"
+                    : "Searching heritage archives & craft lineage…"}
                 </Text>
               </View>
             </View>
@@ -354,7 +398,7 @@ export default function BuyerAssistant() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chipsScroll}
           >
-            {SUGGESTIONS.map((item, idx) => (
+            {(SUGGESTIONS_BY_LANG[language] || SUGGESTIONS_BY_LANG.en).map((item, idx) => (
               <Pressable
                 key={idx}
                 onPress={() => sendMessage(item)}
@@ -372,7 +416,13 @@ export default function BuyerAssistant() {
           <View style={styles.inputPill}>
             <TextInput
               style={styles.input}
-              placeholder="Ask about crafts, GI tags, silk, pottery…"
+              placeholder={
+                language === "te"
+                  ? "కళలు, GI ట్యాగ్‌లు, బహుమతుల గురించి అడగండి..."
+                  : language === "hi"
+                  ? "हस्तशिल्प, जीआई टैग, साड़ियों के बारे में पूछें..."
+                  : "Ask about crafts, GI tags, silk, pottery…"
+              }
               placeholderTextColor="#A89F95"
               value={input}
               onChangeText={setInput}
