@@ -1,9 +1,9 @@
 import { getSession, AuthDomain } from "./storage";
 
-const DEFAULT_BACKEND_URL = "http://10.1.97.16:8000";
+const DEFAULT_BACKEND_URL = "https://dd8bq7j24onss.cloudfront.net";
 const RAW_URL = (process.env.EXPO_PUBLIC_API_URL || DEFAULT_BACKEND_URL).trim();
 
-// Use configured URL or local LAN IP
+// Use configured URL or production CloudFront URL
 export const BASE_URL = (RAW_URL || DEFAULT_BACKEND_URL).replace(/\/api\/?$/, "").replace(/\/$/, "");
 
 export class ApiError extends Error {

@@ -1,0 +1,93 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-apk.yml'
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'Backend API URL for mobile app'
+        required: false
+        default: 'https://dd8bq7j24onss.cloudfront.net'
+
+jobs:
+  build-apk:
+    name: Build Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Set up Java JDK (v17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Mobile Dependencies
+        run: |
+          cd mobile
+          npm ci || npm install --legacy-peer-deps
+
+      - name: Inject Environment Variables
+        run: |
+          cat << 'EOF' > mobile/.env
+          EXPO_PUBLIC_API_URL=${{ github.event.inputs.api_url || vars.EXPO_PUBLIC_API_URL || 'https://dd8bq7j24onss.cloudfront.net' }}
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ vars.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '26058075206-0jbhgsg44uh3irp9l4ucs3krv1adibng.apps.googleusercontent.com' }}
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ vars.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '26058075206-on14bkf0hlrenshpogiglj07ftb8qgba.apps.googleusercontent.com' }}
+          EOF
+          echo "Generated mobile/.env with API URL:"
+          cat mobile/.env | grep EXPO_PUBLIC_API_URL
+
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x mobile/android/gradlew
+
+      - name: Build Android Release APK
+        run: |
+          cd mobile/android
+          ./gradlew assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
+
+      - name: Prepare APK Artifact
+        run: |
+          mkdir -p build-output
+          cp mobile/android/app/build/outputs/apk/release/app-release.apk build-output/ArtisanAI-Release.apk
+          ls -lh build-output/
+
+      - name: Upload APK to GitHub Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArtisanAI-Android-Release-APK
+          path: build-output/ArtisanAI-Release.apk
+          retention-days: 30
+
+      - name: Create GitHub Release (On Tag Push)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build-output/ArtisanAI-Release.apk
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## Artisan AI Android Mobile App
+            - **Download**: [ArtisanAI-Release.apk](build-output/ArtisanAI-Release.apk)
+            - **Backend Connected**: Production AWS CloudFront (`https://dd8bq7j24onss.cloudfront.net`)
+            - **Architecture**: Pre-built Android native package with Hermes engine and offline sync support.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
