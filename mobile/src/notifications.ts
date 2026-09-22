@@ -22,12 +22,16 @@ export interface NotificationItem {
   created_at: string;
 }
 
+import { recordNativeShownId, getNativeShownIds } from "./nativeForegroundService";
+
 const PUSH_TOKEN_KEY = "artisan_push_token";
 const NOTIFICATIONS_CACHE_KEY = "artisan_cached_notifications";
 const SHOWN_NOTIFS_KEY = "artisan_shown_notification_ids";
 
 // Persistent deduplication set to guarantee notifications NEVER fire twice
 const shownNotificationIds = new Set<number>();
+
+// 1. Seed from React Native AsyncStorage
 AsyncStorage.getItem(SHOWN_NOTIFS_KEY).then((raw) => {
   if (raw) {
     try {
@@ -41,10 +45,21 @@ AsyncStorage.getItem(SHOWN_NOTIFS_KEY).then((raw) => {
   }
 }).catch(() => {});
 
+// 2. Seed from Android Native SharedPreferences (shown by native receiver while app was closed)
+getNativeShownIds().then((nativeIds) => {
+  if (Array.isArray(nativeIds)) {
+    for (const id of nativeIds) {
+      shownNotificationIds.add(Number(id));
+    }
+  }
+}).catch(() => {});
+
 async function recordNotificationShown(id: number) {
   shownNotificationIds.add(id);
   const arr = Array.from(shownNotificationIds).slice(-200);
   await AsyncStorage.setItem(SHOWN_NOTIFS_KEY, JSON.stringify(arr)).catch(() => {});
+  // Sync with native Android SharedPreferences so native background receiver also knows
+  recordNativeShownId(id).catch(() => {});
 }
 
 // Listen for notifications delivered directly via Expo Push Server (app active/background)

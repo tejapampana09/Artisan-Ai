@@ -10,7 +10,8 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
-  Image
+  Image,
+  Keyboard
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -99,7 +100,16 @@ export default function BuyerAssistant() {
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      () => {
+        setTimeout(() => {
+          scrollRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    );
     return () => {
+      showSub.remove();
       Speech.stop();
     };
   }, []);
@@ -241,13 +251,15 @@ export default function BuyerAssistant() {
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         style={{ flex: 1 }}
       >
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Date Divider */}
           <View style={styles.dateDivider}>
@@ -426,6 +438,11 @@ export default function BuyerAssistant() {
               placeholderTextColor="#A89F95"
               value={input}
               onChangeText={setInput}
+              onFocus={() => {
+                setTimeout(() => {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                }, 150);
+              }}
               onSubmitEditing={() => sendMessage()}
               returnKeyType="send"
               editable={!loading}
@@ -457,7 +474,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 28) + 4 : 10,
+    paddingTop: 10,
     paddingBottom: 14,
     backgroundColor: "#FCF9F8",
     borderBottomWidth: 1,

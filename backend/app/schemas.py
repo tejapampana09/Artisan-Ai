@@ -268,6 +268,7 @@ class OrderResponse(BaseModel):
     quantity: int
     unit_price: float
     total_price: float
+    total_amount: Optional[float] = None
     delivery_address: str
     payment_method: Optional[str] = "UPI"
     payment_status: str = "UNPAID"

@@ -460,6 +460,7 @@ def list_orders(
             quantity=o.quantity,
             unit_price=float(o.unit_price),
             total_price=float(o.total_price),
+            total_amount=float(o.total_price),
             delivery_address=o.delivery_address,
             payment_method=getattr(o, "payment_method", "UPI"),
             payment_status=getattr(o, "payment_status", "UNPAID") or "UNPAID",
@@ -625,6 +626,7 @@ def update_order_status(
         quantity=order.quantity,
         unit_price=float(order.unit_price),
         total_price=float(order.total_price),
+        total_amount=float(order.total_price),
         delivery_address=order.delivery_address,
         status=order.status,
         created_at=order.created_at

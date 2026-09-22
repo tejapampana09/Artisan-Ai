@@ -144,7 +144,12 @@ export default function SellerOrders() {
           ) : null
         }
         renderItem={({ item }) => {
-          const total = Number(item.total_amount || item.amount || 0);
+          const total = Number(
+            item.total_price ??
+            item.total_amount ??
+            item.amount ??
+            (Number(item.unit_price || 0) * Number(item.quantity || 1))
+          );
           const status = (item.status || "CONFIRMED").toUpperCase();
 
           return (
