@@ -149,77 +149,25 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
   const [micError, setMicError] = useState(null);
   const [reviewLang, setReviewLang] = useState('en'); // 'en' | 'native'
 
-  const QNA_QUESTIONS = [
-    {
-      id: 'q1_title',
-      num: 1,
-      te: 'మీరు తయారు చేసిన ఈ వస్తువు పేరు ఏంటి? ఇది ఏ రకమైన చేతివృత్తికి సంబంధించినది?',
-      hi: 'आपने जो यह वस्तु बनाई है, उसका नाम क्या है? यह किस प्रकार की हस्तकला से जुड़ी है?',
-      en: 'What is the name of this product, and what type of craft does it belong to?',
-      ta: 'நீங்கள் தயாரித்த இந்த பொருளின் பெயர் என்ன? இது எந்த வகையான கைவினையைச் சேர்ந்தது?',
-      bn: 'আপনি তৈরি করা এই পণ্যটির নাম কী? এটি কোন ধরনের হস্তশিল্পের সঙ্গে যুক্ত?',
-      speech: {
-        te: 'మీరు తయారు చేసిన ఈ వస్తువు పేరు ఏంటి? ఇది ఏ రకమైన చేతివృత్తికి సంబంధించినది?',
-        hi: 'आपने जो यह चीज़ बनाई है, उसका नाम क्या है? यह किस तरह की हस्तकला से जुड़ी है?',
-        en: 'What do you call this product? And what kind of traditional craft is it?',
-        ta: 'நீங்கள் தயாரித்த இந்த பொருளின் பெயர் என்ன? இது எந்த வகையான பாரம்பரிய கைவினையைச் சேர்ந்தது?',
-        bn: 'আপনি যে পণ্যটি তৈরি করেছেন, সেটার নাম কী? এটি কোন ধরনের ঐতিহ্যবাহী হস্তশিল্প?'
-      },
-      placeholder: {
-        te: 'ఉదాహరణ: చేతితో నేసిన కలంకారి దుపట్టా...',
-        hi: 'उदाहरण: हाथ से बना कलमकारी दुपट्टा...',
-        en: 'e.g. Handpainted Kalamkari Silk Dupatta...',
-        ta: 'எடுத்துக்காட்டு: கைத்தறி కలம்காரி துப்பட்டா...',
-        bn: 'উদাহরণ: হাতে তৈরি কলমকারি শাড়ি...'
-      }
-    },
-    {
-      id: 'q2_materials',
-      num: 2,
-      te: 'దీన్ని తయారు చేయడానికి ఏ పదార్థాలు వాడారు? ఇది పూర్తిగా చేతితో తయారు చేశారా?',
-      hi: 'इसे बनाने के लिए आपने किन सामग्रियों का इस्तेमाल किया? क्या यह पूरी तरह हाथ से बनाया गया है?',
-      en: 'What materials did you use to make it? Is it completely handmade?',
-      ta: 'இதை தயாரிக்க என்ன பொருட்களை பயன்படுத்தினீர்கள்? இது முழுவதும் கையால் செய்யப்பட்டதா?',
-      bn: 'এটি তৈরি করতে আপনি কী কী উপকরণ ব্যবহার করেছেন? এটি কি পুরোপুরি হাতে তৈরি?',
-      speech: {
-        te: 'దీన్ని తయారు చేయడానికి ఏ పదార్థాలు వాడారు? ఇది పూర్తిగా చేతితో తయారు చేశారా?',
-        hi: 'इसे बनाने में आपने कौन-कौन सी चीज़ें इस्तेमाल कीं? क्या यह पूरी तरह हाथ से बनाया गया है?',
-        en: 'What materials did you use to make it? And is it completely handmade?',
-        ta: 'இதை செய்ய என்னென்ன பொருட்களை பயன்படுத்தினீர்கள்? இது முழுவதும் கையால் செய்யப்பட்டதா?',
-        bn: 'এটি তৈরি করতে কী কী উপকরণ ব্যবহার করেছেন? এটি কি পুরোপুরি হাতে তৈরি?'
-      },
-      placeholder: {
-        te: 'ఉదాహరణ: పట్టు నూలు, సహజ రంగులు, చెక్క...',
-        hi: 'उदाहरण: रेशम, प्राकृतिक रंग, लकड़ी...',
-        en: 'e.g. Pure silk, natural dyes, wood...',
-        ta: 'எடுத்துக்காட்டு: பட்டு, இயற்கை சாயங்கள், மரம்...',
-        bn: 'উদাহরণ: খাঁটি রেশম, প্রাকৃতিক রং, কাঠ...'
-      }
-    },
-    {
-      id: 'q3_story',
-      num: 3,
-      te: 'ఒక్క వస్తువును తయారు చేయడానికి సాధారణంగా ఎంత సమయం పడుతుంది? ఈ కళకు సంబంధించిన ప్రత్యేకత లేదా మీ కుటుంబ కథ ఏదైనా ఉందా?',
-      hi: 'एक वस्तु बनाने में आमतौर पर कितना समय लगता है? इस कला की कोई खासियत या आपके परिवार से जुड़ी कोई कहानी है?',
-      en: 'How much time does it usually take to make one piece? Is there anything special about this craft or a story from your family?',
-      ta: 'ஒரு பொருளை தயாரிக்க பொதுவாக எவ்வளவு நேரம் ஆகும்? இந்த கைவினையின் சிறப்பு அல்லது உங்கள் குடும்பத்துடன் தொடர்புடைய கதை ஏதேனும் உள்ளதா?',
-      bn: 'একটি পণ্য তৈরি করতে সাধারণত কত সময় লাগে? এর বিশেষত্ব বা உங்கள் পরিবারের সঙ্গে জড়িত কোনো গল্প আছে কি?',
-      speech: {
-        te: 'ఒక్క వస్తువును తయారు చేయడానికి సాధారణంగా ఎంత సమయం పడుతుంది? ఈ కళకు సంబంధించిన ప్రత్యేకత లేదా మీ కుటుంబ కథ ఏదైనా ఉందా?',
-        hi: 'एक चीज़ बनाने में आमतौर पर कितना समय लगता है? इस कला की कोई खास बात या आपके परिवार से जुड़ी कहानी है?',
-        en: 'How long does it usually take to make one piece? And is there anything special about this craft, or a story passed down in your family?',
-        ta: 'ஒரு பொருளை செய்ய பொதுவாக எவ்வளவு நேரம் ஆகும்? இந்த கைவினையின் சிறப்பு அல்லது உங்கள் குடும்பத்தில் சொல்லப்பட்டு வரும் கதை ஏதேனும் உள்ளதா?',
-        bn: 'একটি পণ্য তৈরি করতে সাধারণত কত সময় লাগে? এই শিল্পের বিশেষত্ব বা உங்கள் পরিবারে চলে আসা কোনো গল্প আছে কি?'
-      },
-      placeholder: {
-        te: 'ఉదాహరణ: 10 రోజులు పడుతుంది, మా కుటుంబంలో మూడు తరాలుగా ఈ కళను చేస్తున్నాం...',
-        hi: 'उदाहरण: इसे बनाने में 10 दिन लगते हैं और हमारे परिवार में यह कला तीन पीढ़ियों से चली आ रही है...',
-        en: 'e.g. It takes 10 days, and our family has practiced this craft for three generations...',
-        ta: 'எடுத்துக்காட்டு: 10 நாட்கள் ஆகும், எங்கள் குடும்பத்தில் மூன்று தலைமுறைகளாக இந்தக் கலையை செய்து வருகிறோம்...',
-        bn: 'উদাহরণ: ১০ দিন সময় লাগে, আমাদের পরিবার তিন প্রজন্ম ধরে এই শিল্প করে আসছে...'
-      }
-    }
-  ];
+  const { language: activeLanguage } = useLanguage();
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [customImageUrl, setCustomImageUrl] = useState('');
+  const [selectedLang, setSelectedLang] = useState(activeLanguage || 'te');
+  const [speakingQId, setSpeakingQId] = useState(null);
+  const [voiceText, setVoiceText] = useState('');
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [selectedBackdrop, setSelectedBackdrop] = useState('marble_pedestal');
+  const [costs, setCosts] = useState({ material: '', labour: '', packaging: '', other: '', selling_price: '' });
+  const [aiDraft, setAiDraft] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [imgErrorOriginal, setImgErrorOriginal] = useState(false);
+  const [imgErrorEnhanced, setImgErrorEnhanced] = useState(false);
+  const [isEnhancingImage, setIsEnhancingImage] = useState(false);
+  const [enhancedImageUrl, setEnhancedImageUrl] = useState('');
+  const [chosenImageOption, setChosenImageOption] = useState('enhanced');
 
   // Sync combined text into voiceText
   useEffect(() => {
@@ -241,31 +189,12 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
       [qId]: prev[qId] ? `${prev[qId]} ${transcript}` : transcript
     }));
   };
-  const { language: activeLanguage, t } = useLanguage();
-  const [selectedPhoto, setSelectedPhoto] = useState(null);
-  const [customImageUrl, setCustomImageUrl] = useState('');
-  const [selectedLang, setSelectedLang] = useState(activeLanguage || 'te');
-  const [speakingQId, setSpeakingQId] = useState(null);
 
   useEffect(() => {
     if (activeLanguage) {
       setSelectedLang(activeLanguage);
     }
   }, [activeLanguage, isOpen]);
-  const [voiceText, setVoiceText] = useState('');
-  const [audioUrl, setAudioUrl] = useState(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [selectedBackdrop, setSelectedBackdrop] = useState('marble_pedestal');
-  const [costs, setCosts] = useState({ material: '', labour: '', packaging: '', other: '', selling_price: '' });
-  const [aiDraft, setAiDraft] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  const [imgErrorOriginal, setImgErrorOriginal] = useState(false);
-  const [imgErrorEnhanced, setImgErrorEnhanced] = useState(false);
-  const [isEnhancingImage, setIsEnhancingImage] = useState(false);
-  const [enhancedImageUrl, setEnhancedImageUrl] = useState('');
-  const [chosenImageOption, setChosenImageOption] = useState('enhanced');
   
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -2185,7 +2114,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                 };
 
                 return (
-                  <div className="bg-[#FAF9F6] p-3.5 rounded-xl border border-[#E8E5DF] space-y-2.5">
+                  <div className="bg-[#FAF7F2] p-3.5 rounded-xl border border-[#E8E2D9] space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-1.5">
                         <Sparkles className="w-4 h-4 text-[#A6533B]" />
@@ -2195,7 +2124,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                             : 'External Market Comparables & Benchmark (India Handmade / Mystore ONDC)'}
                         </span>
                       </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${medianPrice ? 'text-emerald-800 bg-emerald-50 border-emerald-200' : 'text-[#6B6B6B] bg-stone-50 border-[#E8E5DF]'}`}>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${medianPrice ? 'text-emerald-800 bg-emerald-50 border-emerald-200' : 'text-[#6B6B6B] bg-stone-50 border-[#E8E2D9]'}`}>
                         {medianPrice ? 'Observed Market Benchmark Active' : (aiDraft.market_summary?.ai_estimated_price ? 'AI Estimated Reference' : (aiDraft.market_summary?.comparable_count > 0 ? `${aiDraft.market_summary.comparable_count} Listings Found` : 'Search Active'))}
                       </span>
                     </div>
@@ -2236,7 +2165,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                     ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {results.map((item, idx) => (
-                        <div key={idx} className="p-2.5 rounded-md border border-[#E8E5DF] bg-white flex flex-col justify-between space-y-2">
+                        <div key={idx} className="p-2.5 rounded-md border border-[#E8E2D9] bg-white flex flex-col justify-between space-y-2">
                           <div>
                             <div className="flex justify-between items-start gap-1">
                               <span className="text-xs font-bold text-[#1C1C1C] line-clamp-1">{item.title}</span>
@@ -2250,7 +2179,7 @@ export default function AICatalogStudioModal({ isOpen, onClose, onPublished }) {
                               {getPlatformBadge(item.source, item.url)}
                             </span>
                           </div>
-                          <div className="flex justify-between items-center pt-1.5 border-t border-[#E8E5DF]">
+                          <div className="flex justify-between items-center pt-1.5 border-t border-[#E8E2D9]">
                             <span className="text-xs font-bold text-[#1C1C1C]">
                               {item.price ? `₹${item.price}` : 'Price unlisted'}
                             </span>

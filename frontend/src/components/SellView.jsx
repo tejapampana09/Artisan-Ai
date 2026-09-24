@@ -62,7 +62,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
 
   if (user?.role === 'ADMIN') {
     return (
-      <div className="max-w-xl mx-auto my-12 bg-white rounded-3xl p-8 border border-[#E8E5DF] shadow-2xl text-center space-y-4 font-sans text-xs">
+      <div className="max-w-xl mx-auto my-12 bg-white rounded-3xl p-8 border border-[#E8E2D9] shadow-2xl text-center space-y-4 font-sans text-xs">
         <ShieldCheck className="w-12 h-12 text-[#A6533B] mx-auto" />
         <h2 className="text-xl font-bold text-[#1C1C1C]">Admin Governance Active</h2>
         <p className="text-[#6B6B6B] leading-relaxed">
@@ -448,7 +448,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-2">
         {/* Left: Brand & Portal Badge */}
         <div className="flex items-center space-x-3 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-white border border-[#E8E5DF] text-[#A6533B] flex items-center justify-center shrink-0 font-bold shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-white border border-[#E8E2D9] text-[#A6533B] flex items-center justify-center shrink-0 font-bold shadow-2xs">
             <Store className="w-5 h-5 text-[#A6533B]" />
           </div>
           <div className="flex items-center space-x-2">
@@ -508,7 +508,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
           <button
             type="button"
             onClick={() => setIsSelectingLanguage(true)}
-            className="bg-white hover:bg-stone-50 text-[#1C1C1C] border border-[#E8E5DF] hover:border-[#A6533B] text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 shadow-2xs"
+            className="bg-white hover:bg-stone-50 text-[#1C1C1C] border border-[#E8E2D9] hover:border-[#A6533B] text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 shadow-2xs"
             title="Change Language / భాషను మార్చుకోండి"
           >
             <Globe className="w-4 h-4 text-[#A6533B]" />
@@ -520,7 +520,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
           <button
             type="button"
             onClick={handleSignOut}
-            className="bg-white hover:bg-red-50 text-stone-700 hover:text-red-700 border border-[#E8E5DF] hover:border-red-300 text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center space-x-2 shrink-0 shadow-2xs group"
+            className="bg-white hover:bg-red-50 text-stone-700 hover:text-red-700 border border-[#E8E2D9] hover:border-red-300 text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center space-x-2 shrink-0 shadow-2xs group"
             title="Sign Out / సైన్ అవుట్"
           >
             <LogOut className="w-4 h-4 text-stone-500 group-hover:text-red-600 transition-colors" />
@@ -533,7 +533,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
       {activeTab === 'DASHBOARD' && (
         <div className="space-y-6">
           {/* Welcome Banner */}
-          <div className="bg-[#FAF9F6] rounded-2xl p-6 sm:p-8 border border-[#E8E5DF] shadow-xs space-y-4">
+          <div className="bg-[#FAF7F2] rounded-2xl p-6 sm:p-8 border border-[#E8E2D9] shadow-xs space-y-4">
             <div>
               <span className="text-[#A6533B] text-xs uppercase tracking-widest font-semibold block">Artisan Studio Dashboard</span>
               <h1 className="text-2xl sm:text-3xl font-bold text-[#1C1C1C] tracking-tight mt-1">
@@ -571,9 +571,9 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
               {/* Card 1: Create Catalog */}
               <div 
                 onClick={() => setIsAIOpen(true)}
-                className="bg-white border border-[#E8E5DF] p-4 rounded-xl cursor-pointer hover:border-[#A6533B] transition-all space-y-2 group"
+                className="bg-white border border-[#E8E2D9] p-4 rounded-xl cursor-pointer hover:border-[#A6533B] transition-all space-y-2 group"
               >
-                <div className="w-9 h-9 rounded-lg bg-[#FAF9F6] text-[#A6533B] flex items-center justify-center border border-[#E8E5DF] group-hover:scale-105 transition-transform">
+                <div className="w-9 h-9 rounded-lg bg-[#FAF7F2] text-[#A6533B] flex items-center justify-center border border-[#E8E2D9] group-hover:scale-105 transition-transform">
                   <Wand2 className="w-4 h-4" />
                 </div>
                 <div>
@@ -585,9 +585,9 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
               {/* Card 2: Market Research */}
               <div 
                 onClick={() => handleTabClick('INSIGHTS')}
-                className="bg-white border border-[#E8E5DF] p-4 rounded-xl cursor-pointer hover:border-[#A6533B] transition-all space-y-2 group"
+                className="bg-white border border-[#E8E2D9] p-4 rounded-xl cursor-pointer hover:border-[#A6533B] transition-all space-y-2 group"
               >
-                <div className="w-9 h-9 rounded-lg bg-[#FAF9F6] text-[#1C1C1C] flex items-center justify-center border border-[#E8E5DF] group-hover:scale-105 transition-transform">
+                <div className="w-9 h-9 rounded-lg bg-[#FAF7F2] text-[#1C1C1C] flex items-center justify-center border border-[#E8E2D9] group-hover:scale-105 transition-transform">
                   <BarChart3 className="w-4 h-4" />
                 </div>
                 <div>
@@ -599,9 +599,9 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
               {/* Card 3: Smart Pricing */}
               <div 
                 onClick={() => handleTabClick('PRICING')}
-                className="bg-white border border-[#E8E5DF] p-4 rounded-xl cursor-pointer hover:border-[#A6533B] transition-all space-y-2 group"
+                className="bg-white border border-[#E8E2D9] p-4 rounded-xl cursor-pointer hover:border-[#A6533B] transition-all space-y-2 group"
               >
-                <div className="w-9 h-9 rounded-lg bg-[#FAF9F6] text-[#1C1C1C] flex items-center justify-center border border-[#E8E5DF] group-hover:scale-105 transition-transform">
+                <div className="w-9 h-9 rounded-lg bg-[#FAF7F2] text-[#1C1C1C] flex items-center justify-center border border-[#E8E2D9] group-hover:scale-105 transition-transform">
                   <Tag className="w-4 h-4" />
                 </div>
                 <div>
@@ -613,9 +613,9 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
               {/* Card 4: Demand Insights */}
               <div 
                 onClick={() => handleTabClick('DASHBOARD')}
-                className="bg-white border border-[#E8E5DF] p-4 rounded-xl cursor-pointer hover:border-[#A6533B] transition-all space-y-2 group"
+                className="bg-white border border-[#E8E2D9] p-4 rounded-xl cursor-pointer hover:border-[#A6533B] transition-all space-y-2 group"
               >
-                <div className="w-9 h-9 rounded-lg bg-[#FAF9F6] text-[#1C1C1C] flex items-center justify-center border border-[#E8E5DF] group-hover:scale-105 transition-transform">
+                <div className="w-9 h-9 rounded-lg bg-[#FAF7F2] text-[#1C1C1C] flex items-center justify-center border border-[#E8E2D9] group-hover:scale-105 transition-transform">
                   <TrendingUp className="w-4 h-4" />
                 </div>
                 <div>
@@ -633,19 +633,19 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
             </h3>
             <div className="grid grid-cols-3 gap-3">
               {/* Metric 1 */}
-              <div className="bg-white p-4 rounded-xl border border-[#E8E5DF] shadow-xs space-y-1 text-center">
+              <div className="bg-white p-4 rounded-xl border border-[#E8E2D9] shadow-xs space-y-1 text-center">
                 <span className="text-[11px] font-semibold text-[#6B6B6B] block">New Views</span>
                 <span className="text-xl font-extrabold text-[#1C1C1C]">{dashboardData?.total_views ?? myProducts.reduce((sum, p) => sum + (p.views_count || 0), 0)}</span>
               </div>
 
               {/* Metric 2 */}
-              <div className="bg-white p-4 rounded-xl border border-[#E8E5DF] shadow-xs space-y-1 text-center">
+              <div className="bg-white p-4 rounded-xl border border-[#E8E2D9] shadow-xs space-y-1 text-center">
                 <span className="text-[11px] font-semibold text-[#6B6B6B] block">Enquiries</span>
                 <span className="text-xl font-extrabold text-[#1C1C1C]">{dashboardData?.total_enquiries ?? enquiries.length}</span>
               </div>
 
               {/* Metric 3 */}
-              <div className="bg-white p-4 rounded-xl border border-[#E8E5DF] shadow-xs space-y-1 text-center">
+              <div className="bg-white p-4 rounded-xl border border-[#E8E2D9] shadow-xs space-y-1 text-center">
                 <span className="text-[11px] font-semibold text-[#6B6B6B] block">Potential Earnings</span>
                 <span className="text-xl font-extrabold text-[#A6533B]">₹{totalCatalogValue.toLocaleString('en-IN')}</span>
               </div>
@@ -773,10 +773,10 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
               <div key={p.id} className="bg-amber-50/40 p-4 rounded-2xl border border-[#933D1E]/30 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 bg-amber-200/60 px-2 py-0.5 rounded-full">
-                    {p.category} GI Provenance
+                    {p.category} Craft Provenance
                   </span>
                   <span className="font-mono text-[10px] font-bold text-[#933D1E] bg-white px-2 py-0.5 rounded border border-amber-300">
-                    ART-GI-2026-{p.id}
+                    ART-CRAFT-2026-{p.id}
                   </span>
                 </div>
 

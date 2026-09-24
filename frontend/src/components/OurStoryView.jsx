@@ -11,7 +11,7 @@ export default function OurStoryView({ onSelectMode, onOpenAuth, user }) {
       craft: 'Kalamkari Handloom Painting',
       location: 'Srikalahasti, Andhra Pradesh',
       experience: '28 Years',
-      tag: 'GI Tagged Heritage Master',
+      tag: 'Master Heritage Artisan',
       image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80',
       bio: 'Practicing 300-year-old family tradition of organic vegetable dye Kalamkari painting using bamboo pens.'
     },
@@ -47,21 +47,21 @@ export default function OurStoryView({ onSelectMode, onOpenAuth, user }) {
   return (
     <div className="space-y-12 pb-24 max-w-6xl mx-auto font-sans">
       {/* Editorial Header */}
-      <section className="bg-[#FAF9F6] border border-[#E8E5DF] rounded-2xl p-8 sm:p-12 text-center space-y-4">
-        <span className="text-xs uppercase tracking-widest text-[#A6533B] font-semibold block">
-          OUR MISSION & HERITAGE PURPOSE
-        </span>
-        <h1 className="text-3xl sm:text-5xl font-bold text-[#1C1C1C] tracking-tight max-w-3xl mx-auto leading-tight">
+      <section className="bg-[#FAF7F2] border border-[#E8E2D9] rounded-2xl p-6 sm:p-8 space-y-2 text-center shadow-xs">
+        <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-[#8C3F2B]/10 text-[#8C3F2B] text-[10px] font-bold tracking-wider uppercase">
+          <span>📜 Brand Purpose & Mission</span>
+        </div>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#1C1C1C] tracking-tight max-w-3xl mx-auto leading-tight">
           Empowering Rural Indian Master Artisans Through Voice AI & Direct Fair Trade
         </h1>
-        <p className="text-sm sm:text-base text-[#6B6B6B] max-w-2xl mx-auto leading-relaxed">
-          Artisan AI bridges rural master craftspeople directly with global buyers — eliminating middleman exploitation, guaranteeing minimum 20% fair profit margins, and preserving endangered UNESCO & GI-tagged cultural heritage.
+        <p className="text-xs sm:text-sm text-stone-600 font-medium max-w-2xl mx-auto leading-relaxed">
+          Artisan AI bridges rural master craftspeople directly with global patrons — eliminating middleman exploitation, guaranteeing minimum 20% fair profit margins, and preserving endangered traditional & cultural heritage crafts.
         </p>
       </section>
 
       {/* Difference Between Landing Page & Our Story */}
-      <section className="bg-white border border-[#E8E5DF] rounded-2xl p-6 sm:p-8 space-y-6">
-        <div className="border-b border-[#E8E5DF] pb-4">
+      <section className="bg-white border border-[#E8E2D9] rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xs">
+        <div className="border-b border-[#E8E2D9] pb-4">
           <div className="flex items-center space-x-2">
             <BookOpen className="w-5 h-5 text-[#A6533B]" />
             <h2 className="text-xl font-bold text-[#1C1C1C] tracking-tight">
@@ -75,13 +75,13 @@ export default function OurStoryView({ onSelectMode, onOpenAuth, user }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
           {/* Card 1: Landing Page */}
-          <div className="p-5 bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl space-y-3">
+          <div className="p-5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-bold text-sm text-[#1C1C1C] flex items-center space-x-1.5">
                 <Store className="w-4 h-4 text-[#A6533B]" />
                 <span>1. The Landing Page (Commercial Marketplace)</span>
               </span>
-              <span className="text-[10px] font-semibold bg-amber-50 text-[#A6533B] px-2 py-0.5 rounded border border-[#E8E5DF]">
+              <span className="text-[10px] font-semibold bg-amber-50 text-[#A6533B] px-2 py-0.5 rounded border border-[#E8E2D9]">
                 Storefront
               </span>
             </div>
@@ -105,7 +105,7 @@ export default function OurStoryView({ onSelectMode, onOpenAuth, user }) {
           </div>
 
           {/* Card 2: Our Story */}
-          <div className="p-5 bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl space-y-3">
+          <div className="p-5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-bold text-sm text-[#1C1C1C] flex items-center space-x-1.5">
                 <Heart className="w-4 h-4 text-[#A6533B]" />
@@ -116,7 +116,7 @@ export default function OurStoryView({ onSelectMode, onOpenAuth, user }) {
               </span>
             </div>
             <p className="text-[#6B6B6B] leading-relaxed">
-              Our Story is the **"why" behind Artisan AI**. It details how Voice AI breaks literacy barriers for rural artisans, our strict cost-plus 20% profit protection policy, GI provenance verification, and our goal to sustain generational artisan families across India.
+              Our Story is the **"why" behind Artisan AI**. It details how Voice AI breaks literacy barriers for rural artisans, our strict cost-plus 20% profit protection policy, artisan provenance verification, and our goal to sustain generational artisan families across India.
             </p>
             <ul className="space-y-1.5 text-[#1C1C1C] pt-1">
               <li className="flex items-center space-x-1.5">
@@ -148,43 +148,43 @@ export default function OurStoryView({ onSelectMode, onOpenAuth, user }) {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-xl border border-[#E8E5DF] space-y-2">
-            <div className="w-10 h-10 rounded-md bg-[#FAF9F6] border border-[#E8E5DF] text-[#A6533B] flex items-center justify-center">
+          <div className="bg-white p-5 rounded-2xl border border-[#E8E2D9] space-y-2 shadow-2xs">
+            <div className="w-10 h-10 rounded-xl bg-[#FAF7F2] border border-[#E8E2D9] text-[#A6533B] flex items-center justify-center">
               <Mic className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-sm text-[#1C1C1C]">Voice-First Accessibility</h3>
-            <p className="text-xs text-[#6B6B6B] leading-relaxed">
+            <p className="text-xs text-stone-600 leading-relaxed">
               Artisans simply speak in Telugu or Hindi. Gemini AI converts voice notes and craft photos into complete e-commerce listings.
             </p>
           </div>
 
-          <div className="bg-white p-5 rounded-xl border border-[#E8E5DF] space-y-2">
-            <div className="w-10 h-10 rounded-md bg-[#FAF9F6] border border-[#E8E5DF] text-[#356B4A] flex items-center justify-center">
+          <div className="bg-white p-5 rounded-2xl border border-[#E8E2D9] space-y-2 shadow-2xs">
+            <div className="w-10 h-10 rounded-xl bg-[#FAF7F2] border border-[#E8E2D9] text-[#356B4A] flex items-center justify-center">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-sm text-[#1C1C1C]">Protected 20% Margin</h3>
-            <p className="text-xs text-[#6B6B6B] leading-relaxed">
+            <p className="text-xs text-stone-600 leading-relaxed">
               Cost-plus formulas combine material, labour, and packaging expenses with a guaranteed ≥20% profit floor to prevent underpricing.
             </p>
           </div>
 
-          <div className="bg-white p-5 rounded-xl border border-[#E8E5DF] space-y-2">
-            <div className="w-10 h-10 rounded-md bg-[#FAF9F6] border border-[#E8E5DF] text-[#1C1C1C] flex items-center justify-center">
+          <div className="bg-white p-5 rounded-2xl border border-[#E8E2D9] space-y-2 shadow-2xs">
+            <div className="w-10 h-10 rounded-xl bg-[#FAF7F2] border border-[#E8E2D9] text-[#1C1C1C] flex items-center justify-center">
               <Users className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-sm text-[#1C1C1C]">Direct Wholesale Enquiries</h3>
-            <p className="text-xs text-[#6B6B6B] leading-relaxed">
+            <p className="text-xs text-stone-600 leading-relaxed">
               Buyers connect directly with artisans via WhatsApp and Phone calls for bulk and custom orders without middleman cuts.
             </p>
           </div>
 
-          <div className="bg-white p-5 rounded-xl border border-[#E8E5DF] space-y-2">
-            <div className="w-10 h-10 rounded-md bg-[#FAF9F6] border border-[#E8E5DF] text-[#A6533B] flex items-center justify-center">
+          <div className="bg-white p-5 rounded-2xl border border-[#E8E2D9] space-y-2 shadow-2xs">
+            <div className="w-10 h-10 rounded-xl bg-[#FAF7F2] border border-[#E8E2D9] text-[#A6533B] flex items-center justify-center">
               <Globe className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-sm text-[#1C1C1C]">GI Heritage Preservation</h3>
-            <p className="text-xs text-[#6B6B6B] leading-relaxed">
-              Cryptographically verified digital craft passports preserving origin, natural materials, and GI tag authenticity.
+            <h3 className="font-bold text-sm text-[#1C1C1C]">Heritage Craft Preservation</h3>
+            <p className="text-xs text-stone-600 leading-relaxed">
+              Cryptographically verified digital craft passports preserving origin, natural materials, and artisan provenance authenticity.
             </p>
           </div>
         </div>
@@ -192,7 +192,7 @@ export default function OurStoryView({ onSelectMode, onOpenAuth, user }) {
 
       {/* Featured Master Artisans Spotlight */}
       <section className="space-y-6">
-        <div className="flex justify-between items-end border-b border-[#E8E5DF] pb-3">
+        <div className="flex justify-between items-end border-b border-[#E8E2D9] pb-3">
           <div>
             <h2 className="text-2xl font-bold text-[#1C1C1C] tracking-tight">
               MEET OUR MASTER ARTISANS
@@ -212,12 +212,12 @@ export default function OurStoryView({ onSelectMode, onOpenAuth, user }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {masterArtisans.map((artisan, idx) => (
-            <div key={idx} className="bg-white rounded-xl border border-[#E8E5DF] overflow-hidden space-y-3 p-4">
-              <div className="aspect-4/3 rounded-md overflow-hidden bg-[#FAF9F6] border border-[#E8E5DF]">
+            <div key={idx} className="bg-white rounded-2xl border border-[#E8E2D9] overflow-hidden space-y-3 p-4 shadow-2xs">
+              <div className="aspect-4/3 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#E8E2D9]">
                 <img src={artisan.image} alt={artisan.name} className="w-full h-full object-cover" />
               </div>
               <div className="space-y-1">
-                <span className="text-[10px] font-bold text-[#A6533B] bg-amber-50 px-2 py-0.5 rounded border border-[#E8E5DF]">
+                <span className="text-[10px] font-bold text-[#A6533B] bg-amber-50 px-2 py-0.5 rounded border border-[#E8E2D9]">
                   {artisan.tag}
                 </span>
                 <h3 className="font-bold text-sm text-[#1C1C1C] pt-1">{artisan.name}</h3>
@@ -226,7 +226,7 @@ export default function OurStoryView({ onSelectMode, onOpenAuth, user }) {
                   <MapPin className="w-3 h-3 text-[#A6533B] mr-1 shrink-0" />
                   <span>{artisan.location}</span>
                 </p>
-                <p className="text-xs text-[#6B6B6B] pt-1 leading-snug italic">
+                <p className="text-xs text-stone-600 pt-1 leading-snug italic">
                   "{artisan.bio}"
                 </p>
               </div>
@@ -236,7 +236,7 @@ export default function OurStoryView({ onSelectMode, onOpenAuth, user }) {
       </section>
 
       {/* Call to Action Banner */}
-      <section className="bg-[#1C1C1C] text-white rounded-2xl p-8 sm:p-10 text-center space-y-4">
+      <section className="bg-stone-900 border border-[#E8E2D9] text-white rounded-2xl p-8 sm:p-10 text-center space-y-4 shadow-sm">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
           Join the Direct Fair Trade Movement
         </h2>
@@ -246,13 +246,13 @@ export default function OurStoryView({ onSelectMode, onOpenAuth, user }) {
         <div className="pt-2 flex justify-center gap-3">
           <button
             onClick={() => onSelectMode('BUY')}
-            className="px-6 py-2.5 bg-[#A6533B] hover:bg-[#88412F] text-white font-semibold text-xs rounded-md transition-colors cursor-pointer"
+            className="px-6 py-2.5 bg-[#A6533B] hover:bg-[#88412F] text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-xs"
           >
             Explore Marketplace
           </button>
           <button
             onClick={() => user ? onSelectMode('SELL') : onOpenAuth()}
-            className="px-6 py-2.5 bg-white text-[#1C1C1C] hover:bg-stone-100 font-semibold text-xs rounded-md transition-colors cursor-pointer"
+            className="px-6 py-2.5 bg-white text-[#1C1C1C] hover:bg-stone-100 font-bold text-xs rounded-xl transition-all cursor-pointer shadow-xs"
           >
             Start Seller Studio
           </button>

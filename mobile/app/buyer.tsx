@@ -11,7 +11,8 @@ import {
   Modal,
   ScrollView,
   StatusBar,
-  Platform
+  Platform,
+  Share
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -22,7 +23,14 @@ import { theme } from "../src/theme";
 import { clearSession, getSession } from "../src/storage";
 import { addToCart, getCartCount, subscribeCart } from "../src/cart";
 import { getWishlist, subscribeWishlist, toggleWishlist } from "../src/wishlist";
-import { BottomNavigation, LanguageSelectorModal, DeliveryAddressModal } from "../src/components";
+import { addRecentlyViewed } from "../src/recentlyViewed";
+import { 
+  BottomNavigation, 
+  LanguageSelectorModal, 
+  DeliveryAddressModal,
+  RecentlyViewedCarousel,
+  ProductCardSkeleton
+} from "../src/components";
 import { subscribeNotifications } from "../src/notifications";
 import { useI18n } from "../src/i18n";
 import { useRoleGuard } from "../src/authGuard";
@@ -226,12 +234,13 @@ export default function BuyerScreen() {
     return (
       <Pressable
         style={styles.card}
-        onPress={() =>
+        onPress={() => {
+          addRecentlyViewed(item);
           router.push({
             pathname: "/product",
             params: { id: String(item.id) }
-          } as any)
-        }
+          } as any);
+        }}
       >
         {/* Aspect 4:5 Portrait Image */}
         <View style={styles.imageBox}>
@@ -241,12 +250,31 @@ export default function BuyerScreen() {
             resizeMode="cover"
           />
 
+          {/* Share Button */}
+          <Pressable
+            style={styles.shareBtn}
+            onPress={async (e) => {
+              e.stopPropagation();
+              try {
+                const url = `https://dd8bq7j24onss.cloudfront.net/#craft-${item.id}`;
+                await Share.share({
+                  title: item.title,
+                  message: `✨ Discover "${item.title}" handcrafted by master Indian artisans on Artisan AI (₹${Number(item.price).toLocaleString("en-IN")})!\n\nView craft: ${url}`
+                });
+              } catch (err) {}
+            }}
+            hitSlop={8}
+            accessibilityLabel="Share craft"
+          >
+            <Feather name="share-2" size={13} color="#4B5563" />
+          </Pressable>
+
           {/* Wishlist Heart */}
           <Pressable
             style={[styles.heartBtn, isSaved && styles.heartBtnActive]}
-              onPress={async (e) => {
+            onPress={async (e) => {
               e.stopPropagation();
-                await handleToggleSave(item);
+              await handleToggleSave(item);
             }}
             hitSlop={8}
           >
@@ -553,11 +581,35 @@ export default function BuyerScreen() {
           </View>
         }
         renderItem={renderProductItem}
+        ListFooterComponent={
+          <View style={{ paddingBottom: 32 }}>
+            <RecentlyViewedCarousel
+              onAddedToCart={(title) => {
+                setAddedToast(`Added "${title}" to Bag! 🛒`);
+                setTimeout(() => setAddedToast(""), 2500);
+              }}
+            />
+          </View>
+        }
         ListEmptyComponent={
           loading ? (
-            <View style={styles.emptyBox}>
-              <ActivityIndicator color={theme.accent} size="large" />
-              <Text style={styles.emptyText}>Loading marketplace crafts…</Text>
+            <View style={{ paddingHorizontal: 12, paddingTop: 8 }}>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <ProductCardSkeleton />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <ProductCardSkeleton />
+                </View>
+              </View>
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+                <View style={{ flex: 1 }}>
+                  <ProductCardSkeleton />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <ProductCardSkeleton />
+                </View>
+              </View>
             </View>
           ) : (
             <View style={styles.emptyBox}>
@@ -957,6 +1009,22 @@ const styles = StyleSheet.create({
   },
   heartBtnActive: {
     backgroundColor: "#FFE4E6"
+  },
+  shareBtn: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+    zIndex: 5
   },
   categoryBadge: {
     position: "absolute",

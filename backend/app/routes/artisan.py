@@ -30,14 +30,16 @@ def get_artisan_public_profile(artisan_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Master Artisan profile not found")
 
     prods_count = db.query(Product).filter(Product.seller_id == artisan_id).count()
-    
-    # Calculate average review rating across artisan's products
-    product_ids = [p.id for p in db.query(Product.id).filter(Product.seller_id == artisan_id).all()]
-    avg_rating = 0.0
-    if product_ids:
-        avg_res = db.query(func.avg(Review.rating)).filter(Review.product_id.in_(product_ids)).scalar()
-        if avg_res:
-            avg_rating = round(float(avg_res), 1)
+
+    # Calculate average review rating across artisan's products (single JOIN query, no N+1)
+    avg_res = (
+        db.query(func.avg(Review.rating))
+        .join(Product, Review.product_id == Product.id)
+        .filter(Product.seller_id == artisan_id)
+        .scalar()
+    )
+    avg_rating = round(float(avg_res), 1) if avg_res else 0.0
+
 
     # Trust Verification Status logic
     ver_status = artisan.verification_status or "UNVERIFIED"

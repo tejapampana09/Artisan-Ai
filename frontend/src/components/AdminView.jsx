@@ -77,19 +77,6 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
     }
   }, [user]);
 
-  useEffect(() => {
-    if (user?.role === 'ADMIN' || adminUser || getAdminToken()) {
-      fetchAllData();
-    }
-  }, [user, adminUser]);
-
-  const fetchAllData = async () => {
-    fetchSellers();
-    fetchProducts();
-    checkSystemHealth();
-    fetchOndcStatus();
-  };
-
   const fetchOndcStatus = async () => {
     try {
       const res = await fetch('/api/ondc/status');
@@ -137,6 +124,19 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
       console.error('Health check failed', e);
     }
   };
+
+  const fetchAllData = async () => {
+    fetchSellers();
+    fetchProducts();
+    checkSystemHealth();
+    fetchOndcStatus();
+  };
+
+  useEffect(() => {
+    if (user?.role === 'ADMIN' || adminUser || getAdminToken()) {
+      fetchAllData();
+    }
+  }, [user, adminUser]);
 
   const handleAdminLogin = async (e) => {
     e.preventDefault();
@@ -353,7 +353,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
   // If user is not logged in as Admin, show Admin Login Portal
   if (!adminUser && user?.role !== 'ADMIN') {
     return (
-      <div className="max-w-md mx-auto my-12 bg-white rounded-3xl p-8 border border-[#E8E5DF] shadow-2xl space-y-6 text-xs text-[#1C1C1C]">
+      <div className="max-w-md mx-auto my-12 bg-white rounded-3xl p-8 border border-[#E8E2D9] shadow-2xl space-y-6 text-xs text-[#1C1C1C]">
         <div className="text-center space-y-2">
           <div className="w-14 h-14 rounded-2xl bg-[#1C1C1C] text-amber-400 flex items-center justify-center mx-auto shadow-md">
             <ShieldCheck className="w-7 h-7" />
@@ -391,7 +391,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                 onChange={(e) => setAdminIdentifier(e.target.value)}
                 required
                 placeholder="admin@artisan.ai"
-                className="w-full pl-9 pr-3 py-2.5 bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl outline-hidden focus:ring-2 focus:ring-[#1C1C1C]"
+                className="w-full pl-9 pr-3 py-2.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#1C1C1C]"
               />
             </div>
           </div>
@@ -406,7 +406,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                 onChange={(e) => setAdminPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="w-full pl-9 pr-3 py-2.5 bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl outline-hidden focus:ring-2 focus:ring-[#1C1C1C]"
+                className="w-full pl-9 pr-3 py-2.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#1C1C1C]"
               />
             </div>
           </div>
@@ -421,7 +421,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
           </button>
         </form>
 
-        <div className="text-center pt-2 border-t border-[#E8E5DF]">
+        <div className="text-center pt-2 border-t border-[#E8E2D9]">
           <button
             onClick={() => onSelectMode('BUY')}
             className="text-[#6B6B6B] hover:text-[#1C1C1C] font-semibold text-xs transition-colors cursor-pointer"
@@ -477,7 +477,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
 
       {/* Metrics Cards Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-[#E8E5DF] shadow-xs space-y-1">
+        <div className="bg-white p-5 rounded-2xl border border-[#E8E2D9] shadow-xs space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-[#6B6B6B] uppercase tracking-wider block">Artisans ({activeArtisans.length} Active)</span>
             {pendingArtisans.length > 0 && (
@@ -492,7 +492,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-[#E8E5DF] shadow-xs space-y-1">
+        <div className="bg-white p-5 rounded-2xl border border-[#E8E2D9] shadow-xs space-y-1">
           <span className="text-[10px] font-bold text-[#6B6B6B] uppercase tracking-wider block">Total Platform Products</span>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-extrabold text-[#1C1C1C]">{products.length}</span>
@@ -500,7 +500,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-[#E8E5DF] shadow-xs space-y-1">
+        <div className="bg-white p-5 rounded-2xl border border-[#E8E2D9] shadow-xs space-y-1">
           <span className="text-[10px] font-bold text-[#6B6B6B] uppercase tracking-wider block">Pending Approval Queue</span>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-extrabold text-amber-600">{pendingCount}</span>
@@ -508,7 +508,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-[#E8E5DF] shadow-xs space-y-1">
+        <div className="bg-white p-5 rounded-2xl border border-[#E8E2D9] shadow-xs space-y-1">
           <span className="text-[10px] font-bold text-[#6B6B6B] uppercase tracking-wider block">Live Published Crafts</span>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-extrabold text-emerald-600">{publishedCount}</span>
@@ -518,13 +518,13 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
       </div>
 
       {/* Tabs Bar */}
-      <div className="flex items-center space-x-2 border-b border-[#E8E5DF] pb-3 overflow-x-auto">
+      <div className="flex items-center space-x-2 border-b border-[#E8E2D9] pb-3 overflow-x-auto">
         <button
           onClick={() => setAdminTab('PRODUCTS')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
             adminTab === 'PRODUCTS'
               ? 'bg-[#1C1C1C] text-white shadow-md'
-              : 'bg-white text-[#6B6B6B] border border-[#E8E5DF] hover:text-[#1C1C1C]'
+              : 'bg-white text-[#6B6B6B] border border-[#E8E2D9] hover:text-[#1C1C1C]'
           }`}
         >
           <Layers className="w-4 h-4 text-amber-400" />
@@ -536,7 +536,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
             adminTab === 'SELLERS'
               ? 'bg-[#1C1C1C] text-white shadow-md'
-              : 'bg-white text-[#6B6B6B] border border-[#E8E5DF] hover:text-[#1C1C1C]'
+              : 'bg-white text-[#6B6B6B] border border-[#E8E2D9] hover:text-[#1C1C1C]'
           }`}
         >
           <Users className="w-4 h-4 text-amber-400" />
@@ -553,7 +553,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
             adminTab === 'SYSTEM'
               ? 'bg-[#1C1C1C] text-white shadow-md'
-              : 'bg-white text-[#6B6B6B] border border-[#E8E5DF] hover:text-[#1C1C1C]'
+              : 'bg-white text-[#6B6B6B] border border-[#E8E2D9] hover:text-[#1C1C1C]'
           }`}
         >
           <BarChart3 className="w-4 h-4 text-amber-400" />
@@ -565,7 +565,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
       {adminTab === 'PRODUCTS' && (
         <div className="space-y-6">
           {/* Status Sub-Filters */}
-          <div className="flex items-center justify-between flex-wrap gap-3 bg-white p-4 rounded-2xl border border-[#E8E5DF]">
+          <div className="flex items-center justify-between flex-wrap gap-3 bg-white p-4 rounded-2xl border border-[#E8E2D9]">
             <div className="flex items-center space-x-1.5 overflow-x-auto">
               {['ALL', 'PENDING_APPROVAL', 'DRAFT', 'APPROVED', 'PUBLISHED', 'SUSPENDED'].map((st) => (
                 <button
@@ -574,7 +574,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     productStatusFilter === st
                       ? 'bg-[#A6533B] text-white'
-                      : 'bg-[#FAF9F6] text-[#6B6B6B] border border-[#E8E5DF] hover:text-[#1C1C1C]'
+                      : 'bg-[#FAF7F2] text-[#6B6B6B] border border-[#E8E2D9] hover:text-[#1C1C1C]'
                   }`}
                 >
                   {st.replace('_', ' ')}
@@ -594,11 +594,11 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
 
           {/* Product Governance List */}
           {loadingProducts ? (
-            <div className="bg-white p-12 rounded-3xl border border-[#E8E5DF] text-center text-[#6B6B6B]">
+            <div className="bg-white p-12 rounded-3xl border border-[#E8E2D9] text-center text-[#6B6B6B]">
               Loading platform products for governance review...
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="bg-white p-12 rounded-3xl border border-[#E8E5DF] text-center text-[#6B6B6B]">
+            <div className="bg-white p-12 rounded-3xl border border-[#E8E2D9] text-center text-[#6B6B6B]">
               No products found in filter <strong>{productStatusFilter}</strong>.
             </div>
           ) : (
@@ -610,14 +610,14 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                 return (
                   <div 
                     key={p.id} 
-                    className="bg-white rounded-2xl border border-[#E8E5DF] p-4 flex flex-col justify-between space-y-3 shadow-xs hover:border-[#A6533B] transition-all"
+                    className="bg-white rounded-2xl border border-[#E8E2D9] p-4 flex flex-col justify-between space-y-3 shadow-xs hover:border-[#A6533B] transition-all"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start space-x-3 overflow-hidden">
                         <img 
                           src={p.image_url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=200&auto=format&fit=crop&q=80'} 
                           alt={p.title}
-                          className="w-16 h-16 rounded-xl object-cover border border-[#E8E5DF] shrink-0"
+                          className="w-16 h-16 rounded-xl object-cover border border-[#E8E2D9] shrink-0"
                         />
                         <div className="truncate">
                           <div className="flex items-center space-x-2">
@@ -649,7 +649,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                     </div>
 
                     {/* Admin Actions Footer */}
-                    <div className="pt-3 border-t border-[#E8E5DF] flex items-center justify-between gap-2 flex-wrap text-xs">
+                    <div className="pt-3 border-t border-[#E8E2D9] flex items-center justify-between gap-2 flex-wrap text-xs">
                       <div className="flex items-center space-x-2">
                         {statusUpper !== 'APPROVED' && statusUpper !== 'PUBLISHED' && (
                           <button
@@ -794,8 +794,8 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Left Column: Provision Form */}
-            <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-[#E8E5DF] shadow-xs space-y-4">
-            <div className="border-b border-[#E8E5DF] pb-3 flex items-center justify-between">
+            <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-[#E8E2D9] shadow-xs space-y-4">
+            <div className="border-b border-[#E8E2D9] pb-3 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <PlusCircle className="w-5 h-5 text-[#A6533B]" />
                 <h3 className="font-bold text-base text-[#1C1C1C]">Provision New Artisan Seller Profile</h3>
@@ -827,7 +827,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                     onChange={(e) => setName(e.target.value)}
                     required
                     placeholder="e.g. Lakshmi Devi"
-                    className="w-full px-3.5 py-2.5 bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
                   />
                 </div>
 
@@ -838,7 +838,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                     value={craft}
                     onChange={(e) => setCraft(e.target.value)}
                     placeholder="e.g. Kondapalli Toys & Woodcraft"
-                    className="w-full px-3.5 py-2.5 bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
                   />
                 </div>
               </div>
@@ -851,7 +851,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="artisan@domain.com"
-                    className="w-full px-3.5 py-2.5 bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
                   />
                 </div>
 
@@ -862,7 +862,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+91 98765 43210"
-                    className="w-full px-3.5 py-2.5 bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
                   />
                 </div>
               </div>
@@ -875,7 +875,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="Kondapalli, AP"
-                    className="w-full px-3.5 py-2.5 bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
                   />
                 </div>
 
@@ -888,18 +888,18 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                     required
                     minLength={6}
                     placeholder="ArtisanPass123"
-                    className="w-full px-3.5 py-2.5 bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B] font-mono"
+                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B] font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-[#1C1C1C] mb-1">GI Credentials Status</label>
+                  <label className="block font-semibold text-[#1C1C1C] mb-1">Artisan Verification Status</label>
                   <select
                     value={verificationStatus}
                     onChange={(e) => setVerificationStatus(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl text-[#1C1C1C] font-semibold"
+                    className="w-full px-3 py-2.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl text-[#1C1C1C] font-semibold"
                   >
-                    <option value="GI_VERIFIED">GI Verified Master</option>
+                    <option value="GI_VERIFIED">Verified Master Artisan</option>
                     <option value="VERIFIED_ARTISAN">Verified Artisan</option>
                     <option value="PENDING">Pending Review</option>
                   </select>
@@ -921,8 +921,8 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
 
           {/* Right Column: Directory */}
           <div className="lg:col-span-5 space-y-4">
-            <div className="bg-white p-6 rounded-3xl border border-[#E8E5DF] shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-[#E8E5DF] pb-3">
+            <div className="bg-white p-6 rounded-3xl border border-[#E8E2D9] shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-[#E8E2D9] pb-3">
                 <div className="flex items-center space-x-2">
                   <Users className="w-4 h-4 text-[#1C1C1C]" />
                   <h3 className="font-bold text-sm text-[#1C1C1C]">Active Provisioned Sellers ({activeArtisans.length})</h3>
@@ -937,7 +937,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                   No active artisan sellers provisioned yet.
                 </div>
               ) : (
-                <div className="divide-y divide-[#E8E5DF] max-h-96 overflow-y-auto pr-1">
+                <div className="divide-y divide-[#E8E2D9] max-h-96 overflow-y-auto pr-1">
                   {activeArtisans.map((s) => (
                     <div key={s.id} className="py-3 flex items-center justify-between gap-2">
                       <div className="flex items-center space-x-3 overflow-hidden min-w-0">
@@ -994,8 +994,8 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
 
       {/* TAB 3: SYSTEM READINESS & SECURITY */}
       {adminTab === 'SYSTEM' && (
-        <div className="bg-white p-6 rounded-3xl border border-[#E8E5DF] shadow-xs space-y-6">
-          <div className="border-b border-[#E8E5DF] pb-3 flex items-center justify-between">
+        <div className="bg-white p-6 rounded-3xl border border-[#E8E2D9] shadow-xs space-y-6">
+          <div className="border-b border-[#E8E2D9] pb-3 flex items-center justify-between">
             <h3 className="font-bold text-base text-[#1C1C1C] flex items-center space-x-2">
               <ShieldCheck className="w-5 h-5 text-emerald-600" />
               <span>Platform Security & System Health</span>
@@ -1006,7 +1006,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 bg-[#FAF9F6] rounded-2xl border border-[#E8E5DF]">
+            <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-[#E8E2D9]">
               <span className="text-[10px] font-bold text-[#6B6B6B] uppercase block">Database Connection</span>
               <span className="text-sm font-bold text-emerald-600 flex items-center mt-1">
                 <CheckCircle2 className="w-4 h-4 mr-1 text-emerald-500" />
@@ -1014,14 +1014,14 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
               </span>
             </div>
 
-            <div className="p-4 bg-[#FAF9F6] rounded-2xl border border-[#E8E5DF]">
+            <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-[#E8E2D9]">
               <span className="text-[10px] font-bold text-[#6B6B6B] uppercase block">Registered Artisans</span>
               <span className="text-sm font-bold text-[#1C1C1C] mt-1 block">
                 {sellers.length > 0 ? sellers.length : (systemHealth?.status === 'ready' ? '—' : 'Healthy')}
               </span>
             </div>
 
-            <div className="p-4 bg-[#FAF9F6] rounded-2xl border border-[#E8E5DF]">
+            <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-[#E8E2D9]">
               <span className="text-[10px] font-bold text-[#6B6B6B] uppercase block">AI Demand & Pricing Engine</span>
               <span className="text-sm font-bold text-emerald-600 flex items-center mt-1">
                 <Sparkles className="w-4 h-4 mr-1 text-amber-500" />
@@ -1031,7 +1031,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
           </div>
 
           {/* ONDC Integration Diagnostics */}
-          <div className="bg-[#FAF9F6] p-5 rounded-2xl border border-[#E8E5DF] space-y-4">
+          <div className="bg-[#FAF7F2] p-5 rounded-2xl border border-[#E8E2D9] space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Store className="w-4 h-4 text-[#A6533B]" />
@@ -1051,24 +1051,24 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-              <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
+              <div className="p-3 bg-white rounded-xl border border-[#E8E2D9]">
                 <span className="text-[10px] font-bold text-[#6B6B6B] block">Environment & Auth</span>
                 <span className="font-bold text-[#1C1C1C] mt-0.5 block">{ondcStatus?.environment || 'DEVELOPMENT'}</span>
                 <span className="text-[10px] text-[#8C827A] mt-0.5 block">{ondcStatus?.auth_mode || 'Permissive Mode'}</span>
               </div>
-              <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
+              <div className="p-3 bg-white rounded-xl border border-[#E8E2D9]">
                 <span className="text-[10px] font-bold text-[#6B6B6B] block">Participant ID (Subscriber)</span>
                 <span className="font-bold text-[#1C1C1C] mt-0.5 block truncate" title={ondcStatus?.subscriber_id || 'Not configured'}>
                   {ondcStatus?.subscriber_id || 'Pending Onboarding'}
                 </span>
                 <span className="text-[10px] text-[#8C827A] mt-0.5 block">Key: {ondcStatus?.signing_configured ? 'Ed25519 Active' : 'Keys Pending'}</span>
               </div>
-              <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
+              <div className="p-3 bg-white rounded-xl border border-[#E8E2D9]">
                 <span className="text-[10px] font-bold text-[#6B6B6B] block">Retail Domains</span>
                 <span className="font-bold text-[#1C1C1C] mt-0.5 block">{ondcStatus?.domain || 'ONDC:RET12'}</span>
                 <span className="text-[10px] text-[#8C827A] mt-0.5 block">Supports: RET12, RET15</span>
               </div>
-              <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
+              <div className="p-3 bg-white rounded-xl border border-[#E8E2D9]">
                 <span className="text-[10px] font-bold text-[#6B6B6B] block">Gateway Routing</span>
                 <span className="font-bold text-[#1C1C1C] mt-0.5 block truncate">
                   {ondcStatus?.gateway_configured ? 'Configured' : 'Pending Onboarding'}
@@ -1085,13 +1085,13 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
+              <div className="p-3 bg-white rounded-xl border border-[#E8E2D9]">
                 <span className="text-[10px] font-bold text-[#6B6B6B] block">Last Protocol Interaction</span>
                 <span className="font-medium text-[#1C1C1C] mt-0.5 block">
                   {ondcStatus?.last_protocol_interaction ? new Date(ondcStatus.last_protocol_interaction).toLocaleString() : 'No interactions recorded'}
                 </span>
               </div>
-              <div className="p-3 bg-white rounded-xl border border-[#E8E5DF]">
+              <div className="p-3 bg-white rounded-xl border border-[#E8E2D9]">
                 <span className="text-[10px] font-bold text-[#6B6B6B] block">Last Successful Search Discovery</span>
                 <span className="font-medium text-[#1C1C1C] mt-0.5 block">
                   {ondcStatus?.last_successful_search ? new Date(ondcStatus.last_successful_search).toLocaleString() : 'None yet'}
@@ -1131,8 +1131,8 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
       {/* Artisan Reset Password Modal */}
       {resetModalArtisan && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-[#E8E5DF] space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E8E5DF]">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-[#E8E2D9] space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E8E2D9]">
               <div className="flex items-center space-x-2 text-[#1C1C1C]">
                 <KeyRound className="w-5 h-5 text-[#A6533B]" />
                 <h3 className="font-bold text-base">Reset Artisan Password</h3>
@@ -1163,7 +1163,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                   value={resetPasswordValue}
                   onChange={(e) => setResetPasswordValue(e.target.value)}
                   placeholder="Enter new strong password"
-                  className="w-full px-4 py-2.5 rounded-xl border border-[#E8E5DF] text-xs focus:outline-hidden focus:border-[#A6533B] bg-[#FAF9F6]"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#E8E2D9] text-xs focus:outline-hidden focus:border-[#A6533B] bg-[#FAF7F2]"
                   autoFocus
                 />
               </div>

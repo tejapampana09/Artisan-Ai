@@ -5,28 +5,21 @@ import {
   StyleSheet,
   Pressable,
   Image,
-  RefreshControl,
   ScrollView,
   Modal
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "../src/api";
-import { getSession } from "../src/storage";
+import { getSession, clearSession } from "../src/storage";
 import { theme } from "../src/theme";
-import { clearSession } from "../src/storage";
 import {
   Screen,
-  Header,
   BottomNavigation,
-  StatCard,
-  PrimaryButton,
-  SecondaryButton,
-  StatusBadge,
   EmptyState,
   ErrorState,
   SkeletonBox,
-  SectionHeader,
+  StatusBadge,
   LanguageSelectorModal
 } from "../src/components";
 import { useI18n } from "../src/i18n";
@@ -35,7 +28,7 @@ import { useRoleGuard } from "../src/authGuard";
 
 export default function SellerDashboard() {
   useRoleGuard("seller");
-  const { language, t, getCategory } = useI18n();
+  const { language, t } = useI18n();
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [dashboard, setDashboard] = useState<any>(null);
@@ -46,6 +39,7 @@ export default function SellerDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [signOutModalVisible, setSignOutModalVisible] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeNotifications((_, count) => setUnreadNotifs(count));
@@ -92,15 +86,14 @@ export default function SellerDashboard() {
     loadData();
   };
 
-  const artisanName = user?.name || t("verifiedMasterArtisan");
-  const craftSpecialty = user?.craft || user?.craft_specialization || "Authentic Handcrafted Heritage";
+  const artisanName = user?.name || user?.full_name || (language === "te" ? "మాస్టర్ శిల్పి" : "Master Artisan");
+  const craftSpecialty = user?.craft || user?.craft_specialization || "Handcrafted Heritage";
   const avatarUrl =
     user?.avatar_url ||
     `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(artisanName)}`;
 
   const totalRevenue = dashboard?.total_revenue ?? 0;
   const unitsSold = dashboard?.units_sold ?? 0;
-  const totalOrders = dashboard?.total_orders ?? orders.length;
   const totalViews = dashboard?.total_views ?? 0;
   const totalEnquiries = dashboard?.total_enquiries ?? 0;
   const deliveryStatus = dashboard?.delivery_status || {
@@ -111,10 +104,6 @@ export default function SellerDashboard() {
     cancelled: 0
   };
   const productPerformance = dashboard?.product_performance || [];
-
-  const [signOutModalVisible, setSignOutModalVisible] = useState(false);
-
-  const handleSignOut = () => setSignOutModalVisible(true);
 
   const doSignOut = async () => {
     setSignOutModalVisible(false);
@@ -141,33 +130,44 @@ export default function SellerDashboard() {
         onClose={() => setLangModalVisible(false)}
       />
 
-      {/* Sleek Studio Header */}
+      {/* Clean Artisan Studio Header */}
       <View style={styles.cleanHeader}>
         <View style={styles.headerLeft}>
-          <Image
-            source={{ uri: avatarUrl }}
-            style={styles.headerAvatar}
-            resizeMode="cover"
-          />
+          <Pressable
+            onPress={() => router.push("/seller-profile" as any)}
+            style={styles.avatarWrap}
+            hitSlop={8}
+          >
+            <Image
+              source={{ uri: avatarUrl }}
+              style={styles.headerAvatar}
+              resizeMode="cover"
+            />
+            <View style={styles.onlineDot} />
+          </Pressable>
           <View style={styles.headerTitleBox}>
             <View style={styles.headerNameRow}>
+              <Text style={styles.headerGreeting}>
+                {language === "te" ? "నమస్కారం," : "Studio of"}
+              </Text>
               <Text style={styles.headerName} numberOfLines={1}>{artisanName}</Text>
-              <View style={styles.verifiedTag}>
-                <Ionicons name="checkmark-circle" size={13} color="#2563EB" />
-                <Text style={styles.verifiedTagText}>STUDIO</Text>
-              </View>
             </View>
-            <Text style={styles.headerSub} numberOfLines={1}>{craftSpecialty}</Text>
+            <Text style={styles.headerSub} numberOfLines={1}>
+              🌿 {craftSpecialty}
+            </Text>
           </View>
         </View>
 
         <View style={styles.headerRightActions}>
           <Pressable
-            style={styles.headerIconBtn}
+            style={styles.headerLangPill}
             onPress={() => setLangModalVisible(true)}
             hitSlop={6}
           >
-            <Ionicons name="globe-outline" size={19} color="#1C1917" />
+            <Ionicons name="globe-outline" size={14} color="#A6533B" />
+            <Text style={styles.headerLangText}>
+              {language === "te" ? "తెలుగు" : language === "hi" ? "हिन्दी" : "EN"}
+            </Text>
           </Pressable>
 
           <Pressable
@@ -175,7 +175,7 @@ export default function SellerDashboard() {
             onPress={() => router.push("/notifications")}
             hitSlop={6}
           >
-            <Ionicons name="notifications-outline" size={19} color="#1C1917" />
+            <Ionicons name="notifications-outline" size={19} color="#1C1C1C" />
             {unreadNotifs > 0 && (
               <View style={styles.cleanNotifBadge}>
                 <Text style={styles.cleanNotifBadgeText}>
@@ -184,234 +184,251 @@ export default function SellerDashboard() {
               </View>
             )}
           </Pressable>
-
-          <Pressable
-            style={styles.headerIconBtn}
-            onPress={() => router.push("/seller-profile" as any)}
-            hitSlop={6}
-          >
-            <Ionicons name="person-outline" size={19} color="#1C1917" />
-          </Pressable>
         </View>
       </View>
 
       {loading && !refreshing ? (
         <View style={styles.loadingContainer}>
-          <SkeletonBox height={100} borderRadius={theme.radius.lg} style={{ marginBottom: 16 }} />
+          <SkeletonBox height={110} borderRadius={16} style={{ marginBottom: 16 }} />
           <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
-            <SkeletonBox height={80} style={{ flex: 1 }} borderRadius={theme.radius.md} />
-            <SkeletonBox height={80} style={{ flex: 1 }} borderRadius={theme.radius.md} />
+            <SkeletonBox height={88} style={{ flex: 1 }} borderRadius={14} />
+            <SkeletonBox height={88} style={{ flex: 1 }} borderRadius={14} />
           </View>
-          <SkeletonBox height={140} borderRadius={theme.radius.lg} style={{ marginBottom: 16 }} />
+          <SkeletonBox height={140} borderRadius={16} style={{ marginBottom: 16 }} />
         </View>
       ) : errorMessage ? (
         <ErrorState message={errorMessage} onRetry={loadData} />
       ) : (
         <>
-          {/* Revenue & Growth Hero Card */}
-          <View style={styles.revenueHeroCard}>
-            <View style={styles.revenueHeroTop}>
+          {/* Studio Revenue & Growth Card */}
+          <View style={styles.revenueCard}>
+            <View style={styles.revenueTopRow}>
               <View>
-                <Text style={styles.revenueHeroLabel}>TOTAL REVENUE</Text>
-                <Text style={styles.revenueHeroValue}>₹{totalRevenue.toLocaleString("en-IN")}</Text>
+                <Text style={styles.revenueLabel}>
+                  {language === "te" ? "మొత్తం ఆదాయం" : "STUDIO REVENUE"}
+                </Text>
+                <Text style={styles.revenueValue}>₹{totalRevenue.toLocaleString("en-IN")}</Text>
               </View>
               <View style={styles.revenueBadge}>
-                <Ionicons name="trending-up" size={14} color="#16A34A" />
-                <Text style={styles.revenueBadgeText}>{unitsSold} Items Sold</Text>
+                <Ionicons name="sparkles" size={13} color="#2E7D32" />
+                <Text style={styles.revenueBadgeText}>
+                  {unitsSold} {language === "te" ? "అమ్మకాలు" : "Crafts Sold"}
+                </Text>
               </View>
             </View>
 
-            <View style={styles.revenueHeroDivider} />
-
-            <View style={styles.revenueHeroStatsRow}>
+            {/* Quick 3-Metric Strip */}
+            <View style={styles.metricsStrip}>
               <Pressable
-                style={styles.revenueSubStat}
+                style={styles.metricPill}
                 onPress={() => router.push("/seller-orders")}
               >
-                <Text style={styles.revenueSubVal}>{pendingOrders.length}</Text>
-                <Text style={styles.revenueSubLabel}>Pending Orders</Text>
+                <Text style={styles.metricPillNumber}>{pendingOrders.length}</Text>
+                <Text style={styles.metricPillLabel}>
+                  {language === "te" ? "పెండింగ్ ఆర్డర్లు" : "Pending Orders"}
+                </Text>
               </Pressable>
 
-              <View style={styles.revenueSubDivider} />
+              <View style={styles.metricPillDivider} />
 
               <Pressable
-                style={styles.revenueSubStat}
+                style={styles.metricPill}
                 onPress={() => router.push("/seller-enquiries")}
               >
-                <Text style={styles.revenueSubVal}>{totalEnquiries}</Text>
-                <Text style={styles.revenueSubLabel}>Buyer Inquiries</Text>
+                <Text style={styles.metricPillNumber}>{totalEnquiries}</Text>
+                <Text style={styles.metricPillLabel}>
+                  {language === "te" ? "ఎంక్వైరీలు" : "Inquiries"}
+                </Text>
               </Pressable>
 
-              <View style={styles.revenueSubDivider} />
+              <View style={styles.metricPillDivider} />
 
-              <View style={styles.revenueSubStat}>
-                <Text style={styles.revenueSubVal}>{totalViews}</Text>
-                <Text style={styles.revenueSubLabel}>Craft Views</Text>
+              <View style={styles.metricPill}>
+                <Text style={styles.metricPillNumber}>{totalViews}</Text>
+                <Text style={styles.metricPillLabel}>
+                  {language === "te" ? "క్రాఫ్ట్ వ్యూస్" : "Craft Views"}
+                </Text>
               </View>
             </View>
           </View>
 
-          {/* Clean Quick Studio Actions */}
-          <View style={styles.cleanActionRow}>
+          {/* Quick Studio Actions (Balanced 2-Card Grid) */}
+          <View style={styles.actionGrid}>
             <Pressable
-              style={styles.primaryStudioAction}
+              style={styles.actionCardPrimary}
               onPress={() => router.push("/seller-ai")}
             >
-              <View style={styles.actionIconPill}>
-                <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+              <View style={styles.actionCardIconBox}>
+                <Ionicons name="sparkles" size={20} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.primaryActionTitle}>AI Craft Studio</Text>
-                <Text style={styles.primaryActionSub}>Photo, voice & story listing</Text>
+                <Text style={styles.actionPrimaryTitle}>
+                  {language === "te" ? "AI క్రాఫ్ట్ స్టూడియో" : "AI Craft Studio"}
+                </Text>
+                <Text style={styles.actionPrimarySub}>
+                  {language === "te" ? "ఫోటో & వాయిస్ ద్వారా లిస్టింగ్" : "Photo & voice listing"}
+                </Text>
               </View>
               <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
             </Pressable>
 
             <Pressable
-              style={styles.secondaryStudioAction}
-              onPress={() => router.push("/product-editor" as any)}
+              style={styles.actionCardSecondary}
+              onPress={() => router.push("/seller-products")}
             >
-              <Ionicons name="add" size={20} color={theme.accent} />
-              <Text style={styles.secondaryActionText}>Manual Add</Text>
-            </Pressable>
-          </View>
-
-          {/* Readiness Progress Bar (if available) */}
-          {readiness && (
-            <View style={styles.cleanReadinessBox}>
-              <View style={styles.cleanReadinessTop}>
-                <Text style={styles.cleanReadinessTitle}>Catalogue Readiness</Text>
-                <Text style={styles.cleanReadinessPct}>
-                  {readiness.score != null ? `${readiness.score}%` : "0%"}
+              <View style={styles.actionCardSecondaryIconBox}>
+                <Ionicons name="cube-outline" size={19} color="#A6533B" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.actionSecondaryTitle}>
+                  {language === "te" ? "నా కళాఖండాలు" : "My Creations"}
+                </Text>
+                <Text style={styles.actionSecondarySub}>
+                  {language === "te" ? "వస్తువులు & ధరల నిర్వహణ" : "Catalog & pricing"}
                 </Text>
               </View>
-              <View style={styles.progressBarTrack}>
-                <View
-                  style={[
-                    styles.progressBarFill,
-                    { width: `${Math.min(100, Math.max(0, readiness.score || 0))}%` }
-                  ]}
-                />
-              </View>
-              <Text style={styles.cleanReadinessHint} numberOfLines={1}>
-                {readiness.next_best_action || "Add high quality photos to improve discovery"}
-              </Text>
-            </View>
-          )}
-
-          {/* Delivery Stages Grid */}
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionHeaderMain}>Order Fulfillment Pipeline</Text>
-            <Pressable onPress={() => router.push("/seller-orders")}>
-              <Text style={styles.sectionHeaderAction}>View All Orders →</Text>
+              <Ionicons name="chevron-forward" size={16} color="#A89A92" />
             </Pressable>
           </View>
 
-          <View style={styles.stagesRow}>
-            <View style={styles.stageCol}>
-              <View style={[styles.stageBadgeCircle, { backgroundColor: "#EFF6FF" }]}>
-                <Text style={[styles.stageCount, { color: "#2563EB" }]}>{deliveryStatus.confirmed ?? 0}</Text>
+          {/* Order Fulfillment Pipeline (Artisan Warm Earthy Styling) */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>
+              {language === "te" ? "ఆర్డర్ డెలివరీ స్థితి" : "Fulfillment Pipeline"}
+            </Text>
+            <Pressable onPress={() => router.push("/seller-orders")}>
+              <Text style={styles.sectionLink}>
+                {language === "te" ? "అన్నీ చూడండి →" : "View All →"}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.pipelineCard}>
+            <View style={styles.stageItem}>
+              <View style={[styles.stageBadge, { backgroundColor: "#FBF3F0" }]}>
+                <Text style={[styles.stageCount, { color: "#A6533B" }]}>
+                  {deliveryStatus.confirmed ?? 0}
+                </Text>
               </View>
-              <Text style={styles.stageTitle}>Confirmed</Text>
+              <Text style={styles.stageName}>
+                {language === "te" ? "ధృవీకరించబడింది" : "Confirmed"}
+              </Text>
             </View>
 
-            <View style={styles.stageCol}>
-              <View style={[styles.stageBadgeCircle, { backgroundColor: "#FFF7ED" }]}>
-                <Text style={[styles.stageCount, { color: "#EA580C" }]}>{deliveryStatus.processing ?? 0}</Text>
+            <View style={styles.stageItem}>
+              <View style={[styles.stageBadge, { backgroundColor: "#FFF8E1" }]}>
+                <Text style={[styles.stageCount, { color: "#835500" }]}>
+                  {deliveryStatus.processing ?? 0}
+                </Text>
               </View>
-              <Text style={styles.stageTitle}>Packed</Text>
+              <Text style={styles.stageName}>
+                {language === "te" ? "ప్యాక్ చేయబడింది" : "Packed"}
+              </Text>
             </View>
 
-            <View style={styles.stageCol}>
-              <View style={[styles.stageBadgeCircle, { backgroundColor: "#FDF2F8" }]}>
-                <Text style={[styles.stageCount, { color: "#DB2777" }]}>{deliveryStatus.shipped ?? 0}</Text>
+            <View style={styles.stageItem}>
+              <View style={[styles.stageBadge, { backgroundColor: "#E3F2FD" }]}>
+                <Text style={[styles.stageCount, { color: "#1565C0" }]}>
+                  {deliveryStatus.shipped ?? 0}
+                </Text>
               </View>
-              <Text style={styles.stageTitle}>Shipped</Text>
+              <Text style={styles.stageName}>
+                {language === "te" ? "రవాణాలో ఉంది" : "Dispatched"}
+              </Text>
             </View>
 
-            <View style={styles.stageCol}>
-              <View style={[styles.stageBadgeCircle, { backgroundColor: "#F0FDF4" }]}>
-                <Text style={[styles.stageCount, { color: "#16A34A" }]}>{deliveryStatus.delivered ?? 0}</Text>
+            <View style={styles.stageItem}>
+              <View style={[styles.stageBadge, { backgroundColor: "#E8F5E9" }]}>
+                <Text style={[styles.stageCount, { color: "#2E7D32" }]}>
+                  {deliveryStatus.delivered ?? 0}
+                </Text>
               </View>
-              <Text style={styles.stageTitle}>Delivered</Text>
+              <Text style={styles.stageName}>
+                {language === "te" ? "చేరింది" : "Delivered"}
+              </Text>
             </View>
           </View>
 
-          {/* Per-Product Sales & View Metrics (Exact Match to Web Dashboard) */}
-          <SectionHeader
-            title={language === "te" ? "ఉత్పత్తి వివరాలు & వ్యూస్" : "Craft Sales & View Metrics"}
-            subtitle={language === "te" ? "ప్రతి హస్తకళకు వచ్చిన వ్యూస్ మరియు అమ్మకాలు" : "Sales volume, views, and revenue per craft listing"}
-            actionLabel={language === "te" ? "అన్నీ చూడండి" : "All Crafts"}
-            onAction={() => router.push("/seller-products")}
-          />
+          {/* Per-Product Sales & View Metrics */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>
+              {language === "te" ? "కళాఖండాల పనితీరు" : "Craft Performance"}
+            </Text>
+            <Pressable onPress={() => router.push("/seller-products")}>
+              <Text style={styles.sectionLink}>
+                {language === "te" ? "అన్నీ చూడండి" : "All Crafts"}
+              </Text>
+            </Pressable>
+          </View>
+
           {productPerformance.length === 0 ? (
-            <View style={styles.noPerfBox}>
-              <Text style={styles.noPerfText}>
+            <View style={styles.emptyCraftBox}>
+              <Ionicons name="sparkles-outline" size={24} color="#A6533B" style={{ marginBottom: 6 }} />
+              <Text style={styles.emptyCraftText}>
                 {language === "te"
                   ? "ఇంకా హస్తకళల పనితీరు సమాచారం లేదు. AI తో కొత్త హస్తకళను సృష్టించండి."
-                  : "No craft listings yet. Create your first listing with AI to start tracking views and sales."}
+                  : "No crafts listed yet. Create your first piece with AI to track views and earnings."}
               </Text>
             </View>
           ) : (
             <View style={styles.perfList}>
-              {productPerformance.slice(0, 5).map((prod: any) => (
-                <View key={prod.product_id} style={styles.perfCard}>
-                  <View style={styles.perfTopRow}>
-                    <Image
-                      source={{
-                        uri:
-                          prod.image_url ||
-                          "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=400"
-                      }}
-                      style={styles.perfThumb}
-                      resizeMode="cover"
-                    />
-                    <View style={styles.perfMeta}>
-                      <Text style={styles.perfTitle} numberOfLines={2}>
+              {productPerformance.slice(0, 4).map((prod: any) => (
+                <Pressable
+                  key={prod.product_id}
+                  style={styles.perfCard}
+                  onPress={() => router.push("/seller-products")}
+                >
+                  <Image
+                    source={{
+                      uri:
+                        prod.image_url ||
+                        "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=400"
+                    }}
+                    style={styles.perfThumb}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.perfBody}>
+                    <View style={styles.perfTitleRow}>
+                      <Text style={styles.perfTitle} numberOfLines={1}>
                         {prod.title}
                       </Text>
-                      <View style={styles.perfBadgeRow}>
-                        <Text style={styles.perfPrice}>₹{Number(prod.price || 0).toLocaleString("en-IN")}</Text>
-                        <View style={styles.stockBadge}>
-                          <Text style={styles.stockBadgeText}>
-                            {prod.stock} {language === "te" ? "స్టాక్ సిద్ధం" : "ready"}
-                          </Text>
-                        </View>
+                      <Text style={styles.perfPrice}>
+                        ₹{Number(prod.price || 0).toLocaleString("en-IN")}
+                      </Text>
+                    </View>
+
+                    <View style={styles.perfMetaRow}>
+                      <View style={styles.perfMetricChip}>
+                        <Ionicons name="eye-outline" size={12} color="#6B5B51" />
+                        <Text style={styles.perfMetricText}>{prod.views ?? 0} views</Text>
+                      </View>
+                      <View style={styles.perfMetricChip}>
+                        <Ionicons name="cube-outline" size={12} color="#6B5B51" />
+                        <Text style={styles.perfMetricText}>{prod.units_sold ?? 0} sold</Text>
+                      </View>
+                      <View style={styles.perfStockChip}>
+                        <Text style={styles.perfStockText}>
+                          {prod.stock} {language === "te" ? "స్టాక్" : "in stock"}
+                        </Text>
                       </View>
                     </View>
                   </View>
-                  <View style={styles.perfMetricsRow}>
-                    <View style={styles.perfMetricItem}>
-                      <Ionicons name="eye-outline" size={13} color={theme.colors.info} />
-                      <Text style={styles.perfMetricText}>
-                        <Text style={styles.perfMetricBold}>{prod.views ?? 0}</Text> {language === "te" ? "వ్యూస్" : "Views"}
-                      </Text>
-                    </View>
-                    <View style={styles.perfMetricItem}>
-                      <Ionicons name="cube-outline" size={13} color={theme.colors.primary} />
-                      <Text style={styles.perfMetricText}>
-                        <Text style={styles.perfMetricBold}>{prod.units_sold ?? 0}</Text> {language === "te" ? "అమ్మకాలు" : "Sold"}
-                      </Text>
-                    </View>
-                    <View style={styles.perfMetricItem}>
-                      <Ionicons name="cash-outline" size={13} color={theme.colors.success} />
-                      <Text style={styles.perfMetricText}>
-                        <Text style={styles.perfMetricBold}>₹{Number(prod.revenue || 0).toLocaleString("en-IN")}</Text>
-                      </Text>
-                    </View>
-                  </View>
-                </View>
+                </Pressable>
               ))}
             </View>
           )}
 
-          {/* Live Order Dispatch Pipeline */}
-          <SectionHeader
-            title={t("orderDispatchPipeline")}
-            subtitle={`${orders.length} ${t("totalOrdersSubtitle")}`}
-            actionLabel={t("viewAllOrders")}
-            onAction={() => router.push("/seller-orders")}
-          />
+          {/* Recent Orders Stream */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>
+              {language === "te" ? "ఇటీవలి ఆర్డర్లు" : "Recent Orders"}
+            </Text>
+            <Pressable onPress={() => router.push("/seller-orders")}>
+              <Text style={styles.sectionLink}>
+                {language === "te" ? "ఆర్డర్ల జాబితా →" : "Order List →"}
+              </Text>
+            </Pressable>
+          </View>
 
           {orders.length === 0 ? (
             <EmptyState
@@ -429,20 +446,21 @@ export default function SellerDashboard() {
                   style={styles.orderCard}
                   onPress={() => router.push("/seller-orders")}
                 >
-                  <View style={styles.orderTopRow}>
+                  <View style={styles.orderTop}>
                     <View>
-                      <Text style={styles.orderId}>{t("orderNumber")}{ord.id}</Text>
-                      <Text style={styles.orderProduct} numberOfLines={1}>
-                        {ord.product_title || `Product #${ord.product_id}`}
+                      <Text style={styles.orderId}>Order #{ord.id}</Text>
+                      <Text style={styles.orderTitle} numberOfLines={1}>
+                        {ord.product_title || `Handcrafted Item #${ord.product_id}`}
                       </Text>
                     </View>
                     <StatusBadge status={ord.status || "CONFIRMED"} type="order" />
                   </View>
-                  <View style={styles.orderBottomRow}>
-                    <Text style={styles.buyerName}>
-                      {t("buyer")}: {ord.buyer_name || "Verified Customer"} (×{ord.quantity || 1})
+
+                  <View style={styles.orderBottom}>
+                    <Text style={styles.orderBuyer}>
+                      👤 {ord.buyer_name || "Verified Patron"} (×{ord.quantity || 1})
                     </Text>
-                    <Text style={styles.orderAmount}>
+                    <Text style={styles.orderPrice}>
                       ₹{Number(ord.total_price || 0).toLocaleString("en-IN")}
                     </Text>
                   </View>
@@ -450,35 +468,10 @@ export default function SellerDashboard() {
               ))}
             </View>
           )}
-
-          {/* Market Opportunity Cards */}
-          {opportunities && opportunities.high_demand_categories && (
-            <>
-              <SectionHeader
-                title={t("marketDemandOpportunities")}
-                subtitle="Live category intelligence"
-                actionLabel="Explore"
-                onAction={() => router.push("/seller-business" as any)}
-              />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.oppsScroll}>
-                {opportunities.high_demand_categories.slice(0, 3).map((cat: any, idx: number) => (
-                  <View key={idx} style={styles.oppCard}>
-                    <Text style={styles.oppCategory}>{cat.category}</Text>
-                    <Text style={styles.oppDemand}>
-                      Demand Surge: +{Math.round((cat.demand_index || 1.2) * 10)}%
-                    </Text>
-                    <Text style={styles.oppDesc} numberOfLines={2}>
-                      {cat.recommendation || "High consumer search volume across regions."}
-                    </Text>
-                  </View>
-                ))}
-              </ScrollView>
-            </>
-          )}
         </>
       )}
 
-      {/* Persistent Bottom Nav */}
+      {/* Persistent Bottom Navigation */}
       <BottomNavigation role="seller" />
 
       {/* Sign-Out Confirmation Modal */}
@@ -495,11 +488,11 @@ export default function SellerDashboard() {
         >
           <Pressable style={styles.signOutModal} onPress={() => {}}>
             <View style={styles.signOutIconCircle}>
-              <Ionicons name="log-out-outline" size={32} color="#E11D48" />
+              <Ionicons name="log-out-outline" size={28} color="#C62828" />
             </View>
             <Text style={styles.signOutModalTitle}>Sign out of Studio?</Text>
             <Text style={styles.signOutModalBody}>
-              You'll be taken back to the Buyer Marketplace. Your studio data and products stay safe.
+              You'll be taken back to the Buyer Marketplace. Your studio catalog and orders stay completely safe.
             </Text>
             <View style={styles.signOutModalActions}>
               <Pressable
@@ -522,32 +515,44 @@ export default function SellerDashboard() {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.sm
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24
   },
   cleanHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#FAF9F6",
     paddingVertical: 12,
-    marginBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EAE7E1"
+    marginBottom: 16
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    marginRight: 12
+    marginRight: 10
+  },
+  avatarWrap: {
+    position: "relative"
   },
   headerAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#E8DDD5",
+    backgroundColor: "#F5EFEB",
     borderWidth: 1.5,
-    borderColor: theme.accent
+    borderColor: "#E8E2D9"
+  },
+  onlineDot: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#2E7D32",
+    borderWidth: 2,
+    borderColor: "#FAF7F2"
   },
   headerTitleBox: {
     marginLeft: 10,
@@ -556,38 +561,45 @@ const styles = StyleSheet.create({
   headerNameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6
+    gap: 4
+  },
+  headerGreeting: {
+    fontSize: 12,
+    color: "#6B5B51",
+    fontWeight: "500"
   },
   headerName: {
     fontSize: 15,
-    fontWeight: "900",
-    color: "#1C1917"
-  },
-  verifiedTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#EFF6FF",
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 4,
-    gap: 3
-  },
-  verifiedTagText: {
-    fontSize: 9,
     fontWeight: "800",
-    color: "#2563EB",
-    letterSpacing: 0.5
+    color: "#1C1C1C",
+    flexShrink: 1
   },
   headerSub: {
     fontSize: 11,
-    color: "#78716C",
+    color: "#8A726A",
     fontWeight: "500",
     marginTop: 2
   },
   headerRightActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10
+    gap: 8
+  },
+  headerLangPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E8E2D9"
+  },
+  headerLangText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#A6533B"
   },
   headerIconBtn: {
     width: 36,
@@ -597,13 +609,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E5E1D8"
+    borderColor: "#E8E2D9"
   },
   cleanNotifBadge: {
     position: "absolute",
     top: -2,
     right: -2,
-    backgroundColor: "#E11D48",
+    backgroundColor: "#C62828",
     borderRadius: 8,
     minWidth: 15,
     height: 15,
@@ -617,217 +629,174 @@ const styles = StyleSheet.create({
     fontWeight: "900"
   },
   loadingContainer: {
-    marginTop: 16
+    marginTop: 8
   },
-  revenueHeroCard: {
+  revenueCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#E8E5DF",
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2
+    borderColor: "#E8E2D9",
+    marginBottom: 14
   },
-  revenueHeroTop: {
+  revenueTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start"
+    alignItems: "flex-start",
+    marginBottom: 14
   },
-  revenueHeroLabel: {
+  revenueLabel: {
     fontSize: 10.5,
     fontWeight: "800",
-    letterSpacing: 1,
-    color: "#78716C",
+    letterSpacing: 0.8,
+    color: "#8A726A",
     marginBottom: 2
   },
-  revenueHeroValue: {
+  revenueValue: {
     fontSize: 26,
     fontWeight: "900",
-    color: "#1C1917"
+    color: "#1C1C1C",
+    letterSpacing: -0.5
   },
   revenueBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F0FDF4",
+    backgroundColor: "#E8F5E9",
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
+    borderRadius: 14,
     gap: 4
   },
   revenueBadgeText: {
     fontSize: 11,
-    fontWeight: "800",
-    color: "#16A34A"
+    fontWeight: "700",
+    color: "#2E7D32"
   },
-  revenueHeroDivider: {
-    height: 1,
-    backgroundColor: "#F5F5F4",
-    marginVertical: 14
-  },
-  revenueHeroStatsRow: {
+  metricsStrip: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between"
+    backgroundColor: "#FAF7F2",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 6
   },
-  revenueSubStat: {
+  metricPill: {
     flex: 1,
     alignItems: "center"
   },
-  revenueSubVal: {
+  metricPillNumber: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#1C1917"
+    color: "#1C1C1C"
   },
-  revenueSubLabel: {
-    fontSize: 10.5,
-    color: "#78716C",
+  metricPillLabel: {
+    fontSize: 10,
+    color: "#6B5B51",
     fontWeight: "600",
     marginTop: 2
   },
-  revenueSubDivider: {
+  metricPillDivider: {
     width: 1,
-    height: 24,
-    backgroundColor: "#E7E5E4"
+    height: 22,
+    backgroundColor: "#E8E2D9"
   },
-  cleanActionRow: {
+  actionGrid: {
     flexDirection: "row",
     gap: 10,
     marginBottom: 16
   },
-  primaryStudioAction: {
-    flex: 1.5,
+  actionCardPrimary: {
+    flex: 1,
+    backgroundColor: "#A6533B",
+    borderRadius: 16,
+    padding: 14,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.accent,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 10,
-    shadowColor: theme.accent,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3
+    gap: 10
   },
-  actionIconPill: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  actionCardIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     alignItems: "center",
     justifyContent: "center"
   },
-  primaryActionTitle: {
-    color: "#FFFFFF",
+  actionPrimaryTitle: {
     fontSize: 13,
-    fontWeight: "800"
-  },
-  primaryActionSub: {
-    color: "rgba(255, 255, 255, 0.8)",
-    fontSize: 9.5,
-    fontWeight: "500"
-  },
-  secondaryStudioAction: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E5E1D8",
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 6
-  },
-  secondaryActionText: {
-    fontSize: 12,
     fontWeight: "800",
-    color: "#1C1917"
+    color: "#FFFFFF"
   },
-  cleanReadinessBox: {
+  actionPrimarySub: {
+    fontSize: 10,
+    color: "rgba(255, 255, 255, 0.8)",
+    marginTop: 1
+  },
+  actionCardSecondary: {
+    flex: 1,
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
-    borderColor: "#E8E5DF",
-    marginBottom: 16
-  },
-  cleanReadinessTop: {
+    borderColor: "#E8E2D9",
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 6
+    gap: 10
   },
-  cleanReadinessTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#1C1917"
+  actionCardSecondaryIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FBF3F0",
+    alignItems: "center",
+    justifyContent: "center"
   },
-  cleanReadinessPct: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: theme.accent
+  actionSecondaryTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#1C1C1C"
   },
-  progressBarTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#F5F5F4",
-    overflow: "hidden",
-    marginBottom: 6
-  },
-  progressBarFill: {
-    height: "100%",
-    backgroundColor: theme.accent,
-    borderRadius: 3
-  },
-  cleanReadinessHint: {
-    fontSize: 10.5,
-    color: "#78716C",
-    fontWeight: "500"
+  actionSecondarySub: {
+    fontSize: 10,
+    color: "#8A726A",
+    marginTop: 1
   },
   sectionHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 8,
     marginTop: 4
   },
-  sectionHeaderMain: {
+  sectionTitle: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#1C1917"
+    color: "#1C1C1C"
   },
-  sectionHeaderAction: {
-    fontSize: 11.5,
+  sectionLink: {
+    fontSize: 12,
     fontWeight: "700",
-    color: theme.accent
+    color: "#A6533B"
   },
-  stagesRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  pipelineCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderWidth: 1,
-    borderColor: "#E8E5DF",
-    marginBottom: 18
+    borderColor: "#E8E2D9",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16
   },
-  stageCol: {
+  stageItem: {
     flex: 1,
     alignItems: "center"
   },
-  stageBadgeCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  stageBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 4
@@ -836,222 +805,138 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "900"
   },
-  stageTitle: {
-    fontSize: 10.5,
+  stageName: {
+    fontSize: 10,
     fontWeight: "700",
-    color: "#78716C"
+    color: "#6B5B51"
   },
-  heroTitle: {
-    color: "#FFFFFF",
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: "800",
-    lineHeight: 24,
-    marginBottom: 6
-  },
-  heroDesc: {
-    color: "#DEC0B7",
-    fontSize: theme.typography.sizes.xs,
-    lineHeight: 18,
-    marginBottom: 12
-  },
-  heroButtonRow: {
-    alignSelf: "flex-start"
-  },
-  heroButtonText: {
-    color: "#FEB956",
-    fontWeight: "700",
-    fontSize: theme.typography.sizes.sm
-  },
-  ordersList: {
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.lg
-  },
-  orderCard: {
+  emptyCraftBox: {
     backgroundColor: "#FFFFFF",
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
+    borderRadius: 16,
+    padding: 18,
     borderWidth: 1,
-    borderColor: theme.colors.borderLight,
-    ...theme.shadows.sm
-  },
-  orderTopRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: 6
-  },
-  orderId: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: theme.colors.inkMuted
-  },
-  orderProduct: {
-    fontSize: theme.typography.sizes.base,
-    fontWeight: "700",
-    color: theme.colors.ink,
-    maxWidth: 200
-  },
-  orderBottomRow: {
-    flexDirection: "row",
+    borderColor: "#E8E2D9",
     alignItems: "center",
-    justifyContent: "space-between",
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.borderLight,
-    paddingTop: 6,
-    marginTop: 4
+    marginBottom: 16
   },
-  buyerName: {
-    fontSize: 11,
-    color: theme.colors.inkMuted
-  },
-  orderAmount: {
-    fontSize: theme.typography.sizes.base,
-    fontWeight: "800",
-    color: theme.colors.primary
-  },
-  oppsScroll: {
-    marginBottom: theme.spacing.lg
-  },
-  oppCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    width: 200,
-    marginRight: theme.spacing.sm,
-    ...theme.shadows.sm
-  },
-  oppCategory: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: "700",
-    color: theme.colors.primary
-  },
-  oppDemand: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: theme.colors.success,
-    marginVertical: 4
-  },
-  oppDesc: {
-    fontSize: 11,
-    color: theme.colors.inkMuted,
-    lineHeight: 15
-  },
-  pipelineScroll: {
-    marginBottom: theme.spacing.lg
-  },
-  pipelineCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderLeftWidth: 4,
-    marginRight: theme.spacing.sm,
-    minWidth: 105,
-    ...theme.shadows.sm
-  },
-  pipelineLabel: {
-    fontSize: 9,
-    fontWeight: "700",
-    color: theme.colors.inkMuted,
-    textTransform: "uppercase",
-    marginBottom: 2
-  },
-  pipelineValue: {
-    fontSize: 18,
-    fontWeight: "800"
+  emptyCraftText: {
+    fontSize: 12,
+    color: "#6B5B51",
+    textAlign: "center",
+    lineHeight: 18
   },
   perfList: {
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.lg
+    gap: 8,
+    marginBottom: 16
   },
   perfCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
+    borderRadius: 14,
+    padding: 10,
     borderWidth: 1,
-    borderColor: theme.colors.borderLight,
-    ...theme.shadows.sm
-  },
-  perfTopRow: {
-    flexDirection: "row",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.sm
-  },
-  perfThumb: {
-    width: 48,
-    height: 48,
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.colors.surfaceVariant
-  },
-  perfMeta: {
-    flex: 1
-  },
-  perfTitle: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: "700",
-    color: theme.colors.ink,
-    marginBottom: 4
-  },
-  perfBadgeRow: {
+    borderColor: "#E8E2D9",
     flexDirection: "row",
     alignItems: "center",
-    gap: 8
+    gap: 10
+  },
+  perfThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: "#F5EFEB"
+  },
+  perfBody: {
+    flex: 1
+  },
+  perfTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4
+  },
+  perfTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1C1C1C",
+    flex: 1,
+    marginRight: 6
   },
   perfPrice: {
     fontSize: 13,
     fontWeight: "800",
-    color: theme.colors.primary
+    color: "#A6533B"
   },
-  stockBadge: {
-    backgroundColor: "#E6FCF5",
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "#C3FAE8"
-  },
-  stockBadgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#0CA678"
-  },
-  perfMetricsRow: {
+  perfMetaRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.borderLight,
-    paddingTop: 8
+    gap: 8
   },
-  perfMetricItem: {
+  perfMetricChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4
+    gap: 3
   },
   perfMetricText: {
-    fontSize: 11,
-    color: theme.colors.inkMuted
+    fontSize: 10.5,
+    color: "#6B5B51"
   },
-  perfMetricBold: {
-    fontWeight: "700",
-    color: theme.colors.ink
+  perfStockChip: {
+    backgroundColor: "#FAF7F2",
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    marginLeft: "auto"
   },
-  noPerfBox: {
+  perfStockText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#8A726A"
+  },
+  ordersList: {
+    gap: 8,
+    marginBottom: 16
+  },
+  orderCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
+    borderRadius: 14,
+    padding: 12,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: theme.spacing.lg
+    borderColor: "#E8E2D9"
   },
-  noPerfText: {
-    fontSize: 12,
-    color: theme.colors.inkMuted,
-    textAlign: "center"
+  orderTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 8
+  },
+  orderId: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#8A726A"
+  },
+  orderTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1C1C1C",
+    maxWidth: 210,
+    marginTop: 1
+  },
+  orderBottom: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#F5EFEB",
+    paddingTop: 6
+  },
+  orderBuyer: {
+    fontSize: 11,
+    color: "#6B5B51"
+  },
+  orderPrice: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#A6533B"
   },
   modalOverlay: {
     flex: 1,
@@ -1064,66 +949,65 @@ const styles = StyleSheet.create({
     width: "92%",
     backgroundColor: "#FFFFFF",
     borderRadius: 24,
-    padding: 28,
-    alignItems: "center",
-    elevation: 20
+    padding: 24,
+    alignItems: "center"
   },
   signOutIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#FFF1F2",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#FFEBEE",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
-    borderWidth: 1.5,
-    borderColor: "#FECDD3"
+    marginBottom: 14
   },
   signOutModalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "900",
-    color: "#1C1917",
-    marginBottom: 8,
+    color: "#1C1C1C",
+    marginBottom: 6,
     textAlign: "center"
   },
   signOutModalBody: {
-    fontSize: 13.5,
-    color: "#78716C",
+    fontSize: 13,
+    color: "#6B5B51",
     textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 28,
+    lineHeight: 18,
+    marginBottom: 20,
     paddingHorizontal: 8
   },
   signOutModalActions: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
     width: "100%"
   },
   signOutCancelBtn: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: "#F5F0EC",
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#FAF7F2",
+    borderWidth: 1,
+    borderColor: "#E8E2D9",
     alignItems: "center",
     justifyContent: "center"
   },
   signOutCancelText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#57534E"
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1C1C1C"
   },
   signOutConfirmBtn: {
     flex: 1,
     flexDirection: "row",
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: "#E11D48",
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#C62828",
     alignItems: "center",
     justifyContent: "center"
   },
   signOutConfirmText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#fff"
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#FFFFFF"
   }
 });

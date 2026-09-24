@@ -13,15 +13,17 @@ import {
   Platform,
   Modal,
   TextInput,
-  Alert
+  Alert,
+  Share
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, Feather } from "@expo/vector-icons";
 import * as Speech from "expo-speech";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
 import { addToCart } from "../src/cart";
 import { toggleWishlist, isWishlisted } from "../src/wishlist";
+import { addRecentlyViewed } from "../src/recentlyViewed";
 import { PrimaryButton, OutlineButton, LanguageSelectorModal } from "../src/components";
 import { useI18n } from "../src/i18n";
 
@@ -134,6 +136,7 @@ export default function ProductDetail() {
         .product(Number(id))
         .then((data) => {
           setProduct(data);
+          addRecentlyViewed(data);
           // Fetch verified reviews for this product
           api
             .productReviews(Number(id))
@@ -404,6 +407,23 @@ export default function ProductDetail() {
                   size={20}
                   color={isSaved ? "#E11D48" : "#1C1C1C"}
                 />
+              </Pressable>
+
+              <Pressable
+                style={styles.iconCircle}
+                onPress={async () => {
+                  try {
+                    const craftUrl = `https://dd8bq7j24onss.cloudfront.net/#craft-${product.id}`;
+                    await Share.share({
+                      title: product.title,
+                      message: `✨ Check out "${product.title}" handcrafted by master Indian artisans on Artisan AI (₹${Number(product.price).toLocaleString("en-IN")})!\n\nView craft: ${craftUrl}`
+                    });
+                  } catch (e) {}
+                }}
+                hitSlop={10}
+                accessibilityLabel="Share Craft"
+              >
+                <Feather name="share-2" size={17} color="#1C1C1C" />
               </Pressable>
 
               <Pressable
@@ -708,6 +728,72 @@ export default function ProductDetail() {
                   ) : null}
                 </View>
               ))
+            )}
+
+            {/* Similar Heritage Crafts Carousel (Matching Web) */}
+            {relatedCrafts && relatedCrafts.length > 0 && (
+              <View style={styles.similarSection}>
+                <View style={styles.similarHeader}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Ionicons name="sparkles" size={16} color={theme.accent} />
+                    <Text style={styles.similarTitle}>
+                      {language === "te" ? "సంబంధిత కళాఖండాలు" : "Similar Heritage Crafts"}
+                    </Text>
+                  </View>
+                  <View style={styles.similarBadge}>
+                    <Text style={styles.similarBadgeText}>
+                      {getCategory(product.category || "Handloom")}
+                    </Text>
+                  </View>
+                </View>
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.similarList}
+                >
+                  {relatedCrafts.map((sim) => (
+                    <Pressable
+                      key={"sim-" + sim.id}
+                      style={styles.similarCard}
+                      onPress={() => {
+                        addRecentlyViewed(sim);
+                        router.push({
+                          pathname: "/product",
+                          params: { id: String(sim.id) }
+                        } as any);
+                      }}
+                    >
+                      <View style={styles.similarImageBox}>
+                        <Image
+                          source={{
+                            uri:
+                              sim.enhanced_image_url ||
+                              sim.image_url ||
+                              "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400"
+                          }}
+                          style={styles.similarImg}
+                          resizeMode="cover"
+                        />
+                        <View style={styles.similarPricePill}>
+                          <Text style={styles.similarPricePillText}>
+                            ₹{Number(sim.price || 0).toLocaleString("en-IN")}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.similarInfo}>
+                        <Text style={styles.similarItemTitle} numberOfLines={1}>
+                          {sim.title}
+                        </Text>
+                        <Text style={styles.similarItemRegion} numberOfLines={1}>
+                          {sim.region_of_origin || sim.artisan_name || "Handcrafted Art"}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
             )}
           </View>
         </View>
@@ -1717,5 +1803,47 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#9E9E9E",
     textDecorationLine: "line-through"
+  },
+  similarBadge: {
+    backgroundColor: "#F3E8DD",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E2D3C4"
+  },
+  similarBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: theme.accent
+  },
+  similarList: {
+    gap: 12,
+    paddingRight: 10
+  },
+  similarImageBox: {
+    position: "relative",
+    width: "100%",
+    height: 140,
+    backgroundColor: "#F2EDE4"
+  },
+  similarPricePill: {
+    position: "absolute",
+    top: 6,
+    left: 6,
+    backgroundColor: "rgba(28, 28, 28, 0.85)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6
+  },
+  similarPricePillText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800"
+  },
+  similarItemRegion: {
+    fontSize: 10,
+    color: "#78716C",
+    marginTop: 2
   }
 });

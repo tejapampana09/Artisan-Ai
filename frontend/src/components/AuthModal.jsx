@@ -211,7 +211,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
             </div>
           ) : (
             <div>
-              <div className="inline-flex items-center space-x-1.5 bg-[#FAF9F6] text-[#A6533B] px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-[#E8E5DF] mb-2">
+              <div className="inline-flex items-center space-x-1.5 bg-[#FAF7F2] text-[#A6533B] px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-[#E8E2D9] mb-2">
                 <User className="w-3.5 h-3.5 text-[#A6533B]" />
                 <span>Customer Marketplace / కస్టమర్ పోర్టల్</span>
               </div>
@@ -219,7 +219,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                 Customer Sign In / లాగిన్
               </h3>
               <p className="text-xs text-[#6B5B51] mt-1 leading-relaxed">
-                Sign in with Google to explore authentic GI crafts, track orders, and support Indian rural creators.
+                Sign in with Google to explore authentic handmade crafts, track orders, and support Indian rural creators.
               </p>
             </div>
           )}
@@ -316,7 +316,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                     <span>How Verification Works / ధృవీకరణ వివరాలు:</span>
                   </div>
                   <p className="leading-relaxed">
-                    Platform Admin reviews and approves craft applications within 24 hours to protect GI heritage. Once approved, you can log in to your Artisan Studio using your registered credentials.
+                    Platform Admin reviews and approves craft applications within 24 hours to protect artisan heritage. Once approved, you can log in to your Artisan Studio using your registered credentials.
                   </p>
                   <p className="text-[10px] text-stone-500 italic">
                     అడ్మిన్ ఆమోదం పొందిన వెంటనే మీరు సెల్లర్ స్టూడియో లోకి ప్రవేశించి వాయిస్ AI ద్వారా ఉత్పత్తులను నమోదు చేయవచ్చు.

@@ -80,8 +80,8 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-md max-w-md w-full p-6 shadow-xl border border-[#E8E5DF]">
-        <div className="flex justify-between items-center pb-3 border-b border-[#E8E5DF]">
+      <div className="bg-white rounded-md max-w-md w-full p-6 shadow-xl border border-[#E8E2D9]">
+        <div className="flex justify-between items-center pb-3 border-b border-[#E8E2D9]">
           <div className="flex items-center space-x-2">
             {isOrder ? (
               <ShoppingBag className="w-5 h-5 text-[#A6533B]" />
@@ -98,7 +98,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
         </div>
 
         {/* Product preview */}
-        <div className="mt-4 p-3 bg-[#FAF9F6] rounded-md border border-[#E8E5DF] flex items-center space-x-3">
+        <div className="mt-4 p-3 bg-[#FAF7F2] rounded-md border border-[#E8E2D9] flex items-center space-x-3">
           <img src={product.image_url} alt={product.title} className="w-12 h-12 rounded object-cover" />
           <div className="flex-1 min-w-0">
             <h4 className="text-xs font-semibold text-[#1C1C1C] truncate">{product.title}</h4>
@@ -107,7 +107,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
         </div>
 
         {user && product.seller_id === user.id ? (
-          <div className="mt-4 p-5 rounded-md bg-[#FAF9F6] border border-[#E8E5DF] text-center space-y-3">
+          <div className="mt-4 p-5 rounded-md bg-[#FAF7F2] border border-[#E8E2D9] text-center space-y-3">
             <div className="w-10 h-10 mx-auto rounded-md bg-amber-50 flex items-center justify-center text-[#A6533B]">
               <CheckCircle2 className="w-5 h-5" />
             </div>
@@ -128,7 +128,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
             </div>
           </div>
         ) : !user ? (
-          <div className="mt-4 p-5 rounded-md bg-[#FAF9F6] border border-[#E8E5DF] text-center space-y-4">
+          <div className="mt-4 p-5 rounded-md bg-[#FAF7F2] border border-[#E8E2D9] text-center space-y-4">
             <div className="w-10 h-10 mx-auto rounded-md bg-amber-50 flex items-center justify-center text-[#A6533B]">
               <ShoppingBag className="w-5 h-5" />
             </div>
@@ -142,7 +142,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2 px-3 rounded-md border border-[#E8E5DF] text-[#1C1C1C] font-medium text-xs hover:bg-white transition-colors cursor-pointer"
+                className="flex-1 py-2 px-3 rounded-md border border-[#E8E2D9] text-[#1C1C1C] font-medium text-xs hover:bg-white transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -173,7 +173,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2 px-3 rounded-md border border-[#E8E5DF] text-[#1C1C1C] font-medium text-xs hover:bg-white transition-colors cursor-pointer"
+                className="flex-1 py-2 px-3 rounded-md border border-[#E8E2D9] text-[#1C1C1C] font-medium text-xs hover:bg-white transition-colors cursor-pointer"
               >
                 Close
               </button>
@@ -200,7 +200,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
                 value={formData.buyer_name}
                 placeholder="Enter your full name"
                 onChange={(e) => setFormData({ ...formData, buyer_name: e.target.value })}
-                className="w-full border border-[#E8E5DF] rounded-md px-3 py-2 text-xs text-[#1C1C1C] focus:border-[#A6533B] focus:outline-none"
+                className="w-full border border-[#E8E2D9] rounded-md px-3 py-2 text-xs text-[#1C1C1C] focus:border-[#A6533B] focus:outline-none"
               />
             </div>
 
@@ -213,7 +213,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
                   value={formData.buyer_phone}
                   placeholder="+91 98765 43210"
                   onChange={(e) => setFormData({ ...formData, buyer_phone: e.target.value })}
-                  className="w-full border border-[#E8E5DF] rounded-md px-3 py-2 text-xs text-[#1C1C1C] focus:border-[#A6533B] focus:outline-none"
+                  className="w-full border border-[#E8E2D9] rounded-md px-3 py-2 text-xs text-[#1C1C1C] focus:border-[#A6533B] focus:outline-none"
                 />
               </div>
               <div>
@@ -225,7 +225,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
                   required
                   value={formData.quantity}
                   onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
-                  className="w-full border border-[#E8E5DF] rounded-md px-3 py-2 text-xs text-[#1C1C1C] text-right font-bold focus:border-[#A6533B] focus:outline-none"
+                  className="w-full border border-[#E8E2D9] rounded-md px-3 py-2 text-xs text-[#1C1C1C] text-right font-bold focus:border-[#A6533B] focus:outline-none"
                 />
               </div>
             </div>
@@ -239,7 +239,7 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
                   value={formData.delivery_address}
                   placeholder="Enter complete shipping address..."
                   onChange={(e) => setFormData({ ...formData, delivery_address: e.target.value })}
-                  className="w-full border border-[#E8E5DF] rounded-md p-2.5 text-xs text-[#1C1C1C] focus:border-[#A6533B] focus:outline-none"
+                  className="w-full border border-[#E8E2D9] rounded-md p-2.5 text-xs text-[#1C1C1C] focus:border-[#A6533B] focus:outline-none"
                 />
               </div>
             ) : (
@@ -250,13 +250,13 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
                   value={formData.message}
                   placeholder="Describe custom specifications..."
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full border border-[#E8E5DF] rounded-md p-2.5 text-xs text-[#1C1C1C] focus:border-[#A6533B] focus:outline-none"
+                  className="w-full border border-[#E8E2D9] rounded-md p-2.5 text-xs text-[#1C1C1C] focus:border-[#A6533B] focus:outline-none"
                 />
               </div>
             )}
 
             {/* Order Summary & Total */}
-            <div className="p-3.5 rounded-md bg-[#FAF9F6] border border-[#E8E5DF] space-y-2">
+            <div className="p-3.5 rounded-md bg-[#FAF7F2] border border-[#E8E2D9] space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-[#6B6B6B] font-medium">{isOrder ? 'Total Amount:' : 'Estimated Total:'}</span>
                 <span className="font-bold text-[#1C1C1C] text-base">₹{totalPrice.toLocaleString('en-IN')}</span>

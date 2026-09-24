@@ -441,7 +441,7 @@ export default function SettingsScreen() {
             <View style={styles.switchRow}>
               <View style={styles.switchTextCol}>
                 <Text style={styles.switchTitle}>Heritage Craft Specials</Text>
-                <Text style={styles.switchDesc}>New GI-tagged artisan craft arrivals and discounts</Text>
+                <Text style={styles.switchDesc}>New handcrafted artisan craft arrivals and discounts</Text>
               </View>
               <Switch
                 value={promoNotifs}
@@ -640,7 +640,7 @@ export default function SettingsScreen() {
           <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Artisan Heritage Offers</Text>
-            <Text style={styles.sheetSub}>Enjoy exclusive promotions on GI-tagged authentic crafts.</Text>
+            <Text style={styles.sheetSub}>Enjoy exclusive promotions on authentic handcrafted crafts.</Text>
 
             <View style={styles.couponCard}>
               <View style={styles.couponBadge}>

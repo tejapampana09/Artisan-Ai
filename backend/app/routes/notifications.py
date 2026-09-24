@@ -70,3 +70,54 @@ def register_push_token(
     current_user.push_token = token
     db.commit()
     return {"status": "ok", "message": "Push token registered successfully", "user_id": current_user.id}
+
+
+from backend.app.services.wishlist_reminder import (
+    process_wishlist_reminders,
+    get_pending_wishlist_reminders
+)
+
+@router.get("/wishlist-reminders/preview")
+def preview_wishlist_reminders(
+    days_threshold: int = 3,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Previews buyers with items saved >= `days_threshold` days ago
+    who are eligible for follow-up reminders.
+    """
+    eligible = get_pending_wishlist_reminders(db, days_threshold=days_threshold)
+    return {
+        "days_threshold": days_threshold,
+        "eligible_count": len(eligible),
+        "candidates": [
+            {
+                "user_id": item["user"].id,
+                "user_name": item["user"].name,
+                "email": item["user"].email,
+                "product_id": item["product"].id,
+                "product_title": item["product"].title,
+                "product_price": item["product"].price,
+                "stock": item["product"].stock,
+                "saved_at": item["saved_at"]
+            }
+            for item in eligible
+        ]
+    }
+
+
+@router.post("/wishlist-reminders/run")
+def trigger_wishlist_reminders(
+    days_threshold: int = 3,
+    dry_run: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Triggers the 3-day Wishlist Email & Push Notification Recovery Follow-up.
+    Can be scheduled via cron or triggered directly by Admin.
+    """
+    result = process_wishlist_reminders(db, days_threshold=days_threshold, dry_run=dry_run)
+    return result
+

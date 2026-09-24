@@ -19,7 +19,7 @@ export default function DownloadAppModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white w-full max-w-md rounded-3xl p-6 border border-[#E8E5DF] shadow-2xl space-y-5 text-[#1C1C1C] relative">
+      <div className="bg-white w-full max-w-md rounded-3xl p-6 border border-[#E8E2D9] shadow-2xl space-y-5 text-[#1C1C1C] relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-800 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
@@ -40,7 +40,7 @@ export default function DownloadAppModal({ isOpen, onClose }) {
           </p>
         </div>
 
-        <div className="space-y-2.5 bg-[#FAF9F6] p-4 rounded-2xl border border-[#E8E5DF] text-xs">
+        <div className="space-y-2.5 bg-[#FAF7F2] p-4 rounded-2xl border border-[#E8E2D9] text-xs">
           <div className="flex items-center space-x-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>Fast, lightweight app experience (Zero store download needed)</span>

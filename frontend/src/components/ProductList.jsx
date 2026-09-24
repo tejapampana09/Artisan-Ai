@@ -2,9 +2,27 @@ import React from 'react';
 import { Package, Edit2, Trash2, Eye } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { getLocalizedProductField } from '../utils/multilingual.js';
+import { ProductListRowSkeleton } from './SkeletonLoader.jsx';
 
-export default function ProductList({ products, onSelectProduct, onEditProduct, onDeleteProduct, onAddProduct, currentUser }) {
+export default function ProductList({ products, onSelectProduct, onEditProduct, onDeleteProduct, onAddProduct, currentUser, loading = false }) {
   const { language, getCategoryTranslation } = useLanguage();
+
+  if (loading) {
+    return (
+      <div className="bg-[#FBF8F3] rounded-2xl border border-[#EADFCF] shadow-xs overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#EADFCF] bg-[#FBF8F3]">
+          <div className="h-4 bg-stone-200 rounded w-44 animate-pulse mb-1.5" />
+          <div className="h-2.5 bg-stone-100 rounded w-64 animate-pulse" />
+        </div>
+        <div className="divide-y divide-slate-100">
+          <ProductListRowSkeleton />
+          <ProductListRowSkeleton />
+          <ProductListRowSkeleton />
+        </div>
+      </div>
+    );
+  }
+
   if (!products || products.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-dashed border-[#EADFCF] p-12 text-center">
@@ -22,6 +40,7 @@ export default function ProductList({ products, onSelectProduct, onEditProduct, 
       </div>
     );
   }
+
 
   return (
     <div className="bg-[#FBF8F3] rounded-2xl border border-[#EADFCF] shadow-xs overflow-hidden">

@@ -156,22 +156,24 @@ def login_buyer(payload: UserLogin, request: Request, db: Session = Depends(get_
     )
 
 @router.post("/google", response_model=TokenResponse)
-def google_auth_buyer(payload: GoogleAuthRequest, request: Request, db: Session = Depends(get_db)):
+async def google_auth_buyer(payload: GoogleAuthRequest, request: Request, db: Session = Depends(get_db)):
     """
     Authenticates or registers a Buyer via verified Google OAuth.
     Only creates/logs into BUYER accounts.
     """
     rate_limiter.check_rate_limit(f"google_buyer:{get_client_identifier(request)}", max_requests=10, window_seconds=60)
 
+    from backend.app.config import GOOGLE_CLIENT_ID
+    import httpx
+
     verified_email = None
     verified_name = None
     verified_google_id = None
 
-    import httpx
     if payload.access_token:
         try:
-            with httpx.Client(timeout=8.0) as client:
-                res = client.get(
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                res = await client.get(
                     "https://www.googleapis.com/oauth2/v3/userinfo",
                     headers={"Authorization": f"Bearer {payload.access_token}"}
                 )
@@ -185,15 +187,23 @@ def google_auth_buyer(payload: GoogleAuthRequest, request: Request, db: Session 
 
     if not verified_email and payload.token:
         try:
-            with httpx.Client(timeout=8.0) as client:
-                res = client.get(
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                res = await client.get(
                     f"https://oauth2.googleapis.com/tokeninfo?id_token={payload.token}"
                 )
                 if res.status_code == 200:
                     data = res.json()
-                    verified_email = data.get("email")
-                    verified_name = data.get("name")
-                    verified_google_id = data.get("sub")
+                    # Validate the audience claim to prevent token substitution attacks
+                    token_aud = data.get("aud", "")
+                    if GOOGLE_CLIENT_ID and token_aud != GOOGLE_CLIENT_ID:
+                        logger.warning(
+                            "Google id_token audience mismatch: got=%s expected=%s",
+                            token_aud, GOOGLE_CLIENT_ID
+                        )
+                    else:
+                        verified_email = data.get("email")
+                        verified_name = data.get("name")
+                        verified_google_id = data.get("sub")
         except Exception as e:
             logger.warning("Google tokeninfo check failed: %s", e)
 
@@ -249,6 +259,7 @@ def google_auth_buyer(payload: GoogleAuthRequest, request: Request, db: Session 
         session_type="BUYER",
         user=user
     )
+
 
 @router.get("/me", response_model=UserResponse)
 def get_buyer_me(current_buyer: User = Depends(require_buyer)):

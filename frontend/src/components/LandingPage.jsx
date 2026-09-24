@@ -36,7 +36,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
       buttonText: 'Shop Heirloom Crafts',
       secondaryText: 'Join as an Artisan',
       secondaryMode: 'BECOME_ARTISAN',
-      badge: '100% GI-Tag Certified Heritage',
+      badge: '100% Handcrafted Heritage',
       bgImage: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1920&q=85',
       craftName: 'Kalamkari Natural Dye Textile',
       origin: 'Srikalahasti, Andhra Pradesh',
@@ -99,7 +99,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
       name: 'Kalamkari Handlooms',
       telugu: 'కలంకారీ వస్త్రాలు',
       origin: 'Andhra Pradesh',
-      tag: 'GI Tag',
+      tag: 'Heritage Art',
       image: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=600&q=80'
     },
     {
@@ -139,7 +139,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
       name: 'Pochampally Ikat Silks',
       telugu: 'పోచంపల్లి ఇక్కత్ చీరలు',
       origin: 'Telangana',
-      tag: 'GI Tag',
+      tag: 'Handloom Art',
       image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80'
     }
   ];
@@ -265,14 +265,14 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
 
       {/* 2. MICRO-TRUST METRIC STRIP (CENTERED & CLEAN) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-[#FDFBF7] border border-[#E8DFD5] rounded-2xl p-4 sm:p-5 shadow-xs">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 divide-y md:divide-y-0 md:divide-x divide-[#E8DFD5]">
+        <div className="bg-[#FDFBF7] border border-[#E8E2D9] rounded-2xl p-4 sm:p-5 shadow-xs">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 divide-y md:divide-y-0 md:divide-x divide-[#E8E2D9]">
             <div className="flex items-center space-x-3 pt-2 md:pt-0">
               <div className="w-9 h-9 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0">
                 <Award className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-xs sm:text-sm font-bold text-[#1C1C1C]">100% GI-Certified</h4>
+                <h4 className="text-xs sm:text-sm font-bold text-[#1C1C1C]">100% Handcrafted</h4>
                 <p className="text-[11px] text-[#6B6B6B]">Authentic craft heritage</p>
               </div>
             </div>
@@ -312,13 +312,13 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
 
       {/* 3. EXPLORE BY HERITAGE CRAFT (CLEAN & VISUAL) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="flex items-center justify-between border-b border-[#E8DFD5] pb-4">
+        <div className="flex items-center justify-between border-b border-[#E8E2D9] pb-4">
           <div>
             <h2 className="text-2xl sm:text-3xl font-extrabold font-serif-luxury text-[#1C1C1C] tracking-tight">
               Explore Heritage Crafts
             </h2>
             <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">
-              Iconic GI-tagged traditions handcrafted across India
+              Iconic traditional crafts handcrafted across India
             </p>
           </div>
           <button 
@@ -335,7 +335,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
             <div 
               key={craft.id}
               onClick={() => onSelectMode('BUY')}
-              className="group cursor-pointer rounded-2xl bg-white border border-[#E8DFD5] overflow-hidden shadow-2xs hover:shadow-md hover:border-[#A6533B]/50 transition-all flex flex-col"
+              className="group cursor-pointer rounded-2xl bg-white border border-[#E8E2D9] overflow-hidden shadow-2xs hover:shadow-md hover:border-[#A6533B]/50 transition-all flex flex-col"
             >
               <div className="aspect-square w-full overflow-hidden bg-stone-100 relative">
                 <img 
@@ -367,7 +367,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
 
       {/* 4. CURATED HEIRLOOM PIECES (REAL PUBLISHED PRODUCTS) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="flex items-center justify-between border-b border-[#E8DFD5] pb-4">
+        <div className="flex items-center justify-between border-b border-[#E8E2D9] pb-4">
           <div>
             <h2 className="text-2xl sm:text-3xl font-extrabold font-serif-luxury text-[#1C1C1C] tracking-tight">
               Featured Pieces
@@ -386,7 +386,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
         </div>
 
         {loadingProducts ? (
-          <div className="py-16 text-center text-[#6B6B6B] space-y-3 bg-[#FAF9F6] rounded-2xl border border-[#E8DFD5]">
+          <div className="py-16 text-center text-[#6B6B6B] space-y-3 bg-[#FAF7F2] rounded-2xl border border-[#E8E2D9]">
             <Loader2 className="w-7 h-7 text-[#A6533B] animate-spin mx-auto" />
             <p className="text-xs font-medium">Loading authentic artisan products...</p>
           </div>
@@ -398,7 +398,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
                 <div 
                   key={prod.id}
                   onClick={() => onSelectMode('BUY')}
-                  className="group cursor-pointer rounded-2xl bg-white border border-[#E8DFD5] overflow-hidden shadow-2xs hover:shadow-lg hover:border-[#A6533B]/40 transition-all duration-300 flex flex-col"
+                  className="group cursor-pointer rounded-2xl bg-white border border-[#E8E2D9] overflow-hidden shadow-2xs hover:shadow-lg hover:border-[#A6533B]/40 transition-all duration-300 flex flex-col"
                 >
                   <div className="aspect-4/5 w-full overflow-hidden bg-stone-100 relative">
                     <img 
@@ -452,7 +452,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
             })}
           </div>
         ) : (
-          <div className="py-16 text-center text-[#6B6B6B] bg-[#FAF9F6] rounded-2xl border border-[#E8DFD5]">
+          <div className="py-16 text-center text-[#6B6B6B] bg-[#FAF7F2] rounded-2xl border border-[#E8E2D9]">
             <p className="text-sm">No live products available yet.</p>
           </div>
         )}
@@ -460,7 +460,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
 
       {/* 6. THE ARTISAN AI ADVANTAGE (3 CONCISE PILLARS) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-[#FAF7F2] rounded-3xl p-6 sm:p-10 border border-[#E8DFD5] space-y-6">
+        <div className="bg-[#FAF7F2] rounded-3xl p-6 sm:p-10 border border-[#E8E2D9] space-y-6">
           <div className="text-center max-w-xl mx-auto space-y-1">
             <span className="text-[11px] font-bold tracking-widest text-[#A6533B] uppercase">
               Fair Trade Technology
@@ -474,7 +474,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="bg-white rounded-2xl p-5 border border-[#E8DFD5] shadow-2xs hover:shadow-md transition-all space-y-2">
+            <div className="bg-white rounded-2xl p-5 border border-[#E8E2D9] shadow-2xs hover:shadow-md transition-all space-y-2">
               <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-[#933D1E]">
                 <Mic className="w-5 h-5" />
               </div>
@@ -484,7 +484,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-[#E8DFD5] shadow-2xs hover:shadow-md transition-all space-y-2">
+            <div className="bg-white rounded-2xl p-5 border border-[#E8E2D9] shadow-2xs hover:shadow-md transition-all space-y-2">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
                 <ShieldCheck className="w-5 h-5" />
               </div>
@@ -494,7 +494,7 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-[#E8DFD5] shadow-2xs hover:shadow-md transition-all space-y-2">
+            <div className="bg-white rounded-2xl p-5 border border-[#E8E2D9] shadow-2xs hover:shadow-md transition-all space-y-2">
               <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
                 <Compass className="w-5 h-5" />
               </div>

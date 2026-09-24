@@ -54,9 +54,47 @@ if ENVIRONMENT in ["development", "test"]:
     except Exception as db_init_err:
         logging.getLogger("artisan_ai").warning("Dev-mode DB schema/seed warning: %s", db_init_err)
 
+def _check_alembic_head():
+    """Fail fast on startup if the database schema is behind the codebase."""
+    try:
+        from alembic.runtime.migration import MigrationContext
+        from alembic.script import ScriptDirectory
+        from alembic.config import Config as AlembicConfig
+        import os
+        alembic_ini = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "alembic.ini"
+        )
+        if not os.path.exists(alembic_ini):
+            return
+        from backend.app.database import engine, is_sqlite
+        if is_sqlite:
+            return  # Only enforce against PostgreSQL
+        alembic_cfg = AlembicConfig(alembic_ini)
+        script = ScriptDirectory.from_config(alembic_cfg)
+        with engine.connect() as conn:
+            context = MigrationContext.configure(conn)
+            current = set(context.get_current_heads())
+            heads = set(script.get_heads())
+            if current != heads:
+                raise RuntimeError(
+                    f"Database schema is out of date — run `alembic upgrade head` before deploying. "
+                    f"Current={current}, Expected={heads}"
+                )
+    except ImportError:
+        pass
+    except RuntimeError:
+        raise
+    except Exception as e:
+        logging.getLogger("artisan_ai").warning("Alembic migration check skipped: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Clean lifecycle: auto-train initial ML model if missing
+    # Fail fast if DB schema is behind (production safety guard)
+    if ENVIRONMENT == "production":
+        _check_alembic_head()
+
+    # Auto-train initial ML model if missing
     import os
     model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ml", "demand_model.joblib")
     if not os.path.exists(model_path):
@@ -103,15 +141,46 @@ async def add_security_headers(request: Request, call_next):
     # Observability
     response.headers["X-Request-ID"] = request.headers.get("X-Request-ID", str(uuid.uuid4()))
     response.headers["X-Process-Time-Ms"] = str(duration_ms)
-    response.headers["Access-Control-Allow-Private-Network"] = "true"
+    # Allow private network access only in non-production (dev/local testing)
+    if ENVIRONMENT != "production":
+        response.headers["Access-Control-Allow-Private-Network"] = "true"
     # Security hardening headers
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' https://accounts.google.com; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https: blob:; "
+        "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com; "
+        "frame-src https://accounts.google.com; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self';"
+    )
     if request.url.scheme == "https":
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
     return response
+
+
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catches all unhandled exceptions and returns a safe generic error — no tracebacks exposed."""
+    logging.getLogger("artisan_ai").error(
+        "Unhandled exception on %s %s: %s",
+        request.method, request.url.path, exc,
+        exc_info=True
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "An unexpected error occurred. Our team has been notified. Please try again shortly."}
+    )
+
+
 
 # Include Routers
 app.include_router(marketplace_auth_router)

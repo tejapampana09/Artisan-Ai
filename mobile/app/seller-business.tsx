@@ -581,12 +581,16 @@ export default function SellerBusinessScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    padding: theme.spacing.lg,
+    padding: 16,
     paddingBottom: 120
   },
   readinessCard: {
-    backgroundColor: theme.colors.surface,
-    marginBottom: theme.spacing.lg
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E8E2D9",
+    padding: 16,
+    marginBottom: 16
   },
   readinessTop: {
     flexDirection: "row",
@@ -594,34 +598,35 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   readinessTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.ink
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#1C1C1C"
   },
   readinessSub: {
-    ...theme.typography.caption,
-    color: theme.colors.inkMuted,
+    fontSize: 11,
+    color: "#6B5B51",
     marginTop: 2
   },
   scoreCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: theme.colors.primaryLight + "20",
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#FAF7F2",
     borderWidth: 2,
-    borderColor: theme.colors.primary,
+    borderColor: "#A6533B",
     alignItems: "center",
     justifyContent: "center"
   },
   scoreNumber: {
-    ...theme.typography.h3,
-    color: theme.colors.primary,
+    fontSize: 15,
+    color: "#A6533B",
     fontWeight: "900"
   },
   readinessBadges: {
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: "#F5EFEB",
     gap: 8
   },
   badgeItem: {
@@ -630,33 +635,35 @@ const styles = StyleSheet.create({
     gap: 8
   },
   badgeItemText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.inkLight,
+    fontSize: 12,
+    color: "#6B5B51",
     fontWeight: "500",
     flex: 1
   },
   emptyNoticeText: {
-    ...theme.typography.caption,
-    color: theme.colors.inkMuted,
-    marginTop: theme.spacing.sm
+    fontSize: 11,
+    color: "#8A726A",
+    marginTop: 8
   },
   copilotCard: {
     backgroundColor: "#FFFFFF",
-    borderColor: theme.colors.primaryLight + "40",
-    borderWidth: 1.5,
-    marginBottom: theme.spacing.lg
+    borderRadius: 16,
+    borderColor: "#E8E2D9",
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 16
   },
   copilotHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: theme.spacing.sm
+    marginBottom: 10
   },
   copilotAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: "#A6533B",
     alignItems: "center",
     justifyContent: "center"
   },

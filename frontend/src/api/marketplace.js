@@ -68,3 +68,14 @@ export async function verifyPayment(payload) {
   });
 }
 
+export async function previewWishlistReminders(daysThreshold = 3) {
+  return await apiRequest(`/notifications/wishlist-reminders/preview?days_threshold=${daysThreshold}`);
+}
+
+export async function triggerWishlistReminders({ daysThreshold = 3, dryRun = false } = {}) {
+  return await apiRequest(`/notifications/wishlist-reminders/run?days_threshold=${daysThreshold}&dry_run=${dryRun}`, {
+    method: 'POST'
+  });
+}
+
+

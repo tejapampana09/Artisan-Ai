@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { X, Heart, ShoppingBag, ShieldCheck, MapPin, Sparkles, Check, CheckCircle2, Award, Globe, RefreshCw, Maximize2, Tag } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Heart, ShoppingBag, ShieldCheck, MapPin, Sparkles, Check, CheckCircle2, Award, Globe, RefreshCw, Maximize2, Tag, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { recordEvent, translateProduct, getProducts } from '../api/index.js';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { useNotification } from '../context/NotificationContext.jsx';
 import { getLocalizedProductField } from '../utils/multilingual.js';
 import { addToCart } from './CartView.jsx';
+import { addRecentlyViewedProduct } from '../services/recentlyViewed.js';
 import ArtisanProfileModal from './ArtisanProfileModal.jsx';
 import ReviewsSection from './ReviewsSection.jsx';
 import ImageOverviewModal from './ImageOverviewModal.jsx';
+import ShareProductModal from './ShareProductModal.jsx';
 
 export default function BuyerProductModal({ 
   product, 
@@ -29,12 +31,25 @@ export default function BuyerProductModal({
   const [showOverviewModal, setShowOverviewModal] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [isAddedToCart, setIsAddedToCart] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [translatedData, setTranslatedData] = useState(null);
   const [fetchedSimilar, setFetchedSimilar] = useState([]);
+  const modalContainerRef = useRef(null);
+  const similarScrollRef = useRef(null);
 
   useEffect(() => {
     setTranslatedData(null);
   }, [product?.id, language]);
+
+  // Record recently viewed item & auto-scroll modal to top on product change
+  useEffect(() => {
+    if (isOpen && product?.id) {
+      addRecentlyViewedProduct(product);
+      if (modalContainerRef.current) {
+        modalContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  }, [isOpen, product?.id]);
 
   // Fetch similar category products if allProducts is empty
   useEffect(() => {
@@ -50,14 +65,17 @@ export default function BuyerProductModal({
   }, [isOpen, product?.id, product?.category, allProducts]);
 
   const pool = allProducts && allProducts.length > 0 ? allProducts : fetchedSimilar;
-  const similarCrafts = pool
-    .filter((p) => p.id !== product?.id && p.category === product?.category)
-    .slice(0, 4);
+  const exactCategorySimilar = pool.filter((p) => p.id !== product?.id && p.category === product?.category);
+  const otherSimilar = pool.filter((p) => p.id !== product?.id && p.category !== product?.category);
+  // Show up to 8 similar items (preferring same category)
+  const displaySimilar = [...exactCategorySimilar, ...otherSimilar].slice(0, 8);
 
-  // Fallback to general products if category match is empty
-  const displaySimilar = similarCrafts.length > 0 
-    ? similarCrafts 
-    : pool.filter((p) => p.id !== product?.id).slice(0, 4);
+  const handleScrollSimilar = (direction) => {
+    if (similarScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -280 : 280;
+      similarScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   const handleTranslateClick = async () => {
     if (!product) return;
@@ -101,7 +119,10 @@ export default function BuyerProductModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] bg-[#FAF7F2] overflow-y-auto min-h-screen w-full flex flex-col animate-in slide-in-from-bottom duration-300">
+      <div 
+        ref={modalContainerRef}
+        className="fixed inset-0 z-[100] bg-[#FAF7F2] overflow-y-auto min-h-screen w-full flex flex-col animate-in slide-in-from-bottom duration-300"
+      >
         {/* Full Image Header with Top Overlays - Click Image for Full Overview */}
         <div 
           onClick={() => setShowOverviewModal(true)}
@@ -144,17 +165,29 @@ export default function BuyerProductModal({
               </button>
 
               <button
+                type="button"
+                onClick={() => setIsShareOpen(true)}
+                className="px-3.5 py-2.5 rounded-full bg-white/70 hover:bg-white text-stone-900 shadow-[0_8px_24px_rgba(0,0,0,0.18)] backdrop-blur-2xl border border-white/60 transition-all cursor-pointer font-bold flex items-center space-x-1.5 text-xs active:scale-95 ring-1 ring-black/5"
+                title="Share this craft"
+              >
+                <Share2 className="w-4 h-4 text-[#933D1E]" />
+                <span>Share</span>
+              </button>
+
+              <button
                 onClick={() => onToggleSave(product)}
                 className={`p-2.5 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.18)] backdrop-blur-2xl border transition-all cursor-pointer ring-1 ring-black/5 ${
                   isSaved
                     ? 'bg-rose-600 text-white border-rose-400 scale-105'
                     : 'bg-white/70 text-stone-700 hover:bg-white border-white/60'
                 }`}
+                title="Save to Wishlist"
               >
                 <Heart className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
               </button>
             </div>
           </div>
+
 
           {/* Floating Category Tag & Click to Zoom Badge */}
           <div className="absolute bottom-4 left-4 right-4 z-10 flex items-center justify-between pointer-events-none">
@@ -234,15 +267,15 @@ export default function BuyerProductModal({
               <h3 className="text-xs font-semibold text-[#6B6B6B] uppercase tracking-wider">
                 Craft Description
               </h3>
-              <p className="text-sm text-[#1C1C1C] leading-relaxed bg-white p-4 rounded-md border border-[#E8E5DF]">
+              <p className="text-sm text-[#1C1C1C] leading-relaxed bg-white p-4 rounded-md border border-[#E8E2D9]">
                 {displayDesc}
               </p>
             </div>
           )}
 
           {/* ARTISAN AI MARKET INSIGHT */}
-          <div className="p-4 bg-white rounded-md border border-[#E8E5DF] space-y-3">
-            <div className="flex items-center justify-between border-b border-[#E8E5DF] pb-2">
+          <div className="p-4 bg-white rounded-md border border-[#E8E2D9] space-y-3">
+            <div className="flex items-center justify-between border-b border-[#E8E2D9] pb-2">
               <span className="font-semibold text-[#1C1C1C] text-xs">
                 ARTISAN AI MARKET INSIGHT
               </span>
@@ -310,7 +343,7 @@ export default function BuyerProductModal({
               onClick={() => setShowCertificate(true)}
               className="w-full mt-1 py-2.5 bg-[#4A2E1B] hover:bg-[#3D2314] text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
             >
-              View Verified GI Heritage Certificate →
+              View Artisan Craft & Provenance Passport →
             </button>
           </div>
 
@@ -338,48 +371,108 @@ export default function BuyerProductModal({
           {/* Verified Buyer Reviews & Ratings Section */}
           <ReviewsSection productId={product.id} user={user} product={product} />
 
-          {/* Similar Heritage Crafts Section (Market Benchmark Comparison) */}
+          {/* Similar Heritage Crafts Section (Interactive Carousel) */}
           {displaySimilar.length > 0 && (
-            <div className="space-y-3 pt-4 border-t border-[#EADFCF]/80">
+            <div className="space-y-3.5 pt-6 pb-2 border-t border-[#EADFCF]/80">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-extrabold text-[#2C1A0E] flex items-center space-x-1.5">
-                  <Sparkles className="w-4 h-4 text-[#933D1E]" />
-                  <span>Similar Heritage Crafts ({product.category})</span>
-                </h3>
-                <span className="text-[10px] font-bold text-amber-900 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300">
-                  Market Comparison
-                </span>
+                <div className="flex items-center space-x-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-100/80 border border-amber-300 text-[#A6533B] flex items-center justify-center shadow-xs">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-[#2C1A0E] flex items-center space-x-1.5">
+                      <span>{language === 'te' ? 'సంబంధిత కళాఖండాలు' : 'Similar Heritage Crafts'}</span>
+                      <span className="text-[10px] font-bold text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-300">
+                        {product.category}
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-[#6B6B6B] hidden sm:block">
+                      {language === 'te' ? 'అదే శైలికి చెందిన ఇతర చేతివృత్తుల ఉత్పత్తులు' : 'Explore more masterpieces from the same craft tradition'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Carousel Left / Right Navigation */}
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    onClick={() => handleScrollSimilar('left')}
+                    className="p-1.5 rounded-lg bg-white border border-[#E8E2D9] hover:border-[#A6533B] text-[#1C1C1C] hover:text-[#A6533B] shadow-2xs transition-all cursor-pointer"
+                    aria-label="Scroll similar crafts left"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleScrollSimilar('right')}
+                    className="p-1.5 rounded-lg bg-white border border-[#E8E2D9] hover:border-[#A6533B] text-[#1C1C1C] hover:text-[#A6533B] shadow-2xs transition-all cursor-pointer"
+                    aria-label="Scroll similar crafts right"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* Horizontal Scrollable Row */}
+              <div
+                ref={similarScrollRef}
+                className="flex items-stretch gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
                 {displaySimilar.map((simProd) => (
                   <div
                     key={simProd.id}
                     onClick={() => {
                       if (onSelectProduct) {
                         onSelectProduct(simProd);
+                        if (typeof window !== 'undefined') {
+                          window.location.hash = `#craft-${simProd.id}`;
+                        }
                       }
                     }}
-                    className="bg-white rounded-2xl p-2.5 border border-[#EADFCF]/80 shadow-2xs hover:shadow-md transition-all cursor-pointer group space-y-2 flex flex-col justify-between"
+                    className="w-44 sm:w-52 shrink-0 bg-white rounded-xl p-2.5 border border-[#EADFCF]/80 hover:border-[#A6533B] shadow-xs hover:shadow-md transition-all cursor-pointer group space-y-2 flex flex-col justify-between snap-start relative"
                   >
-                    <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-[#F4EBE1]">
-                      <img
-                        src={simProd.enhanced_image_url || simProd.image_url || 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=400'}
-                        alt={simProd.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <span className="absolute top-1.5 left-1.5 text-[9px] font-extrabold bg-[#4A2E1B]/90 text-white px-2 py-0.5 rounded-full backdrop-blur-xs shadow-xs">
-                        ₹{Number(simProd.price || 0).toLocaleString('en-IN')}
-                      </span>
+                    <div>
+                      <div className="relative aspect-[4/5] w-full rounded-lg overflow-hidden bg-[#F4EBE1]">
+                        <img
+                          src={simProd.enhanced_image_url || simProd.image_url || 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=400'}
+                          alt={simProd.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <span className="absolute top-1.5 left-1.5 text-[9px] font-extrabold bg-[#4A2E1B]/90 text-white px-2 py-0.5 rounded-full backdrop-blur-xs shadow-xs">
+                          ₹{Number(simProd.price || 0).toLocaleString('en-IN')}
+                        </span>
+                        <span className="absolute bottom-1.5 left-1.5 text-[8px] font-semibold bg-white/90 text-stone-700 px-1.5 py-0.5 rounded backdrop-blur-xs">
+                          {simProd.category}
+                        </span>
+                      </div>
+
+                      <div className="pt-1.5 space-y-0.5">
+                        <h4 className="font-extrabold text-xs text-[#2C1A0E] line-clamp-1 group-hover:text-[#A6533B] transition-colors">
+                          {simProd.title}
+                        </h4>
+                        <p className="text-[10px] text-stone-500 truncate">
+                          {simProd.region_of_origin || 'Handmade Heritage Craft'}
+                        </p>
+                      </div>
                     </div>
 
-                    <div>
-                      <h4 className="font-extrabold text-xs text-[#2C1A0E] line-clamp-1 group-hover:text-[#933D1E] transition-colors">
-                        {simProd.title}
-                      </h4>
-                      <p className="text-[10px] text-stone-500 truncate mt-0.5">
-                        {simProd.region_of_origin || 'Handmade Craft'}
-                      </p>
+                    {/* Quick Add to Cart button */}
+                    <div className="pt-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (simProd.stock <= 0) {
+                            toast.warning('This craft is out of stock.');
+                            return;
+                          }
+                          addToCart(simProd, 1);
+                          toast.success(`Added "${simProd.title}" to cart! 🛒`);
+                        }}
+                        disabled={simProd.stock <= 0}
+                        className="w-full py-1.5 px-2 bg-[#FAF7F2] group-hover:bg-[#A6533B] text-[#1C1C1C] group-hover:text-white border border-[#E8E2D9] group-hover:border-[#A6533B] text-[11px] font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center space-x-1 disabled:opacity-40"
+                      >
+                        <ShoppingBag className="w-3 h-3" />
+                        <span>{simProd.stock > 0 ? (language === 'te' ? '+ కార్ట్' : '+ Cart') : 'Sold Out'}</span>
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -402,7 +495,7 @@ export default function BuyerProductModal({
                     onClose();
                     onOpenEnquiry(product);
                   }}
-                  className="px-3.5 py-3.5 border border-[#E8E5DF] hover:border-[#1C1C1C] text-[#1C1C1C] font-semibold text-xs rounded-xl transition-all cursor-pointer shrink-0"
+                  className="px-3.5 py-3.5 border border-[#E8E2D9] hover:border-[#1C1C1C] text-[#1C1C1C] font-semibold text-xs rounded-xl transition-all cursor-pointer shrink-0"
                 >
                   Custom Order
                 </button>
@@ -418,7 +511,7 @@ export default function BuyerProductModal({
                   className={`px-4 py-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 shrink-0 disabled:opacity-50 ${
                     isAddedToCart 
                       ? 'bg-emerald-600 text-white border-2 border-emerald-600 shadow-md scale-105' 
-                      : 'border-2 border-[#1C1C1C] text-[#1C1C1C] hover:bg-[#FAF9F6]'
+                      : 'border-2 border-[#1C1C1C] text-[#1C1C1C] hover:bg-[#FAF7F2]'
                   }`}
                 >
                   {isAddedToCart ? <CheckCircle2 className="w-4 h-4 text-white animate-bounce" /> : <ShoppingBag className="w-4 h-4 text-[#A6533B]" />}
@@ -442,7 +535,7 @@ export default function BuyerProductModal({
           </div>
         </div>
 
-          {/* Digital Heritage & GI Provenance Certificate Overlay Modal */}
+          {/* Digital Heritage & Craft Provenance Passport Overlay Modal */}
           {showCertificate && (
             <div className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
               <div className="bg-amber-50/95 rounded-3xl max-w-lg w-full p-6 shadow-2xl border-4 border-amber-400 relative space-y-4 max-h-[90vh] overflow-y-auto">
@@ -461,7 +554,7 @@ export default function BuyerProductModal({
                     Certificate of Authenticity
                   </h2>
                   <p className="text-[11px] font-bold text-[#933D1E] tracking-widest uppercase">
-                    Geographical Indication (GI) & Heritage Craft Provenance
+                    Master Artisan & Traditional Craft Provenance
                   </p>
                 </div>
 
@@ -477,7 +570,7 @@ export default function BuyerProductModal({
                   <div className="flex justify-between items-center pb-2 border-b border-amber-100">
                     <span className="text-[#6B5B51] font-medium">Verification Code:</span>
                     <span className="font-mono text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300">
-                      ART-GI-{product.id}-{(product.id * 98765).toString(16).toUpperCase()}
+                      ART-CRAFT-{product.id}-{(product.id * 98765).toString(16).toUpperCase()}
                     </span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-amber-100">
@@ -544,6 +637,14 @@ export default function BuyerProductModal({
           }}
         />
       )}
+
+      {/* Share Product Modal */}
+      <ShareProductModal
+        product={product}
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+      />
     </>
   );
+
 }

@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, ShoppingBag, Heart, Filter, Flame } from 'lucide-react';
+import { Search, ShoppingBag, Heart, Filter, Flame, Share2 } from 'lucide-react';
 import BuyerProductModal from './BuyerProductModal';
 import BuyerOrderModal from './BuyerOrderModal';
 import BuyerAssistantModal from './BuyerAssistantModal';
+import ShareProductModal from './ShareProductModal';
+import RecentlyViewedSection from './RecentlyViewedSection';
+import { ProductCardSkeleton, TrendingCardSkeleton } from './SkeletonLoader';
 import { getProducts, getTrendingProducts, recordEvent } from '../api/index.js';
 import { getSavedProductIds, saveProductId, removeSavedProductId, getCachedProducts, setCachedProducts } from '../services/offlineSync';
+import { addRecentlyViewedProduct } from '../services/recentlyViewed';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { getLocalizedProductField } from '../utils/multilingual.js';
 
@@ -16,6 +20,18 @@ const CATEGORIES = [
   'Bidriware',
   'Pochampally Ikat'
 ];
+
+const getCategoryIcon = (cat) => {
+  switch (cat) {
+    case 'All Crafts': return '🏷️';
+    case 'Kalamkari': return '🎨';
+    case 'Wooden Toys': return '🪵';
+    case 'Blue Pottery': return '🏺';
+    case 'Bidriware': return '⚔️';
+    case 'Pochampally Ikat': return '🧵';
+    default: return '✨';
+  }
+};
 
 export default function BuyView({ 
   user, 
@@ -38,18 +54,57 @@ export default function BuyView({
   const [showFilters, setShowFilters] = useState(false);
   const [savedProductIds, setSavedProductIds] = useState(() => new Set(getSavedProductIds(user?.id)));
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [shareProduct, setShareProduct] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [orderModal, setOrderModal] = useState({ isOpen: false, product: null, mode: 'ORDER' });
   const [tickerTrigger, setTickerTrigger] = useState(0);
   const [notification, setNotification] = useState('');
-  const [loading, setLoading] = useState(() => {
-    const cached = getCachedProducts(user?.id);
-    return !(cached && cached.length > 0);
-  });
+  const [loading, setLoading] = useState(true);
 
   // Search debounce ref
   const searchTimeoutRef = useRef(null);
+
+  const loadMarketplace = async (overrideParams = {}) => {
+    setLoading(true);
+    try {
+
+      const activeSearch = overrideParams.search !== undefined ? overrideParams.search : (externalSearchQuery || searchQuery);
+      const params = { status: 'PUBLISHED', ...overrideParams };
+      if (selectedCategory !== 'All Crafts') params.category = selectedCategory;
+      if (activeSearch && activeSearch.trim()) params.search = activeSearch.trim();
+      if (minPrice) params.min_price = minPrice;
+      if (maxPrice) params.max_price = maxPrice;
+
+      const [allProds, trendProds] = await Promise.all([
+        getProducts(params),
+        getTrendingProducts()
+      ]);
+      setProducts(allProds);
+      setTrending(trendProds);
+      setCachedProducts(allProds, user?.id);
+
+      // Deep link support for shared crafts: #craft-123
+      if (typeof window !== 'undefined' && window.location.hash.startsWith('#craft-')) {
+        const craftId = parseInt(window.location.hash.replace('#craft-', ''), 10);
+        if (craftId) {
+          const matched = (allProds || []).find(p => p.id === craftId);
+          if (matched) {
+            setSelectedProduct(matched);
+            setIsDetailOpen(true);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Marketplace load error, using cached products:', err);
+      const cached = getCachedProducts(user?.id);
+      if (cached && cached.length > 0) {
+        setProducts(cached);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Sync internal searchQuery when externalSearchQuery prop changes
   useEffect(() => {
@@ -69,36 +124,6 @@ export default function BuyView({
       }
     }
   }, [initialSelectedProduct]);
-
-  const loadMarketplace = async (overrideParams = {}) => {
-    if (products.length === 0) {
-      setLoading(true);
-    }
-    try {
-      const activeSearch = overrideParams.search !== undefined ? overrideParams.search : (externalSearchQuery || searchQuery);
-      const params = { status: 'PUBLISHED', ...overrideParams };
-      if (selectedCategory !== 'All Crafts') params.category = selectedCategory;
-      if (activeSearch && activeSearch.trim()) params.search = activeSearch.trim();
-      if (minPrice) params.min_price = minPrice;
-      if (maxPrice) params.max_price = maxPrice;
-
-      const [allProds, trendProds] = await Promise.all([
-        getProducts(params),
-        getTrendingProducts()
-      ]);
-      setProducts(allProds);
-      setTrending(trendProds);
-      setCachedProducts(allProds, user?.id);
-    } catch (err) {
-      console.error('Marketplace load error, using cached products:', err);
-      const cached = getCachedProducts(user?.id);
-      if (cached && cached.length > 0) {
-        setProducts(cached);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     loadMarketplace();
@@ -182,48 +207,36 @@ export default function BuyView({
         </div>
       )}
 
-      {/* Elegant Luxury Marketplace Header */}
-      <div className="space-y-4 pb-4 border-b border-[#E8E5DF]">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1C1C1C] tracking-tight font-serif-luxury">
-              SHOP HANDMADE
-            </h1>
-            <p className="text-sm text-[#6B6B6B] mt-1 font-sans">
-              Discover authentic pieces crafted by independent artisans across India.
-            </p>
-          </div>
-
-          {/* Active Search Query Filter Pill Indicator */}
-          {searchQuery && (
-            <div className="flex items-center space-x-2 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full text-xs text-[#A6533B] font-semibold self-start md:self-auto shadow-2xs">
-              <span>Search: "{searchQuery}"</span>
-              <button
-                onClick={() => handleSearchChange('')}
-                className="hover:text-amber-900 font-bold ml-1 cursor-pointer"
-                title="Clear search filter"
-              >
-                ✕
-              </button>
-            </div>
-          )}
+      {/* Clean Marketplace Header & Category Filters */}
+      <div className="space-y-4 pt-1">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1C1C1C] tracking-tight font-serif-luxury">
+            {language === 'te' ? 'ప్రామాణిక భారతీయ చేతివృత్తుల మార్కెట్' : 'Handcrafted Heritage Marketplace'}
+          </h1>
+          <p className="text-xs sm:text-sm text-stone-500 mt-1">
+            {language === 'te'
+              ? 'మధ్యవర్తులు లేకుండా కళాకారుల చేతుల్లో రూపుదిద్దుకున్న అసలైన చేనేత & హస్తకళల భాండాగారం.'
+              : 'Discover timeless crafts chiseled, woven, and painted by independent Indian craftspeople.'}
+          </p>
         </div>
 
-        {/* Clean Minimalist Category Filter Pills */}
-        <div className="flex items-center space-x-2.5 overflow-x-auto pb-1 no-scrollbar pt-2">
+        {/* Category Filter Pills with Craft Icons */}
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1 no-scrollbar">
           {CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat;
+            const icon = getCategoryIcon(cat);
             return (
               <button
                 key={cat}
                 onClick={() => handleCategorySelect(cat)}
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center space-x-1.5 ${
                   isSelected
                     ? 'bg-[#A6533B] text-white shadow-xs'
-                    : 'bg-white border border-[#E8E5DF] text-[#1C1C1C] hover:border-[#A6533B] hover:text-[#A6533B]'
+                    : 'bg-white border border-[#E8E2D9] text-[#1C1C1C] hover:border-[#A6533B] hover:text-[#A6533B]'
                 }`}
               >
-                {cat}
+                <span>{icon}</span>
+                <span>{getCategoryTranslation(cat)}</span>
               </button>
             );
           })}
@@ -250,7 +263,7 @@ export default function BuyView({
                   setIsDetailOpen(true);
                   triggerEventRefresh();
                 }}
-                className="bg-white p-2.5 rounded-xl border border-[#E8E5DF] hover:border-[#A6533B] transition-all cursor-pointer shadow-xs group"
+                className="bg-white p-2.5 rounded-xl border border-[#E8E2D9] hover:border-[#A6533B] transition-all cursor-pointer shadow-xs group"
               >
                 <div className="relative rounded-lg overflow-hidden h-28 bg-stone-100">
                   <img src={p.image_url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
@@ -279,12 +292,13 @@ export default function BuyView({
         </div>
 
         {loading ? (
-          <div className="bg-white p-12 rounded-2xl border border-[#E8E5DF] text-center">
-            <div className="w-6 h-6 border-2 border-[#A6533B] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-            <p className="text-xs text-[#6B6B6B]">Loading marketplace crafts...</p>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <ProductCardSkeleton key={idx} />
+            ))}
           </div>
         ) : products.length === 0 ? (
-          <div className="bg-white p-12 rounded-2xl border border-dashed border-[#E8E5DF] text-center space-y-2">
+          <div className="bg-white p-12 rounded-2xl border border-dashed border-[#E8E2D9] text-center space-y-2">
             <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto" />
             <p className="text-sm font-medium text-[#1C1C1C]">No crafts matched your filter or search.</p>
             <p className="text-xs text-[#6B6B6B]">Try adjusting price range, clearing search query, or selecting "All Crafts".</p>
@@ -297,74 +311,100 @@ export default function BuyView({
               return (
                 <div
                   key={p.id}
-                  className="bg-white rounded-xl border border-[#E8E5DF] overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer"
+                  className="bg-white rounded-2xl border border-[#E8E2D9] overflow-hidden shadow-2xs hover:border-[#A6533B]/60 hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer"
                   onClick={() => {
                     setSelectedProduct(p);
                     setIsDetailOpen(true);
+                    addRecentlyViewedProduct(p);
+                    if (typeof window !== 'undefined') {
+                      window.location.hash = `#craft-${p.id}`;
+                    }
                     triggerEventRefresh();
                   }}
                 >
                   <div>
-                    {/* Flipkart Style Portrait Image (Aspect 4:5) */}
-                    <div className="relative aspect-[4/5] bg-stone-100 overflow-hidden">
+                    {/* Clean Portrait Image Frame (Aspect 4:5) */}
+                    <div className="relative aspect-[4/5] bg-[#F5EFEB] overflow-hidden">
                       <img
                         src={p.image_url}
                         alt={cardTitle}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       
+                      {/* Share Button Overlay */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShareProduct(p);
+                        }}
+                        className="absolute top-2.5 left-2.5 p-1.5 rounded-full shadow-2xs bg-white/95 text-stone-600 hover:text-[#A6533B] hover:bg-white transition-all cursor-pointer"
+                        title="Share Craft"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                      </button>
+
                       {/* Wishlist Heart Overlay */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleSave(p);
                         }}
-                        className={`absolute top-2 right-2 p-1.5 rounded-full shadow-xs transition-all cursor-pointer ${
+                        className={`absolute top-2.5 right-2.5 p-1.5 rounded-full shadow-2xs transition-all cursor-pointer ${
                           isSaved
                             ? 'bg-rose-600 text-white'
-                            : 'bg-white/90 text-stone-600 hover:text-rose-600'
+                            : 'bg-white/95 text-stone-600 hover:text-rose-600'
                         }`}
+                        title="Save to Wishlist"
                       >
                         <Heart className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
                       </button>
 
-                      {/* Real Craft Category Tag */}
-                      <span className="absolute bottom-2 left-2 bg-[#1C1C1C]/80 text-white text-[10px] font-semibold px-2 py-0.5 rounded backdrop-blur-xs">
+                      {/* Craft Category Badge */}
+                      <span className="absolute bottom-2.5 left-2.5 bg-stone-900/80 text-amber-100 text-[10px] font-semibold px-2 py-0.5 rounded-md backdrop-blur-xs">
                         {getCategoryTranslation(p.category)}
                       </span>
+
+                      {/* Region Tag if available */}
+                      {p.region_of_origin && (
+                        <span className="absolute bottom-2.5 right-2.5 bg-white/90 text-stone-700 text-[9px] font-medium px-1.5 py-0.5 rounded-md backdrop-blur-xs hidden sm:inline-block">
+                          📍 {p.region_of_origin}
+                        </span>
+                      )}
                     </div>
 
                     {/* Product Info */}
-                    <div className="p-3 space-y-1">
-                      <span className="text-[10px] font-bold text-[#A6533B] uppercase tracking-wider block">
-                        {p.artisan_name || 'Authentic Handloom Craft'}
+                    <div className="p-3 sm:p-3.5 space-y-1.5">
+                      <span className="text-[10px] font-bold text-[#A6533B] uppercase tracking-wider block truncate">
+                        {p.artisan_name || 'Handcrafted Heritage Art'}
                       </span>
-                      <h4 className="font-bold text-[#1C1C1C] text-xs truncate">
+                      <h4 className="font-bold text-[#1C1C1C] text-xs sm:text-sm line-clamp-1 group-hover:text-[#A6533B] transition-colors">
                         {cardTitle}
                       </h4>
 
-                      {/* Real Price & Stock Badge Block */}
+                      {/* Price & Stock Badge */}
                       <div className="flex items-center justify-between pt-1">
-                        <span className="text-sm font-extrabold text-[#1C1C1C]">₹{p.price.toLocaleString('en-IN')}</span>
+                        <span className="text-sm sm:text-base font-extrabold text-[#1C1C1C]">
+                          ₹{p.price.toLocaleString('en-IN')}
+                        </span>
                         {p.stock > 0 ? (
-                          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80">
                             {p.stock} in stock
                           </span>
                         ) : (
-                          <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                            Out of Stock
+                          <span className="text-[10px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/80">
+                            Made to Order
                           </span>
                         )}
                       </div>
 
-                      <div className="text-[10px] font-semibold text-stone-500 pt-0.5">
+                      <div className="text-[10px] font-medium text-stone-500 pt-0.5">
                         🚚 Direct Artisan Shipment
                       </div>
                     </div>
                   </div>
 
                   {/* Add to Cart Button */}
-                  <div className="p-3 pt-0">
+                  <div className="p-3 sm:p-3.5 pt-0">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -378,10 +418,10 @@ export default function BuyView({
                           setOrderModal({ isOpen: true, product: p, mode: 'ENQUIRY' });
                         }
                       }}
-                      className="w-full py-2 bg-[#A6533B] hover:bg-[#88412F] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center space-x-1 shadow-xs"
+                      className="w-full py-2 bg-[#A6533B] hover:bg-[#88412F] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center space-x-1.5 shadow-2xs"
                     >
                       <ShoppingBag className="w-3.5 h-3.5" />
-                      <span>{p.stock > 0 ? 'Add to Cart' : 'Pre-Order'}</span>
+                      <span>{p.stock > 0 ? (language === 'te' ? 'కార్ట్‌కి జోడించు' : 'Add to Bag') : (language === 'te' ? 'ఆర్డర్ చేయండి' : 'Pre-Order')}</span>
                     </button>
                   </div>
                 </div>
@@ -390,6 +430,19 @@ export default function BuyView({
           </div>
         )}
       </div>
+
+
+      {/* Recently Viewed Heritage Crafts Carousel */}
+      <RecentlyViewedSection
+        currentProductId={selectedProduct?.id}
+        onSelectProduct={(p) => {
+          setSelectedProduct(p);
+          setIsDetailOpen(true);
+          if (typeof window !== 'undefined') {
+            window.location.hash = `#craft-${p.id}`;
+          }
+        }}
+      />
 
       {/* Product Details Modal (tracks VIEW event & shows Similar Crafts) */}
       <BuyerProductModal
@@ -458,6 +511,14 @@ export default function BuyView({
           setIsDetailOpen(true);
         }}
       />
+
+      {/* Share Product Modal */}
+      <ShareProductModal
+        product={shareProduct}
+        isOpen={Boolean(shareProduct)}
+        onClose={() => setShareProduct(null)}
+      />
     </div>
   );
 }
+

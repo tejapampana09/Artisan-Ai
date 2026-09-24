@@ -13,7 +13,7 @@ export default function CollectionsView({ onSelectMode, onOpenAuth }) {
       title: 'Srikalahasti Natural Dye Kalamkari Collection',
       titleTe: 'శ్రీకాళహస్తి సహజ రంగుల కలంకారీ కలెక్షన్',
       origin: 'Srikalahasti & Machilipatnam, Andhra Pradesh',
-      giTag: 'GI Tag Certified • 300-Year Heritage',
+      giTag: 'Hereditary Handcraft • 300-Year Legacy',
       itemsCount: '18 Authentic Creations',
       image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80',
       description: 'Hand-painted cotton and silk textiles crafted with bamboo pens (kalam) using 100% organic vegetable dyes extracted from indigo, madder root, and pomegranate rind.',
@@ -61,7 +61,7 @@ export default function CollectionsView({ onSelectMode, onOpenAuth }) {
       title: 'Pochampally Double-Ikat Silk Sarees',
       titleTe: 'పోచంపల్లి డబుల్-ఇక్కత్ పట్టు చీరల కలెక్షన్',
       origin: 'Pochampally, Telangana',
-      giTag: 'GI Tagged Weave • Bhoodan Heritage',
+      giTag: 'Heirloom Handloom Weave • Bhoodan Heritage',
       itemsCount: '20 Heirloom Weaves',
       image: 'https://images.unsplash.com/photo-1606744888344-493238951221?auto=format&fit=crop&w=800&q=80',
       description: 'Intricate tie-dye geometry where warp and weft silk threads are individually dyed before handloom weaving, creating legendary Pochampally motifs.',
@@ -72,27 +72,27 @@ export default function CollectionsView({ onSelectMode, onOpenAuth }) {
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-20 font-sans">
       {/* Editorial Header */}
-      <div className="bg-[#FAF9F6] border border-[#E8E5DF] rounded-2xl p-6 sm:p-10 text-center space-y-4">
-        <span className="text-xs uppercase tracking-widest text-[#A6533B] font-semibold block">
-          CURATED INDIAN CRAFT ALBUMS & REGIONAL HERITAGE
-        </span>
-        <h1 className="text-3xl sm:text-5xl font-bold text-[#1C1C1C] tracking-tight max-w-3xl mx-auto">
+      <div className="bg-[#FAF7F2] border border-[#E8E2D9] rounded-2xl p-6 sm:p-8 space-y-2 shadow-xs">
+        <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-[#8C3F2B]/10 text-[#8C3F2B] text-[10px] font-bold tracking-wider uppercase">
+          <span>🏛️ Curated Regional Albums</span>
+        </div>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#1C1C1C] tracking-tight">
           Explore Curated Heritage Craft Collections
         </h1>
-        <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-2xl mx-auto leading-relaxed">
-          Discover handpicked collections grouped by traditional GI-tagged crafts, regional artisan clusters, and authentic raw material origins across India.
+        <p className="text-xs sm:text-sm text-stone-600 font-medium leading-relaxed max-w-2xl">
+          Discover handpicked collections grouped by traditional handcrafted creations, regional artisan clusters, and authentic raw material origins across India.
         </p>
       </div>
 
       {/* Collections Showcase Cards */}
-      <div className="space-y-8">
+      <div className="space-y-6">
         {collectionsList.map((col, idx) => (
           <div 
             key={col.id}
-            className="bg-white rounded-3xl border border-[#E8E5DF] overflow-hidden shadow-xs hover:border-[#A6533B]/40 transition-all grid grid-cols-1 md:grid-cols-12"
+            className="bg-white rounded-2xl border border-[#E8E2D9] overflow-hidden shadow-2xs hover:border-[#A6533B]/60 transition-all grid grid-cols-1 md:grid-cols-12"
           >
             {/* Image Column */}
-            <div className="md:col-span-5 relative h-64 md:h-auto bg-[#FAF9F6] border-b md:border-b-0 md:border-r border-[#E8E5DF]">
+            <div className="md:col-span-5 relative h-64 md:h-auto bg-[#F5EFEB] border-b md:border-b-0 md:border-r border-[#E8E2D9]">
               <img 
                 src={col.image} 
                 alt={col.title} 
@@ -107,7 +107,7 @@ export default function CollectionsView({ onSelectMode, onOpenAuth }) {
             <div className="md:col-span-7 p-6 sm:p-8 space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded bg-amber-50 text-[#A6533B] border border-[#E8E5DF]">
+                  <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded bg-amber-50/80 text-[#A6533B] border border-[#E8E2D9]">
                     {col.giTag}
                   </span>
                 </div>
@@ -126,14 +126,14 @@ export default function CollectionsView({ onSelectMode, onOpenAuth }) {
 
                 <div className="flex flex-wrap gap-2 pt-2">
                   {col.highlights.map((h, i) => (
-                    <span key={i} className="text-[10px] font-semibold text-[#1C1C1C] bg-[#FAF9F6] border border-[#E8E5DF] px-2.5 py-1 rounded-md">
+                    <span key={i} className="text-[10px] font-semibold text-[#1C1C1C] bg-[#FAF7F2] border border-[#E8E2D9] px-2.5 py-1 rounded-md">
                       ✓ {h}
                     </span>
                   ))}
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-[#E8E5DF] flex items-center justify-between">
+              <div className="pt-4 border-t border-[#E8E2D9] flex items-center justify-between">
                 <span className="text-xs font-medium text-[#6B6B6B]">Direct Artisan Fair-Trade</span>
                 <button
                   onClick={() => onSelectMode('BUY')}

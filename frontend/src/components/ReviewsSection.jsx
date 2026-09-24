@@ -13,12 +13,6 @@ export default function ReviewsSection({ productId, user, product }) {
 
   const isSellerOwner = user && product && product.seller_id === user.id;
 
-  useEffect(() => {
-    if (productId) {
-      fetchReviews();
-    }
-  }, [productId]);
-
   const fetchReviews = async () => {
     setLoading(true);
     try {
@@ -30,6 +24,12 @@ export default function ReviewsSection({ productId, user, product }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (productId) {
+      fetchReviews();
+    }
+  }, [productId]);
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();
@@ -52,7 +52,7 @@ export default function ReviewsSection({ productId, user, product }) {
     : 0;
 
   return (
-    <div className="mt-4 pt-4 border-t border-[#E8E5DF] space-y-3">
+    <div className="mt-4 pt-4 border-t border-[#E8E2D9] space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <MessageSquare className="w-4 h-4 text-[#A6533B]" />
@@ -61,7 +61,7 @@ export default function ReviewsSection({ productId, user, product }) {
           </h4>
         </div>
         {reviews.length > 0 && (
-          <div className="flex items-center space-x-1.5 bg-[#FAF9F6] px-2.5 py-0.5 rounded border border-[#E8E5DF] text-xs font-bold text-[#1C1C1C]">
+          <div className="flex items-center space-x-1.5 bg-[#FAF7F2] px-2.5 py-0.5 rounded border border-[#E8E2D9] text-xs font-bold text-[#1C1C1C]">
             <Star className="w-3.5 h-3.5 text-amber-500 fill-current" />
             <span>{avgRating} / 5</span>
             <span className="text-[#6B6B6B] text-[10px]">({reviews.length})</span>
@@ -73,13 +73,13 @@ export default function ReviewsSection({ productId, user, product }) {
       {loading ? (
         <p className="text-xs text-[#6B6B6B]">Loading reviews...</p>
       ) : reviews.length === 0 ? (
-        <div className="p-3 bg-[#FAF9F6] rounded-md text-center text-xs text-[#6B6B6B] border border-[#E8E5DF]">
+        <div className="p-3 bg-[#FAF7F2] rounded-md text-center text-xs text-[#6B6B6B] border border-[#E8E2D9]">
           No buyer reviews yet. Be the first verified buyer to leave a review!
         </div>
       ) : (
         <div className="space-y-2.5 max-h-44 overflow-y-auto pr-1">
           {reviews.map((rev) => (
-            <div key={rev.id} className="p-2.5 bg-[#FAF9F6] rounded-md border border-[#E8E5DF] text-xs space-y-1">
+            <div key={rev.id} className="p-2.5 bg-[#FAF7F2] rounded-md border border-[#E8E2D9] text-xs space-y-1">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-1.5">
                   <span className="font-bold text-[#1C1C1C]">{rev.buyer_name}</span>
@@ -107,7 +107,7 @@ export default function ReviewsSection({ productId, user, product }) {
 
       {/* Add Review Form or Seller Self-Review Prohibition Notice */}
       {isSellerOwner ? (
-        <div className="p-3 bg-[#FAF9F6] rounded-md border border-[#E8E5DF] text-[#1C1C1C] text-xs space-y-1">
+        <div className="p-3 bg-[#FAF7F2] rounded-md border border-[#E8E2D9] text-[#1C1C1C] text-xs space-y-1">
           <div className="flex items-center space-x-1.5 font-bold text-[#A6533B]">
             <ShieldCheck className="w-4 h-4 text-[#A6533B] shrink-0" />
             <span>Self-Review Prohibited</span>
@@ -117,7 +117,7 @@ export default function ReviewsSection({ productId, user, product }) {
           </p>
         </div>
       ) : user && (
-        <form onSubmit={handleSubmitReview} className="p-3 bg-[#FAF9F6] rounded-md border border-[#E8E5DF] space-y-2 text-xs">
+        <form onSubmit={handleSubmitReview} className="p-3 bg-[#FAF7F2] rounded-md border border-[#E8E2D9] space-y-2 text-xs">
           <span className="font-bold text-[#1C1C1C] block text-[11px]">Write a Verified Buyer Review</span>
           <div className="flex items-center space-x-2">
             <span className="text-[#6B6B6B] text-[11px]">Rating:</span>
@@ -140,7 +140,7 @@ export default function ReviewsSection({ productId, user, product }) {
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Share your feedback on craft quality..."
-              className="flex-1 p-2 rounded-md border border-[#E8E5DF] bg-white text-xs text-[#1C1C1C] focus:border-[#A6533B] focus:outline-none"
+              className="flex-1 p-2 rounded-md border border-[#E8E2D9] bg-white text-xs text-[#1C1C1C] focus:border-[#A6533B] focus:outline-none"
               required
             />
             <button

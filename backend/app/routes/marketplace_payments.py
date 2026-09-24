@@ -171,14 +171,19 @@ def verify_payment(
                 detail="Provider order ID does not match the payment order record."
             )
 
-        order_id_to_sign = payload.provider_order_id or payment.provider_order_id
+        # NOTE: In a full Razorpay integration, `payment.provider_order_id` must be the
+        # `razorpay_order_id` returned by Razorpay's POST /v1/orders API (not a locally
+        # generated UUID). Update the /create endpoint to call Razorpay's Orders API first.
+        razorpay_order_id = payment.provider_order_id  # Must equal Razorpay's razorpay_order_id
 
         from backend.app.config import RAZORPAY_KEY_SECRET, ENVIRONMENT
         if RAZORPAY_KEY_SECRET:
             # Cryptographic HMAC-SHA256 signature verification
+            # Razorpay signature format: HMAC-SHA256(razorpay_order_id + "|" + razorpay_payment_id)
+            msg = f"{razorpay_order_id}|{payload.provider_payment_id}".encode("utf-8")
             expected_signature = hmac.new(
                 key=RAZORPAY_KEY_SECRET.encode("utf-8"),
-                msg=f"{order_id_to_sign}|{payload.provider_payment_id}".encode("utf-8"),
+                msg=msg,
                 digestmod=hashlib.sha256
             ).hexdigest()
             if not hmac.compare_digest(expected_signature, payload.signature):
@@ -195,6 +200,7 @@ def verify_payment(
                 )
             # In test/dev environments without real Razorpay secret, accept test signatures
             verified = True
+
     elif provider in ["UPI_QR", "UPI", "CARD", "NETBANKING"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

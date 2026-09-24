@@ -21,15 +21,15 @@ export default function Footer({ onSelectMode, onOpenAuth, user }) {
   };
 
   return (
-    <footer className="hidden md:block mt-16 border-t border-[#E8E5DF] bg-white pt-12 pb-8 text-sm text-[#6B6B6B]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 pb-10 border-b border-[#E8E5DF]">
+    <footer className="hidden md:block mt-16 border-t border-[#E8E2D9] bg-[#FAF7F2] pt-12 pb-8 text-sm text-[#6B6B6B]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 pb-10 border-b border-[#E8E2D9]">
         {/* Brand & Slogan Column */}
         <div className="space-y-3">
           <div 
             onClick={() => handleNav('HOME')}
             className="flex items-center space-x-2.5 cursor-pointer group"
           >
-            <div className="w-8 h-8 rounded-md bg-[#FAF9F6] border border-[#E8E5DF] p-1 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-md bg-white border border-[#E8E2D9] p-1 flex items-center justify-center shrink-0">
               <img src="/artisan-logo.png" alt="Artisan AI Logo" className="w-full h-full object-contain" />
             </div>
             <span className="font-bold text-lg tracking-tight text-[#1C1C1C] group-hover:text-[#A6533B] transition-colors">
@@ -161,10 +161,10 @@ export default function Footer({ onSelectMode, onOpenAuth, user }) {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-            <span className="px-2.5 py-1 rounded bg-[#FAF9F6] border border-[#E8E5DF] text-[10px] font-bold text-[#1C1C1C]">VISA / Mastercard</span>
-            <span className="px-2.5 py-1 rounded bg-[#FAF9F6] border border-[#E8E5DF] text-[10px] font-bold text-[#1C1C1C]">Net Banking</span>
-            <span className="px-2.5 py-1 rounded bg-[#FAF9F6] border border-[#E8E5DF] text-[10px] font-bold text-[#1C1C1C]">UPI (GooglePay / PhonePe)</span>
-            <span className="px-2.5 py-1 rounded bg-[#FAF9F6] border border-[#E8E5DF] text-[10px] font-bold text-[#A6533B]">Razorpay</span>
+            <span className="px-2.5 py-1 rounded bg-white border border-[#E8E2D9] text-[10px] font-bold text-[#1C1C1C]">VISA / Mastercard</span>
+            <span className="px-2.5 py-1 rounded bg-white border border-[#E8E2D9] text-[10px] font-bold text-[#1C1C1C]">Net Banking</span>
+            <span className="px-2.5 py-1 rounded bg-white border border-[#E8E2D9] text-[10px] font-bold text-[#1C1C1C]">UPI (GooglePay / PhonePe)</span>
+            <span className="px-2.5 py-1 rounded bg-white border border-[#E8E2D9] text-[10px] font-bold text-[#A6533B]">Razorpay</span>
           </div>
         </div>
       </div>

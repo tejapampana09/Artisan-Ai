@@ -16,6 +16,16 @@ class SlidingWindowRateLimiter:
     def __init__(self):
         # Maps key -> List[timestamp]
         self._history: Dict[str, List[float]] = defaultdict(list)
+        self._call_count: int = 0
+        self._EVICT_INTERVAL: int = 500  # Evict stale keys every 500 checks
+
+    def _evict_stale_keys(self):
+        """Remove keys whose last hit was more than 1 hour ago to prevent memory growth."""
+        now = time.time()
+        cutoff = now - 3600
+        stale = [k for k, ts_list in self._history.items() if not ts_list or max(ts_list) < cutoff]
+        for k in stale:
+            del self._history[k]
 
     def check_rate_limit(self, key: str, max_requests: int, window_seconds: int = 60):
         """
@@ -25,6 +35,11 @@ class SlidingWindowRateLimiter:
         # Bypass rate limiting in test execution environment unless explicitly testing rate limiter
         if (ENVIRONMENT in ["test", "testing"] or os.getenv("PYTEST_CURRENT_TEST") or "testclient" in key) and not key.startswith("test_rate_limit:"):
             return
+
+        # Periodic stale-key eviction to prevent memory growth
+        self._call_count += 1
+        if self._call_count % self._EVICT_INTERVAL == 0:
+            self._evict_stale_keys()
 
         now = time.time()
         cutoff = now - window_seconds
@@ -42,6 +57,7 @@ class SlidingWindowRateLimiter:
             )
 
         self._history[key].append(now)
+
 
 rate_limiter = SlidingWindowRateLimiter()
 

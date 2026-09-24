@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -60,34 +60,63 @@ class UserResponse(BaseModel):
     verification_status: Optional[str] = "UNVERIFIED"
 
 class UserUpdate(BaseModel):
-    name: Optional[str] = None
-    phone: Optional[str] = None
-    location: Optional[str] = None
-    craft: Optional[str] = None
-    avatar_url: Optional[str] = None
-    bio: Optional[str] = None
-    craft_specialization: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=120)
+    phone: Optional[str] = Field(None, max_length=20)
+    location: Optional[str] = Field(None, max_length=200)
+    craft: Optional[str] = Field(None, max_length=100)
+    avatar_url: Optional[str] = Field(None, max_length=2048)
+    bio: Optional[str] = Field(None, max_length=1000)
+    craft_specialization: Optional[str] = Field(None, max_length=100)
     experience_years: Optional[int] = None
+
+    @field_validator("avatar_url")
+    @classmethod
+    def validate_avatar_url(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not (v.startswith("https://") or v.startswith("data:image/")):
+            raise ValueError("avatar_url must be a valid HTTPS URL or an inline data:image URI")
+        return v
 
 
 class UserRegister(BaseModel):
-    name: str = Field(..., min_length=2)
+    name: str = Field(..., min_length=2, max_length=120)
     email: Optional[str] = None
     phone: Optional[str] = None
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8, max_length=128)
     role: Optional[str] = "BUYER"
     location: Optional[str] = "India"
     craft: Optional[str] = "Traditional Crafts"
 
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        import re
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter (A-Z)")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("Password must contain at least one digit (0-9)")
+        return v
+
 class ArtisanRegister(BaseModel):
-    name: str = Field(..., min_length=2)
+    name: str = Field(..., min_length=2, max_length=120)
     email: Optional[str] = None
     phone: Optional[str] = None
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8, max_length=128)
     craft: Optional[str] = "Traditional Handicrafts"
     location: Optional[str] = "India"
-    bio: Optional[str] = None
+    bio: Optional[str] = Field(None, max_length=1000)
     experience_years: Optional[int] = 0
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        import re
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter (A-Z)")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("Password must contain at least one digit (0-9)")
+        return v
 
 class ArtisanApplicationResponse(BaseModel):
     application_id: Optional[int] = None
@@ -97,13 +126,13 @@ class ArtisanApplicationResponse(BaseModel):
     user: UserResponse
 
 class AdminCreateSellerRequest(BaseModel):
-    name: str = Field(..., min_length=2)
+    name: str = Field(..., min_length=2, max_length=120)
     email: Optional[str] = None
     phone: Optional[str] = None
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8, max_length=128)
     craft: Optional[str] = "Traditional Handicrafts"
     location: Optional[str] = "India"
-    bio: Optional[str] = None
+    bio: Optional[str] = Field(None, max_length=1000)
     verification_status: Optional[str] = "GI_VERIFIED"
     experience_years: Optional[int] = 0
 
@@ -113,14 +142,25 @@ class UserLogin(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     email_or_phone: str = Field(..., min_length=3)
-    new_password: str = Field(..., min_length=6)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=6)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password_strength(cls, v: str) -> str:
+        import re
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("New password must contain at least one uppercase letter (A-Z)")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("New password must contain at least one digit (0-9)")
+        return v
 
 class AdminResetArtisanPasswordRequest(BaseModel):
-    new_password: str = Field(..., min_length=6, description="New password for artisan seller account")
+    new_password: str = Field(..., min_length=8, max_length=128, description="New password for artisan seller account")
+
 
 class TokenResponse(BaseModel):
     access_token: str

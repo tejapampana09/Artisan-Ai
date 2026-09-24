@@ -98,6 +98,20 @@ function AppContent() {
     };
   }, []);
 
+  // Auto-logout when JWT expires: any 401 from the API fires this event
+  useEffect(() => {
+    const handleSessionExpired = (e) => {
+      setUser(null);
+      setActiveMode('HOME');
+      setIsAuthOpen(true);
+      setAuthInitialTab('LOGIN');
+      // Brief toast-like notification so user knows why they were logged out
+      console.info('[Artisan AI] Session expired:', e.detail?.message);
+    };
+    window.addEventListener('artisan:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('artisan:session-expired', handleSessionExpired);
+  }, []);
+
   useEffect(() => {
     if (showSplash) {
       try {
@@ -244,7 +258,7 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] text-[#1C1C1C] flex flex-col font-sans relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#FAF7F2] text-[#1C1C1C] flex flex-col font-sans relative overflow-x-hidden">
       {showSplash && <SplashScreen fadeOut={splashFading} />}
       <NotificationCenter />
       <LanguageSelectorModal />
@@ -394,12 +408,6 @@ function AppContent() {
           handleRefreshAll();
         }}
         onNavigateMode={handleToggleMode}
-      />
-
-      {/* Download PWA App Modal */}
-      <DownloadAppModal
-        isOpen={isDownloadAppOpen}
-        onClose={() => setIsDownloadAppOpen(false)}
       />
 
       {/* Main Page Footer */}

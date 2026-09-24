@@ -257,7 +257,7 @@ export default function Login() {
             </Text>
             <Text style={styles.headerSub}>
               {isSeller
-                ? "Official access portal for verified master artisans, GI craft clusters, and weaver cooperatives."
+                ? "Official access portal for verified master artisans, heritage craft clusters, and weaver cooperatives."
                 : "Shop authentic Indian handicrafts directly from master artisans with zero middleman markups."}
             </Text>
           </View>

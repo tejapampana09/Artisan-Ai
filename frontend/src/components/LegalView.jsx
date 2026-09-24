@@ -44,28 +44,28 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
           <span>Back to Marketplace</span>
         </button>
 
-        <div className="bg-gradient-to-r from-stone-900 via-[#2A1E17] to-[#A6533B] rounded-2xl p-6 sm:p-8 text-white shadow-md">
-          <div className="flex items-center space-x-2 text-amber-300 text-xs font-bold uppercase tracking-wider mb-2">
-            <ShieldCheck className="w-4 h-4" />
+        <div className="bg-[#FAF7F2] border border-[#E8E2D9] rounded-2xl p-6 sm:p-8 space-y-2 shadow-xs">
+          <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-[#8C3F2B]/10 text-[#8C3F2B] text-[10px] font-bold tracking-wider uppercase">
+            <ShieldCheck className="w-3.5 h-3.5" />
             <span>Artisan AI Trust & Transparency</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold font-serif-luxury tracking-tight">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#1C1C1C] tracking-tight">
             Policies, Legal & Support Hub
           </h1>
-          <p className="text-xs sm:text-sm text-stone-200 mt-2 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-stone-600 font-medium max-w-2xl leading-relaxed">
             Our fair-trade marketplace connects authentic rural Indian artisans directly with global patrons, guided by consumer protection, intellectual property safeguards, and absolute transparency.
           </p>
         </div>
       </div>
 
       {/* Tab Navigation Pill Selector */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-white border border-[#E8E5DF] rounded-xl shadow-2xs">
+      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-white border border-[#E8E2D9] rounded-2xl shadow-2xs">
         <button
           onClick={() => setActiveTab('TERMS')}
-          className={`flex-1 min-w-[130px] flex items-center justify-center space-x-2 py-2.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+          className={`flex-1 min-w-[130px] flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'TERMS'
               ? 'bg-[#A6533B] text-white shadow-xs'
-              : 'text-[#6B6B6B] hover:text-[#1C1C1C] hover:bg-[#FAF9F6]'
+              : 'text-[#6B6B6B] hover:text-[#1C1C1C] hover:bg-[#FAF7F2]'
           }`}
         >
           <FileText className="w-4 h-4" />
@@ -74,10 +74,10 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
 
         <button
           onClick={() => setActiveTab('PRIVACY')}
-          className={`flex-1 min-w-[130px] flex items-center justify-center space-x-2 py-2.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+          className={`flex-1 min-w-[130px] flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'PRIVACY'
               ? 'bg-[#A6533B] text-white shadow-xs'
-              : 'text-[#6B6B6B] hover:text-[#1C1C1C] hover:bg-[#FAF9F6]'
+              : 'text-[#6B6B6B] hover:text-[#1C1C1C] hover:bg-[#FAF7F2]'
           }`}
         >
           <Lock className="w-4 h-4" />
@@ -86,10 +86,10 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
 
         <button
           onClick={() => setActiveTab('REFUND')}
-          className={`flex-1 min-w-[150px] flex items-center justify-center space-x-2 py-2.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+          className={`flex-1 min-w-[150px] flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'REFUND'
               ? 'bg-[#A6533B] text-white shadow-xs'
-              : 'text-[#6B6B6B] hover:text-[#1C1C1C] hover:bg-[#FAF9F6]'
+              : 'text-[#6B6B6B] hover:text-[#1C1C1C] hover:bg-[#FAF7F2]'
           }`}
         >
           <RefreshCw className="w-4 h-4" />
@@ -98,10 +98,10 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
 
         <button
           onClick={() => setActiveTab('CONTACT')}
-          className={`flex-1 min-w-[130px] flex items-center justify-center space-x-2 py-2.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+          className={`flex-1 min-w-[130px] flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'CONTACT'
               ? 'bg-[#A6533B] text-white shadow-xs'
-              : 'text-[#6B6B6B] hover:text-[#1C1C1C] hover:bg-[#FAF9F6]'
+              : 'text-[#6B6B6B] hover:text-[#1C1C1C] hover:bg-[#FAF7F2]'
           }`}
         >
           <Mail className="w-4 h-4" />
@@ -110,11 +110,11 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
       </div>
 
       {/* Tab Content Panels */}
-      <div className="bg-white border border-[#E8E5DF] rounded-2xl p-6 sm:p-10 shadow-xs space-y-8">
+      <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 sm:p-10 shadow-2xs space-y-8">
         {/* TAB 1: TERMS OF SERVICE */}
         {activeTab === 'TERMS' && (
           <div className="space-y-6 text-[#1C1C1C]">
-            <div className="border-b border-[#E8E5DF] pb-4">
+            <div className="border-b border-[#E8E2D9] pb-4">
               <h2 className="text-xl sm:text-2xl font-bold font-serif-luxury text-[#1C1C1C]">
                 Terms of Service
               </h2>
@@ -131,11 +131,11 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
             </section>
 
             <section className="space-y-3 text-xs sm:text-sm text-[#4A4A4A] leading-relaxed">
-              <h3 className="text-sm sm:text-base font-bold text-[#1C1C1C]">2. Authentic Handmade Nature & GI Tag Authenticity</h3>
+              <h3 className="text-sm sm:text-base font-bold text-[#1C1C1C]">2. Authentic Handmade Nature & Craft Provenance</h3>
               <p>
                 Every product showcased on Artisan AI is handcrafted by genuine rural artisans across clusters including Kalamkari (Andhra Pradesh), Bidriware (Karnataka), Etikoppaka lacquer (Andhra Pradesh), Jaipur Blue Pottery (Rajasthan), and Pochampally Ikat (Telangana).
               </p>
-              <div className="p-3 bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl text-xs text-[#6B6B6B] space-y-1">
+              <div className="p-3 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl text-xs text-[#6B6B6B] space-y-1">
                 <span className="font-bold text-[#1C1C1C] block">Handmade Distinction Notice:</span>
                 Due to the genuine handmade process utilizing vegetable dyes, clay molds, hand-chiseling, and loom-weaving, minor variations in texture, hue, weave tension, and sizing are expected characteristics of artisanal uniqueness, not defects.
               </div>
@@ -151,7 +151,7 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
             <section className="space-y-3 text-xs sm:text-sm text-[#4A4A4A] leading-relaxed">
               <h3 className="text-sm sm:text-base font-bold text-[#1C1C1C]">4. Artisan & Buyer Conduct</h3>
               <p>
-                Sellers represent and warrant that all items listed are their authentic handmade creations and do not violate intellectual property laws or counterfeit GI certifications. Buyers agree to use enquiry channels respectfully and honor fair business practices.
+                Sellers represent and warrant that all items listed are their authentic handmade creations and do not violate intellectual property laws or misleading provenance claims. Buyers agree to use enquiry channels respectfully and honor fair business practices.
               </p>
             </section>
 
@@ -167,7 +167,7 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
         {/* TAB 2: PRIVACY POLICY */}
         {activeTab === 'PRIVACY' && (
           <div className="space-y-6 text-[#1C1C1C]">
-            <div className="border-b border-[#E8E5DF] pb-4">
+            <div className="border-b border-[#E8E2D9] pb-4">
               <h2 className="text-xl sm:text-2xl font-bold font-serif-luxury text-[#1C1C1C]">
                 Privacy Policy
               </h2>
@@ -212,7 +212,7 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
         {/* TAB 3: CANCELLATION & REFUND POLICY */}
         {activeTab === 'REFUND' && (
           <div className="space-y-6 text-[#1C1C1C]">
-            <div className="border-b border-[#E8E5DF] pb-4">
+            <div className="border-b border-[#E8E2D9] pb-4">
               <h2 className="text-xl sm:text-2xl font-bold font-serif-luxury text-[#1C1C1C]">
                 Cancellation & Refund Policy
               </h2>
@@ -279,7 +279,7 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
         {/* TAB 4: CONTACT US & CUSTOMER SUPPORT */}
         {activeTab === 'CONTACT' && (
           <div className="space-y-8">
-            <div className="border-b border-[#E8E5DF] pb-4">
+            <div className="border-b border-[#E8E2D9] pb-4">
               <h2 className="text-xl sm:text-2xl font-bold font-serif-luxury text-[#1C1C1C]">
                 Contact Us & Customer Support
               </h2>
@@ -290,7 +290,7 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Contact Card 1: Email */}
-              <div className="p-4 rounded-xl bg-[#FAF9F6] border border-[#E8E5DF] space-y-2">
+              <div className="p-4 rounded-xl bg-[#FAF7F2] border border-[#E8E2D9] space-y-2">
                 <div className="w-8 h-8 rounded-lg bg-amber-100 text-[#A6533B] flex items-center justify-center">
                   <Mail className="w-4 h-4" />
                 </div>
@@ -305,7 +305,7 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
               </div>
 
               {/* Contact Card 2: Phone */}
-              <div className="p-4 rounded-xl bg-[#FAF9F6] border border-[#E8E5DF] space-y-2">
+              <div className="p-4 rounded-xl bg-[#FAF7F2] border border-[#E8E2D9] space-y-2">
                 <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
                   <Phone className="w-4 h-4" />
                 </div>
@@ -320,7 +320,7 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
               </div>
 
               {/* Contact Card 3: Location */}
-              <div className="p-4 rounded-xl bg-[#FAF9F6] border border-[#E8E5DF] space-y-2">
+              <div className="p-4 rounded-xl bg-[#FAF7F2] border border-[#E8E2D9] space-y-2">
                 <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center">
                   <MapPin className="w-4 h-4" />
                 </div>
@@ -332,7 +332,7 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
             </div>
 
             {/* Interactive Support Ticket / Enquiry Form */}
-            <div className="p-6 bg-[#FAF9F6] border border-[#E8E5DF] rounded-2xl space-y-4">
+            <div className="p-6 bg-[#FAF7F2] border border-[#E8E2D9] rounded-2xl space-y-4">
               <div className="space-y-1">
                 <h3 className="font-bold text-base text-[#1C1C1C]">Send an Online Message</h3>
                 <p className="text-xs text-[#6B6B6B]">
@@ -365,7 +365,7 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
                         value={contactForm.name}
                         onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
                         placeholder="e.g. Priya Sharma"
-                        className="w-full text-xs p-2.5 rounded-lg border border-[#E8E5DF] bg-white focus:outline-none focus:border-[#A6533B]"
+                        className="w-full text-xs p-2.5 rounded-lg border border-[#E8E2D9] bg-white focus:outline-none focus:border-[#A6533B]"
                       />
                     </div>
                     <div>
@@ -376,7 +376,7 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
                         value={contactForm.email}
                         onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
                         placeholder="priya@example.com"
-                        className="w-full text-xs p-2.5 rounded-lg border border-[#E8E5DF] bg-white focus:outline-none focus:border-[#A6533B]"
+                        className="w-full text-xs p-2.5 rounded-lg border border-[#E8E2D9] bg-white focus:outline-none focus:border-[#A6533B]"
                       />
                     </div>
                   </div>
@@ -389,7 +389,7 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
                         value={contactForm.phone}
                         onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
                         placeholder="+91 98765 43210"
-                        className="w-full text-xs p-2.5 rounded-lg border border-[#E8E5DF] bg-white focus:outline-none focus:border-[#A6533B]"
+                        className="w-full text-xs p-2.5 rounded-lg border border-[#E8E2D9] bg-white focus:outline-none focus:border-[#A6533B]"
                       />
                     </div>
                     <div>
@@ -397,7 +397,7 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
                       <select 
                         value={contactForm.subject}
                         onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
-                        className="w-full text-xs p-2.5 rounded-lg border border-[#E8E5DF] bg-white focus:outline-none focus:border-[#A6533B]"
+                        className="w-full text-xs p-2.5 rounded-lg border border-[#E8E2D9] bg-white focus:outline-none focus:border-[#A6533B]"
                       >
                         <option value="General Support">General Support & Information</option>
                         <option value="Order Tracking">Order & Tracking Assistance</option>
@@ -416,7 +416,7 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
                       value={contactForm.message}
                       onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
                       placeholder="Please describe how we can assist you..."
-                      className="w-full text-xs p-2.5 rounded-lg border border-[#E8E5DF] bg-white focus:outline-none focus:border-[#A6533B]"
+                      className="w-full text-xs p-2.5 rounded-lg border border-[#E8E2D9] bg-white focus:outline-none focus:border-[#A6533B]"
                     />
                   </div>
 
@@ -439,16 +439,16 @@ export default function LegalView({ initialTab = 'TERMS', onSelectMode }) {
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-lg border border-[#E8E5DF] bg-white space-y-1">
+                <div className="p-3 rounded-lg border border-[#E8E2D9] bg-white space-y-1">
                   <h4 className="font-bold text-[#1C1C1C]">How do I track my order?</h4>
                   <p className="text-[#6B6B6B]">
                     Visit <strong>My Orders</strong> in the top navigation or account menu. You can track live courier dispatch updates for each artisan package.
                   </p>
                 </div>
-                <div className="p-3 rounded-lg border border-[#E8E5DF] bg-white space-y-1">
+                <div className="p-3 rounded-lg border border-[#E8E2D9] bg-white space-y-1">
                   <h4 className="font-bold text-[#1C1C1C]">Are your artisans verified?</h4>
                   <p className="text-[#6B6B6B]">
-                    Yes! Every creator is physically verified through regional craft cooperatives, GI tag registries, and master artisan guild records.
+                    Yes! Every creator is physically verified through regional craft cooperatives, weaver societies, and master artisan guild records.
                   </p>
                 </div>
               </div>

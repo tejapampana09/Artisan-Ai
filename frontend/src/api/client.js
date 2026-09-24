@@ -267,6 +267,14 @@ export async function apiRequest(endpoint, options = {}) {
             cleanEndpoint.startsWith('/admin') ? 'ADMIN' : null
           );
           clearAuthToken(targetDomain);
+
+          // Auto-logout: notify the app so it redirects to login immediately
+          // without the user having to manually logout → login
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('artisan:session-expired', {
+              detail: { domain: targetDomain, message: 'Your session expired. Please log in again.' }
+            }));
+          }
         }
 
         throw new ApiError(message, response.status, 'HTTP_ERROR', errData, isRetryable);

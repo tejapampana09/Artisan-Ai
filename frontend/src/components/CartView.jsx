@@ -209,15 +209,15 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-20 font-sans">
       {/* Header Banner */}
-      <div className="bg-[#FAF9F6] border border-[#E8E5DF] rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <span className="text-xs uppercase tracking-widest text-[#A6533B] font-extrabold block">
-            DIRECT ARTISAN FAIR-TRADE CHECKOUT
-          </span>
-          <h1 className="text-2xl sm:text-4xl font-bold text-[#1C1C1C] tracking-tight mt-0.5">
-            {checkoutStep === 3 ? 'Order Confirmation' : 'Shopping Cart & Checkout'}
+      <div className="bg-[#FAF7F2] border border-[#E8E2D9] rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-xs">
+        <div className="space-y-1">
+          <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-[#8C3F2B]/10 text-[#8C3F2B] text-[10px] font-bold tracking-wider uppercase">
+            <span>🛍️ Direct Artisan Checkout</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#1C1C1C] tracking-tight">
+            {checkoutStep === 3 ? 'Order Confirmation' : 'Shopping Bag & Checkout'}
           </h1>
-          <p className="text-xs sm:text-sm text-[#6B6B6B] mt-1">
+          <p className="text-xs sm:text-sm text-stone-600 font-medium leading-relaxed">
             {checkoutStep === 1 && 'Review items in your shopping bag and proceed to shipping.'}
             {checkoutStep === 2 && 'Enter delivery address and recipient details.'}
             {checkoutStep === 3 && 'Your order is confirmed. No payment is required for this local demo.'}
@@ -225,7 +225,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
         </div>
         <button
           onClick={() => onSelectMode('BUY')}
-          className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-white border border-[#E8E5DF] text-xs font-semibold text-[#1C1C1C] hover:border-[#A6533B] hover:text-[#A6533B] transition-all cursor-pointer shadow-xs"
+          className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-white border border-[#E8E2D9] text-xs font-bold text-[#1C1C1C] hover:border-[#A6533B] hover:text-[#A6533B] transition-all cursor-pointer shadow-2xs shrink-0"
         >
           <ShoppingBag className="w-3.5 h-3.5" />
           <span>Continue Shopping</span>
@@ -234,7 +234,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
 
       {/* Wizard Progress Steps Bar */}
       {checkoutStep < 3 && cartItems.length > 0 && (
-        <div className="bg-white border border-[#E8E5DF] rounded-2xl p-4 flex items-center justify-between max-w-2xl mx-auto text-xs font-bold text-[#6B6B6B]">
+        <div className="bg-white border border-[#E8E2D9] rounded-2xl p-4 flex items-center justify-between max-w-2xl mx-auto text-xs font-bold text-[#6B6B6B] shadow-2xs">
           <button 
             onClick={() => setCheckoutStep(1)}
             className={`flex items-center space-x-2 cursor-pointer ${checkoutStep >= 1 ? 'text-[#A6533B]' : ''}`}
@@ -252,14 +252,13 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
             <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${checkoutStep >= 2 ? 'bg-[#A6533B] text-white' : 'bg-stone-100'}`}>2</span>
             <span className="hidden sm:inline">Shipping Address</span>
           </button>
-
         </div>
       )}
 
       {/* STEP 4: DIGITAL ORDER RECEIPT & TAX INVOICE */}
       {checkoutStep === 3 ? (
-        <div className="bg-white border border-[#E8E5DF] rounded-3xl p-6 sm:p-10 max-w-3xl mx-auto space-y-8 shadow-xl">
-          <div className="text-center space-y-3 border-b border-[#E8E5DF] pb-6">
+        <div className="bg-white border border-[#E8E2D9] rounded-3xl p-6 sm:p-10 max-w-3xl mx-auto space-y-8 shadow-xl">
+          <div className="text-center space-y-3 border-b border-[#E8E2D9] pb-6">
             <div className="w-16 h-16 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center mx-auto shadow-sm">
               <CheckCircle2 className="w-9 h-9" />
             </div>
@@ -275,7 +274,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
           </div>
 
           {/* Invoice Info Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#FAF9F6] p-5 rounded-2xl border border-[#E8E5DF] text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#FAF7F2] p-5 rounded-2xl border border-[#E8E2D9] text-xs">
             <div>
               <span className="font-bold text-[#6B6B6B] block">Delivered To:</span>
               <span className="font-bold text-[#1C1C1C] text-sm block mt-0.5">{shippingInfo.fullName}</span>
@@ -300,14 +299,14 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
               <span>Itemized Order Summary</span>
             </h3>
 
-            <div className="border border-[#E8E5DF] rounded-2xl divide-y divide-[#E8E5DF] overflow-hidden text-xs">
+            <div className="border border-[#E8E2D9] rounded-2xl divide-y divide-[#E8E2D9] overflow-hidden text-xs">
               {completedOrders.map((item, idx) => (
                 <div key={idx} className="p-4 flex items-center justify-between gap-4 bg-white">
                   <div className="flex items-center space-x-3">
                     <img 
                       src={item.product.image_url} 
                       alt={item.product.title} 
-                      className="w-12 h-12 rounded-xl object-cover border border-[#E8E5DF]"
+                      className="w-12 h-12 rounded-xl object-cover border border-[#E8E2D9]"
                     />
                     <div>
                       <h4 className="font-bold text-[#1C1C1C] line-clamp-1">{item.product.title}</h4>
@@ -337,7 +336,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
               onClick={() => {
                 window.print();
               }}
-              className="py-3 px-6 bg-white border border-[#E8E5DF] hover:border-[#A6533B] text-[#1C1C1C] font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center space-x-2"
+              className="py-3 px-6 bg-white border border-[#E8E2D9] hover:border-[#A6533B] text-[#1C1C1C] font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center space-x-2"
             >
               <Download className="w-4 h-4 text-[#A6533B]" />
               <span>Print Tax Receipt</span>
@@ -346,7 +345,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
         </div>
       ) : cartItems.length === 0 ? (
         /* EMPTY CART VIEW */
-        <div className="bg-white p-12 rounded-2xl border border-dashed border-[#E8E5DF] text-center space-y-4">
+        <div className="bg-white p-12 rounded-2xl border border-dashed border-[#E8E2D9] text-center space-y-4">
           <div className="w-14 h-14 bg-amber-50 text-[#A6533B] rounded-2xl border border-amber-200/60 flex items-center justify-center mx-auto">
             <ShoppingBag className="w-7 h-7" />
           </div>
@@ -374,10 +373,10 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                 {cartItems.map((item) => (
                   <div 
                     key={item.product.id}
-                    className="bg-white rounded-2xl border border-[#E8E5DF] p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                    className="bg-white rounded-2xl border border-[#E8E2D9] p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
                   >
                     <div className="flex items-center space-x-4">
-                      <div className="w-20 h-20 rounded-xl bg-[#FAF9F6] border border-[#E8E5DF] overflow-hidden shrink-0">
+                      <div className="w-20 h-20 rounded-xl bg-[#FAF7F2] border border-[#E8E2D9] overflow-hidden shrink-0">
                         <img 
                           src={item.product.image_url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400'} 
                           alt={item.product.title} 
@@ -385,7 +384,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                         />
                       </div>
                       <div>
-                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-50 text-[#A6533B] border border-[#E8E5DF]">
+                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-50 text-[#A6533B] border border-[#E8E2D9]">
                           {item.product.category || 'Handicraft'}
                         </span>
                         <h3 className="font-bold text-sm text-[#1C1C1C] mt-1 line-clamp-1">{item.product.title}</h3>
@@ -394,7 +393,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                     </div>
 
                     <div className="flex items-center space-x-6 shrink-0 self-end sm:self-center">
-                      <div className="flex items-center space-x-2 bg-[#FAF9F6] border border-[#E8E5DF] rounded-xl p-1">
+                      <div className="flex items-center space-x-2 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl p-1">
                         <button
                           onClick={() => handleUpdateQuantity(item.product.id, -1)}
                           className="p-1 text-[#1C1C1C] hover:bg-white rounded-lg transition-colors cursor-pointer"
@@ -429,8 +428,8 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
 
             {/* STEP 2: SHIPPING & DELIVERY DETAILS */}
             {checkoutStep === 2 && (
-              <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6 sm:p-8 space-y-6 shadow-xs">
-                <h2 className="font-bold text-lg text-[#1C1C1C] flex items-center space-x-2 border-b border-[#E8E5DF] pb-4">
+              <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6 sm:p-8 space-y-6 shadow-xs">
+                <h2 className="font-bold text-lg text-[#1C1C1C] flex items-center space-x-2 border-b border-[#E8E2D9] pb-4">
                   <MapPin className="w-5 h-5 text-[#A6533B]" />
                   <span>Delivery Address & Recipient Details</span>
                 </h2>
@@ -442,7 +441,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                       type="text"
                       value={shippingInfo.fullName}
                       onChange={(e) => setShippingInfo({ ...shippingInfo, fullName: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-[#E8E5DF] focus:border-[#A6533B] bg-[#FAF9F6]"
+                      className="w-full p-3 rounded-xl border border-[#E8E2D9] focus:border-[#A6533B] bg-[#FAF7F2]"
                       required
                     />
                   </div>
@@ -454,7 +453,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                       value={shippingInfo.phone}
                       onChange={(e) => setShippingInfo({ ...shippingInfo, phone: e.target.value })}
                       placeholder="+91 98765 43210"
-                      className="w-full p-3 rounded-xl border border-[#E8E5DF] focus:border-[#A6533B] bg-[#FAF9F6]"
+                      className="w-full p-3 rounded-xl border border-[#E8E2D9] focus:border-[#A6533B] bg-[#FAF7F2]"
                       required
                     />
                   </div>
@@ -465,7 +464,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                       rows={2}
                       value={shippingInfo.address}
                       onChange={(e) => setShippingInfo({ ...shippingInfo, address: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-[#E8E5DF] focus:border-[#A6533B] bg-[#FAF9F6]"
+                      className="w-full p-3 rounded-xl border border-[#E8E2D9] focus:border-[#A6533B] bg-[#FAF7F2]"
                       required
                     />
                   </div>
@@ -476,7 +475,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                       type="text"
                       value={shippingInfo.city}
                       onChange={(e) => setShippingInfo({ ...shippingInfo, city: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-[#E8E5DF] focus:border-[#A6533B] bg-[#FAF9F6]"
+                      className="w-full p-3 rounded-xl border border-[#E8E2D9] focus:border-[#A6533B] bg-[#FAF7F2]"
                       required
                     />
                   </div>
@@ -488,14 +487,14 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                         type="text"
                         value={shippingInfo.state}
                         onChange={(e) => setShippingInfo({ ...shippingInfo, state: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-[#E8E5DF] focus:border-[#A6533B] bg-[#FAF9F6]"
+                        className="w-full p-3 rounded-xl border border-[#E8E2D9] focus:border-[#A6533B] bg-[#FAF7F2]"
                         required
                       />
                       <input
                         type="text"
                         value={shippingInfo.pincode}
                         onChange={(e) => setShippingInfo({ ...shippingInfo, pincode: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-[#E8E5DF] focus:border-[#A6533B] bg-[#FAF9F6]"
+                        className="w-full p-3 rounded-xl border border-[#E8E2D9] focus:border-[#A6533B] bg-[#FAF7F2]"
                         required
                       />
                     </div>
@@ -506,8 +505,8 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
 
             {/* STEP 3: PAYMENT GATEWAY SELECTION */}
             {checkoutStep === 3 && (
-              <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6 sm:p-8 space-y-6 shadow-xs">
-                <h2 className="font-bold text-lg text-[#1C1C1C] flex items-center space-x-2 border-b border-[#E8E5DF] pb-4">
+              <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6 sm:p-8 space-y-6 shadow-xs">
+                <h2 className="font-bold text-lg text-[#1C1C1C] flex items-center space-x-2 border-b border-[#E8E2D9] pb-4">
                   <CreditCard className="w-5 h-5 text-[#A6533B]" />
                   <span>Select Payment Gateway</span>
                 </h2>
@@ -517,7 +516,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                   <div
                     onClick={() => setPaymentMethod('UPI')}
                     className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start space-x-3 ${
-                      paymentMethod === 'UPI' ? 'border-[#A6533B] bg-amber-50/40 ring-1 ring-[#A6533B]' : 'border-[#E8E5DF] hover:border-stone-400'
+                      paymentMethod === 'UPI' ? 'border-[#A6533B] bg-amber-50/40 ring-1 ring-[#A6533B]' : 'border-[#E8E2D9] hover:border-stone-400'
                     }`}
                   >
                     <QrCode className="w-5 h-5 text-[#A6533B] shrink-0 mt-0.5" />
@@ -531,7 +530,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                   <div
                     onClick={() => setPaymentMethod('CARD')}
                     className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start space-x-3 ${
-                      paymentMethod === 'CARD' ? 'border-[#A6533B] bg-amber-50/40 ring-1 ring-[#A6533B]' : 'border-[#E8E5DF] hover:border-stone-400'
+                      paymentMethod === 'CARD' ? 'border-[#A6533B] bg-amber-50/40 ring-1 ring-[#A6533B]' : 'border-[#E8E2D9] hover:border-stone-400'
                     }`}
                   >
                     <CreditCard className="w-5 h-5 text-[#A6533B] shrink-0 mt-0.5" />
@@ -545,7 +544,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                   <div
                     onClick={() => setPaymentMethod('NETBANKING')}
                     className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start space-x-3 ${
-                      paymentMethod === 'NETBANKING' ? 'border-[#A6533B] bg-amber-50/40 ring-1 ring-[#A6533B]' : 'border-[#E8E5DF] hover:border-stone-400'
+                      paymentMethod === 'NETBANKING' ? 'border-[#A6533B] bg-amber-50/40 ring-1 ring-[#A6533B]' : 'border-[#E8E2D9] hover:border-stone-400'
                     }`}
                   >
                     <Building className="w-5 h-5 text-[#A6533B] shrink-0 mt-0.5" />
@@ -559,7 +558,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                   <div
                     onClick={() => setPaymentMethod('COD')}
                     className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start space-x-3 ${
-                      paymentMethod === 'COD' ? 'border-[#A6533B] bg-amber-50/40 ring-1 ring-[#A6533B]' : 'border-[#E8E5DF] hover:border-stone-400'
+                      paymentMethod === 'COD' ? 'border-[#A6533B] bg-amber-50/40 ring-1 ring-[#A6533B]' : 'border-[#E8E2D9] hover:border-stone-400'
                     }`}
                   >
                     <Banknote className="w-5 h-5 text-[#A6533B] shrink-0 mt-0.5" />
@@ -573,7 +572,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                   <div
                     onClick={() => setPaymentMethod('RAZORPAY')}
                     className={`sm:col-span-2 p-4 rounded-2xl border cursor-pointer transition-all flex items-start space-x-3 ${
-                      paymentMethod === 'RAZORPAY' ? 'border-[#A6533B] bg-amber-50/40 ring-1 ring-[#A6533B]' : 'border-[#E8E5DF] hover:border-stone-400'
+                      paymentMethod === 'RAZORPAY' ? 'border-[#A6533B] bg-amber-50/40 ring-1 ring-[#A6533B]' : 'border-[#E8E2D9] hover:border-stone-400'
                     }`}
                   >
                     <div className="w-5 h-5 rounded-full bg-blue-600 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">
@@ -592,7 +591,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                 </div>
 
                 {/* Sub-form inputs based on selected payment method */}
-                <div className="p-4 bg-[#FAF9F6] rounded-2xl border border-[#E8E5DF] text-xs space-y-3">
+                <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-[#E8E2D9] text-xs space-y-3">
                   {paymentMethod === 'UPI' && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
@@ -600,7 +599,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                         <span className="text-[10px] text-[#356B4A] font-bold">Instant Verification</span>
                       </div>
                       <div className="flex items-center space-x-4">
-                        <div className="w-24 h-24 bg-white border border-[#E8E5DF] rounded-xl p-1.5 shrink-0 flex items-center justify-center">
+                        <div className="w-24 h-24 bg-white border border-[#E8E2D9] rounded-xl p-1.5 shrink-0 flex items-center justify-center">
                           <img 
                             src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=artisan.ai@icici&pn=ArtisanAI&am=100" 
                             alt="UPI QR Code" 
@@ -614,7 +613,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                             value={upiVpa}
                             onChange={(e) => setUpiVpa(e.target.value)}
                             placeholder="username@upi or phone@gpay"
-                            className="w-full p-2.5 bg-white rounded-xl border border-[#E8E5DF]"
+                            className="w-full p-2.5 bg-white rounded-xl border border-[#E8E2D9]"
                           />
                         </div>
                       </div>
@@ -630,7 +629,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                             type="text"
                             value={cardDetails.number}
                             onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value })}
-                            className="w-full p-2.5 bg-white rounded-xl border border-[#E8E5DF]"
+                            className="w-full p-2.5 bg-white rounded-xl border border-[#E8E2D9]"
                           />
                         </div>
                         <div>
@@ -639,7 +638,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                             type="text"
                             value={cardDetails.expiry}
                             onChange={(e) => setCardDetails({ ...cardDetails, expiry: e.target.value })}
-                            className="w-full p-2.5 bg-white rounded-xl border border-[#E8E5DF]"
+                            className="w-full p-2.5 bg-white rounded-xl border border-[#E8E2D9]"
                           />
                         </div>
                         <div>
@@ -648,7 +647,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                             type="password"
                             value={cardDetails.cvv}
                             onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value })}
-                            className="w-full p-2.5 bg-white rounded-xl border border-[#E8E5DF]"
+                            className="w-full p-2.5 bg-white rounded-xl border border-[#E8E2D9]"
                           />
                         </div>
                       </div>
@@ -661,7 +660,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                       <select
                         value={selectedBank}
                         onChange={(e) => setSelectedBank(e.target.value)}
-                        className="w-full p-2.5 bg-white rounded-xl border border-[#E8E5DF] text-xs font-semibold"
+                        className="w-full p-2.5 bg-white rounded-xl border border-[#E8E2D9] text-xs font-semibold"
                       >
                         <option value="HDFC Bank">HDFC Bank</option>
                         <option value="ICICI Bank">ICICI Bank</option>
@@ -690,8 +689,8 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
 
           {/* Right Summary Column */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6 space-y-6 shadow-xs">
-              <h2 className="font-bold text-base text-[#1C1C1C] border-b border-[#E8E5DF] pb-3">
+            <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6 space-y-6 shadow-xs">
+              <h2 className="font-bold text-base text-[#1C1C1C] border-b border-[#E8E2D9] pb-3">
                 Order Summary
               </h2>
 
@@ -704,7 +703,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                   <span>Direct Craft Shipping</span>
                   <span className="font-bold text-[#356B4A]">{shipping === 0 ? 'FREE' : `₹${shipping}`}</span>
                 </div>
-                <div className="flex justify-between pt-2 border-t border-[#E8E5DF] text-sm text-[#1C1C1C]">
+                <div className="flex justify-between pt-2 border-t border-[#E8E2D9] text-sm text-[#1C1C1C]">
                   <span className="font-bold">Total Amount Payable</span>
                   <span className="font-black text-lg text-[#A6533B]">₹{total.toLocaleString('en-IN')}</span>
                 </div>
@@ -743,7 +742,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setCheckoutStep(1)}
-                      className="py-3 px-4 bg-white border border-[#E8E5DF] hover:bg-stone-50 text-[#1C1C1C] font-bold text-xs rounded-xl cursor-pointer"
+                      className="py-3 px-4 bg-white border border-[#E8E2D9] hover:bg-stone-50 text-[#1C1C1C] font-bold text-xs rounded-xl cursor-pointer"
                     >
                       Back
                     </button>

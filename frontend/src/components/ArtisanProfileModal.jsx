@@ -15,12 +15,6 @@ export default function ArtisanProfileModal({ artisanId, isOpen, onClose, curren
   });
   const { addNotification } = useNotification();
 
-  useEffect(() => {
-    if (isOpen && artisanId) {
-      fetchProfile();
-    }
-  }, [isOpen, artisanId]);
-
   const fetchProfile = async () => {
     setLoading(true);
     try {
@@ -38,6 +32,12 @@ export default function ArtisanProfileModal({ artisanId, isOpen, onClose, curren
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isOpen && artisanId) {
+      fetchProfile();
+    }
+  }, [isOpen, artisanId]);
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
@@ -90,7 +90,7 @@ export default function ArtisanProfileModal({ artisanId, isOpen, onClose, curren
                     <div className="flex items-center space-x-2">
                       <h2 className="text-lg sm:text-xl font-bold text-[#2A1E17]">{profile.name}</h2>
                       {profile.verification_status === 'VERIFIED_ARTISAN' ? (
-                        <span className="flex items-center text-[10px] sm:text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200" title="Verified Govt/GI Heritage Artisan">
+                        <span className="flex items-center text-[10px] sm:text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200" title="Verified Master Heritage Artisan">
                           <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-600" />
                           Verified Artisan
                         </span>
@@ -220,7 +220,7 @@ export default function ArtisanProfileModal({ artisanId, isOpen, onClose, curren
                   <div className="p-3 bg-slate-900 text-white rounded-2xl flex items-center justify-between text-xs">
                     <div>
                       <span className="text-amber-400 font-bold block">Artisan Portfolio</span>
-                      <span className="text-slate-300 text-[11px]">{profile.total_products_count} GI verified handicraft items listed</span>
+                      <span className="text-slate-300 text-[11px]">{profile.total_products_count} authentic handcrafted items listed</span>
                     </div>
                     <Award className="w-6 h-6 text-amber-400 shrink-0" />
                   </div>

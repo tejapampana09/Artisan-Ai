@@ -9,11 +9,11 @@ export const theme = {
     accentLight: "#FBF3F0",
     accentDark: "#7B2E10",
 
-    bg: "#FAF9F6", // Natural Warm Off-White Heritage Linen
+    bg: "#FAF7F2", // Natural Warm Off-White Heritage Linen
     surface: "#FFFFFF",
-    surfaceMuted: "#F5F3EF",
+    surfaceMuted: "#F5EFEB",
     card: "#FFFFFF",
-    border: "#E8E5DF",
+    border: "#E8E2D9",
     borderLight: "#F0EDED",
     borderDark: "#D1C7BD",
 
@@ -42,8 +42,8 @@ export const theme = {
     black: "#000000",
 
     // Aliases
-    background: "#FAF9F6",
-    surfaceVariant: "#F5F3EF",
+    background: "#FAF7F2",
+    surfaceVariant: "#F5EFEB",
     error: "#C62828"
   },
 
@@ -158,7 +158,7 @@ export const theme = {
   },
 
   // Backward compatibility convenience properties
-  bg: "#FAF9F6",
+  bg: "#FAF7F2",
   surface: "#FFFFFF",
   card: "#FFFFFF",
   ink: "#1C1C1C",
@@ -166,7 +166,7 @@ export const theme = {
   accent: "#9F3C16",
   accentHover: "#7B2E10",
   accentLight: "#FBF3F0",
-  border: "#E8E5DF",
+  border: "#E8E2D9",
   success: "#2E7D32",
   successLight: "#E8F5E9",
   warning: "#835500",

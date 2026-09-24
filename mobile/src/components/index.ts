@@ -21,3 +21,4 @@ export * from "./LanguageSelectorModal";
 export * from "./DeliveryAddressModal";
 export * from "./CustomAlertModal";
 export * from "./AppUpdateModal";
+export * from "./RecentlyViewedCarousel";

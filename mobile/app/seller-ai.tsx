@@ -681,7 +681,7 @@ export default function SellerAICatalogStudio() {
                 {/* Sample Crafts Carousel (Exact Match to Web) */}
                 <View style={styles.card}>
                   <Text style={styles.sectionLabel}>OR QUICK-SELECT A SAMPLE CRAFT</Text>
-                  <Text style={styles.helperText}>Tap any verified GI craft to auto-populate photos and details:</Text>
+                  <Text style={styles.helperText}>Tap any traditional craft to auto-populate photos and details:</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
                     {SAMPLE_PHOTOS.map((sample, idx) => (
                       <Pressable
@@ -944,7 +944,7 @@ export default function SellerAICatalogStudio() {
               </View>
               <View style={styles.pipelineRow}>
                 <Ionicons name="checkmark-circle" size={18} color="#2E7D32" style={{ marginRight: 10 }} />
-                <Text style={styles.pipelineText}>Evaluating GI cluster & material authenticity</Text>
+                <Text style={styles.pipelineText}>Evaluating craft cluster & material authenticity</Text>
               </View>
               <View style={styles.pipelineRow}>
                 <Ionicons name="checkmark-circle" size={18} color="#2E7D32" style={{ marginRight: 10 }} />

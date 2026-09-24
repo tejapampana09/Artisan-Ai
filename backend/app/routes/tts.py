@@ -41,7 +41,10 @@ async def text_to_speech(request: Request, text: str = Query(...), lang: str = Q
                 return Response(content=res.content, media_type="audio/mpeg")
             else:
                 logger.warning("Google TTS status %s for lang %s", res.status_code, lang)
-                raise HTTPException(status_code=503, detail="TTS audio stream unavailable")
+                raise HTTPException(status_code=503, detail="TTS audio stream temporarily unavailable. Please try again shortly.")
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error("TTS generation error: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("TTS generation error: %s", e, exc_info=True)
+        raise HTTPException(status_code=503, detail="TTS audio stream temporarily unavailable. Please try again shortly.")
+

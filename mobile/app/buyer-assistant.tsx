@@ -42,7 +42,7 @@ interface ChatMessage {
 const SUGGESTIONS_BY_LANG: Record<string, string[]> = {
   te: [
     "కలంకారి కళ గురించి చెప్పు",
-    "జిఐ (GI) ట్యాగ్ అంటే ఏమిటి?",
+    "హస్తకళల ప్రామాణికతను ఎలా గుర్తిస్తారు?",
     "₹2,000 లోపు చేతివృత్తుల బహుమతులు",
     "చెన్నపట్న బొమ్మల విశిష్టత ఏమిటి?",
     "స్వచ్ఛమైన చందేరి పట్టు ఎలా గుర్తించాలి?",
@@ -50,7 +50,7 @@ const SUGGESTIONS_BY_LANG: Record<string, string[]> = {
   ],
   hi: [
     "कलमकारी कला के बारे में बताएं",
-    "जीआई (GI) टैग क्या है?",
+    "हस्तशिल्प की प्रामाणिकता कैसे जानें?",
     "₹2,000 से कम के हस्तशिल्प उपहार",
     "चन्नापटना खिलौनों की क्या खासियत है?",
     "शुद्ध चंदेरी रेशम की पहचान कैसे करें?",
@@ -58,7 +58,7 @@ const SUGGESTIONS_BY_LANG: Record<string, string[]> = {
   ],
   en: [
     "Tell me about Kalamkari art",
-    "What are GI tagged products?",
+    "How is craft authenticity verified?",
     "Handmade gifts under ₹2,000",
     "How to identify pure Chanderi silk?",
     "Channapatna Wooden Toys history",
@@ -72,18 +72,18 @@ export default function BuyerAssistant() {
 
   const getGreeting = () => {
     if (language === "te") {
-      return "నమస్కారం! 🙏 నేను మీ ఆర్టిసన్ AI గైడ్. సంప్రదాయ భారతీయ హస్తకళలు, GI గుర్తింపు పొందిన కళారూపాలు, సహజసిద్ధమైన ఉత్పత్తుల గురించి నన్ను అడగండి.";
+      return "నమస్కారం! 🙏 నేను మీ ఆర్టిసన్ AI గైడ్. సంప్రదాయ భారతీయ హస్తకళలు, ప్రామాణిక మాస్టర్ కళారూపాలు, సహజసిద్ధమైన ఉత్పత్తుల గురించి నన్ను అడగండి.";
     }
     if (language === "hi") {
-      return "नमस्ते! 🙏 मैं आपका कारीगर AI साथी हूँ। पारंपरिक भारतीय हस्तशिल्प, जीआई टैग कलाकृतियों और प्राकृतिक उत्पादों के बारे में मुझसे पूछें।";
+      return "नमस्ते! 🙏 मैं आपका कारीगर AI साथी हूँ। पारंपरिक भारतीय हस्तशिल्प, प्रामाणिक कलाकृतियों और प्राकृतिक उत्पादों के बारे में मुझसे पूछें।";
     }
     if (language === "ta") {
-      return "வணக்கம்! 🙏 நான் உங்கள் கைவினை AI வழிகாட்டி. பாரம்பரிய இந்திய கைவினைப்பொருட்கள் மற்றும் புவிசார் குறியீடு கலைகள் பற்றி என்னிடம் கேளுங்கள்.";
+      return "வணக்கம்! 🙏 நான் உங்கள் கைவினை AI வழிகாட்டி. பாரம்பரிய இந்திய கைவினைப்பொருட்கள் மற்றும் உண்மையான கலைகள் பற்றி என்னிடம் கேளுங்கள்.";
     }
     if (language === "bn") {
-      return "নমস্কার! 🙏 আমি আপনার কারিগর AI সহায়ক। ভারতের ঐতিহ্যবাহী হস্তশিল্প এবং জিআই স্বীকৃত পণ্য সম্পর্কে যেকোনো প্রশ্ন করতে পারেন।";
+      return "নমস্কার! 🙏 আমি আপনার কারিগর AI সহায়ক। ভারতের ঐতিহ্যবাহী হস্তশিল্প এবং প্রামাণিক শিল্পকর্ম সম্পর্কে যেকোনো প্রশ্ন করতে পারেন।";
     }
-    return "Namaste! 🙏 I am your Artisan AI Companion. I can help you discover authentic traditional Indian craft forms, explore GI tagged heritages, find the perfect handmade creations, or answer questions about natural materials and artisans.";
+    return "Namaste! 🙏 I am your Artisan AI Companion. I can help you discover authentic traditional Indian craft forms, explore master artisan heritages, find the perfect handmade creations, or answer questions about natural materials and artisans.";
   };
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -430,10 +430,10 @@ export default function BuyerAssistant() {
               style={styles.input}
               placeholder={
                 language === "te"
-                  ? "కళలు, GI ట్యాగ్‌లు, బహుమతుల గురించి అడగండి..."
+                  ? "కళలు, చేతివృత్తులు, బహుమతుల గురించి అడగండి..."
                   : language === "hi"
-                  ? "हस्तशिल्प, जीआई टैग, साड़ियों के बारे में पूछें..."
-                  : "Ask about crafts, GI tags, silk, pottery…"
+                  ? "हस्तशिल्प, पारंपरिक कला, साड़ियों के बारे में पूछें..."
+                  : "Ask about crafts, handmade gifts, silk, pottery…"
               }
               placeholderTextColor="#A89F95"
               value={input}

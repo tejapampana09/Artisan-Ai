@@ -275,35 +275,43 @@ export default function SellerOrders() {
 const styles = StyleSheet.create({
   filterRow: {
     flexDirection: "row",
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    gap: theme.spacing.xs,
-    backgroundColor: theme.colors.background
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    backgroundColor: "#FAF7F2"
   },
   filterChip: {
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.surfaceVariant
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E8E2D9"
   },
   filterChipActive: {
-    backgroundColor: theme.colors.primary
+    backgroundColor: "#A6533B",
+    borderColor: "#A6533B"
   },
   filterChipText: {
-    ...theme.typography.caption,
-    color: theme.colors.inkMuted,
-    fontWeight: "600"
+    fontSize: 12,
+    color: "#6B5B51",
+    fontWeight: "700"
   },
   filterChipTextActive: {
     color: "#FFFFFF",
-    fontWeight: "700"
+    fontWeight: "800"
   },
   listContent: {
-    padding: theme.spacing.lg,
+    padding: 16,
     paddingBottom: 100
   },
   orderCard: {
-    marginBottom: theme.spacing.md
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E8E2D9",
+    marginBottom: 12
   },
   orderHead: {
     flexDirection: "row",
@@ -311,18 +319,19 @@ const styles = StyleSheet.create({
     alignItems: "flex-start"
   },
   orderNumber: {
-    ...theme.typography.h3,
-    color: theme.colors.ink
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1C1C1C"
   },
   orderDate: {
-    ...theme.typography.caption,
-    color: theme.colors.inkMuted,
+    fontSize: 11,
+    color: "#8A726A",
     marginTop: 2
   },
   divider: {
     height: 1,
-    backgroundColor: theme.colors.border,
-    marginVertical: theme.spacing.sm
+    backgroundColor: "#F5EFEB",
+    marginVertical: 10
   },
   detailRow: {
     flexDirection: "row",
@@ -331,30 +340,33 @@ const styles = StyleSheet.create({
     marginBottom: 6
   },
   detailText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.inkLight,
+    fontSize: 12,
+    color: "#6B5B51",
     flex: 1
   },
   detailBold: {
-    color: theme.colors.ink,
-    fontWeight: "600"
+    color: "#1C1C1C",
+    fontWeight: "700"
   },
   orderFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border
+    borderTopColor: "#F5EFEB"
   },
   payoutLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.inkMuted
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#8A726A",
+    textTransform: "uppercase"
   },
   payoutValue: {
-    ...theme.typography.h3,
-    color: theme.colors.primary
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#A6533B"
   },
   actionButtonGroup: {
     flexDirection: "row",

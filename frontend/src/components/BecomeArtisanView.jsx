@@ -43,7 +43,7 @@ export default function BecomeArtisanView({ onSelectMode, onOpenAuth, user }) {
       teluguTitle: 'ధృవీకరణ',
       subtitle: 'Artisan Authenticity',
       description: 'Submit your Artisan Pehchan Card, Aadhaar, or local craft cooperative / guild endorsement. Our team verifies genuine rural craft provenance to protect authentic creators against factory counterfeits.',
-      badge: 'GI & Guild Check',
+      badge: 'Guild & Artisan Check',
       icon: <FileCheck className="w-5 h-5 text-emerald-600" />
     },
     {
@@ -60,7 +60,7 @@ export default function BecomeArtisanView({ onSelectMode, onOpenAuth, user }) {
       title: 'Admin Approval',
       teluguTitle: 'అడ్మిన్ ఆమోదం',
       subtitle: 'Quality & Fair Margin Curation',
-      description: 'Platform curators review your listing within 24 hours to confirm proper GI tagging, photographic clarity, and verify that your pricing guarantees at least a 20% fair profit floor over raw materials.',
+      description: 'Platform curators review your listing within 24 hours to confirm craft provenance, photographic clarity, and verify that your pricing guarantees at least a 20% fair profit floor over raw materials.',
       badge: 'Fast 24h Review',
       icon: <ShieldCheck className="w-5 h-5 text-blue-600" />
     },
@@ -144,25 +144,25 @@ export default function BecomeArtisanView({ onSelectMode, onOpenAuth, user }) {
       </div>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2A1E17] via-[#5C2B1D] to-[#933D1E] text-white p-8 sm:p-14 shadow-xl border border-stone-800">
-        <div className="relative z-10 max-w-3xl space-y-5">
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#2A1E17] via-[#5C2B1D] to-[#933D1E] text-white p-8 sm:p-12 shadow-md border border-[#E8E2D9]">
+        <div className="relative z-10 max-w-3xl space-y-4">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs border border-white/20 text-amber-200 text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Artisan Empowerment & Direct Fair Trade</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-extrabold font-serif-luxury tracking-tight leading-tight">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
             Sell Your Handcrafted Art Directly to the World
           </h1>
 
-          <p className="text-sm sm:text-base text-stone-200 leading-relaxed max-w-2xl">
+          <p className="text-xs sm:text-sm text-stone-200 leading-relaxed max-w-2xl font-medium">
             Join thousands of traditional Indian craftspeople, handloom weavers, and rural creators on Artisan AI. List your crafts using <strong>Voice AI in your local language</strong>, enjoy guaranteed profit margins, and cut out exploitative middlemen forever.
           </p>
 
-          <div className="pt-3 flex flex-wrap items-center gap-4">
+          <div className="pt-2 flex flex-wrap items-center gap-3">
             <button
               onClick={handleStartOnboarding}
-              className="px-7 py-3.5 bg-amber-500 hover:bg-amber-400 text-[#1C1C1C] font-extrabold text-sm rounded-xl transition-all shadow-lg cursor-pointer inline-flex items-center space-x-2 active:scale-95"
+              className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-[#1C1C1C] font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-md cursor-pointer inline-flex items-center space-x-2 active:scale-95"
             >
               <Store className="w-4 h-4" />
               <span>Start Artisan Registration</span>
@@ -171,7 +171,7 @@ export default function BecomeArtisanView({ onSelectMode, onOpenAuth, user }) {
 
             <button
               onClick={handleStudioLogin}
-              className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold text-sm rounded-xl border border-white/30 backdrop-blur-xs transition-all cursor-pointer inline-flex items-center space-x-2"
+              className="px-5 py-3 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm rounded-xl border border-white/30 backdrop-blur-xs transition-all cursor-pointer inline-flex items-center space-x-2"
             >
               <span>Already Registered? Studio Login</span>
             </button>
@@ -190,20 +190,20 @@ export default function BecomeArtisanView({ onSelectMode, onOpenAuth, user }) {
           <span className="text-xs font-bold uppercase tracking-widest text-[#A6533B]">
             HOW IT WORKS • 6-STEP ONBOARDING
           </span>
-          <h2 className="text-2xl sm:text-4xl font-extrabold font-serif-luxury text-[#1C1C1C]">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#1C1C1C]">
             From Village Workshop to Global Patron
           </h2>
-          <p className="text-xs sm:text-sm text-[#6B6B6B]">
+          <p className="text-xs sm:text-sm text-stone-600 font-medium">
             Every step is designed to be effortless, transparent, and respectful of your traditional heritage.
           </p>
         </div>
 
         {/* Interactive Step Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
           {steps.map((item, idx) => (
             <div
               key={idx}
-              className="bg-white border border-[#E8E5DF] rounded-2xl p-6 shadow-xs hover:border-[#A6533B] hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group"
+              className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-2xs hover:border-[#A6533B]/60 transition-all flex flex-col justify-between space-y-4 relative group"
             >
               {/* Step Number Tag */}
               <div className="flex items-center justify-between">
@@ -215,7 +215,7 @@ export default function BecomeArtisanView({ onSelectMode, onOpenAuth, user }) {
                     Step {item.stepNumber}
                   </span>
                 </div>
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#FAF9F6] border border-[#E8E5DF] text-[#1C1C1C]">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#FAF7F2] border border-[#E8E2D9] text-[#1C1C1C]">
                   {item.badge}
                 </span>
               </div>
@@ -223,19 +223,19 @@ export default function BecomeArtisanView({ onSelectMode, onOpenAuth, user }) {
               {/* Title and Subtitle */}
               <div className="space-y-1.5">
                 <div className="flex items-baseline space-x-2">
-                  <h3 className="text-lg font-bold text-[#1C1C1C] group-hover:text-[#A6533B] transition-colors">
+                  <h3 className="text-base sm:text-lg font-bold text-[#1C1C1C] group-hover:text-[#A6533B] transition-colors">
                     {item.title}
                   </h3>
                   <span className="text-xs text-[#A6533B] font-semibold">({item.teluguTitle})</span>
                 </div>
                 <p className="text-xs font-semibold text-[#6B6B6B]">{item.subtitle}</p>
-                <p className="text-xs text-[#4A4A4A] leading-relaxed pt-1">
+                <p className="text-xs text-stone-600 leading-relaxed pt-1">
                   {item.description}
                 </p>
               </div>
 
               {/* Step indicator arrow */}
-              <div className="pt-2 border-t border-[#F0EFEB] flex items-center justify-between text-[11px] font-semibold text-[#A6533B]">
+              <div className="pt-2 border-t border-[#E8E2D9] flex items-center justify-between text-[11px] font-semibold text-[#A6533B]">
                 <span>Phase {idx + 1} of 6</span>
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -245,25 +245,25 @@ export default function BecomeArtisanView({ onSelectMode, onOpenAuth, user }) {
       </section>
 
       {/* Platform Advantages for Creators */}
-      <section className="bg-[#FAF9F6] border border-[#E8E5DF] rounded-3xl p-8 sm:p-12 space-y-8">
+      <section className="bg-[#FAF7F2] border border-[#E8E2D9] rounded-2xl p-8 sm:p-10 space-y-8 shadow-xs">
         <div className="text-center max-w-2xl mx-auto space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-extrabold font-serif-luxury text-[#1C1C1C]">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1C1C1C]">
             Why Traditional Indian Artisans Choose Artisan AI
           </h2>
-          <p className="text-xs sm:text-sm text-[#6B6B6B]">
+          <p className="text-xs sm:text-sm text-stone-600 font-medium">
             Built from the ground up to solve rural technological and financial barriers.
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {benefits.map((b, idx) => (
-            <div key={idx} className="bg-white p-6 rounded-2xl border border-[#E8E5DF] flex items-start space-x-4 shadow-2xs">
+            <div key={idx} className="bg-white p-6 rounded-2xl border border-[#E8E2D9] flex items-start space-x-4 shadow-2xs">
               <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200/60 flex items-center justify-center shrink-0">
                 {b.icon}
               </div>
               <div className="space-y-1">
                 <h3 className="font-bold text-sm text-[#1C1C1C]">{b.title}</h3>
-                <p className="text-xs text-[#6B6B6B] leading-relaxed">{b.desc}</p>
+                <p className="text-xs text-stone-600 leading-relaxed">{b.desc}</p>
               </div>
             </div>
           ))}
@@ -283,12 +283,12 @@ export default function BecomeArtisanView({ onSelectMode, onOpenAuth, user }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {faqs.map((faq, idx) => (
-            <div key={idx} className="bg-white border border-[#E8E5DF] rounded-xl p-5 space-y-2 shadow-2xs">
+            <div key={idx} className="bg-white border border-[#E8E2D9] rounded-2xl p-5 space-y-2 shadow-2xs">
               <h3 className="font-bold text-xs sm:text-sm text-[#1C1C1C] flex items-start space-x-2">
                 <HelpCircle className="w-4 h-4 text-[#A6533B] shrink-0 mt-0.5" />
                 <span>{faq.q}</span>
               </h3>
-              <p className="text-xs text-[#6B6B6B] leading-relaxed pl-6">
+              <p className="text-xs text-stone-600 leading-relaxed pl-6">
                 {faq.a}
               </p>
             </div>
@@ -297,8 +297,8 @@ export default function BecomeArtisanView({ onSelectMode, onOpenAuth, user }) {
       </section>
 
       {/* Bottom Final Call to Action */}
-      <section className="bg-gradient-to-r from-amber-700 via-[#A6533B] to-[#2A1E17] text-white rounded-3xl p-8 sm:p-10 text-center space-y-4 shadow-xl">
-        <h2 className="text-2xl sm:text-3xl font-extrabold font-serif-luxury">
+      <section className="bg-gradient-to-r from-stone-900 via-[#2A1E17] to-[#A6533B] text-white rounded-2xl p-8 sm:p-10 text-center space-y-4 shadow-md border border-[#E8E2D9]">
+        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
           Ready to Share Your Handcrafted Heritage?
         </h2>
         <p className="text-xs sm:text-sm text-stone-200 max-w-xl mx-auto leading-relaxed">
@@ -307,7 +307,7 @@ export default function BecomeArtisanView({ onSelectMode, onOpenAuth, user }) {
         <div className="pt-2 flex justify-center">
           <button
             onClick={handleStartOnboarding}
-            className="px-8 py-3.5 bg-white text-[#A6533B] hover:bg-stone-100 font-extrabold text-sm rounded-xl transition-all shadow-md cursor-pointer inline-flex items-center space-x-2 active:scale-95"
+            className="px-8 py-3.5 bg-amber-500 hover:bg-amber-400 text-[#1C1C1C] font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-md cursor-pointer inline-flex items-center space-x-2 active:scale-95"
           >
             <span>Register as an Artisan</span>
             <ArrowRight className="w-4 h-4" />

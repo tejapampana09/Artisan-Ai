@@ -229,73 +229,86 @@ export default function SellerEnquiries() {
 
 const styles = StyleSheet.create({
   listContent: {
-    padding: theme.spacing.lg,
+    padding: 16,
     paddingBottom: 100
   },
   card: {
-    marginBottom: theme.spacing.md
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E8E2D9",
+    marginBottom: 12
   },
   cardTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.xs
+    marginBottom: 8
   },
   badgePill: {
-    backgroundColor: theme.colors.surfaceVariant,
+    backgroundColor: "#FAF7F2",
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: theme.radius.sm
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E8E2D9"
   },
   badgeText: {
-    ...theme.typography.caption,
+    fontSize: 10,
     fontWeight: "800",
-    color: theme.colors.primary
+    color: "#A6533B",
+    letterSpacing: 0.5
   },
   name: {
-    ...theme.typography.h3,
-    color: theme.colors.ink,
-    marginBottom: 6
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1C1C1C",
+    marginBottom: 4
   },
   buyerRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginBottom: theme.spacing.sm
+    marginBottom: 10
   },
   buyerName: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.inkMuted,
+    fontSize: 11,
+    color: "#6B5B51",
     fontWeight: "600",
     flex: 1
   },
   dateText: {
-    ...theme.typography.caption,
-    color: theme.colors.inkMuted
+    fontSize: 10.5,
+    color: "#8A726A"
   },
   messageBox: {
-    backgroundColor: theme.colors.surfaceVariant,
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.md,
-    marginBottom: theme.spacing.sm
+    backgroundColor: "#FAF7F2",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E8E2D9",
+    marginBottom: 10
   },
   messageLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.inkMuted,
+    fontSize: 10,
+    color: "#8A726A",
     fontWeight: "700",
-    marginBottom: 4
+    marginBottom: 4,
+    textTransform: "uppercase"
   },
   messageText: {
-    ...theme.typography.body,
-    color: theme.colors.ink
+    fontSize: 13,
+    color: "#1C1C1C",
+    lineHeight: 18
   },
   replyBox: {
-    backgroundColor: theme.colors.primaryLight + "10",
+    backgroundColor: "#FBF3F0",
     borderLeftWidth: 3,
-    borderLeftColor: theme.colors.primary,
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.sm,
-    marginBottom: theme.spacing.sm
+    borderLeftColor: "#A6533B",
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 10
   },
   replyHead: {
     flexDirection: "row",
@@ -304,13 +317,14 @@ const styles = StyleSheet.create({
     marginBottom: 4
   },
   replyHeadText: {
-    ...theme.typography.caption,
+    fontSize: 11,
     fontWeight: "700",
-    color: theme.colors.primary
+    color: "#A6533B"
   },
   replyText: {
-    ...theme.typography.body,
-    color: theme.colors.inkLight
+    fontSize: 12.5,
+    color: "#1C1C1C",
+    lineHeight: 18
   },
   actionRow: {
     flexDirection: "row",

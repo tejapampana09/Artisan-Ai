@@ -185,25 +185,6 @@ export default function Navbar({
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      isInitialFetchRef.current = true;
-      fetchNotifications();
-
-      // High-frequency polling (3.5s) for instant real-time updates
-      const interval = setInterval(fetchNotifications, 3500);
-
-      // Instant push on local actions across components
-      const handleInstantRefresh = () => fetchNotifications();
-      window.addEventListener('artisan_notification_refresh', handleInstantRefresh);
-
-      return () => {
-        clearInterval(interval);
-        window.removeEventListener('artisan_notification_refresh', handleInstantRefresh);
-      };
-    }
-  }, [user]);
-
   const fetchNotifications = async () => {
     try {
       const domain = user?.role === 'ARTISAN' ? 'STUDIO' : (user?.role === 'ADMIN' ? 'ADMIN' : 'MARKETPLACE');
@@ -245,6 +226,25 @@ export default function Navbar({
       console.error('Failed to fetch notifications:', err);
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      isInitialFetchRef.current = true;
+      fetchNotifications();
+
+      // High-frequency polling (3.5s) for instant real-time updates
+      const interval = setInterval(fetchNotifications, 3500);
+
+      // Instant push on local actions across components
+      const handleInstantRefresh = () => fetchNotifications();
+      window.addEventListener('artisan_notification_refresh', handleInstantRefresh);
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('artisan_notification_refresh', handleInstantRefresh);
+      };
+    }
+  }, [user]);
 
   const handleEnableMobilePush = async () => {
     const granted = await requestNotificationPermission();
@@ -310,9 +310,9 @@ export default function Navbar({
       <header className={`w-full h-[64px] flex items-center transition-all duration-300 z-40 ${
         activeMode === 'HOME'
           ? (isScrolled 
-              ? 'fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md shadow-sm border-b border-[#E8DFD5] text-[#1C1C1C]' 
+              ? 'fixed top-0 left-0 right-0 bg-[#FAF7F2]/95 backdrop-blur-md shadow-2xs border-b border-[#E8E2D9] text-[#1C1C1C]' 
               : 'fixed top-0 left-0 right-0 bg-gradient-to-b from-black/80 via-black/35 to-transparent text-white border-b-0')
-          : 'sticky top-0 bg-[#FAF9F6] text-[#1C1C1C]'
+          : 'sticky top-0 bg-[#FAF7F2]/95 backdrop-blur-md border-b border-[#E8E2D9] text-[#1C1C1C] shadow-2xs'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex justify-between items-center gap-4">
           {/* Brand Logo & Name */}
@@ -345,7 +345,7 @@ export default function Navbar({
                 className={`flex items-center space-x-2 text-sm font-bold transition-all cursor-pointer px-4 py-1.5 rounded-lg shadow-2xs ${
                   isOverCarousel 
                     ? 'bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-md' 
-                    : 'bg-white hover:bg-stone-50 text-[#1C1C1C] hover:text-[#A6533B] border border-[#E8E5DF] hover:border-[#A6533B]'
+                    : 'bg-white hover:bg-stone-50 text-[#1C1C1C] hover:text-[#A6533B] border border-[#E8E2D9] hover:border-[#A6533B]'
                 }`}
               >
                 <ShoppingBag className={`w-4 h-4 ${isOverCarousel ? 'text-amber-300' : 'text-[#A6533B]'}`} />
@@ -364,7 +364,7 @@ export default function Navbar({
                     if (localQuery.trim().length >= 1) setShowSuggestions(true);
                   }}
                   placeholder="Search products by title, craft, material..."
-                  className="w-full bg-white text-[#1C1C1C] text-xs pl-9 pr-8 py-2 rounded-lg border border-[#E8E5DF] focus:outline-none focus:border-[#A6533B] focus:ring-1 focus:ring-[#A6533B] transition-all shadow-xs"
+                  className="w-full bg-white text-[#1C1C1C] text-xs pl-9 pr-8 py-2 rounded-lg border border-[#E8E2D9] focus:outline-none focus:border-[#A6533B] focus:ring-1 focus:ring-[#A6533B] transition-all shadow-xs"
                 />
                 {localQuery && (
                   <button
@@ -380,15 +380,15 @@ export default function Navbar({
 
               {/* Live Autocomplete Suggestions Dropdown */}
               {showSuggestions && (
-                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-[#E8E5DF] rounded-xl shadow-2xl z-50 overflow-hidden text-xs">
+                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-[#E8E2D9] rounded-xl shadow-2xl z-50 overflow-hidden text-xs">
                   {isSearching ? (
                     <div className="p-4 text-center text-[#6B6B6B] flex items-center justify-center space-x-2">
                       <Loader2 className="w-4 h-4 animate-spin text-[#A6533B]" />
                       <span>Searching crafts...</span>
                     </div>
                   ) : searchResults.length > 0 ? (
-                    <div className="divide-y divide-[#E8E5DF] max-h-80 overflow-y-auto">
-                      <div className="px-3 py-1.5 bg-[#FAF9F6] text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">
+                    <div className="divide-y divide-[#E8E2D9] max-h-80 overflow-y-auto">
+                      <div className="px-3 py-1.5 bg-[#FAF7F2] text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">
                         Matching Crafts ({searchResults.length})
                       </div>
                       {searchResults.map((p) => (
@@ -400,7 +400,7 @@ export default function Navbar({
                           <img
                             src={p.image_url}
                             alt={p.title}
-                            className="w-10 h-10 rounded-lg object-cover bg-stone-100 shrink-0 border border-[#E8E5DF]"
+                            className="w-10 h-10 rounded-lg object-cover bg-stone-100 shrink-0 border border-[#E8E2D9]"
                           />
                           <div className="flex-1 min-w-0">
                             <h4 className="font-bold text-[#1C1C1C] truncate text-xs">{p.title}</h4>
@@ -413,7 +413,7 @@ export default function Navbar({
                       ))}
                       <button
                         onClick={handleSearchSubmit}
-                        className="w-full p-2.5 text-center text-[#A6533B] font-bold hover:bg-amber-50 text-xs transition-colors border-t border-[#E8E5DF] cursor-pointer"
+                        className="w-full p-2.5 text-center text-[#A6533B] font-bold hover:bg-amber-50 text-xs transition-colors border-t border-[#E8E2D9] cursor-pointer"
                       >
                         View all results for "{localQuery}" →
                       </button>
@@ -523,7 +523,7 @@ export default function Navbar({
 
       {/* Expandable Mobile Search Bar */}
       {isMobileSearchOpen && activeMode !== 'HOME' && (
-        <div className="sm:hidden px-4 pb-3 pt-1 bg-[#FAF9F6] border-b border-[#E8E5DF] z-40">
+        <div className="sm:hidden px-4 pb-3 pt-1 bg-[#FAF7F2] border-b border-[#E8E2D9] z-40">
           <form onSubmit={handleSearchSubmit} className="relative flex items-center">
             <Search className="w-4 h-4 text-[#6B6B6B] absolute left-3 pointer-events-none" />
             <input
@@ -532,7 +532,7 @@ export default function Navbar({
               onChange={(e) => handleInputChange(e.target.value)}
               placeholder="Search products by title, craft, material..."
               autoFocus
-              className="w-full bg-white text-[#1C1C1C] text-xs pl-9 pr-8 py-2 rounded-lg border border-[#E8E5DF] focus:outline-none focus:border-[#A6533B] shadow-xs"
+              className="w-full bg-white text-[#1C1C1C] text-xs pl-9 pr-8 py-2 rounded-lg border border-[#E8E2D9] focus:outline-none focus:border-[#A6533B] shadow-xs"
             />
             {localQuery && (
               <button
@@ -657,9 +657,9 @@ export default function Navbar({
             className="fixed inset-0 z-[9990] bg-slate-900/30 backdrop-blur-xs" 
             onClick={() => setShowMoreMenu(false)} 
           />
-          <div className="fixed top-16 right-3 sm:right-6 w-80 max-w-[calc(100vw-1.5rem)] bg-white rounded-2xl shadow-2xl border border-[#E8E5DF] z-[9999] overflow-hidden font-sans p-3 space-y-3 text-xs text-[#1C1C1C]">
+          <div className="fixed top-16 right-3 sm:right-6 w-80 max-w-[calc(100vw-1.5rem)] bg-white rounded-2xl shadow-2xl border border-[#E8E2D9] z-[9999] overflow-hidden font-sans p-3 space-y-3 text-xs text-[#1C1C1C]">
             {/* Account Info Header */}
-            <div className="p-3 bg-[#FAF9F6] rounded-xl border border-[#E8E5DF] flex items-center justify-between">
+            <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#E8E2D9] flex items-center justify-between">
               {user ? (
                 <div 
                   onClick={() => { setShowMoreMenu(false); onOpenAuth('PROFILE'); }}
@@ -703,28 +703,28 @@ export default function Navbar({
                 <div className="grid grid-cols-2 gap-1.5">
                   <button
                     onClick={() => { setShowMoreMenu(false); onOpenAuth('ORDERS'); }}
-                    className="flex items-center space-x-2 p-2 rounded-lg bg-[#FAF9F6] border border-[#E8E5DF] hover:border-[#A6533B] hover:text-[#A6533B] font-medium transition-all cursor-pointer text-left"
+                    className="flex items-center space-x-2 p-2 rounded-lg bg-[#FAF7F2] border border-[#E8E2D9] hover:border-[#A6533B] hover:text-[#A6533B] font-medium transition-all cursor-pointer text-left"
                   >
                     <Package className="w-4 h-4 text-[#A6533B]" />
                     <span className="truncate">My Orders</span>
                   </button>
                   <button
                     onClick={() => { setShowMoreMenu(false); onOpenAuth('WISHLIST'); }}
-                    className="flex items-center space-x-2 p-2 rounded-lg bg-[#FAF9F6] border border-[#E8E5DF] hover:border-[#A6533B] hover:text-[#A6533B] font-medium transition-all cursor-pointer text-left"
+                    className="flex items-center space-x-2 p-2 rounded-lg bg-[#FAF7F2] border border-[#E8E2D9] hover:border-[#A6533B] hover:text-[#A6533B] font-medium transition-all cursor-pointer text-left"
                   >
                     <Heart className="w-4 h-4 text-[#A6533B]" />
                     <span className="truncate">Wishlist</span>
                   </button>
                   <button
                     onClick={() => { setShowMoreMenu(false); onOpenAuth('ENQUIRIES'); }}
-                    className="flex items-center space-x-2 p-2 rounded-lg bg-[#FAF9F6] border border-[#E8E5DF] hover:border-[#A6533B] hover:text-[#A6533B] font-medium transition-all cursor-pointer text-left"
+                    className="flex items-center space-x-2 p-2 rounded-lg bg-[#FAF7F2] border border-[#E8E2D9] hover:border-[#A6533B] hover:text-[#A6533B] font-medium transition-all cursor-pointer text-left"
                   >
                     <MessageSquare className="w-4 h-4 text-[#A6533B]" />
                     <span className="truncate">Enquiries</span>
                   </button>
                   <button
                     onClick={() => { setShowMoreMenu(false); onOpenAuth('PROFILE'); }}
-                    className="flex items-center space-x-2 p-2 rounded-lg bg-[#FAF9F6] border border-[#E8E5DF] hover:border-[#A6533B] hover:text-[#A6533B] font-medium transition-all cursor-pointer text-left"
+                    className="flex items-center space-x-2 p-2 rounded-lg bg-[#FAF7F2] border border-[#E8E2D9] hover:border-[#A6533B] hover:text-[#A6533B] font-medium transition-all cursor-pointer text-left"
                   >
                     <User className="w-4 h-4 text-[#A6533B]" />
                     <span className="truncate">Profile</span>
@@ -734,13 +734,13 @@ export default function Navbar({
             )}
 
             {/* Website Navigation */}
-            <div className="space-y-1 border-t border-[#E8E5DF] pt-2">
+            <div className="space-y-1 border-t border-[#E8E2D9] pt-2">
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B] px-1">
                 Explore Platform
               </p>
               <button
                 onClick={() => { setShowMoreMenu(false); onToggleMode('BUY'); }}
-                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF9F6] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF7F2] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
               >
                 <div className="flex items-center space-x-2">
                   <ShoppingBag className="w-4 h-4 text-[#6B6B6B]" />
@@ -751,7 +751,7 @@ export default function Navbar({
 
               <button
                 onClick={() => { setShowMoreMenu(false); onToggleMode('STORY'); }}
-                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF9F6] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF7F2] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
               >
                 <div className="flex items-center space-x-2">
                   <BookOpen className="w-4 h-4 text-[#6B6B6B]" />
@@ -762,7 +762,7 @@ export default function Navbar({
 
               <button
                 onClick={() => { setShowMoreMenu(false); onToggleMode('BECOME_ARTISAN'); }}
-                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF9F6] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF7F2] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
               >
                 <div className="flex items-center space-x-2">
                   <Sparkles className="w-4 h-4 text-[#A6533B]" />
@@ -801,10 +801,10 @@ export default function Navbar({
             </div>
 
             {/* App Settings */}
-            <div className="space-y-1 border-t border-[#E8E5DF] pt-2">
+            <div className="space-y-1 border-t border-[#E8E2D9] pt-2">
               <button
                 onClick={() => { setShowMoreMenu(false); setIsSelectingLanguage(true); }}
-                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF9F6] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF7F2] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
               >
                 <div className="flex items-center space-x-2">
                   <Globe className="w-4 h-4 text-[#6B6B6B]" />
@@ -815,7 +815,7 @@ export default function Navbar({
 
               <button
                 onClick={() => { setShowMoreMenu(false); toggleOfflineMode(); }}
-                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF9F6] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF7F2] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
               >
                 <div className="flex items-center space-x-2">
                   {isOffline ? <WifiOff className="w-4 h-4 text-orange-600" /> : <Wifi className="w-4 h-4 text-emerald-600" />}
@@ -828,7 +828,7 @@ export default function Navbar({
 
               <button
                 onClick={() => { setShowMoreMenu(false); onOpenDownloadApp(); }}
-                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF9F6] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF7F2] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
               >
                 <div className="flex items-center space-x-2">
                   <Smartphone className="w-4 h-4 text-[#6B6B6B]" />
@@ -839,10 +839,10 @@ export default function Navbar({
             </div>
 
             {/* Help & Policies */}
-            <div className="space-y-1 border-t border-[#E8E5DF] pt-2">
+            <div className="space-y-1 border-t border-[#E8E2D9] pt-2">
               <button
                 onClick={() => { setShowMoreMenu(false); onToggleMode('CONTACT'); }}
-                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF9F6] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF7F2] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
               >
                 <div className="flex items-center space-x-2">
                   <HelpCircle className="w-4 h-4 text-[#6B6B6B]" />
@@ -853,7 +853,7 @@ export default function Navbar({
 
               <button
                 onClick={() => { setShowMoreMenu(false); onToggleMode('TERMS'); }}
-                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF9F6] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF7F2] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
               >
                 <div className="flex items-center space-x-2">
                   <FileText className="w-4 h-4 text-[#6B6B6B]" />
@@ -864,7 +864,7 @@ export default function Navbar({
             </div>
 
             {user && (
-              <div className="border-t border-[#E8E5DF] pt-2">
+              <div className="border-t border-[#E8E2D9] pt-2">
                 <button
                   onClick={() => { setShowMoreMenu(false); onOpenAuth(); }}
                   className="w-full flex items-center justify-center space-x-2 p-2 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 font-semibold transition-colors cursor-pointer"
@@ -879,7 +879,7 @@ export default function Navbar({
       )}
 
       {/* Flipkart / Myntra Style Fixed Native Mobile Bottom Navigation Bar with Raised Studio Action */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[99] bg-white text-stone-800 border-t border-[#E8E5DF] py-1.5 px-3 shadow-2xl flex items-end justify-between">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[99] bg-white text-stone-800 border-t border-[#E8E2D9] py-1.5 px-3 shadow-2xl flex items-end justify-between">
         <button
           onClick={() => onToggleMode('HOME')}
           className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all active:scale-95 cursor-pointer ${

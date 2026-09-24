@@ -45,7 +45,7 @@ DEV_FALLBACK_JWT_SECRET: str = "artisan_ai_dev_fallback_insecure_local_developme
 _env_jwt_secret = os.getenv("JWT_SECRET_KEY") or os.getenv("JWT_SECRET")
 JWT_SECRET_KEY: str = _env_jwt_secret if _env_jwt_secret else DEV_FALLBACK_JWT_SECRET
 
-def validate_production_config(env: str, demo_mode: bool = False, database_url: str = "", jwt_secret: str = "") -> bool:
+def validate_production_config(env: str, demo_mode: bool = False, database_url: str = "", jwt_secret: str = "", gemini_api_key: str = "") -> bool:
     if env == "production":
         if demo_mode:
             raise RuntimeError("CRITICAL SECURITY CONFIGURATION ERROR: DEMO_MODE cannot be enabled in production!")
@@ -64,9 +64,12 @@ def validate_production_config(env: str, demo_mode: bool = False, database_url: 
                 "CRITICAL CONFIGURATION ERROR: SQLite cannot be used in production (ephemeral filesystem). "
                 "Set DATABASE_URL to a PostgreSQL connection string."
             )
+        if not gemini_api_key:
+            raise RuntimeError(
+                "CRITICAL CONFIGURATION ERROR: GEMINI_API_KEY is not set. "
+                "All AI features will fail. Set this in your platform's secret manager."
+            )
     return True
-
-validate_production_config(ENVIRONMENT, DEMO_MODE, DATABASE_URL, JWT_SECRET_KEY)
 
 JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))  # 8h default (was 24h)
@@ -83,14 +86,21 @@ def get_cors_origins() -> List[str]:
 
 # AI API configuration
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
-GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
-_raw_fallback_models = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.6-flash,gemini-flash-latest,gemini-flash-lite-latest")
+GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-lite").strip()
+_raw_fallback_models = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-2.0-flash,gemini-1.5-flash-latest")
 GEMINI_FALLBACK_MODELS: List[str] = [m.strip() for m in _raw_fallback_models.split(",") if m.strip()]
 
-MARKET_SEARCH_GEMINI_MODEL: str = os.getenv("MARKET_SEARCH_GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
-_raw_market_search_fallback_models = os.getenv("MARKET_SEARCH_GEMINI_FALLBACK_MODELS", "gemini-3.6-flash,gemini-flash-latest,gemini-flash-lite-latest")
+validate_production_config(ENVIRONMENT, DEMO_MODE, DATABASE_URL, JWT_SECRET_KEY, GEMINI_API_KEY)
+
+MARKET_SEARCH_GEMINI_MODEL: str = os.getenv("MARKET_SEARCH_GEMINI_MODEL", "gemini-2.0-flash-lite").strip()
+
+_raw_market_search_fallback_models = os.getenv("MARKET_SEARCH_GEMINI_FALLBACK_MODELS", "gemini-2.0-flash,gemini-1.5-flash-latest")
 MARKET_SEARCH_GEMINI_FALLBACK_MODELS: List[str] = [m.strip() for m in _raw_market_search_fallback_models.split(",") if m.strip()]
 AI_REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "10.0"))
+
+# Google OAuth Client ID (used for id_token audience claim validation)
+GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+
 
 # Market Research API & Search Strategy configuration (SearXNG is primary low-cost provider)
 MARKET_RESEARCH_PROVIDER: str = os.getenv("MARKET_RESEARCH_PROVIDER", "SEARXNG").strip().upper()
@@ -127,4 +137,13 @@ ONDC_BPP_URI: str = os.getenv("ONDC_BPP_URI", "http://localhost:8000/ondc").stri
 ONDC_DOMAIN: str = os.getenv("ONDC_DOMAIN", "ONDC:RET12").strip()
 ONDC_CITY: str = os.getenv("ONDC_CITY", "std:080").strip()
 ONDC_COUNTRY: str = os.getenv("ONDC_COUNTRY", "IND").strip()
+
+# Email Notification & SMTP Configuration (for Wishlist & Order alerts)
+SMTP_HOST: str = os.getenv("SMTP_HOST", "").strip()
+SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER: str = os.getenv("SMTP_USER", "").strip()
+SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "").strip()
+SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "support@artisanai.in").strip()
+SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "Artisan AI").strip()
+APP_FRONTEND_URL: str = os.getenv("APP_FRONTEND_URL", "https://artisanai.in").strip().rstrip("/")
 

@@ -258,46 +258,27 @@ export default function SellerProducts() {
                   <Image source={{ uri: img }} style={styles.thumbnail} resizeMode="cover" />
                   <View style={styles.itemMeta}>
                     <View style={styles.badgeRow}>
-                      <StatusBadge status={item.status || "PUBLISHED"} type="product" />
                       <Text style={styles.categoryText} numberOfLines={1}>
                         {item.category || "Handicraft"}
                       </Text>
+                      <StatusBadge status={item.status || "PUBLISHED"} type="product" />
                     </View>
                     <Text style={styles.itemTitle} numberOfLines={2}>
                       {item.title || "Handmade Craft"}
                     </Text>
                     <View style={styles.itemPriceRow}>
                       <Text style={styles.itemPrice}>₹{price.toLocaleString("en-IN")}</Text>
-                      <Text style={styles.stockLabel}>Stock: {stock} units</Text>
+                      <View style={styles.stockBadge}>
+                        <Text style={styles.stockBadgeText}>
+                          {stock > 0 ? `${stock} in stock` : "Out of stock"}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 </View>
 
-                {/* Smart Pricing Toggle Row */}
-                <View style={styles.smartPricingToggleRow}>
-                  <View style={styles.toggleTextContainer}>
-                    <Ionicons name="flash" size={14} color={theme.colors.accentDark} style={{ marginRight: 4 }} />
-                    <Text style={styles.toggleLabel}>Autonomous Smart Pricing</Text>
-                  </View>
-                  <Switch
-                    value={isAutoPricing}
-                    onValueChange={() => handleToggleSmartPricing(item.id)}
-                    trackColor={{ false: theme.colors.border, true: theme.colors.primaryMuted }}
-                    thumbColor={isAutoPricing ? theme.colors.primary : "#FFFFFF"}
-                  />
-                </View>
-
-                {/* Action Buttons Row */}
+                {/* Streamlined Actions Row */}
                 <View style={styles.itemActions}>
-                  <Pressable
-                    style={styles.actionBtnPricing}
-                    onPress={() => handleOpenPricing(item)}
-                    accessibilityRole="button"
-                  >
-                    <Ionicons name="sparkles" size={13} color={theme.colors.primary} style={{ marginRight: 4 }} />
-                    <Text style={styles.actionBtnPricingText}>Smart Pricing</Text>
-                  </Pressable>
-
                   <Pressable
                     style={styles.actionBtnEdit}
                     onPress={() =>
@@ -308,8 +289,17 @@ export default function SellerProducts() {
                     }
                     accessibilityRole="button"
                   >
-                    <Ionicons name="create-outline" size={14} color={theme.colors.ink} style={{ marginRight: 4 }} />
+                    <Ionicons name="create-outline" size={14} color="#1C1C1C" style={{ marginRight: 4 }} />
                     <Text style={styles.actionBtnEditText}>Edit</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={styles.actionBtnPricing}
+                    onPress={() => handleOpenPricing(item)}
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="sparkles" size={13} color="#A6533B" style={{ marginRight: 4 }} />
+                    <Text style={styles.actionBtnPricingText}>Smart Pricing</Text>
                   </Pressable>
 
                   <Pressable
@@ -317,8 +307,23 @@ export default function SellerProducts() {
                     onPress={() => handleDeleteProduct(item.id, item.title)}
                     accessibilityRole="button"
                   >
-                    <Ionicons name="trash-outline" size={14} color={theme.colors.danger} />
+                    <Ionicons name="trash-outline" size={15} color="#C62828" />
                   </Pressable>
+                </View>
+
+                {/* Subtle Smart Pricing Auto-Tuning Switch */}
+                <View style={styles.smartPricingToggleRow}>
+                  <View style={styles.toggleTextContainer}>
+                    <Ionicons name="flash-outline" size={12} color="#8A726A" style={{ marginRight: 4 }} />
+                    <Text style={styles.toggleLabel}>Auto-tune fair price</Text>
+                  </View>
+                  <Switch
+                    value={isAutoPricing}
+                    onValueChange={() => handleToggleSmartPricing(item.id)}
+                    trackColor={{ false: "#E8E2D9", true: "#DEC0B7" }}
+                    thumbColor={isAutoPricing ? "#A6533B" : "#FFFFFF"}
+                    style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                  />
                 </View>
               </View>
             );
@@ -397,25 +402,24 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.md,
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    ...theme.shadows.sm,
-    marginBottom: theme.spacing.md
+    borderColor: "#E8E2D9",
+    marginBottom: 12
   },
   itemTopRow: {
     flexDirection: "row"
   },
   thumbnail: {
-    width: 80,
-    height: 80,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surfaceMuted
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    backgroundColor: "#F5EFEB"
   },
   itemMeta: {
     flex: 1,
-    marginLeft: theme.spacing.md
+    marginLeft: 12
   },
   badgeRow: {
     flexDirection: "row",
@@ -425,15 +429,16 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     fontSize: 10,
-    fontWeight: "700",
-    color: theme.colors.inkMuted,
-    textTransform: "uppercase"
+    fontWeight: "800",
+    color: "#8A726A",
+    textTransform: "uppercase",
+    letterSpacing: 0.5
   },
   itemTitle: {
-    fontSize: theme.typography.sizes.base,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.ink,
-    lineHeight: 19
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1C1C1C",
+    lineHeight: 18
   },
   itemPriceRow: {
     flexDirection: "row",
@@ -442,23 +447,81 @@ const styles = StyleSheet.create({
     marginTop: 6
   },
   itemPrice: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.black,
-    color: theme.colors.primary
+    fontSize: 15,
+    fontWeight: "900",
+    color: "#A6533B"
   },
-  stockLabel: {
-    fontSize: 11,
-    color: theme.colors.inkMuted
+  stockBadge: {
+    backgroundColor: "#FAF7F2",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E8E2D9"
+  },
+  stockBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#6B5B51"
+  },
+  itemActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#F5EFEB"
+  },
+  actionBtnEdit: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FAF7F2",
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E8E2D9"
+  },
+  actionBtnEditText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1C1C1C"
+  },
+  actionBtnPricing: {
+    flex: 1.3,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FBF3F0",
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#DEC0B7"
+  },
+  actionBtnPricingText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#A6533B"
+  },
+  actionBtnDelete: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    backgroundColor: "#FFEBEE"
   },
   smartPricingToggleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: theme.colors.surfaceMuted,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: theme.radius.sm,
-    marginTop: theme.spacing.sm
+    backgroundColor: "#FAF7F2",
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginTop: 8
   },
   toggleTextContainer: {
     flexDirection: "row",
@@ -467,55 +530,6 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: theme.colors.ink
-  },
-  itemActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.borderLight
-  },
-  actionBtnPricing: {
-    flex: 1.2,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.colors.primaryLight,
-    paddingVertical: 8,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.primaryMuted
-  },
-  actionBtnPricingText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: theme.colors.primary
-  },
-  actionBtnEdit: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.colors.surface,
-    paddingVertical: 8,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border
-  },
-  actionBtnEditText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: theme.colors.ink
-  },
-  actionBtnDelete: {
-    width: 34,
-    height: 34,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.colors.dangerLight
+    color: "#6B5B51"
   }
 });

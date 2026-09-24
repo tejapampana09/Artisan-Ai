@@ -25,7 +25,7 @@ const SUGGESTIONS = {
     '🪵 चन्नापटना लकड़ी के खिलौने'
   ],
   en: [
-    '🎁 Best GI Heritage Gifts',
+    '🎁 Best Handcrafted Gifts',
     '💰 Handicrafts under ₹2000',
     '🎨 Kalamkari Silk Collection',
     '🪵 Channapatna Wooden Toys'
@@ -56,8 +56,6 @@ export default function BuyerAssistantModal({ isOpen, onClose, onSelectProduct }
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading]);
-
-  if (!isOpen) return null;
 
   const handleSend = async (textToSend = null) => {
     const query = (textToSend || inputMessage).trim();
@@ -143,6 +141,8 @@ export default function BuyerAssistantModal({ isOpen, onClose, onSelectProduct }
   };
 
   const quickPrompts = SUGGESTIONS[language] || SUGGESTIONS.en;
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-[#2A1E17]/70 backdrop-blur-xs flex items-center justify-center sm:items-end sm:justify-end p-3 sm:p-6">

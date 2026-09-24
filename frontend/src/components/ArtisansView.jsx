@@ -70,15 +70,15 @@ export default function ArtisansView({ user, onOpenAuth, onSelectMode }) {
   return (
     <div className="space-y-8 pb-24 max-w-6xl mx-auto font-sans">
       {/* Header Banner */}
-      <div className="bg-[#FAF9F6] border border-[#E8E5DF] rounded-2xl p-6 sm:p-8 space-y-2">
-        <span className="text-xs uppercase tracking-widest text-[#A6533B] font-semibold block">
-          VERIFIED MASTER ARTISANS DIRECTORY
-        </span>
-        <h1 className="text-2xl sm:text-4xl font-bold text-[#1C1C1C] tracking-tight">
+      <div className="bg-[#FAF7F2] border border-[#E8E2D9] rounded-2xl p-6 sm:p-8 space-y-2 shadow-xs">
+        <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-[#8C3F2B]/10 text-[#8C3F2B] text-[10px] font-bold tracking-wider uppercase">
+          <span>👥 Master Artisans Directory</span>
+        </div>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#1C1C1C] tracking-tight">
           Meet Rural Indian Heritage Creators
         </h1>
-        <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-xl">
-          Discover traditional craftsmen and craftswomen across India keeping centuries of GI-tagged heritage art alive with fair-wage protection.
+        <p className="text-xs sm:text-sm text-stone-600 font-medium leading-relaxed max-w-xl">
+          Discover traditional craftsmen and craftswomen across India keeping centuries of traditional heritage art alive with fair-wage protection.
         </p>
       </div>
 
@@ -88,10 +88,10 @@ export default function ArtisansView({ user, onOpenAuth, onSelectMode }) {
           <button
             key={craft}
             onClick={() => setSelectedCraftFilter(craft)}
-            className={`px-4 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all cursor-pointer border ${
+            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
               selectedCraftFilter === craft
-                ? 'bg-[#A6533B] text-white border-[#A6533B]'
-                : 'bg-white text-[#1C1C1C] border-[#E8E5DF] hover:border-[#A6533B]'
+                ? 'bg-[#A6533B] text-white border-[#A6533B] shadow-xs'
+                : 'bg-white text-[#1C1C1C] border-[#E8E2D9] hover:border-[#A6533B] hover:text-[#A6533B]'
             }`}
           >
             {craft}
@@ -104,7 +104,7 @@ export default function ArtisansView({ user, onOpenAuth, onSelectMode }) {
         {filteredArtisans.map((artisan) => (
           <div
             key={artisan.id}
-            className="bg-white rounded-2xl border border-[#E8E5DF] overflow-hidden p-5 shadow-xs hover:border-[#A6533B] transition-all space-y-4 flex flex-col justify-between"
+            className="bg-white rounded-2xl border border-[#E8E2D9] overflow-hidden p-5 shadow-2xs hover:border-[#A6533B]/60 transition-all space-y-4 flex flex-col justify-between"
           >
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-3">
@@ -112,19 +112,19 @@ export default function ArtisansView({ user, onOpenAuth, onSelectMode }) {
                   <img
                     src={artisan.avatar}
                     alt={artisan.name}
-                    className="w-14 h-14 rounded-full object-cover border border-[#E8E5DF] bg-[#FAF9F6]"
+                    className="w-14 h-14 rounded-full object-cover border border-[#E8E2D9] bg-[#FAF7F2]"
                   />
                   <div>
                     <div className="flex items-center space-x-1.5">
                       <h3 className="font-bold text-base text-[#1C1C1C]">{artisan.name}</h3>
-                      <span className="flex items-center text-[10px] font-semibold text-[#356B4A] bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                      <span className="flex items-center text-[10px] font-semibold text-[#356B4A] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                         <CheckCircle2 className="w-3 h-3 text-[#356B4A] mr-0.5" />
                         Verified
                       </span>
                     </div>
                     <p className="text-xs font-semibold text-[#A6533B] mt-0.5">{artisan.craft}</p>
                     <p className="text-[11px] text-[#6B6B6B] flex items-center mt-0.5">
-                      <MapPin className="w-3 h-3 text-[#A6533B] mr-1 shrink-0" />
+                      <MapPin className="w-3.5 h-3.5 text-[#A6533B] mr-1 shrink-0" />
                       <span>{artisan.location}</span>
                     </p>
                   </div>
@@ -139,22 +139,22 @@ export default function ArtisansView({ user, onOpenAuth, onSelectMode }) {
                 </div>
               </div>
 
-              <div className="aspect-16/9 rounded-md overflow-hidden bg-[#FAF9F6] border border-[#E8E5DF] relative">
+              <div className="aspect-16/9 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#E8E2D9] relative">
                 <img src={artisan.craftImage} alt={artisan.craft} className="w-full h-full object-cover" />
-                <span className="absolute bottom-2 left-2 bg-slate-900/80 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full backdrop-blur-xs">
+                <span className="absolute bottom-2 left-2 bg-stone-900/80 text-amber-100 text-[10px] font-semibold px-2 py-0.5 rounded-md backdrop-blur-xs">
                   {artisan.productsCount} Heritage Items Listed
                 </span>
               </div>
 
-              <p className="text-xs text-[#6B6B6B] leading-relaxed italic">
+              <p className="text-xs text-stone-600 leading-relaxed italic">
                 "{artisan.bio}"
               </p>
             </div>
 
-            <div className="pt-2 border-t border-[#E8E5DF] flex items-center justify-between gap-2">
+            <div className="pt-3 border-t border-[#E8E2D9] flex items-center justify-between gap-2">
               <button
                 onClick={() => setSelectedArtisanId(artisan.id)}
-                className="flex-1 py-2 bg-[#FAF9F6] border border-[#E8E5DF] hover:border-[#A6533B] text-[#1C1C1C] font-semibold text-xs rounded-md transition-colors cursor-pointer flex items-center justify-center space-x-1"
+                className="flex-1 py-2 bg-[#FAF7F2] border border-[#E8E2D9] hover:border-[#A6533B] text-[#1C1C1C] font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center space-x-1"
               >
                 <Eye className="w-3.5 h-3.5" />
                 <span>View Full Profile & Passports</span>
@@ -162,7 +162,7 @@ export default function ArtisansView({ user, onOpenAuth, onSelectMode }) {
 
               <button
                 onClick={() => onSelectMode('BUY')}
-                className="py-2 px-4 bg-[#A6533B] hover:bg-[#88412F] text-white font-semibold text-xs rounded-md transition-colors cursor-pointer flex items-center space-x-1"
+                className="py-2 px-4 bg-[#A6533B] hover:bg-[#88412F] text-white font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center space-x-1 shadow-xs"
               >
                 <ShoppingBag className="w-3.5 h-3.5" />
                 <span>View Crafts</span>
