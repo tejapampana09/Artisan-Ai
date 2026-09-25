@@ -120,6 +120,25 @@ export async function adminRejectArtisan(artisanId) {
   });
 }
 
+export async function adminUpdateSeller(artisanId, updateData) {
+  try {
+    return await apiRequest(`/artisan/admin/${artisanId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+      domain: 'ADMIN',
+    });
+  } catch (err) {
+    if (err.status === 404) {
+      return await apiRequest(`/admin/artisans/${artisanId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+        domain: 'ADMIN',
+      });
+    }
+    throw err;
+  }
+}
+
 export async function downloadAnalyticsCSV() {
   const token = getAuthToken('STUDIO');
   if (!token) throw new Error('Authentication required');

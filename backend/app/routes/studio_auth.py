@@ -128,6 +128,24 @@ def update_artisan_me(
         current_artisan.craft_specialization = payload.craft_specialization
     if payload.experience_years is not None:
         current_artisan.experience_years = payload.experience_years
+    if payload.latitude is not None:
+        current_artisan.latitude = payload.latitude
+    if payload.longitude is not None:
+        current_artisan.longitude = payload.longitude
+    if payload.craft_cluster is not None:
+        current_artisan.craft_cluster = payload.craft_cluster
+    if payload.state is not None:
+        current_artisan.state = payload.state
+    if payload.district is not None:
+        current_artisan.district = payload.district
+    if payload.pincode is not None:
+        current_artisan.pincode = payload.pincode
+
+    # If location text was not explicitly supplied but district/state are present, sync location
+    if not current_artisan.location and (current_artisan.district or current_artisan.state):
+        loc_parts = [p for p in [current_artisan.district, current_artisan.state, current_artisan.pincode] if p]
+        if loc_parts:
+            current_artisan.location = ", ".join(loc_parts)
 
     # Auto-update status to PROFILE_COMPLETE if basic fields filled
     if current_artisan.verification_status == "UNVERIFIED" and current_artisan.bio:

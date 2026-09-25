@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { 
   PlusCircle, TrendingUp, Tag, Sparkles, Package, Wand2, RefreshCw,
   MessageSquare, ShoppingCart, Phone, ExternalLink, Store, ShieldCheck,
-  Send, Truck, Check, Clock, CheckCircle2, BarChart3, Eye, Layers, Globe, LogOut
+  Send, Truck, Check, Clock, CheckCircle2, BarChart3, Eye, Layers, Globe, LogOut,
+  User, MapPin
 } from 'lucide-react';
+import ProfileView from './ProfileView';
 import ProductList from './ProductList';
 import CreateProductModal from './CreateProductModal';
 import ProductDetailModal from './ProductDetailModal';
@@ -501,9 +503,21 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
               </span>
             )}
           </button>
+
+          <button
+            onClick={() => handleTabClick('PROFILE')}
+            className={`inline-flex items-center space-x-1.5 text-xs transition-all cursor-pointer shrink-0 pb-1 ${
+              activeTab === 'PROFILE'
+                ? 'font-extrabold text-[#A6533B] border-b-2 border-[#A6533B]'
+                : 'font-semibold text-[#6B6B6B] hover:text-[#1C1C1C]'
+            }`}
+          >
+            <MapPin className="w-3.5 h-3.5 text-[#A6533B]" />
+            <span>Studio Profile & Location</span>
+          </button>
         </div>
 
-        {/* Right: Language Switcher & Switch to Marketplace Buttons */}
+        {/* Right: Language Switcher & Sign Out Buttons */}
         <div className="flex items-center space-x-2 shrink-0">
           <button
             type="button"
@@ -1413,6 +1427,17 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
             );
           })()}
           </div>
+        </div>
+      )}
+
+      {/* SECTION: STUDIO PROFILE & LOCATION */}
+      {activeTab === 'PROFILE' && (
+        <div className="pt-2">
+          <ProfileView 
+            user={user} 
+            onSelectMode={onSwitchMode} 
+            onAuthChange={onAuthChange} 
+          />
         </div>
       )}
 

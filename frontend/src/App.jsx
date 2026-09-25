@@ -52,6 +52,9 @@ const getInitialModeFromUrl = () => {
     if (route.includes('artisans')) return 'ARTISANS';
     if (route.includes('craft-map') || route.includes('crafts-map') || route.includes('map')) return 'CRAFT_MAP';
     if (route.includes('collections')) return 'COLLECTIONS';
+    if (route.includes('profile')) return 'PROFILE';
+    if (route.includes('studio') || route.includes('seller')) return 'SELL';
+    if (route.includes('shop')) return 'BUY';
     return 'HOME';
   } catch {
     return 'HOME';

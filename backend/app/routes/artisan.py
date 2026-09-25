@@ -14,6 +14,7 @@ from backend.app.schemas import (
     ProductResponse, 
     UserResponse, 
     AdminCreateSellerRequest, 
+    AdminUpdateSellerRequest,
     PayoutAccountUpdate, 
     PayoutAccountResponse,
     ArtisanRegister,
@@ -131,7 +132,7 @@ def get_artisan_map_pins(
             .filter(Product.seller_id == a.id)
             .scalar()
         )
-        avg_rating = round(float(avg_res), 1) if avg_res else 4.9
+        avg_rating = round(float(avg_res), 1) if avg_res else 0.0
 
         pins.append(ArtisanMapPin(
             artisan_id=a.id,
@@ -151,7 +152,7 @@ def get_artisan_map_pins(
 
     return pins
 
-@router.put("/location", response_model=ArtisanProfileResponse)
+@router.put("/location", response_model=UserResponse)
 def update_artisan_location(
     req: ArtisanLocationUpdate,
     db: Session = Depends(get_db),
@@ -173,6 +174,10 @@ def update_artisan_location(
             if current_artisan.latitude is None or current_artisan.longitude is None:
                 current_artisan.latitude = cluster["latitude"]
                 current_artisan.longitude = cluster["longitude"]
+            if not current_artisan.craft_specialization or current_artisan.craft_specialization == "Connoisseur Collection":
+                current_artisan.craft_specialization = cluster["craft"]
+            if not current_artisan.craft or current_artisan.craft in ["Traditional Handicrafts", "Connoisseur Collection"]:
+                current_artisan.craft = cluster["craft"]
     if req.state is not None:
         current_artisan.state = req.state
     if req.district is not None:
@@ -188,10 +193,21 @@ def update_artisan_location(
                 current_artisan.state = nearest[0]["state"]
             if not current_artisan.district:
                 current_artisan.district = nearest[0]["district"]
+            if not current_artisan.craft_specialization or current_artisan.craft_specialization == "Connoisseur Collection":
+                current_artisan.craft_specialization = nearest[0]["craft"]
+            if not current_artisan.craft or current_artisan.craft in ["Traditional Handicrafts", "Connoisseur Collection"]:
+                current_artisan.craft = nearest[0]["craft"]
+
+    # Automatically synchronize location display text for profile view
+    loc_parts = [p for p in [current_artisan.district, current_artisan.state, current_artisan.pincode] if p]
+    if loc_parts:
+        current_artisan.location = ", ".join(loc_parts)
+    elif current_artisan.craft_cluster:
+        current_artisan.location = f"{current_artisan.craft_cluster}, {current_artisan.state or 'India'}"
 
     db.commit()
     db.refresh(current_artisan)
-    return get_artisan_public_profile(current_artisan.id, db)
+    return current_artisan
 
 @router.get("/{artisan_id}", response_model=ArtisanProfileResponse)
 def get_artisan_public_profile(artisan_id: int, db: Session = Depends(get_db)):
@@ -419,6 +435,112 @@ def admin_list_sellers(
 ):
     """Lists all registered verified artisan seller profiles. Strictly protected by require_admin."""
     return db.query(User).filter(User.role == "ARTISAN").all()
+
+
+@router.put("/admin/{artisan_id}/location", response_model=UserResponse)
+def admin_update_artisan_location(
+    artisan_id: int,
+    payload: ArtisanLocationUpdate,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """Admin endpoint: Allows platform admin/cooperative manager to set or update any artisan's craft cluster and GPS coordinates."""
+    artisan = db.query(User).filter(User.id == artisan_id, User.role == "ARTISAN").first()
+    if not artisan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Artisan seller profile not found."
+        )
+
+    artisan.latitude = payload.latitude
+    artisan.longitude = payload.longitude
+
+    if payload.craft_cluster:
+        artisan.craft_cluster = payload.craft_cluster
+        cluster_info = find_cluster_by_name(payload.craft_cluster)
+        if cluster_info:
+            if not payload.state:
+                artisan.state = cluster_info["state"]
+            if not payload.district:
+                artisan.district = cluster_info["district"]
+    elif not artisan.craft_cluster:
+        nearest = find_nearest_cluster(payload.latitude, payload.longitude)
+        if nearest:
+            artisan.craft_cluster = nearest["name"]
+
+    if payload.state:
+        artisan.state = payload.state
+    if payload.district:
+        artisan.district = payload.district
+    if payload.pincode:
+        artisan.pincode = payload.pincode
+
+    db.commit()
+    db.refresh(artisan)
+    return artisan
+
+
+@router.put("/admin/{artisan_id}", response_model=UserResponse)
+def admin_update_artisan_profile(
+    artisan_id: int,
+    payload: AdminUpdateSellerRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """Admin endpoint: Allows platform administrator to edit any field of an artisan seller profile."""
+    artisan = db.query(User).filter(User.id == artisan_id, User.role == "ARTISAN").first()
+    if not artisan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Artisan seller profile not found."
+        )
+
+    if payload.name is not None and payload.name.strip():
+        artisan.name = payload.name.strip()
+    if payload.email is not None:
+        artisan.email = payload.email.strip() if payload.email.strip() else None
+    if payload.phone is not None:
+        artisan.phone = payload.phone.strip() if payload.phone.strip() else None
+    if payload.craft is not None:
+        artisan.craft = payload.craft.strip() if payload.craft.strip() else None
+    if payload.craft_specialization is not None:
+        artisan.craft_specialization = payload.craft_specialization.strip() if payload.craft_specialization.strip() else None
+    if payload.bio is not None:
+        artisan.bio = payload.bio.strip() if payload.bio.strip() else None
+    if payload.experience_years is not None:
+        artisan.experience_years = payload.experience_years
+    if payload.verification_status is not None:
+        artisan.verification_status = payload.verification_status
+    if payload.status is not None:
+        artisan.status = payload.status
+    if payload.craft_cluster is not None:
+        artisan.craft_cluster = payload.craft_cluster.strip() if payload.craft_cluster.strip() else None
+        cluster_info = find_cluster_by_name(artisan.craft_cluster)
+        if cluster_info:
+            if not payload.state and not artisan.state:
+                artisan.state = cluster_info["state"]
+            if not payload.district and not artisan.district:
+                artisan.district = cluster_info["district"]
+    if payload.latitude is not None:
+        artisan.latitude = payload.latitude
+    if payload.longitude is not None:
+        artisan.longitude = payload.longitude
+    if payload.state is not None:
+        artisan.state = payload.state.strip() if payload.state.strip() else None
+    if payload.district is not None:
+        artisan.district = payload.district.strip() if payload.district.strip() else None
+    if payload.pincode is not None:
+        artisan.pincode = payload.pincode.strip() if payload.pincode.strip() else None
+    if payload.location is not None:
+        artisan.location = payload.location.strip() if payload.location.strip() else None
+    else:
+        loc_parts = [p for p in [artisan.district, artisan.state, artisan.pincode] if p]
+        if loc_parts:
+            artisan.location = ", ".join(loc_parts)
+
+    db.commit()
+    db.refresh(artisan)
+    return artisan
 
 
 @router.get("/admin/system-accounts")

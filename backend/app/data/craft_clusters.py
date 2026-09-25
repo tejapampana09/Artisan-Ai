@@ -30,6 +30,18 @@ CRAFT_CLUSTERS = [
         "heritage_age": "400+ years"
     },
     {
+        "id": "mangalagiri",
+        "name": "Mangalagiri",
+        "craft": "Mangalagiri Sarees & Handloom",
+        "category": "Textiles",
+        "state": "Andhra Pradesh",
+        "district": "Guntur",
+        "latitude": 16.4357,
+        "longitude": 80.5606,
+        "description": "GI-tagged handwoven crisp cotton fabric and pure zari Nizam border sarees woven on pit looms.",
+        "heritage_age": "500+ years"
+    },
+    {
         "id": "pochampally",
         "name": "Pochampally",
         "craft": "Ikat Handloom Weaving",

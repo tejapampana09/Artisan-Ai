@@ -34,6 +34,7 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
     location: '',
     craft: '',
     craft_specialization: '',
+    experience_years: 15,
     bio: ''
   });
 
@@ -53,6 +54,7 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
         location: user.location || '',
         craft: user.craft || '',
         craft_specialization: user.craft_specialization || '',
+        experience_years: user.experience_years !== undefined && user.experience_years !== null ? user.experience_years : 15,
         bio: user.bio || ''
       });
       setLocationForm({
@@ -89,15 +91,91 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
     }
     setDetectingGps(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const { latitude, longitude } = pos.coords;
+        const lat = parseFloat(latitude.toFixed(6));
+        const lng = parseFloat(longitude.toFixed(6));
+
+        let detectedState = '';
+        let detectedDistrict = '';
+        let detectedPincode = '';
+
+        // 1. High-accuracy OpenStreetMap Nominatim reverse geocode
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`,
+            { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(4000) }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.address || {};
+            detectedState = addr.state || '';
+            detectedDistrict = addr.state_district || addr.county || addr.district || addr.city || addr.town || addr.village || '';
+            detectedPincode = addr.postcode || '';
+          }
+        } catch {
+          // Fallback to BigDataCloud client reverse geocode
+          try {
+            const bdcRes = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`,
+              { signal: AbortSignal.timeout(4000) }
+            );
+            if (bdcRes.ok) {
+              const bdcData = await bdcRes.json();
+              detectedState = detectedState || bdcData.principalSubdivision || '';
+              detectedDistrict = detectedDistrict || bdcData.city || bdcData.locality || '';
+              detectedPincode = detectedPincode || bdcData.postcode || '';
+            }
+          } catch {}
+        }
+
+        // 2. Auto-match nearest canonical heritage craft cluster
+        let closestClusterName = locationForm.craft_cluster;
+        if (clusters && clusters.length > 0) {
+          const haversineDist = (lat1, lon1, lat2, lon2) => {
+            const R = 6371; // Earth radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) ** 2 +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          };
+
+          let bestCluster = null;
+          let minDistance = Infinity;
+          for (const c of clusters) {
+            if (c.latitude && c.longitude) {
+              const d = haversineDist(lat, lng, c.latitude, c.longitude);
+              if (d < minDistance) {
+                minDistance = d;
+                bestCluster = c;
+              }
+            }
+          }
+
+          if (bestCluster && (!locationForm.craft_cluster || minDistance < 150)) {
+            closestClusterName = bestCluster.name;
+          }
+        }
+
         setLocationForm(prev => ({
           ...prev,
-          latitude: parseFloat(latitude.toFixed(6)),
-          longitude: parseFloat(longitude.toFixed(6))
+          latitude: lat,
+          longitude: lng,
+          state: detectedState || prev.state,
+          district: detectedDistrict || prev.district,
+          pincode: detectedPincode || prev.pincode,
+          craft_cluster: closestClusterName || prev.craft_cluster
         }));
+
         setDetectingGps(false);
-        notify.success(`GPS Location detected: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`);
+        const locationDetails = [detectedDistrict, detectedState, detectedPincode].filter(Boolean).join(', ');
+        notify.success(
+          locationDetails 
+            ? `Location & Cluster auto-filled: ${locationDetails} (${lat}°N, ${lng}°E)` 
+            : `GPS Location detected: ${lat}° N, ${lng}° E`
+        );
       },
       (err) => {
         setDetectingGps(false);
@@ -124,9 +202,21 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
         pincode: locationForm.pincode || undefined
       });
       if (updated) {
-        setStoredUser(updated, updated.role || 'ARTISAN');
-        onAuthChange(updated);
-        notify.success('Studio location and map coordinates saved!');
+        const mergedUser = {
+          ...user,
+          ...updated,
+          role: updated.role || user?.role || 'ARTISAN',
+          location: updated.location || [locationForm.district, locationForm.state, locationForm.pincode].filter(Boolean).join(', ')
+        };
+        setStoredUser(mergedUser, mergedUser.role);
+        setForm(prev => ({
+          ...prev,
+          location: mergedUser.location || prev.location
+        }));
+        if (onAuthChange) {
+          onAuthChange(mergedUser);
+        }
+        notify.success('Studio location and profile info updated!');
       }
     } catch (err) {
       notify.error(err.message || 'Failed to save location');
@@ -152,12 +242,18 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
         location: form.location.trim(),
         craft: form.craft.trim(),
         craft_specialization: form.craft_specialization.trim(),
+        experience_years: form.experience_years !== undefined ? parseInt(form.experience_years, 10) : undefined,
         bio: form.bio.trim()
       });
 
       if (updated) {
-        setStoredUser(updated, updated.role || 'BUYER');
-        onAuthChange(updated);
+        const mergedUser = {
+          ...user,
+          ...updated,
+          role: updated.role || user?.role || 'ARTISAN'
+        };
+        setStoredUser(mergedUser, mergedUser.role);
+        onAuthChange(mergedUser);
         notify.success('Profile updated successfully!');
         setIsEditing(false);
       }
@@ -273,18 +369,61 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
               <Award className="w-4 h-4 text-[#A6533B]" />
               <span>{isArtisan ? 'Traditional Heritage Credentials' : 'Direct Fair Trade Supporter'}</span>
             </h2>
+            {isArtisan && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-xs font-bold text-[#A6533B] hover:text-[#8C432E] inline-flex items-center space-x-1 cursor-pointer bg-[#FAF7F2] px-2.5 py-1 rounded-lg border border-[#E8E2D9]"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit</span>
+              </button>
+            )}
           </div>
 
           <div className="space-y-3 text-xs">
             {isArtisan ? (
               <>
                 <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#E8E2D9]">
-                  <span className="text-[10px] font-bold text-[#A6533B] uppercase block">Specialization</span>
-                  <span className="font-bold text-[#1C1C1C] text-sm">{user?.craft_specialization || user?.craft || 'Kalamkari & Handloom Painting'}</span>
+                  <span className="text-[10px] font-bold text-[#A6533B] uppercase flex items-center justify-between">
+                    <span>Heritage Craft Cluster / హస్తకళ క్లస్టర్</span>
+                    {user?.craft_cluster && (
+                      <span className="bg-amber-100 text-[#A6533B] text-[9px] font-extrabold px-2 py-0.5 rounded-full border border-amber-300">
+                        GI Registered Cluster
+                      </span>
+                    )}
+                  </span>
+                  <span className="font-bold text-[#1C1C1C] text-sm block mt-0.5">
+                    {user?.craft_cluster 
+                      ? `${user.craft_cluster} (${user.state || 'India'})` 
+                      : (user?.location || 'Not assigned yet — Detect GPS or select below')}
+                  </span>
                 </div>
+
                 <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#E8E2D9]">
-                  <span className="text-[10px] font-bold text-[#A6533B] uppercase block">Craft Experience</span>
-                  <span className="font-bold text-[#1C1C1C] text-sm">{user?.experience_years || 25} Years Master Tradition</span>
+                  <span className="text-[10px] font-bold text-[#A6533B] uppercase block">Specialization / నైపుణ్యం</span>
+                  <span className="font-bold text-[#1C1C1C] text-sm block mt-0.5">
+                    {user?.craft_specialization && user.craft_specialization !== 'Connoisseur Collection'
+                      ? user.craft_specialization
+                      : (user?.craft && user.craft !== 'Connoisseur Collection' 
+                          ? user.craft 
+                          : 'Not specified — click Edit to add')}
+                  </span>
+                </div>
+
+                <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#E8E2D9] flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold text-[#A6533B] uppercase block">Craft Experience / అనుభవం</span>
+                    <span className="font-bold text-[#1C1C1C] text-sm block mt-0.5">
+                      {user?.experience_years ? `${user.experience_years} Years Master Tradition` : 'Not specified — click Edit to add'}
+                    </span>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    user?.verification_status === 'VERIFIED_ARTISAN' || user?.verification_status === 'GI_VERIFIED'
+                      ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                      : 'bg-stone-100 text-stone-700 border-stone-300'
+                  }`}>
+                    {user?.verification_status === 'VERIFIED_ARTISAN' ? 'Verified Master' : (user?.verification_status || 'Registered Artisan')}
+                  </span>
                 </div>
               </>
             ) : (

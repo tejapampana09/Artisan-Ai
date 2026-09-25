@@ -25,22 +25,27 @@ function getHaversineDistanceKm(lat1, lon1, lat2, lon2) {
   return Math.round(R * c);
 }
 
-// Map Tile Providers
+// Map Tile Providers (100% Free & No API Key Required)
 const TILE_LAYERS = {
-  VOYAGER: {
-    name: 'Heritage Voyager',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  STREET: {
+    name: 'Street Map',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; National Geographic, Esri, DeLorme, NAVTEQ, TomTom'
   },
   OSM: {
-    name: 'Standard Street',
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    name: 'OpenStreetMap',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  },
+  TOPO: {
+    name: 'Terrain Topo',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; USGS, Intermap, EPC, METI, TomTom'
   },
   SATELLITE: {
     name: 'Satellite View',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping'
   }
 };
 
@@ -60,7 +65,7 @@ export default function CraftMapView({ onSelectMode, onSelectProduct, onOpenAuth
   const [selectedState, setSelectedState] = useState('All');
   const [selectedCraft, setSelectedCraft] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTileType, setActiveTileType] = useState('VOYAGER');
+  const [activeTileType, setActiveTileType] = useState('STREET');
 
   // Active Selected Cluster or Artisan Pin
   const [activeCluster, setActiveCluster] = useState(null);
@@ -99,7 +104,15 @@ export default function CraftMapView({ onSelectMode, onSelectProduct, onOpenAuth
   // Initialize Real Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    if (mapInstanceRef.current) return; // Prevent double init
+    
+    // Prevent double init / React strict mode / HMR container reuse
+    if (mapContainerRef.current._leaflet_id) {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      mapContainerRef.current._leaflet_id = null;
+    }
 
     // Center on India [20.5937, 78.9629], Zoom level 5
     const map = L.map(mapContainerRef.current, {
@@ -110,7 +123,7 @@ export default function CraftMapView({ onSelectMode, onSelectProduct, onOpenAuth
       zoomControl: false // Custom controls in UI
     });
 
-    const tileCfg = TILE_LAYERS[activeTileType] || TILE_LAYERS.VOYAGER;
+    const tileCfg = TILE_LAYERS[activeTileType] || TILE_LAYERS.STREET;
     const tileLayer = L.tileLayer(tileCfg.url, {
       attribution: tileCfg.attribution,
       maxZoom: 19
@@ -125,19 +138,24 @@ export default function CraftMapView({ onSelectMode, onSelectProduct, onOpenAuth
 
     // Clean up on unmount
     return () => {
-      map.remove();
-      mapInstanceRef.current = null;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      if (mapContainerRef.current) {
+        mapContainerRef.current._leaflet_id = null;
+      }
     };
   }, []);
 
-  // Update Tile Layer if user switches (Voyager vs Satellite vs OSM)
+  // Update Tile Layer if user switches (Street vs OSM vs Satellite vs Topo)
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
     if (tileLayerRef.current) {
       map.removeLayer(tileLayerRef.current);
     }
-    const tileCfg = TILE_LAYERS[activeTileType] || TILE_LAYERS.VOYAGER;
+    const tileCfg = TILE_LAYERS[activeTileType] || TILE_LAYERS.STREET;
     const newLayer = L.tileLayer(tileCfg.url, {
       attribution: tileCfg.attribution,
       maxZoom: 19

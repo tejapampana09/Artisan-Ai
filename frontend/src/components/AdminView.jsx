@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, User, Lock, Mail, Phone, MapPin, Sparkles, CheckCircle2, 
   PlusCircle, Users, BarChart3, Store, ArrowRight, KeyRound, LogOut, ShoppingBag,
-  Check, AlertTriangle, Eye, Trash2, ShieldAlert, RefreshCw, Layers, Clock, AlertCircle
+  Check, AlertTriangle, Eye, Trash2, ShieldAlert, RefreshCw, Layers, Clock, AlertCircle,
+  Edit3, Compass, Save, X
 } from 'lucide-react';
 import { 
   loginUser, 
@@ -16,7 +16,9 @@ import {
   adminResetArtisanPassword,
   adminDeleteArtisan,
   adminApproveArtisan,
-  adminRejectArtisan
+  adminRejectArtisan,
+  adminUpdateSeller,
+  fetchCraftClusters
 } from '../api/index.js';
 import { getAdminToken } from '../api/client.js';
 import { logoutAdmin } from '../api/auth.js';
@@ -59,6 +61,29 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
   const [approvingArtisanId, setApprovingArtisanId] = useState(null);
   const [rejectingArtisanId, setRejectingArtisanId] = useState(null);
 
+  // Admin Edit Seller Profile State
+  const [editingArtisan, setEditingArtisan] = useState(null);
+  const [editArtisanForm, setEditArtisanForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    craft: '',
+    craft_specialization: '',
+    bio: '',
+    experience_years: 0,
+    verification_status: 'VERIFIED_ARTISAN',
+    status: 'ACTIVE',
+    craft_cluster: '',
+    latitude: '',
+    longitude: '',
+    state: '',
+    district: '',
+    pincode: '',
+    location: ''
+  });
+  const [savingArtisanEdit, setSavingArtisanEdit] = useState(false);
+  const [clusters, setClusters] = useState([]);
+
   // Product Governance & Approval Queue state
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -98,6 +123,87 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
       console.error('Failed to fetch sellers:', err);
     } finally {
       setLoadingSellers(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCraftClusters().then(data => {
+      if (data) setClusters(data);
+    }).catch(() => {});
+  }, []);
+
+  const handleOpenEditModal = (artisan) => {
+    setEditingArtisan(artisan);
+    setEditArtisanForm({
+      name: artisan.name || '',
+      email: artisan.email || '',
+      phone: artisan.phone || '',
+      craft: artisan.craft || '',
+      craft_specialization: artisan.craft_specialization || '',
+      bio: artisan.bio || '',
+      experience_years: artisan.experience_years !== undefined ? artisan.experience_years : 0,
+      verification_status: artisan.verification_status || 'VERIFIED_ARTISAN',
+      status: artisan.status || 'ACTIVE',
+      craft_cluster: artisan.craft_cluster || '',
+      latitude: artisan.latitude !== undefined && artisan.latitude !== null ? artisan.latitude : '',
+      longitude: artisan.longitude !== undefined && artisan.longitude !== null ? artisan.longitude : '',
+      state: artisan.state || '',
+      district: artisan.district || '',
+      pincode: artisan.pincode || '',
+      location: artisan.location || ''
+    });
+  };
+
+  const handleSelectClusterForEdit = (clusterName) => {
+    const selected = clusters.find(c => c.name === clusterName);
+    if (selected) {
+      setEditArtisanForm(prev => ({
+        ...prev,
+        craft_cluster: selected.name,
+        craft: prev.craft || selected.craft,
+        craft_specialization: prev.craft_specialization || selected.craft,
+        latitude: selected.latitude,
+        longitude: selected.longitude,
+        state: selected.state,
+        district: selected.district
+      }));
+    } else {
+      setEditArtisanForm(prev => ({ ...prev, craft_cluster: clusterName }));
+    }
+  };
+
+  const handleSaveArtisanEdit = async (e) => {
+    e.preventDefault();
+    if (!editingArtisan) return;
+    setSavingArtisanEdit(true);
+    try {
+      const payload = {
+        name: editArtisanForm.name.trim(),
+        email: editArtisanForm.email.trim() || undefined,
+        phone: editArtisanForm.phone.trim() || undefined,
+        craft: editArtisanForm.craft.trim() || undefined,
+        craft_specialization: editArtisanForm.craft_specialization.trim() || undefined,
+        bio: editArtisanForm.bio.trim() || undefined,
+        experience_years: editArtisanForm.experience_years ? parseInt(editArtisanForm.experience_years, 10) : 0,
+        verification_status: editArtisanForm.verification_status,
+        status: editArtisanForm.status,
+        craft_cluster: editArtisanForm.craft_cluster.trim() || undefined,
+        latitude: editArtisanForm.latitude !== '' ? parseFloat(editArtisanForm.latitude) : undefined,
+        longitude: editArtisanForm.longitude !== '' ? parseFloat(editArtisanForm.longitude) : undefined,
+        state: editArtisanForm.state.trim() || undefined,
+        district: editArtisanForm.district.trim() || undefined,
+        pincode: editArtisanForm.pincode.trim() || undefined,
+        location: editArtisanForm.location.trim() || undefined
+      };
+
+      const updated = await adminUpdateSeller(editingArtisan.id, payload);
+      toast.success(`Artisan profile for "${updated.name}" updated successfully!`);
+      setEditingArtisan(null);
+      await fetchSellers();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update artisan profile');
+    } finally {
+      setSavingArtisanEdit(false);
     }
   };
 
@@ -768,6 +874,16 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                     <div className="flex items-center space-x-2 pt-2 border-t border-stone-100">
                       <button
                         type="button"
+                        onClick={() => handleOpenEditModal(artisan)}
+                        className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-[#1C1C1C] border border-[#E8E2D9] font-bold rounded-xl text-xs flex items-center justify-center space-x-1 transition-all cursor-pointer"
+                        title="Edit Application Profile"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-[#A6533B]" />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => handleApproveArtisan(artisan)}
                         disabled={approvingArtisanId === artisan.id}
                         className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-all cursor-pointer shadow-xs disabled:opacity-50"
@@ -958,6 +1074,16 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                       </div>
 
                       <div className="flex items-center space-x-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(s)}
+                          className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-[#1C1C1C] border border-[#E8E2D9] rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center space-x-1"
+                          title="Admin: Edit Complete Seller Profile"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-[#A6533B]" />
+                          <span>Edit</span>
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => {
@@ -1185,6 +1311,294 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                   className="px-4 py-2 rounded-xl text-xs font-bold bg-[#A6533B] hover:bg-[#933D1E] text-white shadow-sm transition-all cursor-pointer disabled:opacity-50 flex items-center space-x-1.5"
                 >
                   {resetLoading ? <span>Saving...</span> : <span>Save New Password</span>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Edit Seller Profile Modal */}
+      {editingArtisan && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-[#FBF8F3] w-full max-w-2xl rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#E8E2D9] space-y-6 my-8 animate-in fade-in zoom-in duration-150">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between pb-4 border-b border-[#E8E2D9]">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-[#A6533B] text-white flex items-center justify-center font-bold shadow-xs">
+                  <Edit3 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-[#1C1C1C]">
+                    Admin Governance: Edit Seller Profile
+                  </h3>
+                  <p className="text-xs text-[#6B6B6B]">
+                    Full administrative control over credentials, coordinates, cluster, and verification tier for <strong className="text-[#1C1C1C]">{editingArtisan.name}</strong> (ID: #{editingArtisan.id}).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingArtisan(null)}
+                className="text-[#6B6B6B] hover:text-[#1C1C1C] p-1.5 rounded-lg cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveArtisanEdit} className="space-y-5 text-xs max-h-[70vh] overflow-y-auto pr-1">
+              {/* SECTION 1: Personal & Contact Details */}
+              <div className="bg-white p-4 rounded-2xl border border-[#E8E2D9] space-y-3">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-[#A6533B] flex items-center space-x-1.5">
+                  <User className="w-4 h-4" />
+                  <span>Personal & Contact Credentials</span>
+                </h4>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editArtisanForm.name}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, name: e.target.value })}
+                      placeholder="e.g. Lakshmi Devi"
+                      className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">Email Address</label>
+                    <input
+                      type="email"
+                      value={editArtisanForm.email}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, email: e.target.value })}
+                      placeholder="seller@domain.com"
+                      className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={editArtisanForm.phone}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, phone: e.target.value })}
+                      placeholder="+91 98765 43210"
+                      className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: Craft & Heritage Story */}
+              <div className="bg-white p-4 rounded-2xl border border-[#E8E2D9] space-y-3">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-[#A6533B] flex items-center space-x-1.5">
+                  <Sparkles className="w-4 h-4" />
+                  <span>Craft Heritage & Specialization</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">Primary Craft</label>
+                    <input
+                      type="text"
+                      value={editArtisanForm.craft}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, craft: e.target.value })}
+                      placeholder="e.g. Kalamkari Painting"
+                      className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">Craft Specialization</label>
+                    <input
+                      type="text"
+                      value={editArtisanForm.craft_specialization}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, craft_specialization: e.target.value })}
+                      placeholder="e.g. Natural Dye Silk Sarees"
+                      className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">Experience (Years)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="75"
+                      value={editArtisanForm.experience_years}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, experience_years: e.target.value })}
+                      placeholder="e.g. 15"
+                      className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#1C1C1C] mb-1">Artisan Bio / Heritage Story</label>
+                  <textarea
+                    rows={2}
+                    value={editArtisanForm.bio}
+                    onChange={(e) => setEditArtisanForm({ ...editArtisanForm, bio: e.target.value })}
+                    placeholder="Describe authentic lineage, master lineage, materials..."
+                    className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                  />
+                </div>
+              </div>
+
+              {/* SECTION 3: Cluster & Geolocation Coordinates */}
+              <div className="bg-white p-4 rounded-2xl border border-[#E8E2D9] space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-[#A6533B] flex items-center space-x-1.5">
+                    <Compass className="w-4 h-4" />
+                    <span>Heritage Craft Cluster & Geolocation Pin</span>
+                  </h4>
+                  <span className="text-[10px] text-[#6B6B6B]">Powers Interactive Map</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">Select GI Craft Cluster</label>
+                    <select
+                      value={editArtisanForm.craft_cluster}
+                      onChange={(e) => handleSelectClusterForEdit(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl font-semibold text-[#1C1C1C] outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    >
+                      <option value="">Custom or Unassigned Cluster</option>
+                      {clusters.map((c) => (
+                        <option key={c.id || c.name} value={c.name}>
+                          {c.name} ({c.state}) — {c.craft}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">Location Address / Summary</label>
+                    <input
+                      type="text"
+                      value={editArtisanForm.location}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, location: e.target.value })}
+                      placeholder="e.g. Mangalagiri, Guntur, Andhra Pradesh"
+                      className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">State</label>
+                    <input
+                      type="text"
+                      value={editArtisanForm.state}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, state: e.target.value })}
+                      placeholder="e.g. Andhra Pradesh"
+                      className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">District</label>
+                    <input
+                      type="text"
+                      value={editArtisanForm.district}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, district: e.target.value })}
+                      placeholder="e.g. Guntur"
+                      className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">Pincode</label>
+                    <input
+                      type="text"
+                      value={editArtisanForm.pincode}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, pincode: e.target.value })}
+                      placeholder="e.g. 522503"
+                      className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">Latitude (° N)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={editArtisanForm.latitude}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, latitude: e.target.value })}
+                      placeholder="16.4632"
+                      className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-lg font-mono text-[11px]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">Longitude (° E)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={editArtisanForm.longitude}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, longitude: e.target.value })}
+                      placeholder="80.5062"
+                      className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-lg font-mono text-[11px]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 4: Governance, Verification & Account Status */}
+              <div className="bg-white p-4 rounded-2xl border border-[#E8E2D9] space-y-3">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-[#A6533B] flex items-center space-x-1.5">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Platform Governance & Verification Status</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">Artisan Verification Status</label>
+                    <select
+                      value={editArtisanForm.verification_status}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, verification_status: e.target.value })}
+                      className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl font-semibold text-[#1C1C1C] outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    >
+                      <option value="GI_VERIFIED">Verified Master Artisan (GI Recognized)</option>
+                      <option value="VERIFIED_ARTISAN">Verified Artisan (Standard)</option>
+                      <option value="PROFILE_COMPLETE">Profile Complete (Self-Declared)</option>
+                      <option value="PENDING">Pending Verification / Review</option>
+                      <option value="UNVERIFIED">Unverified Account</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#1C1C1C] mb-1">Account Studio Status</label>
+                    <select
+                      value={editArtisanForm.status}
+                      onChange={(e) => setEditArtisanForm({ ...editArtisanForm, status: e.target.value })}
+                      className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl font-semibold text-[#1C1C1C] outline-hidden focus:ring-2 focus:ring-[#A6533B]"
+                    >
+                      <option value="ACTIVE">ACTIVE (Full Studio Access Allowed)</option>
+                      <option value="SUSPENDED">SUSPENDED (Access Blocked by Admin)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#E8E2D9]">
+                <button
+                  type="button"
+                  onClick={() => setEditingArtisan(null)}
+                  className="px-5 py-2.5 rounded-xl border border-[#E8E2D9] text-[#6B6B6B] font-bold hover:bg-stone-100 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingArtisanEdit}
+                  className="flex items-center space-x-2 px-6 py-2.5 rounded-xl bg-[#A6533B] hover:bg-[#88412F] text-white font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{savingArtisanEdit ? 'Saving Changes...' : 'Save All Seller Changes'}</span>
                 </button>
               </div>
             </form>

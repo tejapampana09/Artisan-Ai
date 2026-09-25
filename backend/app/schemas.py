@@ -58,6 +58,12 @@ class UserResponse(BaseModel):
     craft_specialization: Optional[str] = None
     experience_years: Optional[int] = 0
     verification_status: Optional[str] = "UNVERIFIED"
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    craft_cluster: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    pincode: Optional[str] = None
 
 class UserUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=120)
@@ -68,6 +74,12 @@ class UserUpdate(BaseModel):
     bio: Optional[str] = Field(None, max_length=1000)
     craft_specialization: Optional[str] = Field(None, max_length=100)
     experience_years: Optional[int] = None
+    latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
+    longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
+    craft_cluster: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    district: Optional[str] = Field(None, max_length=100)
+    pincode: Optional[str] = Field(None, max_length=20)
 
     @field_validator("avatar_url")
     @classmethod
@@ -135,6 +147,24 @@ class AdminCreateSellerRequest(BaseModel):
     bio: Optional[str] = Field(None, max_length=1000)
     verification_status: Optional[str] = "GI_VERIFIED"
     experience_years: Optional[int] = 0
+
+class AdminUpdateSellerRequest(BaseModel):
+    name: Optional[str] = Field(None, min_length=2, max_length=120)
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    craft: Optional[str] = Field(None, max_length=100)
+    craft_specialization: Optional[str] = Field(None, max_length=200)
+    location: Optional[str] = Field(None, max_length=200)
+    bio: Optional[str] = Field(None, max_length=2000)
+    experience_years: Optional[int] = Field(None, ge=0)
+    verification_status: Optional[str] = None
+    status: Optional[str] = None
+    craft_cluster: Optional[str] = Field(None, max_length=100)
+    latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
+    longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
+    state: Optional[str] = Field(None, max_length=100)
+    district: Optional[str] = Field(None, max_length=100)
+    pincode: Optional[str] = Field(None, max_length=20)
 
 class UserLogin(BaseModel):
     email_or_phone: str

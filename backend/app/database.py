@@ -100,3 +100,9 @@ def ensure_schema_migrations(engine):
                     conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
             conn.commit()
 
+
+try:
+    ensure_schema_migrations(engine)
+except Exception as _e:
+    logger.warning("ensure_schema_migrations warning: %s", _e)
+

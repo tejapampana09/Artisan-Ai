@@ -516,21 +516,6 @@ export default function Navbar({
               </button>
             )}
 
-            {/* Craft Map Quick Action (Hidden in Admin Console) */}
-            {activeMode !== 'ADMIN' && (
-              <button
-                onClick={() => onToggleMode('CRAFT_MAP')}
-                className={`p-1.5 transition-colors cursor-pointer relative ${
-                  activeMode === 'CRAFT_MAP'
-                    ? 'text-[#A6533B]'
-                    : isOverCarousel ? 'text-white hover:text-amber-300' : 'text-[#1C1C1C] hover:text-[#A6533B]'
-                }`}
-                title="🗺️ Craft Clusters Map of India"
-              >
-                <Compass className="w-5 h-5" />
-              </button>
-            )}
-
             {/* Profile for standard users (Hidden in Admin Console) */}
             {activeMode !== 'ADMIN' && (
               <button
@@ -545,19 +530,6 @@ export default function Navbar({
                 <User className="w-5 h-5" />
               </button>
             )}
-
-            {/* More Menu Toggle */}
-            <button
-              onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className={`p-1.5 transition-colors cursor-pointer ${
-                showMoreMenu
-                  ? 'text-[#A6533B]'
-                  : isOverCarousel ? 'text-white hover:text-amber-300' : 'text-[#1C1C1C] hover:text-[#A6533B]'
-              }`}
-              title="More Options / మెనూ"
-            >
-              <MoreVertical className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </header>

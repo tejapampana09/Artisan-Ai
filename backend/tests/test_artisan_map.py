@@ -1,9 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 from backend.app.main import app
-from backend.app.database import SessionLocal
-from backend.app.models import User, Product
-from backend.app.services.auth import create_domain_token
 
 client = TestClient(app)
 
@@ -26,12 +23,7 @@ def test_get_artisan_map_pins():
     pins = res.json()
     assert isinstance(pins, list)
 
-def test_update_artisan_location():
-    with SessionLocal() as db:
-        artisan = db.query(User).filter(User.role == "ARTISAN").first()
-        assert artisan is not None
-        token = create_domain_token(artisan, auth_domain="ARTISAN_STUDIO", session_type="STUDIO")
-
+def test_update_artisan_location(client, artisan_headers):
     # Update with Etikoppaka coordinates
     res = client.put(
         "/api/artisan/location",
@@ -43,7 +35,7 @@ def test_update_artisan_location():
             "district": "Anakapalli",
             "pincode": "531055"
         },
-        headers={"Authorization": f"Bearer {token}"}
+        headers=artisan_headers
     )
     assert res.status_code == 200
     body = res.json()
