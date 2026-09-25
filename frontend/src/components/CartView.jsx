@@ -10,7 +10,27 @@ import { useNotification } from '../context/NotificationContext';
 export function getStoredCart() {
   try {
     const raw = localStorage.getItem('artisan_ai_cart');
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const items = JSON.parse(raw);
+    if (!Array.isArray(items)) return [];
+    // Normalize: support both { product, quantity } and legacy flat { id, price, ... } formats
+    return items
+      .filter(i => i && (i.product?.id != null || i.id != null))
+      .map(i => {
+        if (i.product) return i; // already correct format
+        // flat legacy format from old CraftMapView
+        return {
+          product: {
+            id: i.id,
+            title: i.title || 'Handicraft',
+            price: i.price || 0,
+            image_url: i.image_url || '',
+            category: i.category || 'Handicraft',
+            artisan_name: i.artisan_name || ''
+          },
+          quantity: i.quantity || 1
+        };
+      });
   } catch {
     return [];
   }

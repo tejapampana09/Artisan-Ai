@@ -374,27 +374,37 @@ export default function CraftMapView({ onSelectMode, onSelectProduct, onOpenAuth
     );
   }, [artisanPins, activeCluster]);
 
-  // Add to Bag helper
-  const handleAddToBag = (product) => {
+  // Add to Bag helper — uses same { product, quantity } format as CartView
+  const handleAddToBag = (productData) => {
     try {
       const raw = localStorage.getItem('artisan_ai_cart');
       const items = raw ? JSON.parse(raw) : [];
-      const existing = items.find(i => i.id === product.id);
-      if (existing) {
-        existing.quantity = (existing.quantity || 1) + 1;
+
+      // Normalise: older flat items become { product: {...}, quantity }
+      const normalised = items.map(i =>
+        i.product ? i : { product: { id: i.id, title: i.title, price: i.price, image_url: i.image_url, category: i.category }, quantity: i.quantity || 1 }
+      );
+
+      const existingIdx = normalised.findIndex(i => i.product?.id === productData.id);
+      if (existingIdx >= 0) {
+        normalised[existingIdx].quantity += 1;
       } else {
-        items.push({
-          id: product.id,
-          title: product.title,
-          price: product.price,
-          image_url: product.image_url,
-          artisan_name: product.artisan_name || activeCluster?.name,
+        normalised.push({
+          product: {
+            id: productData.id,
+            title: productData.title,
+            price: productData.price,
+            image_url: productData.image_url || productData.enhanced_image_url,
+            category: productData.category || 'Handicraft',
+            artisan_name: productData.artisan_name || activeCluster?.name
+          },
           quantity: 1
         });
       }
-      localStorage.setItem('artisan_ai_cart', JSON.stringify(items));
+
+      localStorage.setItem('artisan_ai_cart', JSON.stringify(normalised));
       window.dispatchEvent(new Event('artisan_cart_updated'));
-      notify.success(`Added "${product.title}" to your Bag!`);
+      notify.success(`Added "${productData.title}" to your Bag!`);
     } catch (e) {
       notify.error('Could not add to bag');
     }

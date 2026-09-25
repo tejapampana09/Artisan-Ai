@@ -163,9 +163,25 @@ export function getCachedProducts(userId) {
 
 export function setCachedProducts(products, userId) {
   try {
-    localStorage.setItem(getProductsKey(userId), JSON.stringify(products));
+    // Slim each product to essential fields only to avoid localStorage quota errors
+    const slim = (Array.isArray(products) ? products : [])
+      .slice(0, 100) // cap at 100 items max
+      .map(p => ({
+        id: p.id,
+        title: p.title,
+        price: p.price,
+        image_url: p.image_url || p.enhanced_image_url,
+        category: p.category,
+        status: p.status,
+        seller_id: p.seller_id,
+        artisan_name: p.artisan_name,
+        region_of_origin: p.region_of_origin,
+        stock: p.stock
+      }));
+    localStorage.setItem(getProductsKey(userId), JSON.stringify(slim));
   } catch (e) {
-    console.error('Failed to cache products', e);
+    console.warn('Failed to cache products (quota may be full), skipping cache.', e?.name);
+    // Don't crash — caching is best-effort
   }
 }
 
