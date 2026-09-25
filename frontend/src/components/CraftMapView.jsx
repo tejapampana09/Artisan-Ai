@@ -729,16 +729,18 @@ export default function CraftMapView({ onSelectMode, onSelectProduct, onOpenAuth
                               Available Creations ({artisan.sample_products.length})
                             </span>
                             <div className="grid grid-cols-2 gap-2">
-                              {artisan.sample_products.slice(0, 2).map((prod) => (
+                              {artisan.sample_products.map((prod) => (
                                 <div
                                   key={prod.id}
-                                  className="bg-white border border-[#E8E2D9] rounded-xl p-2 space-y-1.5 flex flex-col justify-between"
+                                  onClick={() => onSelectProduct && onSelectProduct(prod)}
+                                  className="bg-white border border-[#E8E2D9] hover:border-[#A6533B] hover:shadow-sm rounded-xl p-2 space-y-1.5 flex flex-col justify-between cursor-pointer transition-all group"
+                                  title={`View details for ${prod.title}`}
                                 >
                                   {prod.image_url ? (
                                     <img
                                       src={prod.image_url}
                                       alt={prod.title}
-                                      className="w-full h-20 object-cover rounded-lg bg-stone-100"
+                                      className="w-full h-20 object-cover rounded-lg bg-stone-100 group-hover:scale-[1.02] transition-transform"
                                     />
                                   ) : (
                                     <div className="w-full h-20 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 text-[10px]">
@@ -746,11 +748,14 @@ export default function CraftMapView({ onSelectMode, onSelectProduct, onOpenAuth
                                     </div>
                                   )}
                                   <div>
-                                    <h5 className="font-bold text-[11px] text-[#1C1C1C] truncate">{prod.title}</h5>
+                                    <h5 className="font-bold text-[11px] text-[#1C1C1C] group-hover:text-[#A6533B] transition-colors truncate">{prod.title}</h5>
                                     <span className="text-xs font-black text-[#A6533B]">₹{prod.price?.toLocaleString('en-IN')}</span>
                                   </div>
                                   <button
-                                    onClick={() => handleAddToBag(prod)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddToBag(prod);
+                                    }}
                                     className="w-full py-1 rounded-lg bg-[#FAF7F2] hover:bg-[#A6533B] hover:text-white border border-[#E8E2D9] text-[10px] font-bold text-[#1C1C1C] transition-colors cursor-pointer flex items-center justify-center space-x-1"
                                   >
                                     <ShoppingBag className="w-3 h-3" />

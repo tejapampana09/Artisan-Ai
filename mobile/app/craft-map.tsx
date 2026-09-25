@@ -10,7 +10,8 @@ import {
   Linking,
   Platform,
   StatusBar,
-  Modal
+  Modal,
+  Image
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -20,6 +21,7 @@ import * as Location from "expo-location";
 import { theme } from "../src/theme";
 import { api } from "../src/api";
 import { useI18n } from "../src/i18n";
+import { addToCart } from "../src/cart";
 
 interface CraftCluster {
   id: string;
@@ -31,22 +33,38 @@ interface CraftCluster {
   latitude: number;
   longitude: number;
   description: string;
+  materials?: string;
+  gi_status?: boolean;
   artisans_count?: number;
   products_count?: number;
 }
 
+interface SampleProduct {
+  id: number;
+  title: string;
+  price: number;
+  image_url?: string;
+  enhanced_image_url?: string;
+  category?: string;
+  stock?: number;
+}
+
 interface ArtisanPin {
   id: number;
+  artisan_id?: number;
   name: string;
+  artisan_name?: string;
   craft: string;
   craft_specialization?: string;
   craft_cluster: string;
+  cluster_id?: string;
   latitude: number;
   longitude: number;
   state?: string;
   district?: string;
   location?: string;
   verification_status?: string;
+  sample_products?: SampleProduct[];
 }
 
 type TileType = "STREET" | "SATELLITE" | "TOPO" | "OSM";
@@ -76,6 +94,26 @@ export default function CraftMapScreen() {
   // Modals & Panels
   const [showListModal, setShowListModal] = useState(false);
   const [showLayerModal, setShowLayerModal] = useState(false);
+  const [addedToast, setAddedToast] = useState("");
+
+  const clusterArtisans = useMemo(() => {
+    if (!selectedCluster) return [];
+    return pins.filter((pin: any) => {
+      const pinCluster = (pin.craft_cluster || "").toLowerCase();
+      const clusterName = (selectedCluster.name || "").toLowerCase();
+      const clusterId = (selectedCluster.id || "").toLowerCase();
+      const pinState = (pin.state || "").toLowerCase();
+      const clusterState = (selectedCluster.state || "").toLowerCase();
+      const pinDistrict = (pin.district || "").toLowerCase();
+      const clusterDistrict = (selectedCluster.district || "").toLowerCase();
+
+      return (
+        (pin.cluster_id && pin.cluster_id.toLowerCase() === clusterId) ||
+        (pinCluster && (pinCluster.includes(clusterName) || clusterName.includes(pinCluster) || pinCluster.includes(clusterId))) ||
+        (pinState && clusterState && pinState === clusterState && pinDistrict && clusterDistrict && pinDistrict === clusterDistrict)
+      );
+    });
+  }, [pins, selectedCluster]);
 
   useEffect(() => {
     loadMapData();
@@ -90,7 +128,15 @@ export default function CraftMapScreen() {
         api.getArtisanMapPins().catch(() => [])
       ]);
       setClusters(clusterList || []);
-      setPins(pinList || []);
+      const normalizedPins: ArtisanPin[] = (pinList || []).map((p: any) => ({
+        ...p,
+        id: p.id || p.artisan_id,
+        name: p.name || p.artisan_name || "Master Artisan",
+        craft: p.craft || "Heritage Craft",
+        craft_cluster: p.craft_cluster || "",
+        sample_products: p.sample_products || []
+      }));
+      setPins(normalizedPins);
 
       if (clusterList && clusterList.length > 0) {
         const defaultCluster = clusterList.find((c: any) => c.id === "srikalahasti") || clusterList[0];
@@ -100,6 +146,24 @@ export default function CraftMapScreen() {
       console.warn("Failed to load craft map data:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddToBag = async (prod: SampleProduct) => {
+    try {
+      await addToCart(
+        {
+          id: prod.id,
+          title: prod.title,
+          price: prod.price,
+          image_url: prod.image_url || prod.enhanced_image_url || ""
+        } as any,
+        1
+      );
+      setAddedToast(`Added "${prod.title}" to bag!`);
+      setTimeout(() => setAddedToast(""), 3000);
+    } catch (err) {
+      console.warn("Failed to add to bag:", err);
     }
   };
 
@@ -667,141 +731,352 @@ export default function CraftMapScreen() {
           </View>
         </View>
 
+        {/* Floating Toast Notification */}
+        {!!addedToast && (
+          <View style={styles.floatingToast}>
+            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+            <Text style={styles.floatingToastText}>{addedToast}</Text>
+          </View>
+        )}
+
         {/* 4. Bottom Detail Card (Selected Cluster or Artisan) */}
         {selectedCluster ? (
           <View style={styles.bottomCard}>
-            <View style={styles.cardHeaderRow}>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                  <Text style={styles.cardTitle} numberOfLines={1}>{selectedCluster.name}</Text>
-                  <View style={styles.giBadge}>
-                    <Text style={styles.giBadgeText}>GI REGISTRY</Text>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 10 }}
+              nestedScrollEnabled={true}
+            >
+              {/* Header Badges & Close */}
+              <View style={styles.cardHeaderRow}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+                    <View style={styles.giBadge}>
+                      <Ionicons name="shield-checkmark" size={11} color="#B45309" style={{ marginRight: 3 }} />
+                      <Text style={styles.giBadgeText}>GI REGISTERED HERITAGE CLUSTER</Text>
+                    </View>
+                    {selectedDistanceKm !== null && (
+                      <View style={styles.distanceBadge}>
+                        <Text style={styles.distanceText}>📍 {selectedDistanceKm} km from you</Text>
+                      </View>
+                    )}
                   </View>
+                  <Text style={styles.cardTitle} numberOfLines={1}>{selectedCluster.name}</Text>
+                  <Text style={styles.cardSubtitle}>
+                    <Ionicons name="location-sharp" size={12} color="#A6533B" /> {selectedCluster.district ? `${selectedCluster.district}, ` : ""}{selectedCluster.state}
+                  </Text>
                 </View>
-                <Text style={styles.cardSubtitle}>
-                  {selectedCluster.state} • {selectedCluster.category}
-                </Text>
+
+                <Pressable
+                  onPress={() => setSelectedCluster(null)}
+                  style={styles.cardCloseBtn}
+                  hitSlop={8}
+                >
+                  <Ionicons name="close" size={18} color="#78716C" />
+                </Pressable>
               </View>
 
-              {selectedDistanceKm !== null && (
-                <View style={styles.distanceBadge}>
-                  <Ionicons name="navigate-circle" size={14} color="#A6533B" />
-                  <Text style={styles.distanceText}>{selectedDistanceKm} km away</Text>
+              {/* Craft Coordinates & Category */}
+              <View style={styles.craftDetailRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.craftLabelBold}>{selectedCluster.craft}</Text>
+                  <Text style={styles.craftCategoryText}>{selectedCluster.category}</Text>
                 </View>
-              )}
-
-              <Pressable
-                onPress={() => setSelectedCluster(null)}
-                style={styles.cardCloseBtn}
-                hitSlop={8}
-              >
-                <Ionicons name="close" size={18} color="#78716C" />
-              </Pressable>
-            </View>
-
-            <Text style={styles.craftLabel}>
-              Traditional Craft: <Text style={{ color: "#1C1917", fontWeight: "700" }}>{selectedCluster.craft}</Text>
-            </Text>
-
-            <Text style={styles.cardDesc} numberOfLines={2}>
-              {selectedCluster.description}
-            </Text>
-
-            <View style={styles.cardStatsRow}>
-              <View style={styles.statPill}>
-                <Ionicons name="people" size={13} color="#78716C" />
-                <Text style={styles.statPillText}>
-                  {selectedCluster.artisans_count ?? "Verified"} Artisans
-                </Text>
+                {selectedCluster.latitude && selectedCluster.longitude && (
+                  <Text style={styles.coordsText}>
+                    {selectedCluster.latitude.toFixed(4)}°N, {selectedCluster.longitude.toFixed(4)}°E
+                  </Text>
+                )}
               </View>
-              <View style={styles.statPill}>
-                <Ionicons name="cube" size={13} color="#78716C" />
-                <Text style={styles.statPillText}>
-                  {selectedCluster.products_count ?? "Live"} Crafts
+
+              {/* Heritage Background & Materials */}
+              <View style={styles.heritageSection}>
+                <View style={styles.sectionHeaderRow}>
+                  <Ionicons name="information-circle" size={14} color="#A6533B" />
+                  <Text style={styles.sectionHeaderTitle}>HERITAGE BACKGROUND & MATERIALS</Text>
+                </View>
+                <Text style={styles.cardDesc}>
+                  {selectedCluster.description}
                 </Text>
+                <View style={styles.materialsRow}>
+                  <Text style={styles.materialsText} numberOfLines={1}>
+                    Materials: <Text style={{ fontWeight: "700", color: "#44403C" }}>{selectedCluster.materials || "Natural Materials & Wood"}</Text>
+                  </Text>
+                  <Text style={styles.materialsText}>
+                    GI Status: <Text style={{ fontWeight: "700", color: "#44403C" }}>{selectedCluster.gi_status ? "Certified GI" : "Heritage Legacy"}</Text>
+                  </Text>
+                </View>
               </View>
-            </View>
 
-            <View style={styles.cardActionRow}>
-              <Pressable
-                style={styles.directionsBtn}
-                onPress={() => openInMaps(selectedCluster.latitude, selectedCluster.longitude, `${selectedCluster.name} Heritage Craft Cluster`)}
-              >
-                <Ionicons name="navigate-outline" size={16} color="#A6533B" style={{ marginRight: 6 }} />
-                <Text style={styles.directionsBtnText}>Directions</Text>
-              </Pressable>
+              {/* Action Buttons: Directions & View Crafts */}
+              <View style={styles.cardActionRow}>
+                <Pressable
+                  style={styles.directionsBtn}
+                  onPress={() => openInMaps(selectedCluster.latitude, selectedCluster.longitude, `${selectedCluster.name} Heritage Craft Cluster`)}
+                >
+                  <Ionicons name="navigate-outline" size={15} color="#A6533B" style={{ marginRight: 6 }} />
+                  <Text style={styles.directionsBtnText}>Directions</Text>
+                </Pressable>
 
-              <Pressable
-                style={styles.exploreBtn}
-                onPress={() => {
-                  router.push({
-                    pathname: "/search",
-                    params: { q: selectedCluster.craft }
-                  } as any);
-                }}
-              >
-                <Ionicons name="sparkles" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.exploreBtnText}>View Crafts</Text>
-              </Pressable>
-            </View>
+                <Pressable
+                  style={styles.exploreBtn}
+                  onPress={() => {
+                    router.push({
+                      pathname: "/search",
+                      params: { q: selectedCluster.craft }
+                    } as any);
+                  }}
+                >
+                  <Ionicons name="sparkles" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.exploreBtnText}>View Crafts</Text>
+                </Pressable>
+              </View>
+
+              {/* Master Artisans in this Cluster */}
+              <View style={styles.clusterArtisansSection}>
+                <View style={styles.clusterArtisansHeader}>
+                  <Ionicons name="ribbon" size={15} color="#059669" />
+                  <Text style={styles.clusterArtisansTitle}>
+                    MASTER ARTISANS IN THIS CLUSTER ({clusterArtisans.length})
+                  </Text>
+                </View>
+
+                {clusterArtisans.length > 0 ? (
+                  clusterArtisans.map((artisan: ArtisanPin) => {
+                    const initial = (artisan.name || "A").charAt(0).toUpperCase();
+                    return (
+                      <View key={"artisan-card-" + artisan.id} style={styles.artisanClusterCard}>
+                        {/* Top row: Avatar, Name + Check, Craft & Coords, Studio Button */}
+                        <View style={styles.artisanCardTopRow}>
+                          <View style={styles.artisanInitialCircle}>
+                            <Text style={styles.artisanInitialText}>{initial}</Text>
+                          </View>
+
+                          <View style={{ flex: 1, marginHorizontal: 10 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                              <Text style={styles.artisanCardName} numberOfLines={1}>{artisan.name}</Text>
+                              <Ionicons name="checkmark-circle" size={14} color="#059669" />
+                            </View>
+                            <Text style={styles.artisanCardCraft} numberOfLines={1}>{artisan.craft}</Text>
+                            {artisan.latitude && artisan.longitude && (
+                              <Text style={styles.artisanCardCoords}>
+                                Studio: {artisan.latitude.toFixed(4)}°N, {artisan.longitude.toFixed(4)}°E
+                              </Text>
+                            )}
+                          </View>
+
+                          <Pressable
+                            style={styles.studioMiniBtn}
+                            onPress={() => {
+                              setSelectedArtisan(artisan);
+                              setSelectedCluster(null);
+                              if (mapReady && webViewRef.current && artisan.latitude && artisan.longitude) {
+                                webViewRef.current.injectJavaScript(
+                                  `if (window.flyToCoords) { window.flyToCoords(${artisan.latitude}, ${artisan.longitude}, 12); } true;`
+                                );
+                              }
+                            }}
+                          >
+                            <Text style={styles.studioMiniBtnText}>Studio</Text>
+                            <Ionicons name="chevron-forward" size={13} color="#1C1917" />
+                          </Pressable>
+                        </View>
+
+                        {/* Available Creations */}
+                        {artisan.sample_products && artisan.sample_products.length > 0 && (
+                          <View style={styles.creationsBox}>
+                            <Text style={styles.creationsHeader}>
+                              AVAILABLE CREATIONS ({artisan.sample_products.length})
+                            </Text>
+
+                            <ScrollView
+                              horizontal
+                              showsHorizontalScrollIndicator={false}
+                              contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+                            >
+                              {artisan.sample_products.map((prod) => (
+                                <Pressable
+                                  key={"prod-" + prod.id}
+                                  style={styles.creationCard}
+                                  onPress={() => {
+                                    router.push({
+                                      pathname: "/product",
+                                      params: { id: String(prod.id) }
+                                    } as any);
+                                  }}
+                                >
+                                  {prod.image_url || prod.enhanced_image_url ? (
+                                    <Image
+                                      source={{ uri: prod.image_url || prod.enhanced_image_url }}
+                                      style={styles.creationImg}
+                                      resizeMode="cover"
+                                    />
+                                  ) : (
+                                    <View style={styles.creationImgPlaceholder}>
+                                      <Ionicons name="cube-outline" size={24} color="#A8A29E" />
+                                      <Text style={styles.creationImgPlaceholderText}>Handcrafted</Text>
+                                    </View>
+                                  )}
+
+                                  <View style={styles.creationInfo}>
+                                    <Text style={styles.creationTitle} numberOfLines={1}>{prod.title}</Text>
+                                    <Text style={styles.creationPrice}>₹{prod.price?.toLocaleString("en-IN")}</Text>
+                                  </View>
+
+                                  <Pressable
+                                    style={styles.addBagBtn}
+                                    onPress={(e) => {
+                                      e.stopPropagation?.();
+                                      handleAddToBag(prod);
+                                    }}
+                                  >
+                                    <Ionicons name="bag-handle-outline" size={13} color="#1C1917" />
+                                    <Text style={styles.addBagBtnText}>Add to Bag</Text>
+                                  </Pressable>
+                                </Pressable>
+                              ))}
+                            </ScrollView>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })
+                ) : (
+                  <View style={styles.emptyArtisansBox}>
+                    <Ionicons name="people-outline" size={24} color="#A8A29E" />
+                    <Text style={styles.emptyArtisansText}>
+                      No direct artisan studios mapped yet in this cluster.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
           </View>
         ) : selectedArtisan ? (
           <View style={styles.bottomCard}>
-            <View style={styles.cardHeaderRow}>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Text style={styles.cardTitle} numberOfLines={1}>{selectedArtisan.name}</Text>
-                  <View style={[styles.giBadge, { backgroundColor: "#DCFCE7", borderColor: "#86EFAC" }]}>
-                    <Text style={[styles.giBadgeText, { color: "#166534" }]}>VERIFIED ARTISAN</Text>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 10 }}
+              nestedScrollEnabled={true}
+            >
+              <View style={styles.cardHeaderRow}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+                    <View style={[styles.giBadge, { backgroundColor: "#DCFCE7", borderColor: "#86EFAC" }]}>
+                      <Ionicons name="checkmark-circle" size={11} color="#166534" style={{ marginRight: 3 }} />
+                      <Text style={[styles.giBadgeText, { color: "#166534" }]}>VERIFIED MASTER ARTISAN</Text>
+                    </View>
+                    {selectedDistanceKm !== null && (
+                      <View style={styles.distanceBadge}>
+                        <Text style={styles.distanceText}>📍 {selectedDistanceKm} km away</Text>
+                      </View>
+                    )}
                   </View>
+                  <Text style={styles.cardTitle} numberOfLines={1}>{selectedArtisan.name}</Text>
+                  <Text style={styles.cardSubtitle}>
+                    <Ionicons name="location-sharp" size={12} color="#A6533B" /> {selectedArtisan.location || selectedArtisan.state || "Studio Location"}
+                  </Text>
                 </View>
-                <Text style={styles.cardSubtitle}>
-                  {selectedArtisan.location || selectedArtisan.state || "Studio Location"}
-                </Text>
+
+                <Pressable
+                  onPress={() => setSelectedArtisan(null)}
+                  style={styles.cardCloseBtn}
+                  hitSlop={8}
+                >
+                  <Ionicons name="close" size={18} color="#78716C" />
+                </Pressable>
               </View>
 
-              {selectedDistanceKm !== null && (
-                <View style={styles.distanceBadge}>
-                  <Ionicons name="navigate-circle" size={14} color="#A6533B" />
-                  <Text style={styles.distanceText}>{selectedDistanceKm} km</Text>
-                </View>
+              <Text style={styles.craftLabel}>
+                Master Craftsman: <Text style={{ color: "#1C1917", fontWeight: "700" }}>{selectedArtisan.craft}</Text>
+              </Text>
+
+              {selectedArtisan.latitude && selectedArtisan.longitude && (
+                <Text style={[styles.coordsText, { marginBottom: 10 }]}>
+                  Studio GPS: {selectedArtisan.latitude.toFixed(4)}°N, {selectedArtisan.longitude.toFixed(4)}°E
+                </Text>
               )}
 
-              <Pressable
-                onPress={() => setSelectedArtisan(null)}
-                style={styles.cardCloseBtn}
-                hitSlop={8}
-              >
-                <Ionicons name="close" size={18} color="#78716C" />
-              </Pressable>
-            </View>
+              <View style={styles.cardActionRow}>
+                <Pressable
+                  style={styles.directionsBtn}
+                  onPress={() => openInMaps(selectedArtisan.latitude, selectedArtisan.longitude, `${selectedArtisan.name} Studio`)}
+                >
+                  <Ionicons name="navigate-outline" size={15} color="#A6533B" style={{ marginRight: 6 }} />
+                  <Text style={styles.directionsBtnText}>Directions</Text>
+                </Pressable>
 
-            <Text style={styles.craftLabel}>
-              Master Craftsman: <Text style={{ color: "#1C1917", fontWeight: "700" }}>{selectedArtisan.craft}</Text>
-            </Text>
+                <Pressable
+                  style={styles.exploreBtn}
+                  onPress={() => {
+                    router.push({
+                      pathname: "/search",
+                      params: { q: selectedArtisan.craft }
+                    } as any);
+                  }}
+                >
+                  <Ionicons name="sparkles" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.exploreBtnText}>Browse Works</Text>
+                </Pressable>
+              </View>
 
-            <View style={styles.cardActionRow}>
-              <Pressable
-                style={styles.directionsBtn}
-                onPress={() => openInMaps(selectedArtisan.latitude, selectedArtisan.longitude, `${selectedArtisan.name} Studio`)}
-              >
-                <Ionicons name="navigate-outline" size={16} color="#A6533B" style={{ marginRight: 6 }} />
-                <Text style={styles.directionsBtnText}>Directions</Text>
-              </Pressable>
+              {/* Available Creations for Selected Artisan */}
+              {selectedArtisan.sample_products && selectedArtisan.sample_products.length > 0 && (
+                <View style={[styles.creationsBox, { marginTop: 14, borderTopWidth: 1, borderTopColor: "#E7E5E4", paddingTop: 10 }]}>
+                  <Text style={styles.creationsHeader}>
+                    AVAILABLE CREATIONS ({selectedArtisan.sample_products.length})
+                  </Text>
 
-              <Pressable
-                style={styles.exploreBtn}
-                onPress={() => {
-                  router.push({
-                    pathname: "/search",
-                    params: { q: selectedArtisan.craft }
-                  } as any);
-                }}
-              >
-                <Ionicons name="sparkles" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.exploreBtnText}>Browse Works</Text>
-              </Pressable>
-            </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+                  >
+                    {selectedArtisan.sample_products.map((prod) => (
+                      <Pressable
+                        key={"artisan-prod-" + prod.id}
+                        style={styles.creationCard}
+                        onPress={() => {
+                          router.push({
+                            pathname: "/product",
+                            params: { id: String(prod.id) }
+                          } as any);
+                        }}
+                      >
+                        {prod.image_url || prod.enhanced_image_url ? (
+                          <Image
+                            source={{ uri: prod.image_url || prod.enhanced_image_url }}
+                            style={styles.creationImg}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={styles.creationImgPlaceholder}>
+                            <Ionicons name="cube-outline" size={24} color="#A8A29E" />
+                            <Text style={styles.creationImgPlaceholderText}>Handcrafted</Text>
+                          </View>
+                        )}
+
+                        <View style={styles.creationInfo}>
+                          <Text style={styles.creationTitle} numberOfLines={1}>{prod.title}</Text>
+                          <Text style={styles.creationPrice}>₹{prod.price?.toLocaleString("en-IN")}</Text>
+                        </View>
+
+                        <Pressable
+                          style={styles.addBagBtn}
+                          onPress={(e) => {
+                            e.stopPropagation?.();
+                            handleAddToBag(prod);
+                          }}
+                        >
+                          <Ionicons name="bag-handle-outline" size={13} color="#1C1917" />
+                          <Text style={styles.addBagBtnText}>Add to Bag</Text>
+                        </Pressable>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </ScrollView>
           </View>
         ) : (
           <View style={styles.bottomHintCard}>
@@ -1157,6 +1432,28 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#E5E5E5"
   },
+  floatingToast: {
+    position: "absolute",
+    top: 140,
+    alignSelf: "center",
+    backgroundColor: "#1C1917",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    zIndex: 99
+  },
+  floatingToastText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700"
+  },
   bottomCard: {
     position: "absolute",
     bottom: 16,
@@ -1171,7 +1468,8 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     borderWidth: 1,
     borderColor: "#E7E5E4",
-    zIndex: 60
+    zIndex: 60,
+    maxHeight: "72%"
   },
   cardHeaderRow: {
     flexDirection: "row",
@@ -1189,17 +1487,19 @@ const styles = StyleSheet.create({
     marginTop: 2
   },
   giBadge: {
-    backgroundColor: "#FEF2F2",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: "#FECACA"
+    borderColor: "#FCD34D",
+    flexDirection: "row",
+    alignItems: "center"
   },
   giBadgeText: {
     fontSize: 9,
     fontWeight: "800",
-    color: "#DC2626",
+    color: "#92400E",
     letterSpacing: 0.4
   },
   distanceBadge: {
@@ -1214,8 +1514,7 @@ const styles = StyleSheet.create({
   distanceText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#A6533B",
-    marginLeft: 3
+    color: "#A6533B"
   },
   cardCloseBtn: {
     width: 26,
@@ -1224,6 +1523,62 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F4",
     alignItems: "center",
     justifyContent: "center"
+  },
+  craftDetailRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 8,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F5F5F4"
+  },
+  craftLabelBold: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#A6533B"
+  },
+  craftCategoryText: {
+    fontSize: 11,
+    color: "#78716C",
+    marginTop: 1
+  },
+  coordsText: {
+    fontSize: 10,
+    fontFamily: Platform.select({ ios: "Courier", default: "monospace" }),
+    color: "#78716C"
+  },
+  heritageSection: {
+    backgroundColor: "#FAF7F2",
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#E8E2D9"
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginBottom: 4
+  },
+  sectionHeaderTitle: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#78716C",
+    letterSpacing: 0.5
+  },
+  materialsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: "#E8E2D9"
+  },
+  materialsText: {
+    fontSize: 10.5,
+    color: "#78716C"
   },
   craftLabel: {
     fontSize: 13,
@@ -1234,7 +1589,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#78716C",
     lineHeight: 17,
-    marginBottom: 10
+    marginBottom: 6
   },
   cardStatsRow: {
     flexDirection: "row",
@@ -1259,7 +1614,8 @@ const styles = StyleSheet.create({
   },
   cardActionRow: {
     flexDirection: "row",
-    gap: 10
+    gap: 10,
+    marginBottom: 8
   },
   directionsBtn: {
     flex: 1,
@@ -1290,6 +1646,169 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: "#FFFFFF"
+  },
+  clusterArtisansSection: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#E8E2D9"
+  },
+  clusterArtisansHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 10
+  },
+  clusterArtisansTitle: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#1C1917",
+    letterSpacing: 0.5
+  },
+  artisanClusterCard: {
+    backgroundColor: "#FAF7F2",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#E8E2D9"
+  },
+  artisanCardTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  artisanInitialCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#1C1917",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  artisanInitialText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "800"
+  },
+  artisanCardName: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#1C1917"
+  },
+  artisanCardCraft: {
+    fontSize: 11,
+    color: "#78716C",
+    marginTop: 1
+  },
+  artisanCardCoords: {
+    fontSize: 9.5,
+    fontFamily: Platform.select({ ios: "Courier", default: "monospace" }),
+    color: "#A8A29E",
+    marginTop: 1
+  },
+  studioMiniBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E8E2D9",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 2
+  },
+  studioMiniBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#1C1917"
+  },
+  creationsBox: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(232, 226, 217, 0.8)"
+  },
+  creationsHeader: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    color: "#78716C",
+    letterSpacing: 0.5,
+    marginBottom: 6
+  },
+  creationCard: {
+    width: 130,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: "#E8E2D9"
+  },
+  creationImg: {
+    width: "100%",
+    height: 80,
+    borderRadius: 8,
+    backgroundColor: "#F5F5F4"
+  },
+  creationImgPlaceholder: {
+    width: "100%",
+    height: 80,
+    borderRadius: 8,
+    backgroundColor: "#F5F5F4",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  creationImgPlaceholderText: {
+    fontSize: 9.5,
+    color: "#A8A29E",
+    marginTop: 2
+  },
+  creationInfo: {
+    marginTop: 6,
+    marginBottom: 6
+  },
+  creationTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#1C1917"
+  },
+  creationPrice: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#A6533B",
+    marginTop: 2
+  },
+  addBagBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FAF7F2",
+    borderWidth: 1,
+    borderColor: "#E8E2D9",
+    borderRadius: 6,
+    paddingVertical: 5,
+    gap: 4
+  },
+  addBagBtnText: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#1C1917"
+  },
+  emptyArtisansBox: {
+    padding: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FAF7F2",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E8E2D9",
+    gap: 6
+  },
+  emptyArtisansText: {
+    fontSize: 11,
+    color: "#78716C",
+    textAlign: "center",
+    lineHeight: 16
   },
   bottomHintCard: {
     position: "absolute",

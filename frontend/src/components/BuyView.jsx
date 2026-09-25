@@ -114,16 +114,17 @@ export default function BuyView({
     }
   }, [externalSearchQuery]);
 
-  // Open detail modal if initialSelectedProduct is passed from Navbar search
+  // Open detail modal if initialSelectedProduct is passed from Navbar search or Craft Map
   useEffect(() => {
     if (initialSelectedProduct) {
-      setSelectedProduct(initialSelectedProduct);
+      const match = products?.find((p) => p.id === initialSelectedProduct.id);
+      setSelectedProduct(match || initialSelectedProduct);
       setIsDetailOpen(true);
       if (onClearInitialSelectedProduct) {
         onClearInitialSelectedProduct();
       }
     }
-  }, [initialSelectedProduct]);
+  }, [initialSelectedProduct, products]);
 
   useEffect(() => {
     loadMarketplace();
