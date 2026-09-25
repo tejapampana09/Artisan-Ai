@@ -532,6 +532,29 @@ export default function BuyerScreen() {
               </ScrollView>
             </View>
 
+            {/* Heritage Craft Map of India Banner Card */}
+            {!searchQuery && selectedCategory === "All Crafts" && (
+              <Pressable
+                style={styles.craftMapBanner}
+                onPress={() => router.push("/craft-map" as any)}
+              >
+                <View style={styles.craftMapBannerLeft}>
+                  <View style={styles.craftMapBadge}>
+                    <Ionicons name="map" size={11} color="#92400E" />
+                    <Text style={styles.craftMapBadgeText}>GI REGISTRY MAP</Text>
+                  </View>
+                  <Text style={styles.craftMapTitle}>Explore Heritage Craft Map</Text>
+                  <Text style={styles.craftMapSub}>
+                    Discover authentic craft clusters & artisan workshops across India
+                  </Text>
+                </View>
+                <View style={styles.craftMapBannerBtn}>
+                  <Text style={styles.craftMapBannerBtnText}>Explore</Text>
+                  <Ionicons name="arrow-forward" size={13} color="#FFFFFF" />
+                </View>
+              </Pressable>
+            )}
+
             {/* Trending Across India Row (Matching Web BuyView) */}
             {!searchQuery && selectedCategory === "All Crafts" && trendingProducts.length > 0 && (
               <View style={styles.trendingSection}>
@@ -884,6 +907,64 @@ const styles = StyleSheet.create({
   sortPillTextActive: {
     color: "#FFFFFF",
     fontWeight: "800"
+  },
+  craftMapBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginBottom: 14,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: "#FBF5ED",
+    borderWidth: 1.5,
+    borderColor: "#EADFCF"
+  },
+  craftMapBannerLeft: {
+    flex: 1,
+    marginRight: 10
+  },
+  craftMapBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#FCD34D",
+    marginBottom: 4
+  },
+  craftMapBadgeText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#92400E"
+  },
+  craftMapTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1C1917"
+  },
+  craftMapSub: {
+    fontSize: 11,
+    color: "#78716C",
+    marginTop: 2
+  },
+  craftMapBannerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#A6533B",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12
+  },
+  craftMapBannerBtnText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#FFFFFF"
   },
   trendingSection: {
     marginBottom: 16

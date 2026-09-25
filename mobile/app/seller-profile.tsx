@@ -22,6 +22,7 @@ import { api } from "../src/api";
 import { useI18n, AppLanguage } from "../src/i18n";
 import { BottomNavigation } from "../src/components";
 import { useRoleGuard } from "../src/authGuard";
+import * as Location from "expo-location";
 
 export default function SellerProfileScreen() {
   useRoleGuard("seller");
@@ -46,7 +47,9 @@ export default function SellerProfileScreen() {
   const [longitude, setLongitude] = useState("");
   const [district, setDistrict] = useState("");
   const [stateName, setStateName] = useState("");
+  const [pincode, setPincode] = useState("");
   const [savingLocation, setSavingLocation] = useState(false);
+  const [detectingGps, setDetectingGps] = useState(false);
   const [locationSuccessMsg, setLocationSuccessMsg] = useState("");
 
   // Studio alerts
@@ -60,6 +63,122 @@ export default function SellerProfileScreen() {
       loadProfileData();
     }, [])
   );
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const handleDetectGps = async () => {
+    setDetectingGps(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      if (status === "granted") {
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced
+        });
+        lat = loc.coords.latitude;
+        lng = loc.coords.longitude;
+      } else {
+        // Fallback to IP location
+        try {
+          const ipRes = await fetch("https://api.bigdatacloud.net/data/client-info");
+          if (ipRes.ok) {
+            const ipData = await ipRes.json();
+            if (ipData?.country?.isoCode === "IN") {
+              lat = 16.434;
+              lng = 80.56;
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (lat === null || lng === null) {
+        setLocationSuccessMsg("Please allow location access to auto-fill GPS.");
+        setTimeout(() => setLocationSuccessMsg(""), 4000);
+        return;
+      }
+
+      setLatitude(String(lat));
+      setLongitude(String(lng));
+
+      let detDistrict = "";
+      let detState = "";
+      let detPincode = "";
+
+      // 1. Try Expo reverse geocode
+      try {
+        const rev = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+        if (rev && rev.length > 0) {
+          detDistrict = rev[0].district || rev[0].city || rev[0].subregion || "";
+          detState = rev[0].region || "";
+          detPincode = rev[0].postalCode || "";
+        }
+      } catch (_) {}
+
+      // 2. OpenStreetMap Nominatim fallback
+      if (!detDistrict || !detState) {
+        try {
+          const osmRes = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`,
+            { headers: { "Accept-Language": "en", "User-Agent": "ArtisanAI-Mobile/1.0" } }
+          );
+          if (osmRes.ok) {
+            const data = await osmRes.json();
+            const addr = data.address || {};
+            if (!detState) detState = addr.state || "";
+            if (!detDistrict) detDistrict = addr.state_district || addr.county || addr.city || addr.town || "";
+            if (!detPincode) detPincode = addr.postcode || "";
+          }
+        } catch (_) {}
+      }
+
+      if (detDistrict) setDistrict(detDistrict);
+      if (detState) setStateName(detState);
+      if (detPincode) setPincode(detPincode);
+
+      // 3. Find closest Heritage Craft Cluster
+      const clusters = await api.getCraftClusters().catch(() => []);
+      if (clusters && clusters.length > 0) {
+        let best = null;
+        let minD = Infinity;
+        for (const c of clusters) {
+          if (c.latitude && c.longitude) {
+            const d = calculateDistance(lat, lng, c.latitude, c.longitude);
+            if (d < minD) {
+              minD = d;
+              best = c;
+            }
+          }
+        }
+        if (best && minD < 200) {
+          setCraftCluster(best.name);
+          if (!detState && best.state) setStateName(best.state);
+        }
+      }
+
+      setLocationSuccessMsg(`✓ GPS detected: ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`);
+      setTimeout(() => setLocationSuccessMsg(""), 5000);
+    } catch (err) {
+      console.warn("GPS detection error:", err);
+      setLocationSuccessMsg("Could not detect location. Please fill manually.");
+      setTimeout(() => setLocationSuccessMsg(""), 4000);
+    } finally {
+      setDetectingGps(false);
+    }
+  };
 
   const loadProfileData = async () => {
     try {
@@ -78,6 +197,7 @@ export default function SellerProfileScreen() {
         }
         setDistrict(sess.user.district || "");
         setStateName(sess.user.state || "");
+        if (sess.user.pincode) setPincode(sess.user.pincode);
       }
 
       // Load saved studio UPI
@@ -101,7 +221,8 @@ export default function SellerProfileScreen() {
         longitude: parseFloat(longitude),
         craft_cluster: craftCluster.trim() || undefined,
         district: district.trim() || undefined,
-        state: stateName.trim() || undefined
+        state: stateName.trim() || undefined,
+        pincode: pincode.trim() || undefined
       });
       if (updated) {
         setUser(updated);
@@ -366,12 +487,24 @@ export default function SellerProfileScreen() {
 
           {editingLocation && (
             <View style={styles.editFormBox}>
-              <Text style={styles.formInputLabel}>Heritage Craft Cluster (e.g. Srikalahasti, Jaipur, Pochampally)</Text>
+              {/* GPS Auto-Detect Button */}
+              <Pressable
+                style={[styles.detectGpsBtn, detectingGps && { opacity: 0.6 }]}
+                onPress={handleDetectGps}
+                disabled={detectingGps}
+              >
+                <Ionicons name={detectingGps ? "reload" : "locate"} size={16} color="#A6533B" />
+                <Text style={styles.detectGpsBtnText}>
+                  {detectingGps ? "Detecting GPS & Nearest GI Cluster..." : "Detect Current Location (GPS Auto-Fill)"}
+                </Text>
+              </Pressable>
+
+              <Text style={styles.formInputLabel}>Heritage Craft Cluster (e.g. Mangalagiri, Srikalahasti, Jaipur)</Text>
               <TextInput
                 style={styles.formInput}
                 value={craftCluster}
                 onChangeText={setCraftCluster}
-                placeholder="e.g. Srikalahasti or Etikoppaka"
+                placeholder="e.g. Mangalagiri or Etikoppaka"
                 placeholderTextColor="#A8A29E"
               />
 
@@ -382,7 +515,7 @@ export default function SellerProfileScreen() {
                     style={styles.formInput}
                     value={latitude}
                     onChangeText={setLatitude}
-                    placeholder="13.7498"
+                    placeholder="16.4340"
                     keyboardType="numeric"
                     placeholderTextColor="#A8A29E"
                   />
@@ -393,21 +526,21 @@ export default function SellerProfileScreen() {
                     style={styles.formInput}
                     value={longitude}
                     onChangeText={setLongitude}
-                    placeholder="79.6984"
+                    placeholder="80.5600"
                     keyboardType="numeric"
                     placeholderTextColor="#A8A29E"
                   />
                 </View>
               </View>
 
-              <View style={{ flexDirection: "row", gap: 10 }}>
+              <View style={{ flexDirection: "row", gap: 8 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.formInputLabel}>District</Text>
                   <TextInput
                     style={styles.formInput}
                     value={district}
                     onChangeText={setDistrict}
-                    placeholder="Tirupati"
+                    placeholder="Guntur"
                     placeholderTextColor="#A8A29E"
                   />
                 </View>
@@ -418,6 +551,17 @@ export default function SellerProfileScreen() {
                     value={stateName}
                     onChangeText={setStateName}
                     placeholder="Andhra Pradesh"
+                    placeholderTextColor="#A8A29E"
+                  />
+                </View>
+                <View style={{ flex: 0.8 }}>
+                  <Text style={styles.formInputLabel}>Pincode</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={pincode}
+                    onChangeText={setPincode}
+                    placeholder="522237"
+                    keyboardType="numeric"
                     placeholderTextColor="#A8A29E"
                   />
                 </View>
@@ -434,6 +578,18 @@ export default function SellerProfileScreen() {
               </Pressable>
             </View>
           )}
+
+          {/* Quick link to explore the Craft Map */}
+          <Pressable
+            style={styles.openMapStrip}
+            onPress={() => router.push("/craft-map" as any)}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Ionicons name="map" size={17} color="#A6533B" />
+              <Text style={styles.openMapStripText}>Browse Heritage Craft Map & Clusters</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={15} color="#A6533B" />
+          </Pressable>
         </View>
 
         {/* 4. Studio Preferences & Notifications */}
@@ -687,6 +843,41 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: "#E8DDD5"
+  },
+  detectGpsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1,
+    borderColor: "#FCD34D",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 10
+  },
+  detectGpsBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#92400E"
+  },
+  openMapStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FAF7F2",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#E8E2D9"
+  },
+  openMapStripText: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: "#A6533B"
   },
   formInputLabel: {
     fontSize: 11,

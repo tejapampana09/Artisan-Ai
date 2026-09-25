@@ -402,6 +402,23 @@ export default function SettingsScreen() {
 
             <View style={styles.menuSeparator} />
 
+            {/* Heritage Craft Map of India */}
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => router.push("/craft-map" as any)}
+            >
+              <View style={[styles.menuItemIconCircle, { backgroundColor: "#FEF3C7" }]}>
+                <Ionicons name="map-outline" size={18} color="#D97706" />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuItemTitle}>Heritage Craft Map of India</Text>
+                <Text style={styles.menuItemDesc}>Explore GI craft clusters, artisan studio pins & directions</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+            </Pressable>
+
+            <View style={styles.menuSeparator} />
+
             {/* Direct AI Craft Assistant */}
             <Pressable
               style={styles.menuItem}
