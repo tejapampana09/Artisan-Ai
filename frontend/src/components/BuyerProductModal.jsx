@@ -90,7 +90,7 @@ export default function BuyerProductModal({
       });
       setTranslatedData(res);
     } catch (err) {
-      console.error(err);
+      toast.error('Translation failed. Please try again.');
     } finally {
       setIsTranslating(false);
     }
@@ -507,7 +507,7 @@ export default function BuyerProductModal({
                     setTimeout(() => setIsAddedToCart(false), 2500);
                     toast.success(`Added "${product.title}" to Shopping Cart! 🛒`);
                   }}
-                  disabled={product.stock <= 0}
+                  disabled={(product.stock ?? 0) <= 0}
                   className={`px-4 py-3.5 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 shrink-0 disabled:opacity-50 ${
                     isAddedToCart 
                       ? 'bg-emerald-600 text-white border-2 border-emerald-600 shadow-md scale-105' 
@@ -520,23 +520,25 @@ export default function BuyerProductModal({
 
                 <button
                   onClick={() => {
-                    if (product.stock <= 0) return;
+                    if ((product.stock ?? 0) <= 0) return;
                     addToCart(product, 1);
                     onClose();
                     onOpenAuth('CART');
                   }}
-                  disabled={product.stock <= 0}
+                  disabled={(product.stock ?? 0) <= 0}
                   className="flex-1 py-3.5 bg-[#A6533B] hover:bg-[#88412F] text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
                 >
-                  <span>{product.stock <= 0 ? 'Out of Stock' : 'Buy Now →'}</span>
+                  <span>{(product.stock ?? 0) <= 0 ? 'Out of Stock' : 'Buy Now →'}</span>
                 </button>
               </>
             )}
           </div>
         </div>
+      </div>
 
-          {/* Digital Heritage & Craft Provenance Passport Overlay Modal */}
-          {showCertificate && (
+      {/* Digital Heritage & Craft Provenance Passport Overlay Modal
+          Rendered OUTSIDE the overflow-y-auto container so fixed positioning covers the full viewport */}
+      {showCertificate && (
             <div className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
               <div className="bg-amber-50/95 rounded-3xl max-w-lg w-full p-6 shadow-2xl border-4 border-amber-400 relative space-y-4 max-h-[90vh] overflow-y-auto">
                 <button
@@ -609,7 +611,6 @@ export default function BuyerProductModal({
               </div>
             </div>
           )}
-        </div>
 
       {/* Artisan Profile Modal */}
       {showArtisanModal && (

@@ -49,6 +49,39 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
   const notify = useNotification();
   const { language, setIsSelectingLanguage } = useLanguage();
 
+  // ── ALL hooks must be called unconditionally before any early return ──
+  const [products, setProducts] = useState([]);
+  const [enquiries, setEnquiries] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState(activeSellerTab || 'DASHBOARD');
+
+  useEffect(() => {
+    if (activeSellerTab) {
+      setActiveTab(activeSellerTab);
+    }
+  }, [activeSellerTab]);
+
+  const [demands, setDemands] = useState([]);
+  const [copilotInsight, setCopilotInsight] = useState(null);
+  const [opportunities, setOpportunities] = useState([]);
+  const [readiness, setReadiness] = useState(null);
+  const [channels, setChannels] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isAIOpen, setIsAIOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [notification, setNotification] = useState('');
+
+  const [replyTexts, setReplyTexts] = useState({});
+  const [editingReply, setEditingReply] = useState({});
+  const [replyingEnquiryId, setReplyingEnquiryId] = useState(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
+  const [publishingChannel, setPublishingChannel] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null);
+
+  const { isOffline, queueProductDraft, offlineQueue, removeDraft } = useOffline();
+
   const handleSignOut = () => {
     logoutUser('STUDIO');
     if (onLogout) {
@@ -62,6 +95,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
     notify.success(language === 'te' ? 'విజయవంతంగా సైన్ అవుట్ అయ్యారు' : 'Signed out cleanly');
   };
 
+  // ── Early return for Admin role — AFTER all hooks ──
   if (user?.role === 'ADMIN') {
     return (
       <div className="max-w-xl mx-auto my-12 bg-white rounded-3xl p-8 border border-[#E8E2D9] shadow-2xl text-center space-y-4 font-sans text-xs">
@@ -87,37 +121,6 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
       </div>
     );
   }
-
-  const [products, setProducts] = useState([]);
-  const [enquiries, setEnquiries] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [activeTab, setActiveTab] = useState(activeSellerTab || 'DASHBOARD'); // 'DASHBOARD' | 'PRODUCTS' | 'PRICING' | 'PASSPORT' | 'ORDERS' | 'INSIGHTS' | 'SYNC_STATUS' | 'CHANNELS'
-
-  useEffect(() => {
-    if (activeSellerTab) {
-      setActiveTab(activeSellerTab);
-    }
-  }, [activeSellerTab]);
-  const [demands, setDemands] = useState([]);
-  const [copilotInsight, setCopilotInsight] = useState(null);
-  const [opportunities, setOpportunities] = useState([]);
-  const [readiness, setReadiness] = useState(null);
-  const [channels, setChannels] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isAIOpen, setIsAIOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [notification, setNotification] = useState('');
-
-  const [replyTexts, setReplyTexts] = useState({});
-  const [editingReply, setEditingReply] = useState({});
-  const [replyingEnquiryId, setReplyingEnquiryId] = useState(null);
-  const [updatingOrderId, setUpdatingOrderId] = useState(null);
-  const [publishingChannel, setPublishingChannel] = useState(null);
-  const [dashboardData, setDashboardData] = useState(null);
-
-  const { isOffline, queueProductDraft, offlineQueue, removeDraft } = useOffline();
 
   const loadDashboard = async () => {
     setLoading(true);

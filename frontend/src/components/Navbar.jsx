@@ -186,6 +186,7 @@ export default function Navbar({
   };
 
   const fetchNotifications = async () => {
+    if (isOffline) return; // Don't poll while offline
     try {
       const domain = user?.role === 'ARTISAN' ? 'STUDIO' : (user?.role === 'ADMIN' ? 'ADMIN' : 'MARKETPLACE');
       const data = await getNotifications(domain);
@@ -888,13 +889,20 @@ export default function Navbar({
             </div>
 
             {user && (
-              <div className="border-t border-[#E8E2D9] pt-2">
+              <div className="border-t border-[#E8E2D9] pt-2 space-y-1">
                 <button
-                  onClick={() => { setShowMoreMenu(false); onOpenAuth(); }}
+                  onClick={() => { setShowMoreMenu(false); onOpenAuth('PROFILE'); }}
+                  className="w-full flex items-center justify-center space-x-2 p-2 rounded-lg bg-[#FAF7F2] border border-[#E8E2D9] hover:border-[#A6533B] text-[#1C1C1C] hover:text-[#A6533B] font-semibold transition-colors cursor-pointer"
+                >
+                  <User className="w-4 h-4" />
+                  <span>Manage Account</span>
+                </button>
+                <button
+                  onClick={() => { setShowMoreMenu(false); if (onLogout) onLogout(); }}
                   className="w-full flex items-center justify-center space-x-2 p-2 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 font-semibold transition-colors cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Manage Account / Sign Out</span>
+                  <span>Sign Out</span>
                 </button>
               </div>
             )}

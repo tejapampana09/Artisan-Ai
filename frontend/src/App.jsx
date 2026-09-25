@@ -6,6 +6,7 @@ import BuyView from './components/BuyView';
 import OfflineSyncBanner from './components/OfflineSyncBanner';
 import AuthModal from './components/AuthModal';
 import NotificationCenter from './components/NotificationCenter';
+import { useNotification } from './context/NotificationContext';
 import SplashScreen from './components/SplashScreen';
 import { OfflineProvider, useOffline } from './context/OfflineContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -65,7 +66,6 @@ function AppContent() {
   const [activeMode, setActiveMode] = useState(getInitialModeFromUrl);
   const [user, setUser] = useState(getStoredUser());
   const [readyStatus, setReadyStatus] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [showSplash, setShowSplash] = useState(() => {
     try {
       return !sessionStorage.getItem('artisan_splash_seen');
@@ -81,6 +81,8 @@ function AppContent() {
   const [sellerTab, setSellerTab] = useState('DASHBOARD');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProductFromSearch, setSelectedProductFromSearch] = useState(null);
+
+  const notify = useNotification();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -110,23 +112,21 @@ function AppContent() {
       setActiveMode('HOME');
       setIsAuthOpen(true);
       setAuthInitialTab('LOGIN');
-      // Brief toast-like notification so user knows why they were logged out
-      console.info('[Artisan AI] Session expired:', e.detail?.message);
+      // Show user-visible toast so they know why they were logged out
+      notify.warning('Your session has expired. Please sign in again.');
     };
     window.addEventListener('artisan:session-expired', handleSessionExpired);
     return () => window.removeEventListener('artisan:session-expired', handleSessionExpired);
-  }, []);
+  }, [notify]);
 
   useEffect(() => {
     if (showSplash) {
       try {
         sessionStorage.setItem('artisan_splash_seen', 'true');
       } catch {}
-      // Hard safety timer: dismiss splash screen quickly (max 800ms)
       const timer = setTimeout(() => {
         setSplashFading(true);
-        const hide = setTimeout(() => setShowSplash(false), 400);
-        return () => clearTimeout(hide);
+        setTimeout(() => setShowSplash(false), 400);
       }, 800);
       return () => clearTimeout(timer);
     }
