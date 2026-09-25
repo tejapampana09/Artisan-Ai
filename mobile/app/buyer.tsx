@@ -353,7 +353,10 @@ export default function BuyerScreen() {
 
       <DeliveryAddressModal
         visible={deliveryModalVisible}
-        onClose={() => setDeliveryModalVisible(false)}
+        onClose={() => {
+          setDeliveryModalVisible(false);
+          loadUserProfileAndAddress();
+        }}
         onAddressSelected={(addr) => {
           if (addr.name) setUserName(addr.name.split(" ")[0]);
           setUserAddress(`${addr.addressLine}${addr.pincode ? `, ${addr.pincode}` : ""}`);

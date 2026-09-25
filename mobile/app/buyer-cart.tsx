@@ -17,10 +17,12 @@ import {
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { theme } from "../src/theme";
 import { getCart, updateQuantity, removeFromCart, clearCart, syncCartWithLatestStock, CartItem } from "../src/cart";
 import { api } from "../src/api";
 import { getSession } from "../src/storage";
+import { getActiveDeliveryAddress } from "../src/address";
 import { useRoleGuard } from "../src/authGuard";
 
 export default function BuyerCart() {
@@ -34,6 +36,7 @@ export default function BuyerCart() {
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryPhone, setDeliveryPhone] = useState("");
   const [paymentMode, setPaymentMode] = useState<"COD" | "RAZORPAY">("COD");
+  const [detectingGps, setDetectingGps] = useState(false);
 
   const refreshCart = async () => {
     let list = await getCart();
@@ -55,7 +58,94 @@ export default function BuyerCart() {
     if (s.user && !guest) {
       if (s.user.name && s.user.name !== "Guest Explorer") setDeliveryName(s.user.name);
       if (s.user.phone) setDeliveryPhone(s.user.phone);
-      if (s.user.location) setDeliveryAddress(s.user.location);
+    }
+    try {
+      const activeAddr = await getActiveDeliveryAddress();
+      if (activeAddr) {
+        if (activeAddr.name && (!deliveryName || deliveryName === "Guest Explorer")) {
+          setDeliveryName(activeAddr.name);
+        }
+        if (activeAddr.phone && !deliveryPhone) {
+          setDeliveryPhone(activeAddr.phone);
+        }
+        setDeliveryAddress(`${activeAddr.addressLine}${activeAddr.pincode ? `, ${activeAddr.pincode}` : ""}`);
+      } else if (s.user?.location) {
+        setDeliveryAddress(s.user.location);
+      }
+    } catch {}
+  };
+
+  const handleCartDetectGps = async () => {
+    setDetectingGps(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      if (status === "granted") {
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced
+        });
+        lat = loc.coords.latitude;
+        lng = loc.coords.longitude;
+      }
+
+      if (lat === null || lng === null) {
+        Alert.alert(
+          "Location Access Required",
+          "Please enable location permission to auto-detect your delivery address."
+        );
+        setDetectingGps(false);
+        return;
+      }
+
+      let detStreet = "";
+      let detCity = "";
+      let detDistrict = "";
+      let detState = "";
+      let detPincode = "";
+
+      try {
+        const rev = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+        if (rev && rev.length > 0) {
+          const item = rev[0];
+          detStreet = [item.name, item.street].filter(Boolean).join(", ");
+          detDistrict = item.district || item.subregion || "";
+          detCity = item.city || "";
+          detState = item.region || "";
+          detPincode = item.postalCode || "";
+        }
+      } catch (_) {}
+
+      if (!detPincode || (!detDistrict && !detCity)) {
+        try {
+          const osmRes = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            { headers: { "Accept-Language": "en", "User-Agent": "ArtisanAI-Mobile/1.0" } }
+          );
+          if (osmRes.ok) {
+            const data = await osmRes.json();
+            const addr = data.address || {};
+            if (!detStreet) detStreet = [addr.road || addr.pedestrian || addr.suburb, addr.neighbourhood].filter(Boolean).join(", ");
+            if (!detCity) detCity = addr.city || addr.town || addr.village || "";
+            if (!detDistrict) detDistrict = addr.state_district || addr.county || detCity || "";
+            if (!detState) detState = addr.state || "";
+            if (!detPincode) detPincode = addr.postcode || "";
+          }
+        } catch (_) {}
+      }
+
+      const cleanPin = detPincode ? detPincode.replace(/\D/g, "").slice(0, 6) : "";
+      const cityDistrict = detCity && detDistrict && detCity !== detDistrict ? `${detCity}, ${detDistrict}` : (detCity || detDistrict);
+      const fullAddress = [detStreet, cityDistrict, detState, cleanPin].filter(Boolean).join(", ");
+
+      if (fullAddress) {
+        setDeliveryAddress(fullAddress);
+      }
+      setDetectingGps(false);
+    } catch (err) {
+      console.warn("GPS error in cart:", err);
+      setDetectingGps(false);
     }
   };
 
@@ -341,9 +431,34 @@ export default function BuyerCart() {
 
           {/* Shipping Address Card */}
           <View style={styles.sectionCard}>
-            <View style={styles.cardHeaderRow}>
-              <Ionicons name="location-outline" size={19} color={theme.accent} style={{ marginRight: 6 }} />
-              <Text style={styles.cardTitle}>Delivery Details</Text>
+            <View style={[styles.cardHeaderRow, { justifyContent: "space-between" }]}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Ionicons name="location-outline" size={19} color={theme.accent} style={{ marginRight: 6 }} />
+                <Text style={styles.cardTitle}>Delivery Details</Text>
+              </View>
+              <Pressable
+                onPress={handleCartDetectGps}
+                disabled={detectingGps}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: "#FBF7F0",
+                  paddingHorizontal: 8,
+                  paddingVertical: 5,
+                  borderRadius: 6,
+                  borderWidth: 1,
+                  borderColor: "#E8D8C8"
+                }}
+              >
+                {detectingGps ? (
+                  <ActivityIndicator size="small" color="#A6533B" style={{ marginRight: 4 }} />
+                ) : (
+                  <Ionicons name="locate" size={13} color="#A6533B" style={{ marginRight: 4 }} />
+                )}
+                <Text style={{ fontSize: 11, fontWeight: "700", color: "#A6533B" }}>
+                  {detectingGps ? "Detecting..." : "GPS Auto-Fill"}
+                </Text>
+              </Pressable>
             </View>
 
             <TextInput

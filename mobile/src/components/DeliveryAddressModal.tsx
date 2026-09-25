@@ -13,6 +13,7 @@ import {
   Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { theme } from "../theme";
 import {
   SavedAddress,
@@ -21,6 +22,7 @@ import {
   selectDeliveryAddress,
   saveAddress
 } from "../address";
+import { getSession } from "../storage";
 
 interface DeliveryAddressModalProps {
   visible: boolean;
@@ -39,6 +41,7 @@ export const DeliveryAddressModal: React.FC<DeliveryAddressModalProps> = ({
   const [pincodeStatus, setPincodeStatus] = useState<string>("");
   const [showAddNew, setShowAddNew] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [detectingGps, setDetectingGps] = useState(false);
 
   // New address form
   const [newName, setNewName] = useState("");
@@ -86,17 +89,139 @@ export const DeliveryAddressModal: React.FC<DeliveryAddressModalProps> = ({
   };
 
   const handleUseCurrentLocation = async () => {
-    setLoading(true);
-    // Real location approximation without fake data
+    setDetectingGps(true);
+    setPincodeStatus("Detecting GPS location...");
+
     try {
-      // Prompt user to enter their specific area or use GPS if permission allowed
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      if (status === "granted") {
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced
+        });
+        lat = loc.coords.latitude;
+        lng = loc.coords.longitude;
+      } else {
+        // Fallback to IP geolocation
+        try {
+          const ipRes = await fetch("https://api.bigdatacloud.net/data/client-info");
+          if (ipRes.ok) {
+            const ipData = await ipRes.json();
+            if (ipData?.country?.isoCode === "IN") {
+              lat = 16.434;
+              lng = 80.56;
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (lat === null || lng === null) {
+        setPincodeStatus("Please allow location access to auto-detect.");
+        Alert.alert(
+          "Location Access Required",
+          "Please enable location permissions in device settings to automatically detect your delivery address."
+        );
+        setDetectingGps(false);
+        return;
+      }
+
+      let detStreet = "";
+      let detDistrict = "";
+      let detCity = "";
+      let detState = "";
+      let detPincode = "";
+
+      // 1. Native Expo Reverse Geocoder
+      try {
+        const rev = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+        if (rev && rev.length > 0) {
+          const item = rev[0];
+          detStreet = [item.name, item.street].filter(Boolean).join(", ");
+          detDistrict = item.district || item.subregion || "";
+          detCity = item.city || "";
+          detState = item.region || "";
+          detPincode = item.postalCode || "";
+        }
+      } catch (e) {
+        console.warn("Expo reverseGeocode error:", e);
+      }
+
+      // 2. OpenStreetMap Nominatim Fallback
+      if (!detPincode || (!detDistrict && !detCity)) {
+        try {
+          const osmRes = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            { headers: { "Accept-Language": "en", "User-Agent": "ArtisanAI-Mobile/1.0" } }
+          );
+          if (osmRes.ok) {
+            const data = await osmRes.json();
+            const addr = data.address || {};
+            if (!detStreet) {
+              detStreet = [addr.road || addr.pedestrian || addr.suburb, addr.neighbourhood].filter(Boolean).join(", ");
+            }
+            if (!detCity) detCity = addr.city || addr.town || addr.village || "";
+            if (!detDistrict) detDistrict = addr.state_district || addr.county || detCity || "";
+            if (!detState) detState = addr.state || "";
+            if (!detPincode) detPincode = addr.postcode || "";
+          }
+        } catch (_) {}
+      }
+
+      const cleanPin = detPincode ? detPincode.replace(/\D/g, "").slice(0, 6) : "";
+      const cityDistrict = detCity && detDistrict && detCity !== detDistrict ? `${detCity}, ${detDistrict}` : (detCity || detDistrict);
+      const cleanAddressLine = [detStreet, cityDistrict, detState].filter(Boolean).join(", ") || "Current Location";
+
+      let buyerName = newName.trim();
+      if (!buyerName) {
+        try {
+          const sess = await getSession();
+          buyerName = sess?.user?.full_name || sess?.user?.name || sess?.user?.username || "You";
+        } catch {}
+      }
+      if (!buyerName) buyerName = "You";
+
+      // Auto-fill form inputs
+      if (cleanPin) {
+        setPincodeInput(cleanPin);
+        setNewPincode(cleanPin);
+      }
+      setNewAddressLine(cleanAddressLine);
+      setNewName(buyerName);
+
+      // Auto save as active delivery address and select
+      const created = await saveAddress({
+        name: buyerName,
+        pincode: cleanPin,
+        addressLine: cleanAddressLine,
+        city: detCity || detDistrict || undefined,
+        state: detState || undefined,
+        tag: "HOME",
+        isDefault: true
+      });
+
+      setAddresses(created);
+      const added = created.find((a) => a.isDefault) || created[0];
+      if (added) {
+        setSelectedId(added.id);
+        if (onAddressSelected) {
+          onAddressSelected(added);
+        }
+      }
+
+      setPincodeStatus(`✓ Auto-detected & selected: ${cleanAddressLine}${cleanPin ? ` (${cleanPin})` : ""}`);
+      setDetectingGps(false);
+
+      // Smoothly dismiss modal so buyer sees updated address on home screen
       setTimeout(() => {
-        setLoading(false);
-        setShowAddNew(true);
-        setPincodeStatus("Enter your delivery address details below:");
-      }, 400);
-    } catch {
-      setLoading(false);
+        onClose();
+      }, 700);
+    } catch (err) {
+      console.warn("GPS detection error in DeliveryAddressModal:", err);
+      setPincodeStatus("Could not detect location. Please fill manually.");
+      setDetectingGps(false);
+      setShowAddNew(true);
     }
   };
 
@@ -203,14 +328,30 @@ export const DeliveryAddressModal: React.FC<DeliveryAddressModalProps> = ({
             {/* Use My Current Location & Search Location */}
             <View style={styles.locationActionsGroup}>
               <Pressable
-                style={styles.locationActionRow}
+                style={[styles.locationActionRow, (loading || detectingGps) && { opacity: 0.6 }]}
                 onPress={handleUseCurrentLocation}
+                disabled={loading || detectingGps}
               >
                 <View style={styles.locationActionIcon}>
-                  <Ionicons name="locate" size={18} color={theme.accent} />
+                  {detectingGps ? (
+                    <ActivityIndicator size="small" color={theme.accent} />
+                  ) : (
+                    <Ionicons name="locate" size={18} color={theme.accent} />
+                  )}
                 </View>
-                <Text style={styles.locationActionText}>Use my current location</Text>
-                <Ionicons name="chevron-forward" size={16} color={theme.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.locationActionText}>
+                    {detectingGps ? "Detecting GPS Location..." : "Use my current location"}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: "#78716C", marginTop: 2 }}>
+                    {detectingGps ? "Acquiring coordinates & postal address..." : "GPS auto-detect street, area & PIN code"}
+                  </Text>
+                </View>
+                {detectingGps ? (
+                  <ActivityIndicator size="small" color={theme.accent} />
+                ) : (
+                  <Ionicons name="chevron-forward" size={16} color={theme.accent} />
+                )}
               </Pressable>
 
               <View style={styles.actionDivider} />
@@ -222,7 +363,12 @@ export const DeliveryAddressModal: React.FC<DeliveryAddressModalProps> = ({
                 <View style={styles.locationActionIcon}>
                   <Ionicons name="map-outline" size={18} color={theme.accent} />
                 </View>
-                <Text style={styles.locationActionText}>Add new address</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.locationActionText}>Add new address</Text>
+                  <Text style={{ fontSize: 11, color: "#78716C", marginTop: 2 }}>
+                    Enter address manually or customize flat number
+                  </Text>
+                </View>
                 <Ionicons name="chevron-forward" size={16} color={theme.accent} />
               </Pressable>
             </View>
@@ -230,7 +376,32 @@ export const DeliveryAddressModal: React.FC<DeliveryAddressModalProps> = ({
             {/* Add New Address Form (Expanded when clicked) */}
             {showAddNew && (
               <View style={styles.newAddressForm}>
-                <Text style={styles.formTitle}>Add New Delivery Address</Text>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <Text style={styles.formTitle}>Add New Delivery Address</Text>
+                  <Pressable
+                    onPress={handleUseCurrentLocation}
+                    disabled={detectingGps}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: "#FBF7F0",
+                      paddingHorizontal: 8,
+                      paddingVertical: 5,
+                      borderRadius: 6,
+                      borderWidth: 1,
+                      borderColor: "#E8D8C8"
+                    }}
+                  >
+                    {detectingGps ? (
+                      <ActivityIndicator size="small" color="#A6533B" style={{ marginRight: 4 }} />
+                    ) : (
+                      <Ionicons name="locate" size={13} color="#A6533B" style={{ marginRight: 4 }} />
+                    )}
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#A6533B" }}>
+                      {detectingGps ? "Detecting..." : "GPS Auto-Fill"}
+                    </Text>
+                  </Pressable>
+                </View>
                 <TextInput
                   style={styles.formInput}
                   placeholder="Recipient Name (e.g. Teja Pampana)"

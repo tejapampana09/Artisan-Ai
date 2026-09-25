@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 import { theme } from "../src/theme";
 import { getSession, clearSession } from "../src/storage";
 import { AppLanguage, useI18n } from "../src/i18n";
@@ -41,6 +42,7 @@ export default function SettingsScreen() {
   const [savedAddress, setSavedAddress] = useState<string>("");
   const [editingAddress, setEditingAddress] = useState<boolean>(false);
   const [tempAddress, setTempAddress] = useState<string>("");
+  const [detectingGps, setDetectingGps] = useState<boolean>(false);
 
   const [orderNotifs, setOrderNotifs] = useState<boolean>(true);
   const [promoNotifs, setPromoNotifs] = useState<boolean>(true);
@@ -115,6 +117,74 @@ export default function SettingsScreen() {
     await AsyncStorage.setItem(SETTINGS_ADDR_KEY, tempAddress.trim());
     setEditingAddress(false);
     Alert.alert("Saved", "Your delivery address has been updated.");
+  };
+
+  const handleDetectSettingsGps = async () => {
+    setDetectingGps(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      if (status === "granted") {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        lat = loc.coords.latitude;
+        lng = loc.coords.longitude;
+      }
+
+      if (lat === null || lng === null) {
+        Alert.alert("Permission Required", "Please allow location access to auto-fill address.");
+        setDetectingGps(false);
+        return;
+      }
+
+      let detStreet = "";
+      let detDistrict = "";
+      let detCity = "";
+      let detState = "";
+      let detPincode = "";
+
+      try {
+        const rev = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+        if (rev && rev.length > 0) {
+          const item = rev[0];
+          detStreet = [item.name, item.street].filter(Boolean).join(", ");
+          detDistrict = item.district || item.subregion || "";
+          detCity = item.city || "";
+          detState = item.region || "";
+          detPincode = item.postalCode || "";
+        }
+      } catch (_) {}
+
+      if (!detPincode || (!detDistrict && !detCity)) {
+        try {
+          const osmRes = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            { headers: { "Accept-Language": "en", "User-Agent": "ArtisanAI-Mobile/1.0" } }
+          );
+          if (osmRes.ok) {
+            const data = await osmRes.json();
+            const addr = data.address || {};
+            if (!detStreet) detStreet = [addr.road || addr.pedestrian || addr.suburb, addr.neighbourhood].filter(Boolean).join(", ");
+            if (!detCity) detCity = addr.city || addr.town || addr.village || "";
+            if (!detDistrict) detDistrict = addr.state_district || addr.county || detCity || "";
+            if (!detState) detState = addr.state || "";
+            if (!detPincode) detPincode = addr.postcode || "";
+          }
+        } catch (_) {}
+      }
+
+      const cleanPin = detPincode ? detPincode.replace(/\D/g, "").slice(0, 6) : "";
+      const cityDistrict = detCity && detDistrict && detCity !== detDistrict ? `${detCity}, ${detDistrict}` : (detCity || detDistrict);
+      const fullAddress = [detStreet, cityDistrict, detState, cleanPin].filter(Boolean).join(", ");
+
+      if (fullAddress) {
+        setTempAddress(fullAddress);
+      }
+      setDetectingGps(false);
+    } catch (_) {
+      setDetectingGps(false);
+    }
   };
 
   const toggleNotif = async (key: "order" | "promo" | "aiTips", val: boolean) => {
@@ -351,6 +421,32 @@ export default function SettingsScreen() {
             {/* Inline Address Edit Form */}
             {editingAddress && (
               <View style={styles.inlineAddressBox}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#4B5563" }}>Delivery Location</Text>
+                  <Pressable
+                    onPress={handleDetectSettingsGps}
+                    disabled={detectingGps}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: "#EFF6FF",
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 6,
+                      borderWidth: 1,
+                      borderColor: "#BFDBFE"
+                    }}
+                  >
+                    {detectingGps ? (
+                      <ActivityIndicator size="small" color="#2563EB" style={{ marginRight: 4 }} />
+                    ) : (
+                      <Ionicons name="locate" size={13} color="#2563EB" style={{ marginRight: 4 }} />
+                    )}
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#2563EB" }}>
+                      {detectingGps ? "Detecting GPS..." : "Auto-Fill GPS"}
+                    </Text>
+                  </Pressable>
+                </View>
                 <TextInput
                   style={styles.addressTextInput}
                   value={tempAddress}
