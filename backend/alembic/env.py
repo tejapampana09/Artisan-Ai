@@ -44,12 +44,10 @@ def get_url() -> str:
     1. DATABASE_URL env var  (CI / production RDS — set via GitHub Secret or EB env)
     2. backend/app/config.py DATABASE_URL  (local dev SQLite fallback)
     """
+    from backend.app.config import normalize_database_url
     env_url = os.getenv("DATABASE_URL", "").strip()
     if env_url:
-        # Heroku/RDS compatibility: normalize postgres:// → postgresql://
-        if env_url.startswith("postgres://"):
-            env_url = env_url.replace("postgres://", "postgresql://", 1)
-        return env_url
+        return normalize_database_url(env_url)
 
     # Fallback: use app config (resolves to absolute SQLite path for local dev)
     from backend.app.config import DATABASE_URL
@@ -57,7 +55,7 @@ def get_url() -> str:
 
 
 def _is_postgresql(url: str) -> bool:
-    return url.startswith("postgresql://") or url.startswith("postgres://")
+    return url.startswith("postgresql") or url.startswith("postgres://")
 
 
 # ── Offline mode ──────────────────────────────────────────────────────────────

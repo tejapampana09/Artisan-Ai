@@ -14,8 +14,37 @@ except ImportError:
     pass
 
 def normalize_database_url(url: str) -> str:
+    if not url:
+        return url
+    url = url.strip()
     if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql://", 1)
+        url = url.replace("postgres://", "postgresql://", 1)
+
+    # Dialect auto-detection & fallback:
+    # If URL requests psycopg (v3) but it is not installed, fallback to psycopg2
+    if url.startswith("postgresql+psycopg://"):
+        try:
+            import psycopg  # noqa: F401
+        except ImportError:
+            try:
+                import psycopg2  # noqa: F401
+                url = url.replace("postgresql+psycopg://", "postgresql+psycopg2://", 1)
+            except ImportError:
+                pass
+    elif url.startswith("postgresql://") or url.startswith("postgresql+psycopg2://"):
+        # If psycopg2 is not installed, fallback to psycopg (v3)
+        try:
+            import psycopg2  # noqa: F401
+        except ImportError:
+            try:
+                import psycopg  # noqa: F401
+                if url.startswith("postgresql+psycopg2://"):
+                    url = url.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
+                else:
+                    url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+            except ImportError:
+                pass
+
     return url
 
 get_database_url = normalize_database_url
