@@ -20,7 +20,7 @@ import { Ionicons, AntDesign, Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
-import { clearSession, getSession } from "../src/storage";
+import { clearSession, getSession, getUserProfilePhoto } from "../src/storage";
 import { addToCart, getCartCount, subscribeCart } from "../src/cart";
 import { getWishlist, subscribeWishlist, toggleWishlist } from "../src/wishlist";
 import { addRecentlyViewed } from "../src/recentlyViewed";
@@ -79,6 +79,7 @@ export default function BuyerScreen() {
   const [addedToast, setAddedToast] = useState("");
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [userName, setUserName] = useState("Teja");
+  const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [userAddress, setUserAddress] = useState("");
   const [deliveryModalVisible, setDeliveryModalVisible] = useState(false);
 
@@ -108,7 +109,16 @@ export default function BuyerScreen() {
 
   const loadUserProfileAndAddress = async () => {
     try {
+      const photo = await getUserProfilePhoto();
       const sess = await getSession();
+      if (photo) {
+        setUserPhoto(photo);
+      } else if (sess?.user?.avatar_url) {
+        setUserPhoto(sess.user.avatar_url);
+      } else {
+        setUserPhoto(null);
+      }
+
       if (sess?.user) {
         const name = sess.user.full_name || sess.user.name || sess.user.username;
         if (name) setUserName(name.split(" ")[0]);
@@ -446,7 +456,13 @@ export default function BuyerScreen() {
               hitSlop={6}
               accessibilityLabel="Account"
             >
-              <Ionicons name="person-outline" size={22} color="#1C1917" />
+              {userPhoto ? (
+                <Image source={{ uri: userPhoto }} style={styles.headerProfileImg} />
+              ) : (
+                <View style={styles.headerDefaultAvatar}>
+                  <Ionicons name="person" size={15} color="#8C7A6B" />
+                </View>
+              )}
             </Pressable>
           </View>
         </View>
@@ -797,6 +813,23 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: "center",
     justifyContent: "center"
+  },
+  headerProfileImg: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: theme.accent
+  },
+  headerDefaultAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#F5EBE1",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#E8DED1"
   },
   wishlistDot: {
     position: "absolute",

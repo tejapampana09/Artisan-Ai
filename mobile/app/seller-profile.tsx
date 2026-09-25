@@ -10,8 +10,10 @@ import {
   TextInput,
   StatusBar,
   Platform,
-  Switch
+  Switch,
+  Alert
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -57,6 +59,62 @@ export default function SellerProfileScreen() {
   const [inquiryAlerts, setInquiryAlerts] = useState(true);
   const [aiSuggestions, setAiSuggestions] = useState(true);
   const [signOutModalVisible, setSignOutModalVisible] = useState(false);
+
+  const [sellerPhoto, setSellerPhoto] = useState<string | null>(null);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+
+  const handlePickFromGallery = async () => {
+    setShowPhotoModal(false);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Required", "Please allow gallery access to select your studio photo.");
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        const uri = res.assets[0].uri;
+        setSellerPhoto(uri);
+        await AsyncStorage.setItem("artisan_studio_profile_photo", uri);
+      }
+    } catch (e) {
+      console.warn("Studio gallery error:", e);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    setShowPhotoModal(false);
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Required", "Please allow camera access to take your studio photo.");
+        return;
+      }
+      const res = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        const uri = res.assets[0].uri;
+        setSellerPhoto(uri);
+        await AsyncStorage.setItem("artisan_studio_profile_photo", uri);
+      }
+    } catch (e) {
+      console.warn("Studio camera error:", e);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setShowPhotoModal(false);
+    setSellerPhoto(null);
+    await AsyncStorage.removeItem("artisan_studio_profile_photo");
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -200,6 +258,14 @@ export default function SellerProfileScreen() {
         if (sess.user.pincode) setPincode(sess.user.pincode);
       }
 
+      // Load saved studio profile photo
+      const savedPhoto = await AsyncStorage.getItem("artisan_studio_profile_photo");
+      if (savedPhoto) {
+        setSellerPhoto(savedPhoto);
+      } else if (sess?.user?.avatar_url && !sess.user.avatar_url.includes("dicebear")) {
+        setSellerPhoto(sess.user.avatar_url);
+      }
+
       // Load saved studio UPI
       const savedUpi = await AsyncStorage.getItem("artisan_studio_upi_id");
       if (savedUpi) setUpiId(savedUpi);
@@ -295,7 +361,23 @@ export default function SellerProfileScreen() {
         {/* 1. Artisan Studio Card */}
         <View style={styles.studioCard}>
           <View style={styles.studioTopRow}>
-            <Image source={{ uri: avatarUrl }} style={styles.studioAvatar} />
+            <Pressable
+              style={styles.avatarWrapper}
+              onPress={() => setShowPhotoModal(true)}
+              hitSlop={8}
+              accessibilityLabel="Upload or change studio photo"
+            >
+              {sellerPhoto ? (
+                <Image source={{ uri: sellerPhoto }} style={styles.studioAvatar} />
+              ) : (
+                <View style={styles.defaultStudioAvatar}>
+                  <Ionicons name="storefront" size={26} color="#8C7A6B" />
+                </View>
+              )}
+              <View style={styles.avatarCameraBadge}>
+                <Ionicons name="camera" size={13} color="#FFFFFF" />
+              </View>
+            </Pressable>
             <View style={styles.studioDetailsCol}>
               <View style={styles.badgeRow}>
                 <View style={styles.studioRoleBadge}>
@@ -718,6 +800,67 @@ export default function SellerProfileScreen() {
         </Pressable>
       </Modal>
 
+      {/* Studio Photo Picker Modal */}
+      <Modal
+        visible={showPhotoModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhotoModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowPhotoModal(false)}
+        >
+          <Pressable style={styles.photoSheetContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.photoSheetHandle} />
+            <Text style={styles.photoSheetTitle}>Artisan Studio Photo</Text>
+            <Text style={styles.photoSheetSubtitle}>Personalize your studio avatar for buyers & craft map</Text>
+
+            <Pressable style={styles.photoOptionBtn} onPress={handleTakePhoto}>
+              <View style={[styles.photoOptionIconCircle, { backgroundColor: "#EFF6FF" }]}>
+                <Ionicons name="camera" size={20} color="#2563EB" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.photoOptionTitle}>Take Studio Photo</Text>
+                <Text style={styles.photoOptionDesc}>Capture workspace or craft with camera</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#A8A29E" />
+            </Pressable>
+
+            <Pressable style={styles.photoOptionBtn} onPress={handlePickFromGallery}>
+              <View style={[styles.photoOptionIconCircle, { backgroundColor: "#F0FDF4" }]}>
+                <Ionicons name="images" size={20} color="#16A34A" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.photoOptionTitle}>Choose from Gallery</Text>
+                <Text style={styles.photoOptionDesc}>Select from device photos</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#A8A29E" />
+            </Pressable>
+
+            {sellerPhoto && (
+              <Pressable style={styles.photoOptionBtn} onPress={handleRemovePhoto}>
+                <View style={[styles.photoOptionIconCircle, { backgroundColor: "#FEF2F2" }]}>
+                  <Ionicons name="trash-outline" size={20} color="#DC2626" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.photoOptionTitle, { color: "#DC2626" }]}>Remove Photo</Text>
+                  <Text style={styles.photoOptionDesc}>Reset to default artisan studio icon</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#A8A29E" />
+              </Pressable>
+            )}
+
+            <Pressable
+              style={styles.cancelPhotoBtn}
+              onPress={() => setShowPhotoModal(false)}
+            >
+              <Text style={styles.cancelPhotoBtnText}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <BottomNavigation role="seller" />
     </SafeAreaView>
   );
@@ -771,13 +914,119 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center"
   },
+  avatarWrapper: {
+    position: "relative",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginRight: 14
+  },
   studioAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#E8DDD5",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#F5EBE1",
     borderWidth: 2,
     borderColor: theme.accent
+  },
+  defaultStudioAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#F5EBE1",
+    borderWidth: 2,
+    borderColor: "#E8DDD5",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  avatarCameraBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 3
+  },
+  photoSheetContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: Platform.OS === "ios" ? 36 : 24,
+    width: "100%",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 10
+  },
+  photoSheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#D6D3D1",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 14
+  },
+  photoSheetTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1C1917",
+    textAlign: "center"
+  },
+  photoSheetSubtitle: {
+    fontSize: 13,
+    color: "#78716C",
+    textAlign: "center",
+    marginBottom: 16,
+    marginTop: 2
+  },
+  photoOptionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: "#FAF9F6",
+    marginBottom: 8
+  },
+  photoOptionIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12
+  },
+  photoOptionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1C1917"
+  },
+  photoOptionDesc: {
+    fontSize: 12,
+    color: "#78716C",
+    marginTop: 1
+  },
+  cancelPhotoBtn: {
+    marginTop: 8,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: "#F5F5F4",
+    alignItems: "center"
+  },
+  cancelPhotoBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#44403C"
   },
   studioDetailsCol: {
     flex: 1,

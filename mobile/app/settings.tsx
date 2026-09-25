@@ -11,15 +11,17 @@ import {
   StatusBar,
   Platform,
   Modal,
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
+import * as ImagePicker from "expo-image-picker";
 import { theme } from "../src/theme";
-import { getSession, clearSession } from "../src/storage";
+import { getSession, clearSession, getUserProfilePhoto, setUserProfilePhoto } from "../src/storage";
 import { AppLanguage, useI18n } from "../src/i18n";
 import { AppUpdateModal } from "../src/components";
 import {
@@ -52,9 +54,65 @@ export default function SettingsScreen() {
   const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
   const [showCouponsModal, setShowCouponsModal] = useState<boolean>(false);
 
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [showPhotoModal, setShowPhotoModal] = useState<boolean>(false);
+
   const [checkingUpdate, setCheckingUpdate] = useState<boolean>(false);
   const [manualUpdateInfo, setManualUpdateInfo] = useState<AppUpdateInfo | null>(null);
   const [showManualUpdateModal, setShowManualUpdateModal] = useState<boolean>(false);
+
+  const handlePickFromGallery = async () => {
+    setShowPhotoModal(false);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Required", "Please allow gallery access to select your profile picture.");
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        const uri = res.assets[0].uri;
+        setProfilePhoto(uri);
+        await setUserProfilePhoto(uri);
+      }
+    } catch (e) {
+      console.warn("Gallery pick error:", e);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    setShowPhotoModal(false);
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Required", "Please allow camera access to take a profile picture.");
+        return;
+      }
+      const res = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        const uri = res.assets[0].uri;
+        setProfilePhoto(uri);
+        await setUserProfilePhoto(uri);
+      }
+    } catch (e) {
+      console.warn("Camera capture error:", e);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setShowPhotoModal(false);
+    setProfilePhoto(null);
+    await setUserProfilePhoto(null);
+  };
 
   const handleManualCheckUpdate = async () => {
     setCheckingUpdate(true);
@@ -85,6 +143,13 @@ export default function SettingsScreen() {
     try {
       const sess = await getSession();
       setSession(sess);
+
+      const savedPhoto = await getUserProfilePhoto();
+      if (savedPhoto) {
+        setProfilePhoto(savedPhoto);
+      } else if (sess?.user?.avatar_url) {
+        setProfilePhoto(sess.user.avatar_url);
+      }
 
       const addr = await AsyncStorage.getItem(SETTINGS_ADDR_KEY);
       if (addr) {
@@ -258,9 +323,23 @@ export default function SettingsScreen() {
         {/* 1. Myntra Profile Header Card */}
         <View style={styles.profileHeaderCard}>
           <View style={styles.profileTopRow}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarInitial}>{isLoggedIn ? userInitials : "👤"}</Text>
-            </View>
+            <Pressable
+              style={styles.avatarWrapper}
+              onPress={() => setShowPhotoModal(true)}
+              hitSlop={8}
+              accessibilityLabel="Change profile picture"
+            >
+              {profilePhoto ? (
+                <Image source={{ uri: profilePhoto }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.defaultAvatarContainer}>
+                  <Ionicons name="person" size={32} color="#8C7A6B" />
+                </View>
+              )}
+              <View style={styles.avatarCameraBadge}>
+                <Ionicons name="camera" size={13} color="#FFFFFF" />
+              </View>
+            </Pressable>
             <View style={styles.profileDetailsCol}>
               <Text style={styles.profileUserName} numberOfLines={1}>
                 {isLoggedIn
@@ -822,6 +901,67 @@ export default function SettingsScreen() {
         </Pressable>
       </Modal>
 
+      {/* Profile Photo Picker Bottom Sheet Modal */}
+      <Modal
+        visible={showPhotoModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhotoModal(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setShowPhotoModal(false)}
+        >
+          <Pressable style={styles.photoSheetContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.photoSheetHandle} />
+            <Text style={styles.photoSheetTitle}>Profile Photo</Text>
+            <Text style={styles.photoSheetSubtitle}>Personalize your Artisan AI profile picture</Text>
+
+            <Pressable style={styles.photoOptionBtn} onPress={handleTakePhoto}>
+              <View style={[styles.photoOptionIconCircle, { backgroundColor: "#EFF6FF" }]}>
+                <Ionicons name="camera" size={20} color="#2563EB" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.photoOptionTitle}>Take Photo</Text>
+                <Text style={styles.photoOptionDesc}>Capture a new photo with camera</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#A8A29E" />
+            </Pressable>
+
+            <Pressable style={styles.photoOptionBtn} onPress={handlePickFromGallery}>
+              <View style={[styles.photoOptionIconCircle, { backgroundColor: "#F0FDF4" }]}>
+                <Ionicons name="images" size={20} color="#16A34A" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.photoOptionTitle}>Choose from Gallery</Text>
+                <Text style={styles.photoOptionDesc}>Select from device photo album</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#A8A29E" />
+            </Pressable>
+
+            {profilePhoto && (
+              <Pressable style={styles.photoOptionBtn} onPress={handleRemovePhoto}>
+                <View style={[styles.photoOptionIconCircle, { backgroundColor: "#FEF2F2" }]}>
+                  <Ionicons name="trash-outline" size={20} color="#DC2626" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.photoOptionTitle, { color: "#DC2626" }]}>Remove Photo</Text>
+                  <Text style={styles.photoOptionDesc}>Use clean default silhouette avatar</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#A8A29E" />
+              </Pressable>
+            )}
+
+            <Pressable
+              style={styles.cancelPhotoBtn}
+              onPress={() => setShowPhotoModal(false)}
+            >
+              <Text style={styles.cancelPhotoBtnText}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <AppUpdateModal
         visible={showManualUpdateModal}
         updateInfo={manualUpdateInfo}
@@ -889,6 +1029,48 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center"
   },
+  avatarWrapper: {
+    position: "relative",
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    marginRight: 14
+  },
+  avatarImage: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: "#F5EBE1",
+    borderWidth: 2,
+    borderColor: "#E8DED1"
+  },
+  defaultAvatarContainer: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: "#F5EBE1",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#E8DED1"
+  },
+  avatarCameraBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 3
+  },
   avatarCircle: {
     width: 60,
     height: 60,
@@ -906,6 +1088,78 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800",
     color: "#FFFFFF"
+  },
+  photoSheetContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: Platform.OS === "ios" ? 36 : 24,
+    width: "100%",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 10
+  },
+  photoSheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#D6D3D1",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 14
+  },
+  photoSheetTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: theme.ink,
+    textAlign: "center"
+  },
+  photoSheetSubtitle: {
+    fontSize: 13,
+    color: "#78716C",
+    textAlign: "center",
+    marginBottom: 16,
+    marginTop: 2
+  },
+  photoOptionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: "#FAF9F6",
+    marginBottom: 8
+  },
+  photoOptionIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12
+  },
+  photoOptionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1C1917"
+  },
+  photoOptionDesc: {
+    fontSize: 12,
+    color: "#78716C",
+    marginTop: 1
+  },
+  cancelPhotoBtn: {
+    marginTop: 8,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: "#F5F5F4",
+    alignItems: "center"
+  },
+  cancelPhotoBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#44403C"
   },
   profileDetailsCol: {
     flex: 1

@@ -166,3 +166,23 @@ export async function enforceRoleBoundary(
     return true;
   }
 }
+
+const USER_PROFILE_PHOTO_KEY = "artisan_ai_user_profile_photo";
+
+export async function getUserProfilePhoto(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(USER_PROFILE_PHOTO_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function setUserProfilePhoto(uri: string | null): Promise<void> {
+  try {
+    if (uri) {
+      await AsyncStorage.setItem(USER_PROFILE_PHOTO_KEY, uri);
+    } else {
+      await AsyncStorage.removeItem(USER_PROFILE_PHOTO_KEY);
+    }
+  } catch {}
+}

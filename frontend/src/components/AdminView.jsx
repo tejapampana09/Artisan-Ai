@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, User, Lock, Mail, Phone, MapPin, Sparkles, CheckCircle2, 
   PlusCircle, Users, BarChart3, Store, ArrowRight, KeyRound, LogOut, ShoppingBag,
