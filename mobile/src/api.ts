@@ -720,4 +720,36 @@ export const api = {
       "STUDIO"
     );
   },
+
+  // -------------------------------------------------------------
+  // CRAFT CLUSTERS & ARTISAN MAP
+  // -------------------------------------------------------------
+  async getCraftClusters() {
+    return request<any[]>("/artisan/map/clusters");
+  },
+
+  async getArtisanMapPins(params?: { cluster_id?: string; state?: string; craft?: string }) {
+    const query = new URLSearchParams();
+    if (params?.cluster_id) query.append("cluster_id", params.cluster_id);
+    if (params?.state) query.append("state", params.state);
+    if (params?.craft) query.append("craft", params.craft);
+    const qs = query.toString();
+    return request<any[]>(qs ? `/artisan/map/pins?${qs}` : "/artisan/map/pins");
+  },
+
+  async updateArtisanLocation(payload: {
+    latitude: number;
+    longitude: number;
+    craft_cluster?: string;
+    state?: string;
+    district?: string;
+    pincode?: string;
+  }) {
+    return request<any>(
+      "/artisan/location",
+      { method: "PUT", body: JSON.stringify(payload) },
+      "STUDIO"
+    );
+  },
 };
+

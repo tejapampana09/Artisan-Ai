@@ -451,6 +451,20 @@ class ArtisanProfileUpdate(BaseModel):
     craft_specialization: Optional[str] = Field(None, max_length=200)
     experience_years: Optional[int] = Field(default=0, ge=0)
     location: Optional[str] = Field(None, max_length=200)
+    latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
+    longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
+    craft_cluster: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    district: Optional[str] = Field(None, max_length=100)
+    pincode: Optional[str] = Field(None, max_length=20)
+
+class ArtisanLocationUpdate(BaseModel):
+    latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
+    longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
+    craft_cluster: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    district: Optional[str] = Field(None, max_length=100)
+    pincode: Optional[str] = Field(None, max_length=20)
 
 class ArtisanProfileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -468,6 +482,42 @@ class ArtisanProfileResponse(BaseModel):
     verification_status: str = "UNVERIFIED"
     total_products_count: int = 0
     average_rating: float = 0.0
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    craft_cluster: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    pincode: Optional[str] = None
+
+class CraftClusterInfo(BaseModel):
+    id: str
+    name: str
+    craft: str
+    category: str
+    state: str
+    district: str
+    latitude: float
+    longitude: float
+    description: str
+    heritage_age: str
+    artisan_count: int = 0
+    products_count: int = 0
+
+class ArtisanMapPin(BaseModel):
+    artisan_id: int
+    artisan_name: str
+    avatar_url: Optional[str] = None
+    craft: str
+    craft_cluster: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    latitude: float
+    longitude: float
+    verification_status: str
+    products_count: int = 0
+    average_rating: float = 0.0
+    sample_products: List[dict] = []
+
 
 # Buyer AI Copilot Schemas
 class BuyerCopilotRequest(BaseModel):

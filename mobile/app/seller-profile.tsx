@@ -39,6 +39,16 @@ export default function SellerProfileScreen() {
   const [upiId, setUpiId] = useState("");
   const [editingPayout, setEditingPayout] = useState(false);
 
+  // Studio Geolocation & Craft Cluster state
+  const [editingLocation, setEditingLocation] = useState(false);
+  const [craftCluster, setCraftCluster] = useState("");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [district, setDistrict] = useState("");
+  const [stateName, setStateName] = useState("");
+  const [savingLocation, setSavingLocation] = useState(false);
+  const [locationSuccessMsg, setLocationSuccessMsg] = useState("");
+
   // Studio alerts
   const [orderAlerts, setOrderAlerts] = useState(true);
   const [inquiryAlerts, setInquiryAlerts] = useState(true);
@@ -59,6 +69,15 @@ export default function SellerProfileScreen() {
         setStudioName(sess.user.name || sess.user.full_name || "Heritage Craft Studio");
         setCraftSpecialty(sess.user.craft || sess.user.craft_specialization || "Handloom & Terracotta");
         setStudioLocation(sess.user.location || "Andhra Pradesh, India");
+        setCraftCluster(sess.user.craft_cluster || "");
+        if (sess.user.latitude !== undefined && sess.user.latitude !== null) {
+          setLatitude(String(sess.user.latitude));
+        }
+        if (sess.user.longitude !== undefined && sess.user.longitude !== null) {
+          setLongitude(String(sess.user.longitude));
+        }
+        setDistrict(sess.user.district || "");
+        setStateName(sess.user.state || "");
       }
 
       // Load saved studio UPI
@@ -70,6 +89,30 @@ export default function SellerProfileScreen() {
       if (dash) setStats(dash);
     } catch (e) {
       console.warn("Failed to load seller profile data:", e);
+    }
+  };
+
+  const handleSaveLocation = async () => {
+    if (!latitude || !longitude) return;
+    setSavingLocation(true);
+    try {
+      const updated = await api.updateArtisanLocation({
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        craft_cluster: craftCluster.trim() || undefined,
+        district: district.trim() || undefined,
+        state: stateName.trim() || undefined
+      });
+      if (updated) {
+        setUser(updated);
+        setLocationSuccessMsg("Studio location saved to Heritage Map!");
+        setTimeout(() => setLocationSuccessMsg(""), 4000);
+        setEditingLocation(false);
+      }
+    } catch (err) {
+      console.warn("Save location error:", err);
+    } finally {
+      setSavingLocation(false);
     }
   };
 
@@ -286,6 +329,108 @@ export default function SellerProfileScreen() {
               />
               <Pressable style={styles.saveFormBtn} onPress={handleSavePayout}>
                 <Text style={styles.saveFormBtnText}>SAVE PAYOUT UPI</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+
+        {/* Studio Geolocation & Craft Cluster */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionHeaderTitle}>STUDIO GEOLOCATION & CRAFT CLUSTER</Text>
+
+          {locationSuccessMsg ? (
+            <View style={{ backgroundColor: "#F0FDF4", padding: 10, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: "#BBF7D0" }}>
+              <Text style={{ color: "#166534", fontSize: 12, fontWeight: "700" }}>✓ {locationSuccessMsg}</Text>
+            </View>
+          ) : null}
+
+          <Pressable
+            style={styles.menuRow}
+            onPress={() => setEditingLocation(!editingLocation)}
+          >
+            <View style={[styles.menuIconCircle, { backgroundColor: "#FEF3C7" }]}>
+              <Ionicons name="location-outline" size={20} color="#D97706" />
+            </View>
+            <View style={styles.menuTextCol}>
+              <Text style={styles.menuTitle}>
+                {craftCluster ? `${craftCluster} Cluster` : "Heritage Studio Coordinates"}
+              </Text>
+              <Text style={styles.menuSub}>
+                {latitude && longitude
+                  ? `Live Pin: ${parseFloat(latitude).toFixed(3)}°N, ${parseFloat(longitude).toFixed(3)}°E`
+                  : "Tap to set your workshop coordinates for the Craft Map"}
+              </Text>
+            </View>
+            <Text style={styles.editTextBtn}>{editingLocation ? "Cancel" : (latitude ? "Edit" : "Set")}</Text>
+          </Pressable>
+
+          {editingLocation && (
+            <View style={styles.editFormBox}>
+              <Text style={styles.formInputLabel}>Heritage Craft Cluster (e.g. Srikalahasti, Jaipur, Pochampally)</Text>
+              <TextInput
+                style={styles.formInput}
+                value={craftCluster}
+                onChangeText={setCraftCluster}
+                placeholder="e.g. Srikalahasti or Etikoppaka"
+                placeholderTextColor="#A8A29E"
+              />
+
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.formInputLabel}>Latitude (° N)</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={latitude}
+                    onChangeText={setLatitude}
+                    placeholder="13.7498"
+                    keyboardType="numeric"
+                    placeholderTextColor="#A8A29E"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.formInputLabel}>Longitude (° E)</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={longitude}
+                    onChangeText={setLongitude}
+                    placeholder="79.6984"
+                    keyboardType="numeric"
+                    placeholderTextColor="#A8A29E"
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.formInputLabel}>District</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={district}
+                    onChangeText={setDistrict}
+                    placeholder="Tirupati"
+                    placeholderTextColor="#A8A29E"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.formInputLabel}>State</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={stateName}
+                    onChangeText={setStateName}
+                    placeholder="Andhra Pradesh"
+                    placeholderTextColor="#A8A29E"
+                  />
+                </View>
+              </View>
+
+              <Pressable
+                style={[styles.saveFormBtn, savingLocation ? { opacity: 0.6 } : null]}
+                onPress={handleSaveLocation}
+                disabled={savingLocation}
+              >
+                <Text style={styles.saveFormBtnText}>
+                  {savingLocation ? "SAVING COORDINATES..." : "SAVE STUDIO ON CRAFT MAP"}
+                </Text>
               </Pressable>
             </View>
           )}

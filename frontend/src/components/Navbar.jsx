@@ -3,7 +3,7 @@ import {
   Store, ShoppingBag, Sparkles, UserCheck, Wifi, WifiOff, Home, 
   Bell, Globe, User, Smartphone, MoreVertical, Package, Heart, 
   MessageSquare, BookOpen, Users, LogOut, ArrowRight, Search, X, Loader2,
-  HelpCircle, FileText
+  HelpCircle, FileText, Compass, MapPin
 } from 'lucide-react';
 import { useOffline } from '../context/OfflineContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -339,10 +339,21 @@ export default function Navbar({
               </span>
             </div>
           ) : activeMode === 'HOME' ? (
-            <div className="hidden sm:flex items-center">
+            <div className="hidden sm:flex items-center space-x-2">
+              <button
+                onClick={() => onToggleMode('CRAFT_MAP')}
+                className={`flex items-center space-x-1.5 text-xs sm:text-sm font-bold transition-all cursor-pointer px-3.5 py-1.5 rounded-lg shadow-2xs ${
+                  isOverCarousel 
+                    ? 'bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-md' 
+                    : 'bg-white hover:bg-stone-50 text-[#1C1C1C] hover:text-[#A6533B] border border-[#E8E2D9] hover:border-[#A6533B]'
+                }`}
+              >
+                <Compass className={`w-4 h-4 ${isOverCarousel ? 'text-amber-300' : 'text-[#A6533B]'}`} />
+                <span>Craft Map</span>
+              </button>
               <button
                 onClick={() => onToggleMode('BUY')}
-                className={`flex items-center space-x-2 text-sm font-bold transition-all cursor-pointer px-4 py-1.5 rounded-lg shadow-2xs ${
+                className={`flex items-center space-x-2 text-xs sm:text-sm font-bold transition-all cursor-pointer px-4 py-1.5 rounded-lg shadow-2xs ${
                   isOverCarousel 
                     ? 'bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-md' 
                     : 'bg-white hover:bg-stone-50 text-[#1C1C1C] hover:text-[#A6533B] border border-[#E8E2D9] hover:border-[#A6533B]'
@@ -505,18 +516,48 @@ export default function Navbar({
               </button>
             )}
 
+            {/* Craft Map Quick Action (Hidden in Admin Console) */}
+            {activeMode !== 'ADMIN' && (
+              <button
+                onClick={() => onToggleMode('CRAFT_MAP')}
+                className={`p-1.5 transition-colors cursor-pointer relative ${
+                  activeMode === 'CRAFT_MAP'
+                    ? 'text-[#A6533B]'
+                    : isOverCarousel ? 'text-white hover:text-amber-300' : 'text-[#1C1C1C] hover:text-[#A6533B]'
+                }`}
+                title="🗺️ Craft Clusters Map of India"
+              >
+                <Compass className="w-5 h-5" />
+              </button>
+            )}
+
             {/* Profile for standard users (Hidden in Admin Console) */}
             {activeMode !== 'ADMIN' && (
               <button
                 onClick={() => onOpenAuth('PROFILE')}
                 className={`p-1.5 transition-colors cursor-pointer ${
-                  isOverCarousel ? 'text-white hover:text-amber-300' : 'text-[#1C1C1C] hover:text-[#A6533B]'
+                  activeMode === 'PROFILE'
+                    ? 'text-[#A6533B]'
+                    : isOverCarousel ? 'text-white hover:text-amber-300' : 'text-[#1C1C1C] hover:text-[#A6533B]'
                 }`}
                 title="Account Settings"
               >
                 <User className="w-5 h-5" />
               </button>
             )}
+
+            {/* More Menu Toggle */}
+            <button
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className={`p-1.5 transition-colors cursor-pointer ${
+                showMoreMenu
+                  ? 'text-[#A6533B]'
+                  : isOverCarousel ? 'text-white hover:text-amber-300' : 'text-[#1C1C1C] hover:text-[#A6533B]'
+              }`}
+              title="More Options / మెనూ"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </header>
@@ -738,6 +779,17 @@ export default function Navbar({
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B] px-1">
                 Explore Platform
               </p>
+              <button
+                onClick={() => { setShowMoreMenu(false); onToggleMode('CRAFT_MAP'); }}
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF7F2] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"
+              >
+                <div className="flex items-center space-x-2">
+                  <Compass className="w-4 h-4 text-[#A6533B]" />
+                  <span className="font-bold text-[#A6533B]">🗺️ Heritage Craft Map</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-[#A6533B]" />
+              </button>
+
               <button
                 onClick={() => { setShowMoreMenu(false); onToggleMode('BUY'); }}
                 className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF7F2] font-medium text-[#1C1C1C] transition-colors cursor-pointer text-left"

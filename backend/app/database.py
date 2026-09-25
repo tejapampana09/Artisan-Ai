@@ -70,7 +70,7 @@ def get_db():
 
 
 def ensure_schema_migrations(engine):
-    """Ensure schema_migrations table exists (for PostgreSQL compatibility)."""
+    """Ensure schema_migrations table exists and verify columns."""
     from sqlalchemy import inspect, text
     inspector = inspect(engine)
     if not inspector.has_table("schema_migrations"):
@@ -82,3 +82,21 @@ def ensure_schema_migrations(engine):
                 )
             """))
             conn.commit()
+
+    # Safe migration for new User location & craft cluster columns
+    if inspector.has_table("users"):
+        user_cols = {col["name"] for col in inspector.get_columns("users")}
+        new_columns = [
+            ("latitude", "NUMERIC(9,6)"),
+            ("longitude", "NUMERIC(9,6)"),
+            ("craft_cluster", "VARCHAR(100)"),
+            ("state", "VARCHAR(100)"),
+            ("district", "VARCHAR(100)"),
+            ("pincode", "VARCHAR(20)")
+        ]
+        with engine.connect() as conn:
+            for col_name, col_type in new_columns:
+                if col_name not in user_cols:
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+            conn.commit()
+

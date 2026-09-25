@@ -28,6 +28,7 @@ import Footer from './components/Footer';
 import AdminView from './components/AdminView';
 import LegalView from './components/LegalView';
 import BecomeArtisanView from './components/BecomeArtisanView';
+import CraftMapView from './components/CraftMapView';
 
 const roleDomain = (role) => (
   role === 'ARTISAN' ? 'STUDIO' : role === 'ADMIN' ? 'ADMIN' : role === 'BUYER' ? 'BUYER' : null
@@ -49,6 +50,7 @@ const getInitialModeFromUrl = () => {
     if (route.includes('become-artisan') || route.includes('seller-onboarding') || route.includes('artisan-guide')) return 'BECOME_ARTISAN';
     if (route.includes('story')) return 'STORY';
     if (route.includes('artisans')) return 'ARTISANS';
+    if (route.includes('craft-map') || route.includes('crafts-map') || route.includes('map')) return 'CRAFT_MAP';
     if (route.includes('collections')) return 'COLLECTIONS';
     return 'HOME';
   } catch {
@@ -158,7 +160,7 @@ function AppContent() {
         setUser(userData);
         setStoredUser(userData);
 
-        const publicPages = ['TERMS', 'PRIVACY', 'REFUND', 'CONTACT', 'BECOME_ARTISAN', 'STORY', 'ARTISANS', 'COLLECTIONS'];
+        const publicPages = ['TERMS', 'PRIVACY', 'REFUND', 'CONTACT', 'BECOME_ARTISAN', 'STORY', 'ARTISANS', 'COLLECTIONS', 'CRAFT_MAP'];
         setActiveMode(prev => {
           if (publicPages.includes(prev)) return prev;
           if (userData.role === 'BUYER') return 'BUY';
@@ -206,6 +208,7 @@ function AppContent() {
         'SELL': 'studio',
         'STORY': 'story',
         'ARTISANS': 'artisans',
+        'CRAFT_MAP': 'craft-map',
         'COLLECTIONS': 'collections',
         'TERMS': 'terms',
         'PRIVACY': 'privacy',
@@ -308,6 +311,15 @@ function AppContent() {
               user={user}
               onOpenAuth={handleOpenAuth}
               onSelectMode={handleToggleMode}
+            />
+          ) : activeMode === 'CRAFT_MAP' ? (
+            <CraftMapView
+              onSelectMode={handleToggleMode}
+              onOpenAuth={handleOpenAuth}
+              onSelectProduct={(prod) => {
+                setSelectedProductFromSearch(prod);
+                handleToggleMode('BUY');
+              }}
             />
           ) : activeMode === 'COLLECTIONS' ? (
             <CollectionsView

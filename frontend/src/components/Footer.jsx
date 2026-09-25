@@ -66,6 +66,11 @@ export default function Footer({ onSelectMode, onOpenAuth, user }) {
               </button>
             </li>
             <li>
+              <button onClick={() => handleNav('CRAFT_MAP')} className="hover:text-[#A6533B] transition-colors cursor-pointer font-bold text-[#A6533B]">
+                🗺️ Interactive Craft Map
+              </button>
+            </li>
+            <li>
               <button onClick={() => handleNav('STORY')} className="hover:text-[#A6533B] transition-colors cursor-pointer">
                 Our Story & Artisans
               </button>

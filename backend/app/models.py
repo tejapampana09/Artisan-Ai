@@ -26,6 +26,14 @@ class User(Base):
     verification_status = Column(String, default="UNVERIFIED", nullable=False) # "UNVERIFIED", "PROFILE_COMPLETE", "VERIFIED_ARTISAN"
     push_token = Column(String(512), index=True, nullable=True)
 
+    # Real-Time Geolocation & Heritage Craft Cluster
+    latitude = Column(Numeric(9, 6), nullable=True)
+    longitude = Column(Numeric(9, 6), nullable=True)
+    craft_cluster = Column(String(100), nullable=True)
+    state = Column(String(100), nullable=True)
+    district = Column(String(100), nullable=True)
+    pincode = Column(String(20), nullable=True)
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     products = relationship("Product", back_populates="seller")

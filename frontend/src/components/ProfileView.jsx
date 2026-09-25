@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   User, Mail, Phone, MapPin, Award, ShieldCheck, CheckCircle2, 
-  LogOut, Store, Sparkles, Edit3, Globe, Smartphone, ChevronRight, PlusCircle, X, Save
+  LogOut, Store, Sparkles, Edit3, Globe, Smartphone, ChevronRight, PlusCircle, X, Save,
+  Compass, Navigation, LocateFixed, Loader2
 } from 'lucide-react';
-import { logoutUser, updateUserProfile } from '../api/index.js';
+import { logoutUser, updateUserProfile, fetchCraftClusters, updateArtisanStudioLocation } from '../api/index.js';
 import { setStoredUser } from '../services/offlineSync.js';
 import { useNotification } from '../context/NotificationContext';
 
@@ -13,6 +14,19 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
 
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Studio Geolocation & Clusters State
+  const [clusters, setClusters] = useState([]);
+  const [detectingGps, setDetectingGps] = useState(false);
+  const [savingLocation, setSavingLocation] = useState(false);
+  const [locationForm, setLocationForm] = useState({
+    craft_cluster: user?.craft_cluster || '',
+    latitude: user?.latitude || '',
+    longitude: user?.longitude || '',
+    state: user?.state || '',
+    district: user?.district || '',
+    pincode: user?.pincode || ''
+  });
 
   const [form, setForm] = useState({
     name: '',
@@ -24,6 +38,14 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
   });
 
   useEffect(() => {
+    if (isArtisan) {
+      fetchCraftClusters().then(data => {
+        if (data) setClusters(data);
+      });
+    }
+  }, [isArtisan]);
+
+  useEffect(() => {
     if (user) {
       setForm({
         name: user.name || '',
@@ -33,8 +55,85 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
         craft_specialization: user.craft_specialization || '',
         bio: user.bio || ''
       });
+      setLocationForm({
+        craft_cluster: user.craft_cluster || '',
+        latitude: user.latitude !== undefined && user.latitude !== null ? user.latitude : '',
+        longitude: user.longitude !== undefined && user.longitude !== null ? user.longitude : '',
+        state: user.state || '',
+        district: user.district || '',
+        pincode: user.pincode || ''
+      });
     }
   }, [user]);
+
+  const handleSelectCluster = (clusterName) => {
+    const selected = clusters.find(c => c.name === clusterName);
+    if (selected) {
+      setLocationForm(prev => ({
+        ...prev,
+        craft_cluster: selected.name,
+        latitude: selected.latitude,
+        longitude: selected.longitude,
+        state: selected.state,
+        district: selected.district
+      }));
+    } else {
+      setLocationForm(prev => ({ ...prev, craft_cluster: clusterName }));
+    }
+  };
+
+  const handleDetectGPS = () => {
+    if (!navigator.geolocation) {
+      notify.error('Geolocation is not supported by your browser');
+      return;
+    }
+    setDetectingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setLocationForm(prev => ({
+          ...prev,
+          latitude: parseFloat(latitude.toFixed(6)),
+          longitude: parseFloat(longitude.toFixed(6))
+        }));
+        setDetectingGps(false);
+        notify.success(`GPS Location detected: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`);
+      },
+      (err) => {
+        setDetectingGps(false);
+        notify.warning('Could not retrieve GPS location. Please allow browser location access.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const handleSaveLocation = async (e) => {
+    e?.preventDefault();
+    if (!locationForm.latitude || !locationForm.longitude) {
+      notify.warning('Please provide latitude and longitude or detect GPS');
+      return;
+    }
+    setSavingLocation(true);
+    try {
+      const updated = await updateArtisanStudioLocation({
+        latitude: parseFloat(locationForm.latitude),
+        longitude: parseFloat(locationForm.longitude),
+        craft_cluster: locationForm.craft_cluster || undefined,
+        state: locationForm.state || undefined,
+        district: locationForm.district || undefined,
+        pincode: locationForm.pincode || undefined
+      });
+      if (updated) {
+        setStoredUser(updated, updated.role || 'ARTISAN');
+        onAuthChange(updated);
+        notify.success('Studio location and map coordinates saved!');
+      }
+    } catch (err) {
+      notify.error(err.message || 'Failed to save location');
+    } finally {
+      setSavingLocation(false);
+    }
+  };
 
   const handleSignOut = () => {
     logoutUser();
@@ -199,6 +298,153 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
           </div>
         </div>
       </div>
+
+      {/* Studio Geolocation & Craft Cluster (For Verified Artisans) */}
+      {isArtisan && (
+        <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6 space-y-5 shadow-2xs">
+          <div className="border-b border-[#E8E2D9] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center space-x-2">
+                <Compass className="w-5 h-5 text-[#A6533B]" />
+                <h2 className="font-bold text-base text-[#1C1C1C]">
+                  Studio Geolocation & Heritage Craft Cluster / వర్క్‌షాప్ స్థానం
+                </h2>
+              </div>
+              <p className="text-xs text-stone-500 mt-1">
+                Your coordinates power your real-time pin on the Interactive Craft Map of India.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleDetectGPS}
+                disabled={detectingGps}
+                className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-[#A6533B] border border-amber-200 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <LocateFixed className={`w-3.5 h-3.5 ${detectingGps ? 'animate-spin' : ''}`} />
+                <span>{detectingGps ? 'Detecting GPS...' : '📍 Detect Current Location (GPS)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectMode('CRAFT_MAP')}
+                className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-[#FAF7F2] hover:bg-stone-100 text-[#1C1C1C] border border-[#E8E2D9] font-bold text-xs transition-colors cursor-pointer"
+              >
+                <span>View on Map</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveLocation} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+              {/* Canonical Cluster Selector */}
+              <div>
+                <label className="block font-bold text-[#1C1C1C] mb-1">
+                  Heritage Craft Cluster / హస్తకళ క్లస్టర్
+                </label>
+                <select
+                  value={locationForm.craft_cluster}
+                  onChange={(e) => handleSelectCluster(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-[#E8E2D9] bg-[#FAF7F2] focus:outline-none focus:border-[#A6533B] font-medium"
+                >
+                  <option value="">Select or Custom Cluster</option>
+                  {clusters.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name} ({c.state})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Latitude */}
+              <div>
+                <label className="block font-bold text-[#1C1C1C] mb-1">Latitude (° N)</label>
+                <input
+                  type="number"
+                  step="any"
+                  required
+                  placeholder="e.g. 13.7498"
+                  value={locationForm.latitude}
+                  onChange={(e) => setLocationForm({ ...locationForm, latitude: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-[#E8E2D9] bg-white focus:outline-none focus:border-[#A6533B]"
+                />
+              </div>
+
+              {/* Longitude */}
+              <div>
+                <label className="block font-bold text-[#1C1C1C] mb-1">Longitude (° E)</label>
+                <input
+                  type="number"
+                  step="any"
+                  required
+                  placeholder="e.g. 79.6984"
+                  value={locationForm.longitude}
+                  onChange={(e) => setLocationForm({ ...locationForm, longitude: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-[#E8E2D9] bg-white focus:outline-none focus:border-[#A6533B]"
+                />
+              </div>
+
+              {/* District */}
+              <div>
+                <label className="block font-bold text-[#1C1C1C] mb-1">District / జిల్లా</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Tirupati"
+                  value={locationForm.district}
+                  onChange={(e) => setLocationForm({ ...locationForm, district: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-[#E8E2D9] bg-white focus:outline-none focus:border-[#A6533B]"
+                />
+              </div>
+
+              {/* State */}
+              <div>
+                <label className="block font-bold text-[#1C1C1C] mb-1">State / రాష్ట్రం</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Andhra Pradesh"
+                  value={locationForm.state}
+                  onChange={(e) => setLocationForm({ ...locationForm, state: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-[#E8E2D9] bg-white focus:outline-none focus:border-[#A6533B]"
+                />
+              </div>
+
+              {/* Pincode */}
+              <div>
+                <label className="block font-bold text-[#1C1C1C] mb-1">Pincode / పిన్‌కోడ్</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 517644"
+                  value={locationForm.pincode}
+                  onChange={(e) => setLocationForm({ ...locationForm, pincode: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-[#E8E2D9] bg-white focus:outline-none focus:border-[#A6533B]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-[#E8E2D9]">
+              <div className="flex items-center space-x-1.5 text-xs text-stone-500">
+                <span className={`w-2 h-2 rounded-full ${locationForm.latitude && locationForm.longitude ? 'bg-emerald-500' : 'bg-amber-400'}`}></span>
+                <span>
+                  {locationForm.latitude && locationForm.longitude 
+                    ? `Studio Active on Map (${parseFloat(locationForm.latitude).toFixed(3)}°N, ${parseFloat(locationForm.longitude).toFixed(3)}°E)` 
+                    : 'Coordinates not yet saved'}
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={savingLocation}
+                className="flex items-center space-x-2 px-5 py-2 rounded-xl bg-[#A6533B] hover:bg-[#8C3F2B] text-white font-bold text-xs transition-all shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>{savingLocation ? 'Saving Location...' : 'Save Studio Coordinates'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Account Navigation Quick Links */}
       <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6 space-y-4 shadow-2xs">

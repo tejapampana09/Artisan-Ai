@@ -7,7 +7,10 @@ from backend.app.database import get_db
 from backend.app.models import User, Product, Review, PayoutAccount
 from backend.app.schemas import (
     ArtisanProfileResponse, 
-    ArtisanProfileUpdate, 
+    ArtisanProfileUpdate,
+    ArtisanLocationUpdate,
+    CraftClusterInfo,
+    ArtisanMapPin,
     ProductResponse, 
     UserResponse, 
     AdminCreateSellerRequest, 
@@ -17,10 +20,178 @@ from backend.app.schemas import (
     ArtisanApplicationResponse,
     TokenResponse
 )
+from backend.app.data.craft_clusters import CRAFT_CLUSTERS, find_cluster_by_name, find_nearest_cluster
 from backend.app.services.auth import get_current_user, require_admin, require_artisan, hash_password, create_domain_token
 from backend.app.services.rate_limiter import rate_limiter, get_client_identifier
 
 router = APIRouter(prefix="/api/artisan", tags=["Artisan Profile & Verification"])
+
+@router.get("/map/clusters", response_model=List[CraftClusterInfo])
+def get_craft_clusters(
+    state: Optional[str] = None,
+    category: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Returns canonical heritage craft clusters across India with real-time registered artisan counts."""
+    result = []
+    for c in CRAFT_CLUSTERS:
+        if state and state.lower() not in c["state"].lower():
+            continue
+        if category and category.lower() not in c["category"].lower() and category.lower() not in c["craft"].lower():
+            continue
+
+        artisan_count = db.query(User).filter(
+            User.role == "ARTISAN",
+            User.status == "ACTIVE",
+            or_(
+                User.craft_cluster == c["name"],
+                User.location.ilike(f"%{c['name']}%"),
+                User.craft_specialization.ilike(f"%{c['name']}%")
+            )
+        ).count()
+
+        products_count = db.query(Product).join(User, Product.seller_id == User.id).filter(
+            User.role == "ARTISAN",
+            Product.status == "PUBLISHED",
+            or_(
+                User.craft_cluster == c["name"],
+                User.location.ilike(f"%{c['name']}%"),
+                Product.region_of_origin.ilike(f"%{c['name']}%"),
+                Product.category.ilike(f"%{c['category']}%")
+            )
+        ).count()
+
+        result.append(CraftClusterInfo(
+            id=c["id"],
+            name=c["name"],
+            craft=c["craft"],
+            category=c["category"],
+            state=c["state"],
+            district=c["district"],
+            latitude=c["latitude"],
+            longitude=c["longitude"],
+            description=c["description"],
+            heritage_age=c["heritage_age"],
+            artisan_count=artisan_count,
+            products_count=products_count
+        ))
+    return result
+
+@router.get("/map/pins", response_model=List[ArtisanMapPin])
+def get_artisan_map_pins(
+    cluster: Optional[str] = None,
+    state: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Returns real geolocation pins for active master artisans across India."""
+    query = db.query(User).filter(User.role == "ARTISAN", User.status == "ACTIVE")
+    if cluster:
+        query = query.filter(User.craft_cluster == cluster)
+    if state:
+        query = query.filter(User.state == state)
+
+    artisans = query.all()
+    pins = []
+    for a in artisans:
+        lat = float(a.latitude) if a.latitude is not None else None
+        lng = float(a.longitude) if a.longitude is not None else None
+
+        cluster_info = None
+        if a.craft_cluster:
+            cluster_info = find_cluster_by_name(a.craft_cluster)
+        elif a.location:
+            cluster_info = find_cluster_by_name(a.location)
+
+        if lat is None or lng is None:
+            if cluster_info:
+                lat = cluster_info["latitude"]
+                lng = cluster_info["longitude"]
+            else:
+                continue
+
+        prods = db.query(Product).filter(
+            Product.seller_id == a.id,
+            Product.status == "PUBLISHED"
+        ).limit(3).all()
+
+        sample_prods = [
+            {
+                "id": p.id,
+                "title": p.title,
+                "price": float(p.price) if p.price else 0.0,
+                "image_url": p.enhanced_image_url or p.image_url,
+                "category": p.category
+            }
+            for p in prods
+        ]
+
+        avg_res = (
+            db.query(func.avg(Review.rating))
+            .join(Product, Review.product_id == Product.id)
+            .filter(Product.seller_id == a.id)
+            .scalar()
+        )
+        avg_rating = round(float(avg_res), 1) if avg_res else 4.9
+
+        pins.append(ArtisanMapPin(
+            artisan_id=a.id,
+            artisan_name=a.name,
+            avatar_url=a.avatar_url or f"https://api.dicebear.com/7.x/bottts/svg?seed={a.name}",
+            craft=a.craft or a.craft_specialization or "Heritage Craft",
+            craft_cluster=a.craft_cluster or (cluster_info["name"] if cluster_info else None),
+            state=a.state or (cluster_info["state"] if cluster_info else "India"),
+            district=a.district or (cluster_info["district"] if cluster_info else None),
+            latitude=lat,
+            longitude=lng,
+            verification_status=a.verification_status or "VERIFIED_ARTISAN",
+            products_count=len(prods),
+            average_rating=avg_rating,
+            sample_products=sample_prods
+        ))
+
+    return pins
+
+@router.put("/location", response_model=ArtisanProfileResponse)
+def update_artisan_location(
+    req: ArtisanLocationUpdate,
+    db: Session = Depends(get_db),
+    current_artisan: User = Depends(require_artisan)
+):
+    """Updates artisan's studio location with real-time GPS coordinates or selected craft cluster."""
+    if req.latitude is not None:
+        current_artisan.latitude = req.latitude
+    if req.longitude is not None:
+        current_artisan.longitude = req.longitude
+    if req.craft_cluster is not None:
+        current_artisan.craft_cluster = req.craft_cluster
+        cluster = find_cluster_by_name(req.craft_cluster)
+        if cluster:
+            if not current_artisan.state:
+                current_artisan.state = cluster["state"]
+            if not current_artisan.district:
+                current_artisan.district = cluster["district"]
+            if current_artisan.latitude is None or current_artisan.longitude is None:
+                current_artisan.latitude = cluster["latitude"]
+                current_artisan.longitude = cluster["longitude"]
+    if req.state is not None:
+        current_artisan.state = req.state
+    if req.district is not None:
+        current_artisan.district = req.district
+    if req.pincode is not None:
+        current_artisan.pincode = req.pincode
+
+    if current_artisan.latitude is not None and current_artisan.longitude is not None and not current_artisan.craft_cluster:
+        nearest = find_nearest_cluster(float(current_artisan.latitude), float(current_artisan.longitude))
+        if nearest and nearest[1] <= 60.0:
+            current_artisan.craft_cluster = nearest[0]["name"]
+            if not current_artisan.state:
+                current_artisan.state = nearest[0]["state"]
+            if not current_artisan.district:
+                current_artisan.district = nearest[0]["district"]
+
+    db.commit()
+    db.refresh(current_artisan)
+    return get_artisan_public_profile(current_artisan.id, db)
 
 @router.get("/{artisan_id}", response_model=ArtisanProfileResponse)
 def get_artisan_public_profile(artisan_id: int, db: Session = Depends(get_db)):
@@ -31,7 +202,7 @@ def get_artisan_public_profile(artisan_id: int, db: Session = Depends(get_db)):
 
     prods_count = db.query(Product).filter(Product.seller_id == artisan_id).count()
 
-    # Calculate average review rating across artisan's products (single JOIN query, no N+1)
+    # Calculate average review rating across artisan's products
     avg_res = (
         db.query(func.avg(Review.rating))
         .join(Product, Review.product_id == Product.id)
@@ -40,8 +211,6 @@ def get_artisan_public_profile(artisan_id: int, db: Session = Depends(get_db)):
     )
     avg_rating = round(float(avg_res), 1) if avg_res else 0.0
 
-
-    # Trust Verification Status logic
     ver_status = artisan.verification_status or "UNVERIFIED"
     if ver_status == "UNVERIFIED" and artisan.bio and artisan.craft:
         ver_status = "PROFILE_COMPLETE"
@@ -49,8 +218,8 @@ def get_artisan_public_profile(artisan_id: int, db: Session = Depends(get_db)):
     return ArtisanProfileResponse(
         id=artisan.id,
         name=artisan.name,
-        email=None,  # Protect private email from public profiling
-        phone=None,  # Protect private phone from public profiling
+        email=None,
+        phone=None,
         location=artisan.location or "India",
         craft=artisan.craft or "Handicrafts",
         avatar_url=artisan.avatar_url or f"https://api.dicebear.com/7.x/bottts/svg?seed={artisan.name}",
@@ -59,7 +228,13 @@ def get_artisan_public_profile(artisan_id: int, db: Session = Depends(get_db)):
         experience_years=artisan.experience_years or 5,
         verification_status=ver_status,
         total_products_count=prods_count,
-        average_rating=avg_rating
+        average_rating=avg_rating,
+        latitude=float(artisan.latitude) if artisan.latitude is not None else None,
+        longitude=float(artisan.longitude) if artisan.longitude is not None else None,
+        craft_cluster=artisan.craft_cluster,
+        state=artisan.state,
+        district=artisan.district,
+        pincode=artisan.pincode
     )
 
 @router.put("/profile", response_model=ArtisanProfileResponse)
@@ -79,6 +254,24 @@ def update_artisan_profile(
         current_artisan.experience_years = req.experience_years
     if req.location is not None:
         current_artisan.location = req.location
+    if req.latitude is not None:
+        current_artisan.latitude = req.latitude
+    if req.longitude is not None:
+        current_artisan.longitude = req.longitude
+    if req.craft_cluster is not None:
+        current_artisan.craft_cluster = req.craft_cluster
+        cluster = find_cluster_by_name(req.craft_cluster)
+        if cluster:
+            if not current_artisan.state:
+                current_artisan.state = cluster["state"]
+            if not current_artisan.district:
+                current_artisan.district = cluster["district"]
+    if req.state is not None:
+        current_artisan.state = req.state
+    if req.district is not None:
+        current_artisan.district = req.district
+    if req.pincode is not None:
+        current_artisan.pincode = req.pincode
 
     # Auto-update status to PROFILE_COMPLETE if basic fields filled
     if current_artisan.verification_status == "UNVERIFIED" and current_artisan.bio:

@@ -98,8 +98,14 @@ def seed_initial_database(db: Session):
             hashed_password=hash_password("password123"),
             role="ARTISAN",
             status="ACTIVE",
-            location="Andhra Pradesh, India",
+            location="Srikalahasti, Andhra Pradesh",
             craft="Kalamkari & Handloom Weaving",
+            craft_cluster="Srikalahasti",
+            state="Andhra Pradesh",
+            district="Tirupati",
+            pincode="517644",
+            latitude=13.7498,
+            longitude=79.6984,
             verification_status="VERIFIED_ARTISAN",
             bio="Master artisan specializing in traditional hand-painted Kalamkari and natural dye textiles.",
             experience_years=15,
@@ -113,6 +119,12 @@ def seed_initial_database(db: Session):
         artisan.hashed_password = hash_password("password123")
         artisan.role = "ARTISAN"
         artisan.status = "ACTIVE"
+        if not artisan.latitude or not artisan.longitude:
+            artisan.latitude = 13.7498
+            artisan.longitude = 79.6984
+            artisan.craft_cluster = "Srikalahasti"
+            artisan.state = "Andhra Pradesh"
+            artisan.district = "Tirupati"
         db.commit()
 
     # Check if default Admin exists

@@ -365,6 +365,44 @@ export default function LandingPage({ onSelectMode, onOpenAuth, user }) {
         </div>
       </section>
 
+      {/* 3.5 INTERACTIVE CRAFT CLUSTERS MAP TEASER */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-gradient-to-r from-[#2A1E17] via-[#1C1C1C] to-[#8C3F2B] rounded-3xl p-6 sm:p-10 text-white relative overflow-hidden shadow-lg border border-[#E8E2D9]">
+          <div className="absolute -right-10 -bottom-10 w-72 h-72 opacity-15 pointer-events-none hidden md:block">
+            <Compass className="w-full h-full text-white" />
+          </div>
+          <div className="relative z-10 max-w-2xl space-y-4">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/20 text-amber-300 text-xs font-bold tracking-wider uppercase backdrop-blur-xs">
+              <Compass className="w-4 h-4 animate-spin-slow" />
+              <span>Interactive Craft Clusters Map</span>
+            </div>
+            <h3 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-white tracking-tight">
+              Explore Regional Indian Heritage on the Map
+            </h3>
+            <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-normal">
+              Traverse GI-registered craft clusters from Srikalahasti, Pochampally, and Etikoppaka to Jaipur, Bidar, and Madhubani. Pinpoint master artisans at their authentic studio coordinates with live creation previews.
+            </p>
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => onSelectMode('CRAFT_MAP')}
+                className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition-all shadow-md cursor-pointer hover:scale-105 active:scale-95"
+              >
+                <MapPin className="w-4 h-4 text-slate-950" />
+                <span>Open Heritage Map of India</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onSelectMode('ARTISANS')}
+                className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all cursor-pointer"
+              >
+                <Users className="w-4 h-4" />
+                <span>View Artisans Directory</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 4. CURATED HEIRLOOM PIECES (REAL PUBLISHED PRODUCTS) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div className="flex items-center justify-between border-b border-[#E8E2D9] pb-4">
