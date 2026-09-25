@@ -240,10 +240,8 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
         name: form.name.trim(),
         phone: form.phone.trim(),
         location: form.location.trim(),
-        craft: form.craft.trim(),
-        craft_specialization: form.craft_specialization.trim(),
-        experience_years: form.experience_years !== undefined ? parseInt(form.experience_years, 10) : undefined,
-        bio: form.bio.trim()
+        craft: form.craft ? form.craft.trim() : undefined,
+        bio: form.bio ? form.bio.trim() : undefined
       });
 
       if (updated) {
@@ -370,13 +368,10 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
               <span>{isArtisan ? 'Traditional Heritage Credentials' : 'Direct Fair Trade Supporter'}</span>
             </h2>
             {isArtisan && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="text-xs font-bold text-[#A6533B] hover:text-[#8C432E] inline-flex items-center space-x-1 cursor-pointer bg-[#FAF7F2] px-2.5 py-1 rounded-lg border border-[#E8E2D9]"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Edit</span>
-              </button>
+              <div className="inline-flex items-center space-x-1.5 text-[11px] font-bold text-[#A6533B] bg-[#FAF7F2] px-2.5 py-1 rounded-lg border border-[#E8E2D9]">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#A6533B]" />
+                <span>Admin Certified Only</span>
+              </div>
             )}
           </div>
 
@@ -386,27 +381,35 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
                 <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#E8E2D9]">
                   <span className="text-[10px] font-bold text-[#A6533B] uppercase flex items-center justify-between">
                     <span>Heritage Craft Cluster / హస్తకళ క్లస్టర్</span>
-                    {user?.craft_cluster && (
-                      <span className="bg-amber-100 text-[#A6533B] text-[9px] font-extrabold px-2 py-0.5 rounded-full border border-amber-300">
-                        GI Registered Cluster
-                      </span>
-                    )}
+                    {user?.craft_cluster ? (
+                      user?.verification_status === 'GI_VERIFIED' ? (
+                        <span className="bg-emerald-100 text-emerald-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-300">
+                          GI Registered Cluster (Verified)
+                        </span>
+                      ) : (
+                        <span className="bg-amber-100 text-[#A6533B] text-[9px] font-extrabold px-2 py-0.5 rounded-full border border-amber-300">
+                          Assigned Cluster
+                        </span>
+                      )
+                    ) : null}
                   </span>
                   <span className="font-bold text-[#1C1C1C] text-sm block mt-0.5">
                     {user?.craft_cluster 
                       ? `${user.craft_cluster} (${user.state || 'India'})` 
-                      : (user?.location || 'Not assigned yet — Detect GPS or select below')}
+                      : (user?.location || 'Not assigned yet — Detect GPS or assign via Admin')}
                   </span>
                 </div>
 
                 <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#E8E2D9]">
                   <span className="text-[10px] font-bold text-[#A6533B] uppercase block">Specialization / నైపుణ్యం</span>
                   <span className="font-bold text-[#1C1C1C] text-sm block mt-0.5">
-                    {user?.craft_specialization && user.craft_specialization !== 'Connoisseur Collection'
-                      ? user.craft_specialization
-                      : (user?.craft && user.craft !== 'Connoisseur Collection' 
-                          ? user.craft 
-                          : 'Not specified — click Edit to add')}
+                    {user?.craft_specialization && user.craft_specialization.trim() ? (
+                      user.craft_specialization
+                    ) : (
+                      <span className="text-stone-500 font-normal italic text-xs">
+                        Awaiting Admin Certification (Set in Admin Console)
+                      </span>
+                    )}
                   </span>
                 </div>
 
@@ -414,15 +417,31 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
                   <div>
                     <span className="text-[10px] font-bold text-[#A6533B] uppercase block">Craft Experience / అనుభవం</span>
                     <span className="font-bold text-[#1C1C1C] text-sm block mt-0.5">
-                      {user?.experience_years ? `${user.experience_years} Years Master Tradition` : 'Not specified — click Edit to add'}
+                      {user?.experience_years && Number(user.experience_years) > 0 ? (
+                        `${user.experience_years} Years Master Tradition`
+                      ) : (
+                        <span className="text-stone-500 font-normal italic text-xs">
+                          Awaiting Admin Verification
+                        </span>
+                      )}
                     </span>
                   </div>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                    user?.verification_status === 'VERIFIED_ARTISAN' || user?.verification_status === 'GI_VERIFIED'
+                    user?.verification_status === 'GI_VERIFIED'
                       ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                      : 'bg-stone-100 text-stone-700 border-stone-300'
+                      : user?.verification_status === 'VERIFIED_ARTISAN'
+                        ? 'bg-blue-100 text-blue-900 border-blue-300'
+                        : user?.verification_status === 'PROFILE_COMPLETE'
+                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                          : 'bg-stone-100 text-stone-700 border-stone-300'
                   }`}>
-                    {user?.verification_status === 'VERIFIED_ARTISAN' ? 'Verified Master' : (user?.verification_status || 'Registered Artisan')}
+                    {user?.verification_status === 'GI_VERIFIED'
+                      ? 'GI Verified Master'
+                      : user?.verification_status === 'VERIFIED_ARTISAN'
+                        ? 'Verified Master'
+                        : user?.verification_status === 'PROFILE_COMPLETE'
+                          ? 'Profile Complete'
+                          : 'Pending Admin Verification'}
                   </span>
                 </div>
               </>
@@ -670,14 +689,17 @@ export default function ProfileView({ user, onSelectMode, onAuthChange }) {
               {isArtisan && (
                 <>
                   <div>
-                    <label className="block font-bold text-[#2A1E17] mb-1">Craft Category / Specialization</label>
+                    <label className="block font-bold text-[#2A1E17] mb-1">Primary Craft / ప్రధాన హస్తకళ</label>
                     <input
                       type="text"
-                      value={form.craft_specialization || form.craft}
-                      onChange={(e) => setForm({ ...form, craft_specialization: e.target.value, craft: e.target.value })}
-                      placeholder="e.g. Kalamkari Handloom Painting"
+                      value={form.craft}
+                      onChange={(e) => setForm({ ...form, craft: e.target.value })}
+                      placeholder="e.g. Kalamkari Hand Painting"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-[#E8E2D9] bg-white focus:outline-none focus:border-[#A6533B]"
                     />
+                    <p className="text-[10px] text-stone-500 mt-1">
+                      Note: Official GI Heritage Credentials, Specialization, and Experience are verified & certified by Platform Administrators.
+                    </p>
                   </div>
 
                   <div>

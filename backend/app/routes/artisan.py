@@ -193,10 +193,6 @@ def update_artisan_location(
                 current_artisan.state = nearest[0]["state"]
             if not current_artisan.district:
                 current_artisan.district = nearest[0]["district"]
-            if not current_artisan.craft_specialization or current_artisan.craft_specialization == "Connoisseur Collection":
-                current_artisan.craft_specialization = nearest[0]["craft"]
-            if not current_artisan.craft or current_artisan.craft in ["Traditional Handicrafts", "Connoisseur Collection"]:
-                current_artisan.craft = nearest[0]["craft"]
 
     # Automatically synchronize location display text for profile view
     loc_parts = [p for p in [current_artisan.district, current_artisan.state, current_artisan.pincode] if p]
@@ -228,8 +224,6 @@ def get_artisan_public_profile(artisan_id: int, db: Session = Depends(get_db)):
     avg_rating = round(float(avg_res), 1) if avg_res else 0.0
 
     ver_status = artisan.verification_status or "UNVERIFIED"
-    if ver_status == "UNVERIFIED" and artisan.bio and artisan.craft:
-        ver_status = "PROFILE_COMPLETE"
 
     return ArtisanProfileResponse(
         id=artisan.id,
@@ -237,11 +231,11 @@ def get_artisan_public_profile(artisan_id: int, db: Session = Depends(get_db)):
         email=None,
         phone=None,
         location=artisan.location or "India",
-        craft=artisan.craft or "Handicrafts",
+        craft=artisan.craft or "Traditional Craft",
         avatar_url=artisan.avatar_url or f"https://api.dicebear.com/7.x/bottts/svg?seed={artisan.name}",
-        bio=artisan.bio or f"Master artisan specializing in traditional {artisan.craft or 'handicrafts'}.",
-        craft_specialization=artisan.craft_specialization or artisan.craft or "Handicrafts",
-        experience_years=artisan.experience_years or 5,
+        bio=artisan.bio or "",
+        craft_specialization=artisan.craft_specialization or "",
+        experience_years=artisan.experience_years or 0,
         verification_status=ver_status,
         total_products_count=prods_count,
         average_rating=avg_rating,
