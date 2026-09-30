@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import List, Optional, cast
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from decimal import Decimal
 
 logger = logging.getLogger("artisan_ai")
@@ -230,6 +231,10 @@ def cascade_delete_product(db: Session, product: Product):
         db.query(Event).filter(Event.product_id == pid).delete(synchronize_session=False)
         db.query(Enquiry).filter(Enquiry.product_id == pid).delete(synchronize_session=False)
         db.query(Review).filter(Review.product_id == pid).delete(synchronize_session=False)
+        try:
+            db.execute(text("DELETE FROM market_evidences WHERE product_id = :pid"), {"pid": pid})
+        except Exception:
+            pass
 
         prod_orders = db.query(Order).filter(Order.product_id == pid).all()
         if prod_orders:
