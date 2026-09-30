@@ -477,7 +477,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
         {user && user.role !== 'ADMIN' && (
           <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-center">
             <span className="font-bold">Logged in as:</span> {user.name} ({user.role})
-            <p className="text-[11px] text-amber-800 mt-0.5">Please sign in below with administrator credentials (admin@artisan.ai) to access the Admin Console.</p>
+            <p className="text-[11px] text-amber-800 mt-0.5">Please sign in below with administrator credentials (admin@artisanai.com) to access the Admin Console.</p>
           </div>
         )}
 
@@ -497,7 +497,7 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
                 value={adminIdentifier}
                 onChange={(e) => setAdminIdentifier(e.target.value)}
                 required
-                placeholder="admin@artisan.ai"
+                placeholder="admin@artisanai.com"
                 className="w-full pl-9 pr-3 py-2.5 bg-[#FAF7F2] border border-[#E8E2D9] rounded-xl outline-hidden focus:ring-2 focus:ring-[#1C1C1C]"
               />
             </div>
