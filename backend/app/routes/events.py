@@ -658,7 +658,8 @@ def get_trending_products(
 
     event_counts = (
         db.query(Event.product_id, weighted_score)
-        .filter(Event.product_id.isnot(None))
+        .join(Product, Event.product_id == Product.id)
+        .filter(Event.product_id.isnot(None), Product.status == "PUBLISHED")
         .group_by(Event.product_id)
         .order_by(weighted_score.desc())
         .all()
@@ -666,16 +667,17 @@ def get_trending_products(
     product_ids = [row[0] for row in event_counts]
 
     if product_ids:
-        products = db.query(Product).filter(Product.id.in_(product_ids)).all()
+        products = db.query(Product).filter(Product.id.in_(product_ids), Product.status == "PUBLISHED").all()
         id_to_prod = {p.id: p for p in products}
         ordered = [id_to_prod[pid] for pid in product_ids if pid in id_to_prod]
-        if response:
-            response.headers["X-Trending-Source"] = "TRENDING_SIGNALS"
-        return ordered[:limit]
+        if ordered:
+            if response:
+                response.headers["X-Trending-Source"] = "TRENDING_SIGNALS"
+            return ordered[:limit]
 
     if response:
         response.headers["X-Trending-Source"] = "NEW_ARRIVALS"
-    return db.query(Product).order_by(Product.id.desc()).limit(limit).all()
+    return db.query(Product).filter(Product.status == "PUBLISHED").order_by(Product.id.desc()).limit(limit).all()
 
 @router.get("/recommendations", response_model=List[ProductResponse])
 def get_personalized_recommendations(

@@ -13,8 +13,12 @@ export default function RecentlyViewedSection({ onSelectProduct, currentProductI
 
   const refreshList = () => {
     const list = getRecentlyViewedProducts();
-    // Exclude currently viewed product if specified
-    const filtered = currentProductId ? list.filter((p) => p.id !== currentProductId) : list;
+    // Exclude currently viewed product and only show published crafts
+    const filtered = list.filter((p) => {
+      if (currentProductId && p.id === currentProductId) return false;
+      if (p.status && p.status !== 'PUBLISHED') return false;
+      return true;
+    });
     setRecentItems(filtered);
   };
 

@@ -9,7 +9,7 @@ export function getRecentlyViewedProducts() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.filter(p => !p.status || p.status === 'PUBLISHED') : [];
   } catch (err) {
     console.error('Failed to get recently viewed products:', err);
     return [];
@@ -18,6 +18,8 @@ export function getRecentlyViewedProducts() {
 
 export function addRecentlyViewedProduct(product) {
   if (typeof window === 'undefined' || !product || !product.id) return;
+  // Never add unapproved/draft products to public recently viewed
+  if (product.status && product.status !== 'PUBLISHED') return;
   try {
     const current = getRecentlyViewedProducts();
     // Exclude existing product to move it to the front
@@ -31,6 +33,7 @@ export function addRecentlyViewedProduct(product) {
       image_url: product.image_url || product.enhanced_image_url,
       enhanced_image_url: product.enhanced_image_url,
       category: product.category,
+      status: product.status || 'PUBLISHED',
       region_of_origin: product.region_of_origin,
       artisan_name: product.artisan_name || product.seller?.name,
       stock: product.stock !== undefined ? product.stock : 1,
