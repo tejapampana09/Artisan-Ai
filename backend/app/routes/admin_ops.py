@@ -2,7 +2,7 @@ import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 
 from backend.app.database import get_db
 from backend.app.models import (
@@ -253,6 +253,16 @@ def admin_delete_artisan(
         db.query(Address).filter(Address.user_id == artisan.id).delete(synchronize_session=False)
         db.query(PayoutAccount).filter(PayoutAccount.artisan_id == artisan.id).delete(synchronize_session=False)
 
+        # 3.5 Clean any interview_sessions (or dependent interview tables)
+        for tbl in ["interview_answers", "interview_messages", "interview_responses", "interview_transcripts", "interview_sessions"]:
+            try:
+                if tbl == "interview_sessions":
+                    db.execute(text("DELETE FROM interview_sessions WHERE user_id = :uid"), {"uid": artisan.id})
+                else:
+                    db.execute(text(f"DELETE FROM {tbl} WHERE session_id IN (SELECT id FROM interview_sessions WHERE user_id = :uid)"), {"uid": artisan.id})
+            except Exception:
+                pass
+
         # 4. Clean Events for artisan
         db.query(Event).filter(Event.user_id == artisan.id).delete(synchronize_session=False)
 
@@ -299,6 +309,26 @@ def admin_delete_artisan(
             after_state="DELETED",
             commit=False
         )
+
+        # 9.5 Auto-clean any remaining foreign key references to users.id in PostgreSQL
+        try:
+            fk_rows = db.execute(text("""
+                SELECT tc.table_name, kcu.column_name
+                FROM information_schema.table_constraints AS tc
+                JOIN information_schema.key_column_usage AS kcu
+                  ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+                JOIN information_schema.constraint_column_usage AS ccu
+                  ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
+                WHERE tc.constraint_type = 'FOREIGN KEY' AND ccu.table_name = 'users'
+            """)).fetchall()
+            for tbl, col in fk_rows:
+                if tbl not in ("users", "audit_logs"):
+                    try:
+                        db.execute(text(f"DELETE FROM {tbl} WHERE {col} = :uid"), {"uid": artisan_id})
+                    except Exception as e:
+                        logging.getLogger("artisan_ai").warning("Could not auto-clean FK table %s.%s: %s", tbl, col, e)
+        except Exception:
+            pass
 
         # 10. Delete the artisan User record cleanly via query
         db.query(User).filter(User.id == artisan_id).delete(synchronize_session=False)
