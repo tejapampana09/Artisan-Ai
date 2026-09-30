@@ -115,17 +115,17 @@ def get_cors_origins() -> List[str]:
 
 # AI API configuration
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
-GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-lite").strip()
-_raw_fallback_models = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-2.0-flash,gemini-1.5-flash-latest")
+GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
+_raw_fallback_models = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite,gemini-2.5-flash,gemini-flash-lite-latest")
 GEMINI_FALLBACK_MODELS: List[str] = [m.strip() for m in _raw_fallback_models.split(",") if m.strip()]
 
 validate_production_config(ENVIRONMENT, DEMO_MODE, DATABASE_URL, JWT_SECRET_KEY, GEMINI_API_KEY)
 
-MARKET_SEARCH_GEMINI_MODEL: str = os.getenv("MARKET_SEARCH_GEMINI_MODEL", "gemini-2.0-flash-lite").strip()
+MARKET_SEARCH_GEMINI_MODEL: str = os.getenv("MARKET_SEARCH_GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
 
-_raw_market_search_fallback_models = os.getenv("MARKET_SEARCH_GEMINI_FALLBACK_MODELS", "gemini-2.0-flash,gemini-1.5-flash-latest")
+_raw_market_search_fallback_models = os.getenv("MARKET_SEARCH_GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite,gemini-2.5-flash,gemini-flash-lite-latest")
 MARKET_SEARCH_GEMINI_FALLBACK_MODELS: List[str] = [m.strip() for m in _raw_market_search_fallback_models.split(",") if m.strip()]
-AI_REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "10.0"))
+AI_REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "15.0"))
 
 # Google OAuth Client ID (used for id_token audience claim validation)
 GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "").strip()

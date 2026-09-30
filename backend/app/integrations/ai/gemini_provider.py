@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 from decimal import Decimal, ROUND_HALF_UP
 
 from backend.app.integrations.ai.base import BaseAIProvider
-from backend.app.config import GEMINI_API_KEY, AI_REQUEST_TIMEOUT_SECONDS
+from backend.app.config import GEMINI_API_KEY, GEMINI_MODEL, AI_REQUEST_TIMEOUT_SECONDS
 
 from backend.app.services.ai_adapter import extract_artisan_facts, sanitize_materials, sanitize_craft_story
 
@@ -97,7 +97,7 @@ Return ONLY valid JSON matching this schema:
 }}"""
 
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
             payload = {
                 "contents": [{
                     "parts": [{"text": prompt}]

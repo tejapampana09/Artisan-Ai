@@ -445,7 +445,10 @@ Return a valid JSON object matching this schema EXACTLY:
                         if resp.status_code == 200:
                             res = resp
                             break
-                    except Exception:
+                        else:
+                            logging.getLogger("artisan_ai").warning("Gemini model %s returned status %d: %s", model, resp.status_code, resp.text[:150])
+                    except Exception as model_err:
+                        logging.getLogger("artisan_ai").warning("Gemini model %s request exception: %s", model, model_err)
                         continue
 
                 if res and res.status_code == 200:
