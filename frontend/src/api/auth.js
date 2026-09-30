@@ -137,11 +137,25 @@ export const registerUser = registerBuyer;
 export const googleAuth = googleAuthBuyer;
 
 export async function loginUser(credentials) {
-  if (credentials.portal === 'STUDIO' || credentials.portal === 'ARTISAN') {
-    return await loginArtisan(credentials);
-  }
   if (credentials.portal === 'ADMIN') {
     return await loginAdmin(credentials);
+  }
+  if (credentials.portal === 'STUDIO' || credentials.portal === 'ARTISAN') {
+    try {
+      return await loginArtisan(credentials);
+    } catch (studioErr) {
+      // Admin accounts are rejected by the studio endpoint with 403.
+      // Transparently retry via the admin endpoint so the Admin can log in
+      // from the Seller Studio tab without needing to know a separate portal.
+      const msg = studioErr.message || '';
+      if (
+        studioErr.status === 403 &&
+        (msg.includes('ADMIN') || msg.toLowerCase().includes('administrator') || msg.toLowerCase().includes('admin'))
+      ) {
+        return await loginAdmin(credentials);
+      }
+      throw studioErr;
+    }
   }
   try {
     return await loginBuyer(credentials);

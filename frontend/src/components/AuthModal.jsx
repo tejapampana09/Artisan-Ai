@@ -132,8 +132,6 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
         }
       }, 400);
     } catch (err) {
-      clearAuthToken();
-      clearUserOfflineCache();
       const rawMsg = err.message || 'Login failed. Please check credentials.';
       if (rawMsg.toLowerCase().includes('pending verification') || rawMsg.toLowerCase().includes('suspended')) {
         setError('⏳ Application Pending Approval: Your artisan registration is awaiting verification by Platform Admin. Once approved, you will be able to log in to Studio.');
