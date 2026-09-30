@@ -4,7 +4,14 @@
  */
 
 export function getApiBase() {
-  // 1. Explicit Vite env variable override if provided
+  // In the browser, always use relative '/api' so all requests are same-origin.
+  // This utilizes Vercel's edge rewrites in production and Vite proxy in dev,
+  // completely eliminating CORS errors, preflight OPTIONS issues, and cross-origin drops!
+  if (typeof window !== 'undefined') {
+    return '/api';
+  }
+
+  // Fallback for SSR or non-browser environments if VITE_API_BASE is provided
   if (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_BASE) {
     const raw = String(import.meta.env.VITE_API_BASE).trim().replace(/\/+$/, '');
     if (raw) {
@@ -12,7 +19,6 @@ export function getApiBase() {
     }
   }
 
-  // 2. Relative route: proxied by Vite in local dev and Vercel in prod
   return '/api';
 }
 
