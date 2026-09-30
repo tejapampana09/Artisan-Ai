@@ -182,6 +182,8 @@ async def google_auth_buyer(payload: GoogleAuthRequest, request: Request, db: Se
                     verified_email = data.get("email")
                     verified_name = data.get("name")
                     verified_google_id = data.get("sub")
+                else:
+                    logger.warning("Google userinfo returned status %s: %s", res.status_code, res.text[:200])
         except Exception as e:
             logger.warning("Google userinfo token check failed: %s", e)
 
@@ -214,51 +216,65 @@ async def google_auth_buyer(payload: GoogleAuthRequest, request: Request, db: Se
             headers={"WWW-Authenticate": "Bearer"}
         )
 
-    email = verified_email.strip().lower()
-    name = (verified_name or email.split("@")[0]).strip()
-    google_id = verified_google_id or f"google_{email}"
+    try:
+        email = verified_email.strip().lower()
+        name = (verified_name or email.split("@")[0]).strip()
+        google_id = verified_google_id or f"google_{email}"
 
-    user = db.query(User).filter(User.email == email).first()
+        user = db.query(User).filter(User.email == email).first()
 
-    if not user:
-        user = User(
-            name=name if name else email.split("@")[0].capitalize(),
-            email=email,
-            phone=None,
-            hashed_password=hash_password(f"google_oauth_{google_id}_secret"),
-            role="BUYER",
-            status="ACTIVE",
-            location="India",
-            craft="Connoisseur Collection"
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    else:
-        if getattr(user, "status", "ACTIVE") != "ACTIVE":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Account '{email}' is suspended or awaiting administrative approval."
+        if not user:
+            user = User(
+                name=name if name else email.split("@")[0].capitalize(),
+                email=email,
+                phone=None,
+                hashed_password=hash_password(f"google_oauth_{google_id}_secret"),
+                role="BUYER",
+                status="ACTIVE",
+                location="India",
+                craft="Connoisseur Collection"
             )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        else:
+            if getattr(user, "status", "ACTIVE") != "ACTIVE":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Account '{email}' is suspended or awaiting administrative approval."
+                )
 
-    # Issue role-appropriate domain and session type for seamless login
-    role = user.role or "BUYER"
-    auth_domain = "STUDIO" if role == "ARTISAN" else ("ADMIN" if role == "ADMIN" else "MARKETPLACE")
-    session_type = "ARTISAN" if role == "ARTISAN" else ("ADMIN" if role == "ADMIN" else "BUYER")
+        # Issue role-appropriate domain and session type for seamless login
+        role = user.role or "BUYER"
+        auth_domain = "STUDIO" if role == "ARTISAN" else ("ADMIN" if role == "ADMIN" else "MARKETPLACE")
+        session_type = "ARTISAN" if role == "ARTISAN" else ("ADMIN" if role == "ADMIN" else "BUYER")
 
-    access_token = create_domain_token(
-        user=user,
-        auth_domain=auth_domain,
-        session_type=session_type
-    )
+        access_token = create_domain_token(
+            user=user,
+            auth_domain=auth_domain,
+            session_type=session_type
+        )
 
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        auth_domain=auth_domain,
-        session_type=session_type,
-        user=user
-    )
+        return TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            auth_domain=auth_domain,
+            session_type=session_type,
+            user=user
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        logger.exception(
+            "Google auth DB/token error for email=%s: %s\n%s",
+            verified_email, e, traceback.format_exc()
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Google Sign-In failed ({type(e).__name__}): {str(e)}"
+        )
 
 
 @router.get("/me", response_model=UserResponse)
