@@ -76,6 +76,7 @@ export async function loginBuyer(credentials) {
 export async function googleAuthBuyer(googleData) {
   const data = await marketplaceRequest('/marketplace/auth/google', {
     method: 'POST',
+    auth: false,
     body: JSON.stringify(googleData),
   });
   if (data && data.access_token) {

@@ -58,7 +58,7 @@ export const BottomNavigation: React.FC<BottomNavProps> = ({ role }) => {
   const buyerItems: NavItem[] = [
     { label: t("explore"), icon: "compass-outline", activeIcon: "compass", path: "/buyer" },
     { label: t("saved"), icon: "heart-outline", activeIcon: "heart", path: "/buyer-wishlist", badge: wishlistCount },
-    { label: t("bag"), icon: "bag-handle-outline", activeIcon: "bag-handle", path: "/buyer-cart", badge: cartCount },
+    { label: t("bag"), icon: "bag-handle-outline", activeIcon: "bag-handle", path: "/buyer-cart", badge: cartCount, isHero: true },
     { label: t("orders"), icon: "receipt-outline", activeIcon: "receipt", path: "/buyer-orders" },
     { label: t("aiGuide"), icon: "sparkles-outline", activeIcon: "sparkles", path: "/buyer-assistant" }
   ];
@@ -71,7 +71,7 @@ export const BottomNavigation: React.FC<BottomNavProps> = ({ role }) => {
   };
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View style={[styles.container, { bottom: Math.max(insets.bottom, 12) }]}>
       <View style={styles.content}>
         {items.map((item) => {
           const isActive = currentPath === item.path;
@@ -83,13 +83,27 @@ export const BottomNavigation: React.FC<BottomNavProps> = ({ role }) => {
             return (
               <Pressable
                 key={item.path}
-                style={styles.heroTab}
+                style={({ pressed }) => [
+                  styles.heroTab,
+                  pressed && styles.heroTabPressed
+                ]}
                 onPress={() => navigateTo(item.path)}
                 accessibilityRole="button"
                 accessibilityLabel={item.label}
               >
-                <View style={styles.heroButton}>
-                  <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+                <View style={[styles.heroButton, isActive && styles.heroButtonActive]}>
+                  <Ionicons
+                    name={role === "buyer" ? (isActive ? "bag-handle" : "bag-handle-outline") : "sparkles"}
+                    size={22}
+                    color="#FFFFFF"
+                  />
+                  {typeof item.badge === "number" && item.badge > 0 && (
+                    <View style={styles.heroBadge}>
+                      <Text style={styles.heroBadgeText}>
+                        {item.badge > 99 ? "99+" : item.badge}
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 <Text style={[styles.tabLabel, styles.heroLabel]}>{item.label}</Text>
               </Pressable>
@@ -99,7 +113,11 @@ export const BottomNavigation: React.FC<BottomNavProps> = ({ role }) => {
           return (
             <Pressable
               key={item.path}
-              style={styles.tab}
+              style={({ pressed }) => [
+                styles.tab,
+                isActive && styles.tabActive,
+                pressed && styles.tabPressed
+              ]}
               onPress={() => navigateTo(item.path)}
               accessibilityRole="button"
               accessibilityLabel={item.label}
@@ -107,7 +125,7 @@ export const BottomNavigation: React.FC<BottomNavProps> = ({ role }) => {
               <View style={styles.iconContainer}>
                 <Ionicons
                   name={isActive ? item.activeIcon : item.icon}
-                  size={22}
+                  size={21}
                   color={iconColor}
                 />
                 {typeof item.badge === "number" && item.badge > 0 && (
@@ -121,6 +139,7 @@ export const BottomNavigation: React.FC<BottomNavProps> = ({ role }) => {
               <Text style={[styles.tabLabel, isActive && styles.activeTabLabel]}>
                 {item.label}
               </Text>
+              {isActive && <View style={styles.activeDot} />}
             </Pressable>
           );
         })}
@@ -132,63 +151,116 @@ export const BottomNavigation: React.FC<BottomNavProps> = ({ role }) => {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    ...theme.shadows.lg
+    left: 14,
+    right: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: "rgba(232, 226, 217, 0.9)",
+    shadowColor: "#2A1E17",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    elevation: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 4
   },
   content: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-around",
-    paddingTop: 8,
-    paddingHorizontal: 6
+    justifyContent: "space-around"
   },
   tab: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 2
+    paddingVertical: 6,
+    borderRadius: 18
+  },
+  tabActive: {
+    backgroundColor: "rgba(147, 61, 30, 0.08)"
+  },
+  tabPressed: {
+    transform: [{ scale: 0.88 }],
+    opacity: 0.8
   },
   heroTab: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -14
+    marginTop: -20
+  },
+  heroTabPressed: {
+    transform: [{ scale: 0.9 }],
+    opacity: 0.9
   },
   heroButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: theme.colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    ...theme.shadows.md
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 8
+  },
+  heroButtonActive: {
+    backgroundColor: "#7B2E15",
+    borderColor: "#F59E0B"
   },
   heroLabel: {
     color: theme.colors.primary,
-    fontWeight: "700",
+    fontWeight: "800",
+    fontSize: 10,
     marginTop: 2
+  },
+  heroBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#F59E0B",
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    minWidth: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF"
+  },
+  heroBadgeText: {
+    color: "#1C1917",
+    fontSize: 9,
+    fontWeight: "900"
   },
   iconContainer: {
     position: "relative",
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     alignItems: "center",
     justifyContent: "center"
   },
   tabLabel: {
     fontSize: 10,
     color: theme.colors.inkMuted,
-    marginTop: 2,
-    fontWeight: "500"
+    marginTop: 1.5,
+    fontWeight: "600"
   },
   activeTabLabel: {
     color: theme.colors.primary,
-    fontWeight: "700"
+    fontWeight: "800"
+  },
+  activeDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.primary,
+    marginTop: 2
   },
   badge: {
     position: "absolute",
@@ -196,15 +268,15 @@ const styles = StyleSheet.create({
     right: -7,
     backgroundColor: theme.colors.primary,
     borderRadius: 10,
-    paddingHorizontal: 5,
+    paddingHorizontal: 4,
     paddingVertical: 1,
-    minWidth: 16,
+    minWidth: 15,
     alignItems: "center",
     justifyContent: "center"
   },
   badgeText: {
     color: "#FFFFFF",
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: "800"
   }
 });

@@ -125,7 +125,7 @@ cors_kwargs = {
     "allow_origin_regex": r"https://.*\.vercel\.app|https://.*\.onrender\.com|https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.\d+\.\d+\.\d+)(:\d+)?",
     "allow_credentials": True,
     "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    "allow_headers": ["Authorization", "Content-Type", "X-Request-ID", "Accept", "X-Requested-With", "Origin"],
+    "allow_headers": ["*"],
     "expose_headers": ["X-Request-ID", "X-Process-Time-Ms"],
     "max_age": 600,
 }
@@ -178,15 +178,23 @@ from fastapi.responses import JSONResponse
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Catches all unhandled exceptions and returns a safe generic error — no tracebacks exposed."""
+    """Catches all unhandled exceptions and returns a safe generic error with guaranteed CORS headers."""
     logging.getLogger("artisan_ai").error(
         "Unhandled exception on %s %s: %s",
         request.method, request.url.path, exc,
         exc_info=True
     )
+    origin = request.headers.get("origin") or "*"
+    headers = {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+    }
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "An unexpected error occurred. Our team has been notified. Please try again shortly."}
+        content={"detail": "An unexpected error occurred. Our team has been notified. Please try again shortly."},
+        headers=headers
     )
 
 
