@@ -910,88 +910,142 @@ export default function Navbar({
         </>
       )}
 
-      {/* Flipkart / Myntra Style Fixed Native Mobile Bottom Navigation Bar with Raised Studio Action */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[99] bg-white text-stone-800 border-t border-[#E8E2D9] py-1.5 px-3 shadow-2xl flex items-end justify-between">
-        <button
-          onClick={() => onToggleMode('HOME')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all active:scale-95 cursor-pointer ${
-            activeMode === 'HOME'
-              ? 'text-[#A6533B] font-extrabold'
-              : 'text-stone-500 hover:text-stone-900 font-semibold'
-          }`}
-        >
-          <Home className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5 font-bold">Home</span>
-        </button>
-
-        <button
-          onClick={() => onToggleMode('BUY')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all active:scale-95 cursor-pointer ${
-            activeMode === 'BUY'
-              ? 'text-[#A6533B] font-extrabold'
-              : 'text-stone-500 hover:text-stone-900 font-semibold'
-          }`}
-        >
-          <ShoppingBag className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5 font-bold">Shop</span>
-        </button>
-
-        {/* Center Action: Studio button ONLY AFTER artisan/admin login; Wishlist for guests/buyers */}
-        {user && (user.role === 'ARTISAN' || user.role === 'ADMIN') ? (
-          <button
-            onClick={() => onToggleMode('SELL')}
-            className={`relative -top-3 flex flex-col items-center justify-center px-3.5 py-1.5 rounded-2xl shadow-xl transition-all active:scale-95 cursor-pointer border-2 ${
-              activeMode === 'SELL'
-                ? 'bg-gradient-to-tr from-[#933D1E] to-[#A6533B] text-white border-amber-300 ring-2 ring-amber-400/50 scale-105'
-                : 'bg-gradient-to-tr from-amber-800 via-[#A6533B] to-[#2A1E17] text-white border-white ring-1 ring-stone-200'
-            }`}
-            title="Artisan Studio / సెల్లర్ స్టూడియో"
+      {/* Floating Island Mobile Bottom Navigation Dock & Quick Cart Strip */}
+      <div className="md:hidden fixed bottom-3 left-3 right-3 sm:left-auto sm:right-auto sm:w-[420px] sm:left-1/2 sm:-translate-x-1/2 z-[99] pointer-events-none">
+        {/* Floating Quick Bag Strip: Appears when buyer has items in cart and isn't on cart screen */}
+        {cartCount > 0 && activeMode !== 'CART' && (
+          <div
+            onClick={() => onOpenAuth('CART')}
+            className="pointer-events-auto mb-2 mx-auto w-full bg-stone-900/95 backdrop-blur-xl text-white px-4 py-2 rounded-2xl shadow-[0_12px_28px_rgba(0,0,0,0.35)] border border-amber-400/40 flex items-center justify-between cursor-pointer active:scale-95 transition-all animate-in slide-in-from-bottom-3 duration-300"
           >
-            <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-inner">
-              <Store className="w-5 h-5" />
+            <div className="flex items-center space-x-2.5">
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-amber-500 to-[#933D1E] flex items-center justify-center text-white text-[11px] font-black shadow-inner">
+                {cartCount > 99 ? '99+' : cartCount}
+              </div>
+              <span className="text-xs font-semibold text-stone-200">
+                {cartCount === 1 ? '1 craft in Bag' : `${cartCount} crafts in Bag`}
+              </span>
             </div>
-            <span className="text-[10px] font-black tracking-tight mt-0.5 text-white">
-              Studio
-            </span>
-          </button>
-        ) : (
-          <button
-            onClick={() => onOpenAuth('WISHLIST')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all active:scale-95 cursor-pointer ${
-              activeMode === 'WISHLIST'
-                ? 'text-[#A6533B] font-extrabold'
-                : 'text-stone-500 hover:text-stone-900 font-semibold'
-            }`}
-          >
-            <Heart className="w-5 h-5" />
-            <span className="text-[10px] mt-0.5 font-bold">Wishlist</span>
-          </button>
+            <div className="flex items-center space-x-1.5 text-xs font-black text-amber-300">
+              <span>View Bag</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </div>
+          </div>
         )}
 
-        <button
-          onClick={() => onOpenAuth('ORDERS')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all active:scale-95 cursor-pointer ${
-            activeMode === 'ORDERS'
-              ? 'text-[#A6533B] font-extrabold'
-              : 'text-stone-500 hover:text-stone-900 font-semibold'
-          }`}
-        >
-          <Package className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5 font-bold">Orders</span>
-        </button>
+        {/* Floating Glassmorphic Pill Dock */}
+        <nav className="pointer-events-auto bg-white/94 backdrop-blur-2xl border border-stone-200/80 shadow-[0_14px_36px_rgba(42,30,23,0.18),0_2px_10px_rgba(0,0,0,0.06)] rounded-3xl py-1.5 px-2 flex items-center justify-around relative">
+          {/* Tab 1: Home */}
+          <button
+            onClick={() => onToggleMode('HOME')}
+            className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-200 active:scale-85 cursor-pointer ${
+              activeMode === 'HOME'
+                ? 'text-[#933D1E] bg-[#933D1E]/10 font-black scale-105'
+                : 'text-stone-500 hover:text-stone-900 font-semibold hover:bg-stone-100/60'
+            }`}
+          >
+            <Home className={`w-5 h-5 transition-transform duration-200 ${activeMode === 'HOME' ? 'scale-110' : ''}`} />
+            <span className="text-[10px] mt-0.5 font-bold tracking-tight">Home</span>
+            {activeMode === 'HOME' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[#933D1E] mt-0.5 animate-pulse shadow-xs" />
+            )}
+          </button>
 
-        <button
-          onClick={() => onOpenAuth('PROFILE')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all active:scale-95 cursor-pointer ${
-            activeMode === 'PROFILE'
-              ? 'text-[#A6533B] font-extrabold'
-              : 'text-stone-500 hover:text-stone-900 font-semibold'
-          }`}
-        >
-          <UserCheck className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5 font-bold">Account</span>
-        </button>
-      </nav>
+          {/* Tab 2: Shop */}
+          <button
+            onClick={() => onToggleMode('BUY')}
+            className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-200 active:scale-85 cursor-pointer ${
+              activeMode === 'BUY'
+                ? 'text-[#933D1E] bg-[#933D1E]/10 font-black scale-105'
+                : 'text-stone-500 hover:text-stone-900 font-semibold hover:bg-stone-100/60'
+            }`}
+          >
+            <ShoppingBag className={`w-5 h-5 transition-transform duration-200 ${activeMode === 'BUY' ? 'scale-110' : ''}`} />
+            <span className="text-[10px] mt-0.5 font-bold tracking-tight">Shop</span>
+            {activeMode === 'BUY' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[#933D1E] mt-0.5 animate-pulse shadow-xs" />
+            )}
+          </button>
+
+          {/* Tab 3 (Center Hero Action): Dynamic 3D Elevated Gem */}
+          {user && (user.role === 'ARTISAN' || user.role === 'ADMIN') ? (
+            <button
+              onClick={() => onToggleMode('SELL')}
+              className="relative -top-4 flex flex-col items-center justify-center group active:scale-90 transition-all duration-200 cursor-pointer"
+              title="Artisan Studio / సెల్లర్ స్టూడియో"
+            >
+              <div className={`w-12 h-12 rounded-2xl shadow-[0_8px_24px_rgba(147,61,30,0.45)] border-[2.5px] border-white ring-4 ring-[#FAF7F2]/90 flex items-center justify-center text-white transition-all duration-200 ${
+                activeMode === 'SELL'
+                  ? 'bg-gradient-to-tr from-[#7B2E15] via-[#933D1E] to-amber-500 ring-amber-400/60 scale-105'
+                  : 'bg-gradient-to-tr from-stone-900 via-[#933D1E] to-[#A6533B]'
+              }`}>
+                <Store className="w-5 h-5 transition-transform duration-200 group-hover:rotate-6" />
+              </div>
+              <span className="text-[10px] font-black tracking-tight mt-0.5 text-[#933D1E]">
+                Studio
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={() => onOpenAuth(cartCount > 0 ? 'CART' : 'WISHLIST')}
+              className="relative -top-4 flex flex-col items-center justify-center group active:scale-90 transition-all duration-200 cursor-pointer"
+              title={cartCount > 0 ? 'View Shopping Bag' : 'My Wishlist'}
+            >
+              <div className={`relative w-12 h-12 rounded-2xl shadow-[0_8px_24px_rgba(147,61,30,0.45)] border-[2.5px] border-white ring-4 ring-[#FAF7F2]/90 flex items-center justify-center text-white transition-all duration-200 ${
+                (activeMode === 'CART' || activeMode === 'WISHLIST')
+                  ? 'bg-gradient-to-tr from-[#7B2E15] via-[#933D1E] to-amber-500 ring-amber-400/60 scale-105'
+                  : 'bg-gradient-to-tr from-[#933D1E] via-[#A6533B] to-amber-600'
+              }`}>
+                {cartCount > 0 ? (
+                  <>
+                    <ShoppingBag className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
+                    <span className="absolute -top-1.5 -right-1.5 bg-amber-400 text-stone-950 font-black text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center shadow-lg animate-bounce border-2 border-white ring-1 ring-amber-500/40">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  </>
+                ) : (
+                  <Heart className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" fill={activeMode === 'WISHLIST' ? 'currentColor' : 'none'} />
+                )}
+              </div>
+              <span className="text-[10px] font-black tracking-tight mt-0.5 text-[#933D1E]">
+                {cartCount > 0 ? 'Bag' : 'Wishlist'}
+              </span>
+            </button>
+          )}
+
+          {/* Tab 4: Orders */}
+          <button
+            onClick={() => onOpenAuth('ORDERS')}
+            className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-200 active:scale-85 cursor-pointer ${
+              activeMode === 'ORDERS'
+                ? 'text-[#933D1E] bg-[#933D1E]/10 font-black scale-105'
+                : 'text-stone-500 hover:text-stone-900 font-semibold hover:bg-stone-100/60'
+            }`}
+          >
+            <Package className={`w-5 h-5 transition-transform duration-200 ${activeMode === 'ORDERS' ? 'scale-110' : ''}`} />
+            <span className="text-[10px] mt-0.5 font-bold tracking-tight">Orders</span>
+            {activeMode === 'ORDERS' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[#933D1E] mt-0.5 animate-pulse shadow-xs" />
+            )}
+          </button>
+
+          {/* Tab 5: Account */}
+          <button
+            onClick={() => onOpenAuth('PROFILE')}
+            className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-200 active:scale-85 cursor-pointer ${
+              activeMode === 'PROFILE'
+                ? 'text-[#933D1E] bg-[#933D1E]/10 font-black scale-105'
+                : 'text-stone-500 hover:text-stone-900 font-semibold hover:bg-stone-100/60'
+            }`}
+          >
+            <UserCheck className={`w-5 h-5 transition-transform duration-200 ${activeMode === 'PROFILE' ? 'scale-110' : ''}`} />
+            <span className="text-[10px] mt-0.5 font-bold tracking-tight">Account</span>
+            {activeMode === 'PROFILE' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[#933D1E] mt-0.5 animate-pulse shadow-xs" />
+            )}
+          </button>
+        </nav>
+      </div>
     </>
   );
 }
