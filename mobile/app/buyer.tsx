@@ -26,6 +26,7 @@ import { getWishlist, subscribeWishlist, toggleWishlist } from "../src/wishlist"
 import { addRecentlyViewed } from "../src/recentlyViewed";
 import { 
   BottomNavigation, 
+  useAutoHideNav,
   LanguageSelectorModal, 
   DeliveryAddressModal,
   RecentlyViewedCarousel,
@@ -65,6 +66,7 @@ function getLocalizedProductTitle(item: any, lang: string): string {
 
 export default function BuyerScreen() {
   useRoleGuard("buyer");
+  const { navVisible, onScroll, scrollEventThrottle } = useAutoHideNav();
   const { language, t, getCategory } = useI18n();
   const [langModalVisible, setLangModalVisible] = useState(false);
   const params = useLocalSearchParams<{ category?: string; search?: string }>();
@@ -514,6 +516,8 @@ export default function BuyerScreen() {
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={styles.listContent}
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
         refreshing={refreshing}
         onRefresh={() => {
           setRefreshing(true);
@@ -699,7 +703,7 @@ export default function BuyerScreen() {
       />
 
       {/* Role-Based Bottom Navigation */}
-      <BottomNavigation role="buyer" />
+      <BottomNavigation role="buyer" visible={navVisible} />
     </SafeAreaView>
   );
 }

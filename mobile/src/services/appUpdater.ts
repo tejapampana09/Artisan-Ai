@@ -1,4 +1,6 @@
 import * as Linking from "expo-linking";
+import { Linking as RNLinking } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api, BASE_URL } from "../api";
 
@@ -147,14 +149,30 @@ export async function dismissUpdateForNow(versionCode?: number, releaseId?: numb
  */
 export async function openAppUpdate(releaseUrl?: string): Promise<boolean> {
   const url = releaseUrl || DEFAULT_APK_RELEASE_URL;
+
+  // 1. Try Expo Linking directly
   try {
-    const supported = await Linking.canOpenURL(url);
-    if (supported) {
-      await Linking.openURL(url);
-      return true;
-    }
-  } catch (e) {
-    console.error("Failed to open update URL:", e);
+    await Linking.openURL(url);
+    return true;
+  } catch (err) {
+    console.warn("[AppUpdater] Linking.openURL error, trying RNLinking:", err);
   }
+
+  // 2. Try React Native core Linking
+  try {
+    await RNLinking.openURL(url);
+    return true;
+  } catch (err) {
+    console.warn("[AppUpdater] RNLinking.openURL error, trying WebBrowser:", err);
+  }
+
+  // 3. Fallback to WebBrowser
+  try {
+    await WebBrowser.openBrowserAsync(url);
+    return true;
+  } catch (err) {
+    console.error("[AppUpdater] WebBrowser.openBrowserAsync error:", err);
+  }
+
   return false;
 }

@@ -21,6 +21,7 @@ import { api } from "../src/api";
 import { theme } from "../src/theme";
 import { useI18n } from "../src/i18n";
 import { useRoleGuard } from "../src/authGuard";
+import { BottomNavigation } from "../src/components";
 
 interface ProductCardData {
   id: number;
@@ -97,19 +98,28 @@ export default function BuyerAssistant() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
       () => {
+        setIsKeyboardVisible(true);
         setTimeout(() => {
           scrollRef.current?.scrollToEnd({ animated: true });
         }, 100);
       }
     );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => {
+        setIsKeyboardVisible(false);
+      }
+    );
     return () => {
       showSub.remove();
+      hideSub.remove();
       Speech.stop();
     };
   }, []);
@@ -424,7 +434,8 @@ export default function BuyerAssistant() {
         </View>
 
         {/* Bottom Chat Input Bar */}
-        <View style={styles.inputContainer}>
+        {/* Bottom Chat Input Bar */}
+        <View style={[styles.inputContainer, !isKeyboardVisible && { paddingBottom: 76 }]}>
           <View style={styles.inputPill}>
             <TextInput
               style={styles.input}
@@ -460,6 +471,8 @@ export default function BuyerAssistant() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <BottomNavigation role="buyer" visible={!isKeyboardVisible} />
     </SafeAreaView>
   );
 }

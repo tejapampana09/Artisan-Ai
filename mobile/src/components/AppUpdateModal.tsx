@@ -5,7 +5,8 @@ import {
   Modal,
   Pressable,
   StyleSheet,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
@@ -35,10 +36,22 @@ export function AppUpdateModal({
 
   const handleUpdate = async () => {
     setDownloading(true);
-    await dismissUpdateForNow(updateInfo.version_code, updateInfo.release_id);
-    await openAppUpdate(updateInfo.release_url);
-    setDownloading(false);
-    onClose();
+    try {
+      const opened = await openAppUpdate(updateInfo.release_url);
+      if (opened) {
+        await dismissUpdateForNow(updateInfo.version_code, updateInfo.release_id);
+        onClose();
+      } else {
+        Alert.alert(
+          "Update Download",
+          "Could not launch browser automatically. Please open: " + (updateInfo.release_url || "https://github.com/tejapampana09/Artisan-Ai/releases")
+        );
+      }
+    } catch (e) {
+      console.warn("Update error:", e);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handleDismiss = async () => {

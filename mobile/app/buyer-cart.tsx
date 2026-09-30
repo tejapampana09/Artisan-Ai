@@ -24,9 +24,11 @@ import { api } from "../src/api";
 import { getSession } from "../src/storage";
 import { getActiveDeliveryAddress } from "../src/address";
 import { useRoleGuard } from "../src/authGuard";
+import { BottomNavigation, useAutoHideNav } from "../src/components";
 
 export default function BuyerCart() {
   useRoleGuard("buyer");
+  const { navVisible, onScroll, scrollEventThrottle } = useAutoHideNav();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [ordering, setOrdering] = useState(false);
@@ -315,7 +317,12 @@ export default function BuyerCart() {
           </Pressable>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={scrollEventThrottle}
+        >
           {/* Out of Stock Warning Banner */}
           {items.some((i) => i.stock !== undefined && i.stock <= 0) && (
             <View style={styles.outOfStockBanner}>
@@ -683,6 +690,8 @@ export default function BuyerCart() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <BottomNavigation role="buyer" visible={navVisible} />
     </KeyboardAvoidingView>
   );
 }
@@ -764,7 +773,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40
+    paddingBottom: 110
   },
   itemsSection: {
     marginBottom: 16

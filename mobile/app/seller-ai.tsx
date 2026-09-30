@@ -35,6 +35,7 @@ import {
 } from "../src/components";
 import { useI18n, AppLanguage } from "../src/i18n";
 import { useRoleGuard } from "../src/authGuard";
+import { BottomNavigation } from "../src/components";
 
 // ─── 1. SAMPLE CRAFTS (Exact match to Web AICatalogStudioModal) ───
 const SAMPLE_PHOTOS = [
@@ -1230,6 +1231,7 @@ export default function SellerAICatalogStudio() {
           </View>
         )}
       </ScrollView>
+      <BottomNavigation role="seller" />
     </Screen>
   );
 }
@@ -1237,7 +1239,7 @@ export default function SellerAICatalogStudio() {
 const styles = StyleSheet.create({
   content: {
     padding: 16,
-    paddingBottom: 40
+    paddingBottom: 110
   },
   stepIndicatorRow: {
     flexDirection: "row",

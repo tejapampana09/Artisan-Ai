@@ -20,9 +20,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "../src/api";
 import { theme } from "../src/theme";
 import { useRoleGuard } from "../src/authGuard";
+import { BottomNavigation, useAutoHideNav } from "../src/components";
 
 export default function BuyerOrders() {
   useRoleGuard("buyer");
+  const { navVisible, onScroll, scrollEventThrottle } = useAutoHideNav();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -184,6 +186,8 @@ export default function BuyerOrders() {
           data={filteredOrders}
           keyExtractor={(item, index) => String(item.id ?? index)}
           contentContainerStyle={styles.listContent}
+          onScroll={onScroll}
+          scrollEventThrottle={scrollEventThrottle}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -455,6 +459,7 @@ export default function BuyerOrders() {
           </View>
         </View>
       </Modal>
+      <BottomNavigation role="buyer" visible={navVisible} />
     </View>
   );
 }
@@ -536,7 +541,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 40
+    paddingBottom: 110
   },
   emptyContainer: {
     alignItems: "center",
