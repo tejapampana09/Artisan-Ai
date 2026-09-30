@@ -266,7 +266,9 @@ export async function apiRequest(endpoint, options = {}) {
           continue;
         }
         
-        if (response.status === 401) {
+        const isAuthEndpoint = cleanEndpoint.includes('/auth/') || cleanEndpoint.includes('/register');
+
+        if (response.status === 401 && !isAuthEndpoint) {
           // Domain-scoped 401 cleanup: clear only the domain that was rejected
           const targetDomain = options.domain || (
             cleanEndpoint.startsWith('/marketplace') ? 'MARKETPLACE' :
