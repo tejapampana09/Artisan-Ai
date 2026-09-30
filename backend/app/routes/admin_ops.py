@@ -8,7 +8,8 @@ from backend.app.database import get_db
 from backend.app.models import (
     User, Product, Event, PricingDecision,
     Notification, Order, Payment, Enquiry, Review,
-    ProcessedOperation, DraftCatalog, AuditLog
+    ProcessedOperation, DraftCatalog, AuditLog,
+    Address, PayoutAccount
 )
 from backend.app.schemas import (
     AdminCreateSellerRequest, UserResponse, AdminResetArtisanPasswordRequest,
@@ -248,44 +249,46 @@ def admin_delete_artisan(
         # 2. Clean Notifications
         db.query(Notification).filter(Notification.user_id == artisan.id).delete(synchronize_session=False)
 
-        # 3. Clean Events for artisan
+        # 3. Clean Addresses and PayoutAccount (prevent foreign key violations)
+        db.query(Address).filter(Address.user_id == artisan.id).delete(synchronize_session=False)
+        db.query(PayoutAccount).filter(PayoutAccount.artisan_id == artisan.id).delete(synchronize_session=False)
+
+        # 4. Clean Events for artisan
         db.query(Event).filter(Event.user_id == artisan.id).delete(synchronize_session=False)
 
-        # 4. Clean Enquiries made by artisan
+        # 5. Clean Enquiries made by artisan
         db.query(Enquiry).filter(Enquiry.user_id == artisan.id).delete(synchronize_session=False)
 
-        # 5. Clean Reviews made by artisan
+        # 6. Clean Reviews made by artisan
         db.query(Review).filter(Review.buyer_id == artisan.id).delete(synchronize_session=False)
 
-        # 6. Orders placed by artisan (if any)
-        user_orders = db.query(Order).filter(Order.user_id == artisan.id).all()
-        user_order_ids = [o.id for o in user_orders]
+        # 7. Orders placed by artisan (if any)
+        user_orders = db.query(Order.id).filter(Order.user_id == artisan.id).all()
+        user_order_ids = [o[0] for o in user_orders]
         if user_order_ids:
             db.query(Payment).filter(Payment.order_id.in_(user_order_ids)).delete(synchronize_session=False)
             db.query(Review).filter(Review.order_id.in_(user_order_ids)).delete(synchronize_session=False)
             db.query(Order).filter(Order.id.in_(user_order_ids)).delete(synchronize_session=False)
 
-        # 7. Products belonging to this artisan and all dependent records
-        products = db.query(Product).filter(Product.seller_id == artisan.id).all()
-        prod_ids = [p.id for p in products]
+        # 8. Products belonging to this artisan and all dependent records
+        products = db.query(Product.id).filter(Product.seller_id == artisan.id).all()
+        prod_ids = [p[0] for p in products]
         if prod_ids:
             db.query(PricingDecision).filter(PricingDecision.product_id.in_(prod_ids)).delete(synchronize_session=False)
             db.query(Event).filter(Event.product_id.in_(prod_ids)).delete(synchronize_session=False)
             db.query(Enquiry).filter(Enquiry.product_id.in_(prod_ids)).delete(synchronize_session=False)
             db.query(Review).filter(Review.product_id.in_(prod_ids)).delete(synchronize_session=False)
 
-            prod_orders = db.query(Order).filter(Order.product_id.in_(prod_ids)).all()
-            prod_order_ids = [o.id for o in prod_orders]
+            prod_orders = db.query(Order.id).filter(Order.product_id.in_(prod_ids)).all()
+            prod_order_ids = [o[0] for o in prod_orders]
             if prod_order_ids:
                 db.query(Payment).filter(Payment.order_id.in_(prod_order_ids)).delete(synchronize_session=False)
                 db.query(Review).filter(Review.order_id.in_(prod_order_ids)).delete(synchronize_session=False)
                 db.query(Order).filter(Order.id.in_(prod_order_ids)).delete(synchronize_session=False)
 
-            for prod in products:
-                db.delete(prod)
+            db.query(Product).filter(Product.id.in_(prod_ids)).delete(synchronize_session=False)
 
-        # 8. Delete the artisan User record
-        db.delete(artisan)
+        # 9. Audit log before deleting the user row
         record_audit_log(
             db=db,
             actor=current_admin,
@@ -296,6 +299,9 @@ def admin_delete_artisan(
             after_state="DELETED",
             commit=False
         )
+
+        # 10. Delete the artisan User record cleanly via query
+        db.query(User).filter(User.id == artisan_id).delete(synchronize_session=False)
         db.commit()
 
         return {
@@ -309,7 +315,7 @@ def admin_delete_artisan(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An internal error occurred while removing the artisan profile. Please try again."
+            detail=f"An error occurred while removing the artisan profile: {str(exc)}"
         )
 
 @admin_ops_router.get("/audit-logs", response_model=List[AuditLogResponse])
