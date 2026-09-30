@@ -34,6 +34,9 @@ class User(Base):
     district = Column(String(100), nullable=True)
     pincode = Column(String(20), nullable=True)
 
+    # UI navigation state persisted per-user (active app section)
+    active_mode = Column(String(50), nullable=False, default="HOME", server_default="HOME")
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     products = relationship("Product", back_populates="seller")

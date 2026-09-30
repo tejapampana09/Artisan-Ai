@@ -64,6 +64,7 @@ class UserResponse(BaseModel):
     state: Optional[str] = None
     district: Optional[str] = None
     pincode: Optional[str] = None
+    active_mode: Optional[str] = "HOME"
 
 class UserUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=120)
