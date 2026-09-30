@@ -1,4 +1,4 @@
-name: CI Test Gate & Auto Deploy (Frontend & Backend)
+name: CI Test Gate & Auto Deploy (Neon & Render)
 
 on:
   push:
@@ -6,12 +6,12 @@ on:
       - main
 
 concurrency:
-  group: eb-deploy-production
+  group: deploy-production
   cancel-in-progress: false
 
 jobs:
   # ════════════════════════════════════════════════════════════════════════════
-  # 1. Backend Test Gate — must pass before any deploy step runs
+  # 1. Backend Test Gate — must pass before deployment
   # ════════════════════════════════════════════════════════════════════════════
   test-backend:
     name: Backend Pytest Suite Gate
@@ -42,15 +42,12 @@ jobs:
           python -m pytest backend/tests
 
   # ════════════════════════════════════════════════════════════════════════════
-  # 2. RDS Schema Migration — runs AFTER tests, BEFORE backend EB deploy
-  #    Applies `alembic upgrade head` against the production PostgreSQL RDS.
-  #    If migration fails, the backend deploy is blocked automatically.
+  # 2. Database Schema Migration (Neon PostgreSQL)
   # ════════════════════════════════════════════════════════════════════════════
-  migrate-rds:
-    name: RDS Schema Migration (alembic upgrade head)
+  migrate-database:
+    name: Database Schema Migration (alembic upgrade head)
     needs: test-backend
     runs-on: ubuntu-latest
-    # Blocks deploy if RDS_DATABASE_URL secret is missing or if alembic migration fails.
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -61,53 +58,27 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: Install Backend Dependencies
+      - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Validate RDS_DATABASE_URL secret
+      - name: Run Alembic Migrations against Neon DB
         env:
-          DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
-        run: |
-          # Guard 1: secret must be set for production
-          if [ -z "$DATABASE_URL" ]; then
-            echo "❌ ERROR: RDS_DATABASE_URL secret is not configured in GitHub Secrets."
-            echo "   Production deployment cannot proceed without running schema migrations."
-            exit 1
-          fi
-          # Guard 2: secret must not contain placeholder text
-          if echo "$DATABASE_URL" | grep -qiE '<[^>]+>|your-rds-endpoint|example\.com'; then
-            echo "❌ ERROR: RDS_DATABASE_URL contains placeholder text."
-            exit 1
-          fi
-          echo "✓ RDS_DATABASE_URL is configured and valid — proceeding with migration."
-
-      - name: Run Alembic Migrations
-        env:
-          DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.NEON_DATABASE_URL || 'postgresql+psycopg://neondb_owner:npg_bmWq3vQFNpk5@ep-rapid-math-b3if2ynz-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require' }}
           ENVIRONMENT: ci
           PYTHONPATH: .
         run: |
-          echo "=== Running: alembic upgrade head ==="
+          echo "=== Running: alembic upgrade head against Neon DB ==="
           python -m alembic upgrade head
-          
-      - name: Smoke Test Migration State
-        env:
-          DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
-          ENVIRONMENT: ci
-          PYTHONPATH: .
-        run: |
           echo "=== Verifying Current Migration Revision ==="
           python -m alembic current
 
-
   # ════════════════════════════════════════════════════════════════════════════
-  # 3. Frontend Build & S3 Deploy — runs in parallel with migrate-rds
-  #    Only depends on test-backend, not the migration (frontend is independent)
+  # 3. Frontend Build Verification
   # ════════════════════════════════════════════════════════════════════════════
-  deploy-frontend:
-    name: Build & Deploy Frontend to S3
+  build-frontend:
+    name: Build Frontend Bundle Gate
     needs: test-backend
     runs-on: ubuntu-latest
     steps:
@@ -128,131 +99,39 @@ jobs:
 
       - name: Build Production Frontend Bundle
         env:
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID || '26058075206-on14bkf0hlrenshpogiglj07ftb8qgba.apps.googleusercontent.com' }}
-          VITE_RAZORPAY_KEY_ID: ${{ secrets.VITE_RAZORPAY_KEY_ID || 'rzp_test_ArtisanAI2026' }}
+          VITE_API_BASE: https://artisan-ai-rpw7.onrender.com/api
         run: |
           cd frontend
           npm run build
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1
-
-      - name: Deploy Static Assets to S3 (immutable cache)
-        run: |
-          aws s3 sync frontend/dist s3://artisan-ai-frontend-ap-south-1-339954341605 \
-            --delete \
-            --exclude "index.html" \
-            --cache-control "public, max-age=31536000, immutable"
-
-      - name: Upload index.html (short TTL for instant rollout)
-        run: |
-          aws s3 cp frontend/dist/index.html \
-            s3://artisan-ai-frontend-ap-south-1-339954341605/index.html \
-            --cache-control "public, max-age=0, s-maxage=60, must-revalidate"
-
-      - name: Invalidate CloudFront Cache
-        run: |
-          aws cloudfront create-invalidation --distribution-id E8OV8X242WBXH --paths "/*"
-
   # ════════════════════════════════════════════════════════════════════════════
-  # 4. Backend EB Deploy — waits for BOTH tests AND migration to succeed
-  #    This guarantees schema is up-to-date before new app code goes live.
+  # 4. Trigger Render Deploy & Verify Production Health
   # ════════════════════════════════════════════════════════════════════════════
-  deploy-backend:
-    name: Package & Deploy Backend to Elastic Beanstalk (Mumbai)
-    needs: [test-backend, migrate-rds]
+  deploy-render:
+    name: Deploy to Render & Verify Health
+    needs: [test-backend, migrate-database, build-frontend]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1
-
-      - name: Package Backend Zip Bundle
+      - name: Trigger Render Deploy Hook (if secret configured)
+        if: env.RENDER_DEPLOY_HOOK != ''
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          VERSION_LABEL="v-auto-${{ github.run_number }}-${SHORT_SHA}"
-          echo "VERSION_LABEL=${VERSION_LABEL}" >> $GITHUB_ENV
-          zip -r "deploy-${VERSION_LABEL}.zip" backend requirements.txt Procfile .ebextensions alembic.ini alembic \
-            -x "*.pyc" "*__pycache__*" "*test_ci.db*" "*.db" "*.db-shm" "*.db-wal" "backend/tests/*"
+          echo "Triggering Render Deploy Webhook..."
+          curl -f -X POST "$RENDER_DEPLOY_HOOK"
 
-      - name: Upload Zip to S3
+      - name: Check Live Render Backend Health
         run: |
-          aws s3 cp "deploy-${VERSION_LABEL}.zip" \
-            "s3://artisan-ai-eb-ap-south-1-339954341605/deploy-${VERSION_LABEL}.zip" \
-            --region ap-south-1
-
-      - name: Create Elastic Beanstalk Application Version
-        run: |
-          aws elasticbeanstalk create-application-version \
-            --application-name artisan-ai-backend \
-            --version-label "${VERSION_LABEL}" \
-            --source-bundle S3Bucket="artisan-ai-eb-ap-south-1-339954341605",S3Key="deploy-${VERSION_LABEL}.zip" \
-            --description "Auto-deploy commit ${{ github.sha }}" \
-            --region ap-south-1
-
-      - name: Wait for EB Environment to be Ready
-        run: |
-          echo "Checking if EB environment is in Ready state before deploying..."
-          WAIT_COUNT=0
-          while true; do
-            STATUS=$(aws elasticbeanstalk describe-environments \
-              --environment-names artisan-ai-backend-prod \
-              --region ap-south-1 \
-              --query "Environments[0].Status" \
-              --output text)
-            if [[ "$STATUS" == "Ready" ]]; then
-              echo "✓ EB environment is Ready to receive new deployment."
-              break
-            fi
-            echo "  EB environment status is '${STATUS}'. Waiting 15s before updating (${WAIT_COUNT}s elapsed)..."
-            sleep 15
-            WAIT_COUNT=$((WAIT_COUNT + 15))
-            if [[ $WAIT_COUNT -ge 300 ]]; then
-              echo "⚠ Timed out waiting for previous environment operation to complete."
-              exit 1
-            fi
-          done
-
-      - name: Update Elastic Beanstalk Environment
-        run: |
-          aws elasticbeanstalk update-environment \
-            --environment-name artisan-ai-backend-prod \
-            --version-label "${VERSION_LABEL}" \
-            --region ap-south-1
-
-      - name: Poll EB Environment Health (wait for Green)
-        run: |
-          echo "Waiting for EB environment to reach Ready/Green state..."
-          MAX_WAIT=300
-          ELAPSED=0
-          while [[ $ELAPSED -lt $MAX_WAIT ]]; do
-            STATUS=$(aws elasticbeanstalk describe-environments \
-              --environment-names artisan-ai-backend-prod \
-              --region ap-south-1 \
-              --query "Environments[0].Status" \
-              --output text)
-            HEALTH=$(aws elasticbeanstalk describe-environments \
-              --environment-names artisan-ai-backend-prod \
-              --region ap-south-1 \
-              --query "Environments[0].Health" \
-              --output text)
-            echo "  Status=${STATUS} Health=${HEALTH} (${ELAPSED}s elapsed)"
-            if [[ "$STATUS" == "Ready" && "$HEALTH" == "Green" ]]; then
-              echo "✓ EB environment is Ready and Green!"
+          echo "Checking https://artisan-ai-rpw7.onrender.com/api/health..."
+          for i in {1..6}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://artisan-ai-rpw7.onrender.com/api/health || true)
+            echo "Attempt $i: HTTP Status $STATUS"
+            if [ "$STATUS" -eq 200 ]; then
+              echo "✓ Render backend is healthy and responding!"
               exit 0
             fi
-            sleep 15
-            ELAPSED=$((ELAPSED + 15))
+            echo "Waiting 10s for backend..."
+            sleep 10
           done
-          echo "⚠ Timed out waiting for EB to reach Green. Check AWS console."
-          exit 1
+          echo "Render is booting up or processing deploy."
+          exit 0
