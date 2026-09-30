@@ -80,10 +80,12 @@ export async function googleAuthBuyer(googleData) {
     body: JSON.stringify(googleData),
   });
   if (data && data.access_token) {
-    activateSingleRoleSession('BUYER', data.access_token);
+    const domain = data.auth_domain || (data.user?.role === 'ARTISAN' ? 'STUDIO' : (data.user?.role === 'ADMIN' ? 'ADMIN' : 'BUYER'));
+    activateSingleRoleSession(domain, data.access_token);
   }
   if (data && data.user) {
-    setStoredUser(data.user, 'BUYER');
+    const domain = data.auth_domain || (data.user?.role === 'ARTISAN' ? 'STUDIO' : (data.user?.role === 'ADMIN' ? 'ADMIN' : 'BUYER'));
+    setStoredUser(data.user, domain);
   }
   return data;
 }

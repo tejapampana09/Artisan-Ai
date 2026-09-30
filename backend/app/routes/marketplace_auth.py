@@ -235,28 +235,28 @@ async def google_auth_buyer(payload: GoogleAuthRequest, request: Request, db: Se
         db.commit()
         db.refresh(user)
     else:
-        if user.role != "BUYER":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Account '{email}' is registered as {user.role}. Marketplace sign-in is strictly reserved for Buyers. Please sign in via the Artisan Studio or Admin Console."
-            )
         if getattr(user, "status", "ACTIVE") != "ACTIVE":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Buyer account is suspended or inactive."
+                detail=f"Account '{email}' is suspended or awaiting administrative approval."
             )
+
+    # Issue role-appropriate domain and session type for seamless login
+    role = user.role or "BUYER"
+    auth_domain = "STUDIO" if role == "ARTISAN" else ("ADMIN" if role == "ADMIN" else "MARKETPLACE")
+    session_type = "ARTISAN" if role == "ARTISAN" else ("ADMIN" if role == "ADMIN" else "BUYER")
 
     access_token = create_domain_token(
         user=user,
-        auth_domain="MARKETPLACE",
-        session_type="BUYER"
+        auth_domain=auth_domain,
+        session_type=session_type
     )
 
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        auth_domain="MARKETPLACE",
-        session_type="BUYER",
+        auth_domain=auth_domain,
+        session_type=session_type,
         user=user
     )
 

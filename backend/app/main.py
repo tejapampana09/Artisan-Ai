@@ -174,16 +174,11 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
-from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Catches all unhandled exceptions and returns a safe generic error with guaranteed CORS headers."""
-    logging.getLogger("artisan_ai").error(
-        "Unhandled exception on %s %s: %s",
-        request.method, request.url.path, exc,
-        exc_info=True
-    )
+    """Catches all exceptions, preserving HTTP status codes while guaranteeing CORS headers."""
     origin = request.headers.get("origin") or "*"
     headers = {
         "Access-Control-Allow-Origin": origin,
@@ -191,6 +186,21 @@ async def global_exception_handler(request: Request, exc: Exception):
         "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "*",
     }
+
+    if isinstance(exc, (HTTPException, StarletteHTTPException)):
+        if getattr(exc, "headers", None):
+            headers.update(exc.headers)
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=headers
+        )
+
+    logging.getLogger("artisan_ai").error(
+        "Unhandled exception on %s %s: %s",
+        request.method, request.url.path, exc,
+        exc_info=True
+    )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "An unexpected error occurred. Our team has been notified. Please try again shortly."},
