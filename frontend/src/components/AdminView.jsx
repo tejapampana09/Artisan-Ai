@@ -541,6 +541,12 @@ export default function AdminView({ user, onAuthChange, onSelectMode, onLogout }
   }
 
   // Admin Console Dashboard View
+  // Safety guard: if adminUser is null (mid-logout state), don't render the
+  // full dashboard — React will re-render to HOME mode in the next cycle.
+  if (!adminUser) {
+    return null;
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-20 font-sans text-xs text-[#1C1C1C]">
       {/* Header Banner */}

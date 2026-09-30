@@ -257,6 +257,10 @@ function AppContent() {
     setUser(null);
     setStoredUser(null);
     setActiveMode('HOME');
+    // Clear the URL hash so #studio / #sell doesn't re-trigger Sell mode on next render
+    try {
+      window.history.replaceState(null, '', window.location.pathname);
+    } catch {}
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
