@@ -18,7 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons, AntDesign, Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { api } from "../src/api";
+import { api, BASE_URL } from "../src/api";
 import { theme } from "../src/theme";
 import { clearSession, getSession, getUserProfilePhoto } from "../src/storage";
 import { addToCart, getCartCount, subscribeCart } from "../src/cart";
@@ -266,7 +266,7 @@ export default function BuyerScreen() {
             onPress={async (e) => {
               e.stopPropagation();
               try {
-                const url = `https://dd8bq7j24onss.cloudfront.net/#craft-${item.id}`;
+                const url = `${BASE_URL}/#craft-${item.id}`;
                 await Share.share({
                   title: item.title,
                   message: `✨ Discover "${item.title}" handcrafted by master Indian artisans on Artisan AI (₹${Number(item.price).toLocaleString("en-IN")})!\n\nView craft: ${url}`

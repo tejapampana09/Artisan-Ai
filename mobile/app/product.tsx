@@ -19,7 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import * as Speech from "expo-speech";
-import { api } from "../src/api";
+import { api, BASE_URL } from "../src/api";
 import { theme } from "../src/theme";
 import { addToCart } from "../src/cart";
 import { toggleWishlist, isWishlisted } from "../src/wishlist";
@@ -413,7 +413,7 @@ export default function ProductDetail() {
                 style={styles.iconCircle}
                 onPress={async () => {
                   try {
-                    const craftUrl = `https://dd8bq7j24onss.cloudfront.net/#craft-${product.id}`;
+                    const craftUrl = `${BASE_URL}/#craft-${product.id}`;
                     await Share.share({
                       title: product.title,
                       message: `✨ Check out "${product.title}" handcrafted by master Indian artisans on Artisan AI (₹${Number(product.price).toLocaleString("en-IN")})!\n\nView craft: ${craftUrl}`

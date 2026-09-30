@@ -122,8 +122,8 @@ class ArtisanAlarmReceiver : BroadcastReceiver() {
     private fun checkAndNotify(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val token = prefs.getString(KEY_TOKEN, null)
-        val baseUrl = prefs.getString(KEY_BASE_URL, "https://dd8bq7j24onss.cloudfront.net")
-            ?.trim()?.removeSuffix("/") ?: "https://dd8bq7j24onss.cloudfront.net"
+        val baseUrl = prefs.getString(KEY_BASE_URL, "https://artisan-ai-rpw7.onrender.com")
+            ?.trim()?.removeSuffix("/") ?: "https://artisan-ai-rpw7.onrender.com"
 
         if (token.isNullOrEmpty() || token == "guest_buyer_token") {
             return
