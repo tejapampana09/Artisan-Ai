@@ -50,7 +50,7 @@ export const BottomNavigation: React.FC<BottomNavProps> = ({ role }) => {
   const sellerItems: NavItem[] = [
     { label: t("studio"), icon: "storefront-outline", activeIcon: "storefront", path: "/seller" },
     { label: t("creations"), icon: "cube-outline", activeIcon: "cube", path: "/seller-products" },
-    { label: t("aiStudio"), icon: "sparkles-outline", activeIcon: "sparkles", path: "/seller-ai", isHero: true },
+    { label: t("aiStudio"), icon: "sparkles-outline", activeIcon: "sparkles", path: "/seller-ai" },
     { label: t("orders"), icon: "receipt-outline", activeIcon: "receipt", path: "/seller-orders" },
     { label: t("business"), icon: "trending-up-outline", activeIcon: "trending-up", path: "/seller-business" }
   ];
@@ -58,7 +58,7 @@ export const BottomNavigation: React.FC<BottomNavProps> = ({ role }) => {
   const buyerItems: NavItem[] = [
     { label: t("explore"), icon: "compass-outline", activeIcon: "compass", path: "/buyer" },
     { label: t("saved"), icon: "heart-outline", activeIcon: "heart", path: "/buyer-wishlist", badge: wishlistCount },
-    { label: t("bag"), icon: "bag-handle-outline", activeIcon: "bag-handle", path: "/buyer-cart", badge: cartCount, isHero: true },
+    { label: t("bag"), icon: "bag-handle-outline", activeIcon: "bag-handle", path: "/buyer-cart", badge: cartCount },
     { label: t("orders"), icon: "receipt-outline", activeIcon: "receipt", path: "/buyer-orders" },
     { label: t("aiGuide"), icon: "sparkles-outline", activeIcon: "sparkles", path: "/buyer-assistant" }
   ];
@@ -78,37 +78,6 @@ export const BottomNavigation: React.FC<BottomNavProps> = ({ role }) => {
           const iconColor = isActive
             ? theme.colors.primary
             : theme.colors.inkMuted;
-
-          if (item.isHero) {
-            return (
-              <Pressable
-                key={item.path}
-                style={({ pressed }) => [
-                  styles.heroTab,
-                  pressed && styles.heroTabPressed
-                ]}
-                onPress={() => navigateTo(item.path)}
-                accessibilityRole="button"
-                accessibilityLabel={item.label}
-              >
-                <View style={[styles.heroButton, isActive && styles.heroButtonActive]}>
-                  <Ionicons
-                    name={role === "buyer" ? (isActive ? "bag-handle" : "bag-handle-outline") : "sparkles"}
-                    size={22}
-                    color="#FFFFFF"
-                  />
-                  {typeof item.badge === "number" && item.badge > 0 && (
-                    <View style={styles.heroBadge}>
-                      <Text style={styles.heroBadgeText}>
-                        {item.badge > 99 ? "99+" : item.badge}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={[styles.tabLabel, styles.heroLabel]}>{item.label}</Text>
-              </Pressable>
-            );
-          }
 
           return (
             <Pressable

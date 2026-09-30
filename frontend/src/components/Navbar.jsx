@@ -59,6 +59,28 @@ export default function Navbar({
   };
 
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isNavVisible, setIsNavVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  // Auto-hide mobile bottom navbar on scroll down, reveal on scroll up
+  useEffect(() => {
+    const handleScrollDirection = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY < 60) {
+        setIsNavVisible(true);
+      } else if (currentScrollY > lastScrollY.current + 10) {
+        // Scrolling down -> smoothly hide
+        setIsNavVisible(false);
+      } else if (currentScrollY < lastScrollY.current - 8) {
+        // Scrolling up -> slide up into view
+        setIsNavVisible(true);
+      }
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScrollDirection, { passive: true });
+    return () => window.removeEventListener('scroll', handleScrollDirection);
+  }, []);
 
   useEffect(() => {
     if (activeMode !== 'HOME') {
@@ -911,7 +933,11 @@ export default function Navbar({
       )}
 
       {/* Floating Island Mobile Bottom Navigation Dock & Quick Cart Strip */}
-      <div className="md:hidden fixed bottom-3 left-3 right-3 sm:left-auto sm:right-auto sm:w-[420px] sm:left-1/2 sm:-translate-x-1/2 z-[99] pointer-events-none">
+      <div className={`md:hidden fixed bottom-3 left-3 right-3 sm:left-auto sm:right-auto sm:w-[420px] sm:left-1/2 sm:-translate-x-1/2 z-[99] pointer-events-none transition-all duration-300 ease-in-out ${
+        isNavVisible
+          ? 'translate-y-0 opacity-100'
+          : 'translate-y-28 opacity-0 pointer-events-none'
+      }`}>
         {/* Floating Quick Bag Strip: Appears when buyer has items in cart and isn't on cart screen */}
         {cartCount > 0 && activeMode !== 'CART' && (
           <div
@@ -967,49 +993,51 @@ export default function Navbar({
             )}
           </button>
 
-          {/* Tab 3 (Center Hero Action): Dynamic 3D Elevated Gem */}
+          {/* Tab 3: Studio (Artisan/Admin) OR Bag/Wishlist (Buyer) — SAME UNIFORM SIZE */}
           {user && (user.role === 'ARTISAN' || user.role === 'ADMIN') ? (
             <button
               onClick={() => onToggleMode('SELL')}
-              className="relative -top-4 flex flex-col items-center justify-center group active:scale-90 transition-all duration-200 cursor-pointer"
+              className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-200 active:scale-85 cursor-pointer ${
+                activeMode === 'SELL'
+                  ? 'text-[#933D1E] bg-[#933D1E]/10 font-black scale-105'
+                  : 'text-stone-500 hover:text-stone-900 font-semibold hover:bg-stone-100/60'
+              }`}
               title="Artisan Studio / సెల్లర్ స్టూడియో"
             >
-              <div className={`w-12 h-12 rounded-2xl shadow-[0_8px_24px_rgba(147,61,30,0.45)] border-[2.5px] border-white ring-4 ring-[#FAF7F2]/90 flex items-center justify-center text-white transition-all duration-200 ${
-                activeMode === 'SELL'
-                  ? 'bg-gradient-to-tr from-[#7B2E15] via-[#933D1E] to-amber-500 ring-amber-400/60 scale-105'
-                  : 'bg-gradient-to-tr from-stone-900 via-[#933D1E] to-[#A6533B]'
-              }`}>
-                <Store className="w-5 h-5 transition-transform duration-200 group-hover:rotate-6" />
-              </div>
-              <span className="text-[10px] font-black tracking-tight mt-0.5 text-[#933D1E]">
-                Studio
-              </span>
+              <Store className={`w-5 h-5 transition-transform duration-200 ${activeMode === 'SELL' ? 'scale-110' : ''}`} />
+              <span className="text-[10px] mt-0.5 font-bold tracking-tight">Studio</span>
+              {activeMode === 'SELL' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#933D1E] mt-0.5 animate-pulse shadow-xs" />
+              )}
             </button>
           ) : (
             <button
               onClick={() => onOpenAuth(cartCount > 0 ? 'CART' : 'WISHLIST')}
-              className="relative -top-4 flex flex-col items-center justify-center group active:scale-90 transition-all duration-200 cursor-pointer"
+              className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-200 active:scale-85 cursor-pointer ${
+                (activeMode === 'CART' || activeMode === 'WISHLIST')
+                  ? 'text-[#933D1E] bg-[#933D1E]/10 font-black scale-105'
+                  : 'text-stone-500 hover:text-stone-900 font-semibold hover:bg-stone-100/60'
+              }`}
               title={cartCount > 0 ? 'View Shopping Bag' : 'My Wishlist'}
             >
-              <div className={`relative w-12 h-12 rounded-2xl shadow-[0_8px_24px_rgba(147,61,30,0.45)] border-[2.5px] border-white ring-4 ring-[#FAF7F2]/90 flex items-center justify-center text-white transition-all duration-200 ${
-                (activeMode === 'CART' || activeMode === 'WISHLIST')
-                  ? 'bg-gradient-to-tr from-[#7B2E15] via-[#933D1E] to-amber-500 ring-amber-400/60 scale-105'
-                  : 'bg-gradient-to-tr from-[#933D1E] via-[#A6533B] to-amber-600'
-              }`}>
+              <div className="relative">
                 {cartCount > 0 ? (
                   <>
-                    <ShoppingBag className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
-                    <span className="absolute -top-1.5 -right-1.5 bg-amber-400 text-stone-950 font-black text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center shadow-lg animate-bounce border-2 border-white ring-1 ring-amber-500/40">
+                    <ShoppingBag className={`w-5 h-5 transition-transform duration-200 ${activeMode === 'CART' ? 'scale-110' : ''}`} />
+                    <span className="absolute -top-1 -right-2 bg-amber-400 text-stone-950 font-black text-[9px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs border border-white">
                       {cartCount > 99 ? '99+' : cartCount}
                     </span>
                   </>
                 ) : (
-                  <Heart className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" fill={activeMode === 'WISHLIST' ? 'currentColor' : 'none'} />
+                  <Heart className={`w-5 h-5 transition-transform duration-200 ${activeMode === 'WISHLIST' ? 'scale-110' : ''}`} fill={activeMode === 'WISHLIST' ? 'currentColor' : 'none'} />
                 )}
               </div>
-              <span className="text-[10px] font-black tracking-tight mt-0.5 text-[#933D1E]">
+              <span className="text-[10px] mt-0.5 font-bold tracking-tight">
                 {cartCount > 0 ? 'Bag' : 'Wishlist'}
               </span>
+              {(activeMode === 'CART' || activeMode === 'WISHLIST') && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#933D1E] mt-0.5 animate-pulse shadow-xs" />
+              )}
             </button>
           )}
 
