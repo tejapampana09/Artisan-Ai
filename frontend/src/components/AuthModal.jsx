@@ -553,7 +553,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
           )}
 
           {/* Switch Portal Footer Toggle */}
-          <div className="text-center pt-3 border-t border-[#EADFCF]">
+          <div className="text-center pt-3 border-t border-[#EADFCF] space-y-1">
             {isSellerMode ? (
               <button
                 type="button"
@@ -563,13 +563,26 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                 Shopping as a customer? <span className="underline font-bold text-[#933D1E]">Switch to Customer Portal</span>
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={() => { setIsSellerMode(true); setAuthAction('REGISTER'); setError(''); }}
-                className="text-xs text-[#6B5B51] hover:text-[#933D1E] font-medium cursor-pointer transition-colors"
-              >
-                Are you a rural craftsman? <span className="underline font-bold text-[#933D1E]">Register as an Artisan →</span>
-              </button>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-xs text-[#6B5B51]">
+                <span>Are you a craftsman / seller?</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setIsSellerMode(true); setAuthAction('LOGIN'); setError(''); }}
+                    className="underline font-bold text-[#933D1E] hover:text-[#7E3216] cursor-pointer"
+                  >
+                    Artisan Studio Login →
+                  </button>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={() => { setIsSellerMode(true); setAuthAction('REGISTER'); setError(''); }}
+                    className="underline font-semibold text-[#6B5B51] hover:text-[#933D1E] cursor-pointer"
+                  >
+                    Register
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

@@ -107,13 +107,26 @@ function AppContent() {
 
   // Auto-logout when JWT expires: any 401 from the API fires this event
   useEffect(() => {
+    let lastToast = 0;
     const handleSessionExpired = (e) => {
+      const now = Date.now();
+      const domain = e?.detail?.domain;
       setUser(null);
-      setActiveMode('HOME');
-      setIsAuthOpen(true);
-      setAuthInitialTab('LOGIN');
-      // Show user-visible toast so they know why they were logged out
-      notify.warning('Your session has expired. Please sign in again.');
+      
+      const isStudio = domain === 'STUDIO' || window.location.hash.includes('studio') || window.location.hash.includes('sell');
+      if (isStudio) {
+        setIsAuthOpen(true);
+        setAuthInitialTab('SELL_LOGIN');
+      } else {
+        setActiveMode('HOME');
+        setIsAuthOpen(true);
+        setAuthInitialTab('LOGIN');
+      }
+      
+      if (now - lastToast > 3500) {
+        lastToast = now;
+        notify.warning('Your session has expired. Please sign in again.');
+      }
     };
     window.addEventListener('artisan:session-expired', handleSessionExpired);
     return () => window.removeEventListener('artisan:session-expired', handleSessionExpired);
