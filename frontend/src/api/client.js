@@ -6,10 +6,13 @@
 export function getApiBase() {
   // 1. Explicit Vite env variable override if provided
   if (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_BASE) {
-    return import.meta.env.VITE_API_BASE;
+    const raw = String(import.meta.env.VITE_API_BASE).trim().replace(/\/+$/, '');
+    if (raw) {
+      return raw.endsWith('/api') ? raw : `${raw}/api`;
+    }
   }
 
-  // 2. Relative route: proxied by Vite in local dev (localhost:8000) and CloudFront in prod (dd8bq7j24onss.cloudfront.net/api)
+  // 2. Relative route: proxied by Vite in local dev and Vercel in prod
   return '/api';
 }
 
@@ -191,8 +194,12 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_TI
 
 export async function apiRequest(endpoint, options = {}) {
   const apiBase = getApiBase();
-  const cleanEndpoint = endpoint.startsWith('/api') ? endpoint.slice(4) : endpoint;
-  const url = endpoint.startsWith('http') ? endpoint : `${apiBase}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+  // Strip duplicate /api if endpoint already starts with /api
+  const cleanEndpoint = endpoint.startsWith('/api/') 
+    ? endpoint.slice(4) 
+    : (endpoint === '/api' ? '' : (endpoint.startsWith('/api') ? endpoint.slice(4) : endpoint));
+  const path = cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`;
+  const url = endpoint.startsWith('http') ? endpoint : `${apiBase}${path}`;
   
   const headers = {
     ...(options.headers || {}),

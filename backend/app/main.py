@@ -134,6 +134,13 @@ app.add_middleware(
 )
 
 @app.middleware("http")
+async def rewrite_missing_api_prefix(request: Request, call_next):
+    path = request.url.path
+    if not path.startswith("/api") and not path.startswith("/docs") and not path.startswith("/openapi.json") and not path.startswith("/redoc"):
+        request.scope["path"] = f"/api{path}"
+    return await call_next(request)
+
+@app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     start_time = time.time()
     response = await call_next(request)
