@@ -471,6 +471,20 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
             ) : (
               /* ARTISAN STUDIO LOGIN FORM */
               <form onSubmit={handleLogin} className="space-y-3.5 text-xs">
+                <div className="flex justify-between items-center bg-amber-50/80 border border-amber-200/90 rounded-xl px-3 py-2">
+                  <span className="text-[11px] text-[#6B5B51]">Registered artisan?</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginIdentifier('tejapampana09@gmail.com');
+                      setLoginPassword('password123');
+                      setError('');
+                    }}
+                    className="text-[11px] text-[#933D1E] hover:text-[#7E3216] font-bold underline cursor-pointer"
+                  >
+                    ⚡ Auto-Fill Teja Credentials
+                  </button>
+                </div>
                 <div>
                   <label className="block font-semibold text-[#2A1E17] mb-1">
                     Artisan Email or Phone Number
@@ -482,7 +496,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                       value={loginIdentifier}
                       onChange={(e) => setLoginIdentifier(e.target.value)}
                       required
-                      placeholder="phone or email"
+                      placeholder="tejapampana09@gmail.com"
                       className="w-full pl-9 pr-3 py-2.5 bg-white border border-[#EADFCF] rounded-xl focus:ring-2 focus:ring-[#933D1E] outline-hidden text-[#2A1E17]"
                     />
                   </div>
@@ -499,7 +513,7 @@ export default function AuthModal({ isOpen, onClose, user, onAuthChange, onNavig
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       required
-                      placeholder="••••••••"
+                      placeholder="password123"
                       className="w-full pl-9 pr-3 py-2.5 bg-white border border-[#EADFCF] rounded-xl focus:ring-2 focus:ring-[#933D1E] outline-hidden text-[#2A1E17]"
                     />
                   </div>
