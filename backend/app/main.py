@@ -117,16 +117,18 @@ app = FastAPI(
 
 
 cors_origins = get_cors_origins()
+if "https://artisan-ai-gamma.vercel.app" not in cors_origins:
+    cors_origins.append("https://artisan-ai-gamma.vercel.app")
+
 cors_kwargs = {
     "allow_origins": cors_origins,
+    "allow_origin_regex": r"https://.*\.vercel\.app|https://.*\.onrender\.com|https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.\d+\.\d+\.\d+)(:\d+)?",
     "allow_credentials": True,
     "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    "allow_headers": ["Authorization", "Content-Type", "X-Request-ID", "Accept", "X-Requested-With"],
+    "allow_headers": ["Authorization", "Content-Type", "X-Request-ID", "Accept", "X-Requested-With", "Origin"],
     "expose_headers": ["X-Request-ID", "X-Process-Time-Ms"],
     "max_age": 600,
 }
-if ENVIRONMENT != "production":
-    cors_kwargs["allow_origin_regex"] = r"https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.\d+\.\d+\.\d+)(:\d+)?"
 
 app.add_middleware(
     CORSMiddleware,
