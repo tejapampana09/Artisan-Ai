@@ -95,51 +95,6 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
     notify.success(language === 'te' ? 'విజయవంతంగా సైన్ అవుట్ అయ్యారు' : 'Signed out cleanly');
   };
 
-  // ── Early return if not logged in as Artisan — AFTER all hooks ──
-  if (!user) {
-    return (
-      <div className="max-w-xl mx-auto my-12 bg-white rounded-3xl p-8 border border-[#EADFCF] shadow-2xl text-center space-y-5 font-sans text-xs">
-        <div className="w-16 h-16 bg-amber-100 text-[#933D1E] rounded-full flex items-center justify-center mx-auto border-2 border-amber-300">
-          <Store className="w-8 h-8 text-[#933D1E]" />
-        </div>
-        <div>
-          <span className="inline-block bg-amber-100 text-[#933D1E] border border-amber-300 px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide">
-            Artisan Studio Portal / కళాకారుల పోర్టల్
-          </span>
-          <h2 className="text-2xl font-serif font-bold text-[#2A1E17] mt-2">
-            Welcome to Artisan Studio
-          </h2>
-          <p className="text-xs text-[#6B5B51] mt-1.5 leading-relaxed max-w-md mx-auto">
-            Sign in with your verified artisan credentials to access your Voice-First AI Cataloging Studio, manage craft listings, track customer orders, and set fair prices.
-          </p>
-        </div>
-        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button
-            onClick={() => onOpenAuth('SELL_LOGIN')}
-            className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-amber-700 to-[#933D1E] hover:from-amber-800 hover:to-[#7E3216] text-white font-bold rounded-xl text-xs shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2"
-          >
-            <Store className="w-4 h-4" />
-            <span>Sign In to Studio / లాగిన్ అవ్వండి</span>
-          </button>
-          <button
-            onClick={() => onOpenAuth('SELL_REGISTER')}
-            className="w-full sm:w-auto px-6 py-3 bg-[#FAF7F2] hover:bg-[#F3ECE0] text-[#933D1E] border border-[#EADFCF] font-bold rounded-xl text-xs transition-colors cursor-pointer"
-          >
-            <span>Register as Artisan / నమోదు</span>
-          </button>
-        </div>
-        <div className="pt-3 border-t border-[#EADFCF]">
-          <button
-            onClick={() => onSwitchMode('BUY')}
-            className="text-xs text-[#6B5B51] hover:text-[#933D1E] underline cursor-pointer"
-          >
-            Looking to explore or purchase crafts? Switch to Marketplace →
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const loadDashboard = async () => {
     if (!user) {
       setLoading(false);
@@ -224,7 +179,7 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
   const prevSmartPricesRef = useRef({});
 
   const refreshSmartPrices = async () => {
-    if (isOffline) return;
+    if (isOffline || !user) return;
     try {
       const fresh = await getProducts();
 
@@ -262,19 +217,19 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
     }
   };
 
-  // 45-second polling — only while seller studio is active and online
+  // 45-second polling — only while seller studio is active, online, and user authenticated
   useEffect(() => {
-    if (isOffline) return;
+    if (isOffline || !user) return;
     const interval = setInterval(refreshSmartPrices, 45000);
     return () => clearInterval(interval);
-  }, [isOffline]);
+  }, [isOffline, user]);
 
   // Refetch immediately when browser tab regains focus
   useEffect(() => {
-    const onFocus = () => { if (!isOffline) refreshSmartPrices(); };
+    const onFocus = () => { if (!isOffline && user) refreshSmartPrices(); };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [isOffline]);
+  }, [isOffline, user]);
   // ─────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -287,10 +242,10 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
 
   // Auto-reload orders & enquiries when Navbar detects a new inbound notification
   useEffect(() => {
-    const onNewOrder = () => { if (!isOffline) loadDashboard(); };
+    const onNewOrder = () => { if (!isOffline && user) loadDashboard(); };
     window.addEventListener('artisan_notification_refresh', onNewOrder);
     return () => window.removeEventListener('artisan_notification_refresh', onNewOrder);
-  }, [isOffline]);
+  }, [isOffline, user]);
 
   const showNotification = (msg) => {
     setNotification(msg);
@@ -411,22 +366,42 @@ export default function SellView({ user, onOpenAuth, onSwitchMode, onAuthChange,
 
   if (!user) {
     return (
-      <div className="max-w-xl mx-auto my-14 bg-white rounded-3xl p-8 sm:p-12 border border-[#EADFCF] shadow-xl text-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#933D1E] to-[#A84320] text-white flex items-center justify-center mx-auto shadow-md">
-          <Store className="w-8 h-8" />
+      <div className="max-w-xl mx-auto my-12 bg-white rounded-3xl p-8 border border-[#EADFCF] shadow-2xl text-center space-y-5 font-sans text-xs">
+        <div className="w-16 h-16 bg-amber-100 text-[#933D1E] rounded-full flex items-center justify-center mx-auto border-2 border-amber-300">
+          <Store className="w-8 h-8 text-[#933D1E]" />
         </div>
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#2A1E17]">Artisan Studio Login Required</h2>
-          <p className="text-xs sm:text-sm text-[#6B5B51] mt-2 leading-relaxed max-w-md mx-auto">
-            You are currently signed out. Please sign in to access your private artisan studio, manage your craft catalog, review customer orders, and answer wholesale buyer enquiries.
+          <span className="inline-block bg-amber-100 text-[#933D1E] border border-amber-300 px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide">
+            Artisan Studio Portal / కళాకారుల పోర్టల్
+          </span>
+          <h2 className="text-2xl font-serif font-bold text-[#2A1E17] mt-2">
+            Welcome to Artisan Studio
+          </h2>
+          <p className="text-xs text-[#6B5B51] mt-1.5 leading-relaxed max-w-md mx-auto">
+            Sign in with your verified artisan credentials to access your Voice-First AI Cataloging Studio, manage craft listings, track customer orders, and set fair prices.
           </p>
         </div>
-        <div className="pt-3 flex justify-center">
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
           <button
-            onClick={onOpenAuth}
-            className="bg-gradient-to-r from-[#933D1E] to-[#A84320] hover:from-[#7E3216] hover:to-[#933D1E] text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+            onClick={() => onOpenAuth ? onOpenAuth('SELL_LOGIN') : null}
+            className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-amber-700 to-[#933D1E] hover:from-amber-800 hover:to-[#7E3216] text-white font-bold rounded-xl text-xs shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2"
           >
-            Sign In to Artisan Studio
+            <Store className="w-4 h-4" />
+            <span>Sign In to Studio / లాగిన్ అవ్వండి</span>
+          </button>
+          <button
+            onClick={() => onOpenAuth ? onOpenAuth('SELL_REGISTER') : null}
+            className="w-full sm:w-auto px-6 py-3 bg-[#FAF7F2] hover:bg-[#F3ECE0] text-[#933D1E] border border-[#EADFCF] font-bold rounded-xl text-xs transition-colors cursor-pointer"
+          >
+            <span>Register as Artisan / నమోదు</span>
+          </button>
+        </div>
+        <div className="pt-3 border-t border-[#EADFCF]">
+          <button
+            onClick={() => onSwitchMode ? onSwitchMode('BUY') : null}
+            className="text-xs text-[#6B5B51] hover:text-[#933D1E] underline cursor-pointer"
+          >
+            Looking to explore or purchase crafts? Switch to Marketplace →
           </button>
         </div>
       </div>
