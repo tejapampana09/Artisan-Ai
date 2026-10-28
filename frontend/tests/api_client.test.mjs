@@ -20,6 +20,8 @@ import {
   clearAuthToken, 
   setBuyerToken,
   setStudioToken,
+  setAdminToken,
+  apiRequest,
   ApiError, 
   formatApiErrorMessage 
 } from '../src/api/client.js';
@@ -28,6 +30,70 @@ test('getApiBase returns relative /api by default', () => {
   const base = getApiBase();
   assert.equal(typeof base, 'string');
   assert.ok(base.length > 0);
+});
+
+test('401 cleanup follows the token actually sent and preserves other sessions', async (t) => {
+  const cases = [
+    ['/sync/status', {}, 'STUDIO'],
+    ['/marketplace/orders', {}, 'MARKETPLACE'],
+    ['/artisan/admin/sellers', {}, 'ADMIN'],
+    ['/orders', { domain: 'BUYER' }, 'MARKETPLACE'],
+  ];
+  for (const [endpoint, options, rejectedDomain] of cases) {
+    await t.test(endpoint, async (t) => {
+      clearAuthToken();
+      setBuyerToken('buyer');
+      setStudioToken('studio');
+      setAdminToken('admin');
+      t.after(() => clearAuthToken());
+      t.mock.method(globalThis, 'fetch', async () => new Response('{}', { status: 401 }));
+      await assert.rejects(apiRequest(endpoint, { ...options, retries: 0 }), { status: 401 });
+      for (const [domain, token] of [['MARKETPLACE', 'buyer'], ['STUDIO', 'studio'], ['ADMIN', 'admin']]) {
+        assert.equal(getAuthToken(domain), domain === rejectedDomain ? null : token);
+      }
+    });
+  }
+});
+
+test('401 from an admin fallback clears the admin token actually sent', async (t) => {
+  clearAuthToken();
+  setAdminToken('admin');
+  t.after(() => clearAuthToken());
+  t.mock.method(globalThis, 'fetch', async () => new Response('{}', { status: 401 }));
+  await assert.rejects(apiRequest('/marketplace/orders', { retries: 0 }), { status: 401 });
+  assert.equal(getAuthToken('ADMIN'), null);
+});
+
+test('public and caller-authorized 401 responses do not clear stored sessions', async (t) => {
+  clearAuthToken();
+  setBuyerToken('buyer');
+  t.after(() => clearAuthToken());
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    assert.notEqual(new Headers(options.headers).get('Authorization'), 'Bearer buyer');
+    return new Response('{}', { status: 401 });
+  });
+  for (const options of [
+    { auth: false },
+    { headers: { Authorization: 'Bearer external' } },
+    { headers: { authorization: 'Bearer external' } },
+    { headers: new Headers({ Authorization: 'Bearer external' }) },
+  ]) {
+    await assert.rejects(apiRequest('/marketplace/orders', { ...options, retries: 0 }), { status: 401 });
+    assert.equal(getAuthToken('BUYER'), 'buyer');
+  }
+});
+
+test('late 401 does not clear a newly signed-in session', async (t) => {
+  clearAuthToken();
+  setBuyerToken('old-token');
+  t.after(() => clearAuthToken());
+  let finishRequest;
+  t.mock.method(globalThis, 'fetch', () => new Promise(resolve => { finishRequest = resolve; }));
+  const pending = apiRequest('/marketplace/orders', { retries: 0 });
+  setBuyerToken('new-token');
+  finishRequest(new Response('{}', { status: 401 }));
+  await assert.rejects(pending, { status: 401 });
+  assert.equal(getAuthToken('BUYER'), 'new-token');
 });
 
 test('getAuthToken, setAuthToken, clearAuthToken function correctly', () => {

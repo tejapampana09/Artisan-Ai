@@ -207,45 +207,47 @@ export async function apiRequest(endpoint, options = {}) {
   const path = cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`;
   const url = endpoint.startsWith('http') ? endpoint : `${apiBase}${path}`;
   
-  const headers = {
-    ...(options.headers || {}),
-  };
+  const headers = new Headers(options.headers || {});
 
-  if (!(options.body instanceof FormData) && !headers['Content-Type']) {
-    headers['Content-Type'] = 'application/json';
+  if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
   }
 
-  // Resolve domain-appropriate authorization token
+  // Keep the domain and token together so a rejected request cannot clear an
+  // unrelated session (including when an endpoint uses an admin fallback).
   let token = null;
-  if (options.auth !== false) {
+  let tokenDomain = null;
+  if (options.auth !== false && !headers.has('Authorization')) {
+    let domains;
     if (options.domain) {
-      token = getAuthToken(options.domain);
+      const aliases = { BUYER: 'MARKETPLACE', ARTISAN: 'STUDIO' };
+      domains = [aliases[options.domain] || options.domain];
+    } else if (cleanEndpoint.includes('/admin')) {
+      domains = ['ADMIN', 'MARKETPLACE', 'STUDIO'];
+    } else if (
+      cleanEndpoint.includes('role_view=seller') ||
+      cleanEndpoint.includes('/reply') ||
+      (cleanEndpoint.includes('/orders/') && cleanEndpoint.includes('/status')) ||
+      ['/studio', '/artisan', '/seller', '/ai', '/sync', '/pricing'].some(prefix => cleanEndpoint.startsWith(prefix))
+    ) {
+      domains = ['STUDIO', 'ADMIN'];
+    } else if (cleanEndpoint.startsWith('/marketplace') || cleanEndpoint.startsWith('/buyer')) {
+      domains = ['MARKETPLACE', 'ADMIN'];
     } else {
-      // Infer from backend API endpoint prefix
-      if (cleanEndpoint.includes('/admin')) {
-        token = getAdminToken() || getBuyerToken() || getStudioToken();
-      } else if (
-        cleanEndpoint.includes('role_view=seller') ||
-        cleanEndpoint.includes('/reply') ||
-        (cleanEndpoint.includes('/orders/') && cleanEndpoint.includes('/status')) ||
-        cleanEndpoint.startsWith('/studio') ||
-        cleanEndpoint.startsWith('/artisan') ||
-        cleanEndpoint.startsWith('/seller') ||
-        cleanEndpoint.startsWith('/ai') ||
-        cleanEndpoint.startsWith('/sync') ||
-        cleanEndpoint.startsWith('/pricing')
-      ) {
-        token = getStudioToken() || getAdminToken();
-      } else if (cleanEndpoint.startsWith('/marketplace') || cleanEndpoint.startsWith('/buyer')) {
-        token = getBuyerToken() || getAdminToken();
-      } else {
-        token = getStudioToken() || getBuyerToken() || getAdminToken();
+      domains = ['STUDIO', 'MARKETPLACE', 'ADMIN'];
+    }
+    for (const domain of domains) {
+      const candidate = getAuthToken(domain);
+      if (candidate) {
+        token = candidate;
+        tokenDomain = domain;
+        break;
       }
     }
   }
 
-  if (token && !headers['Authorization']) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   const retries = options.retries ?? (options.method && options.method !== 'GET' ? 0 : 2);
@@ -274,20 +276,19 @@ export async function apiRequest(endpoint, options = {}) {
         
         const isAuthEndpoint = cleanEndpoint.includes('/auth/') || cleanEndpoint.includes('/register');
 
-        if (response.status === 401 && !isAuthEndpoint) {
-          // Domain-scoped 401 cleanup: clear only the domain that was rejected
-          const targetDomain = options.domain || (
-            cleanEndpoint.startsWith('/marketplace') ? 'MARKETPLACE' :
-            cleanEndpoint.startsWith('/studio') || cleanEndpoint.startsWith('/artisan') ? 'STUDIO' :
-            cleanEndpoint.startsWith('/admin') ? 'ADMIN' : null
-          );
-          clearAuthToken(targetDomain);
+        if (
+          response.status === 401 && !isAuthEndpoint && token && tokenDomain &&
+          getAuthToken(tokenDomain) === token
+        ) {
+          // A late response must not invalidate a login completed since this
+          // request started. Public/custom-auth requests own no stored session.
+          clearAuthToken(tokenDomain);
 
           // Auto-logout: notify the app so it redirects to login immediately
           // without the user having to manually logout → login
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('artisan:session-expired', {
-              detail: { domain: targetDomain, message: 'Your session expired. Please log in again.' }
+              detail: { domain: tokenDomain, message: 'Your session expired. Please log in again.' }
             }));
           }
         }
