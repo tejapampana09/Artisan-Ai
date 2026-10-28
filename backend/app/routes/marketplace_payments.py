@@ -31,7 +31,7 @@ def create_payment(
     Initializes a server-authoritative Payment entity for an existing Order.
     Enforces Order = PENDING_PAYMENT, Payment = CREATED.
     """
-    order = db.query(Order).filter(Order.id == payload.order_id).first()
+    order = db.query(Order).filter(Order.id == payload.order_id).with_for_update().first()
     if not order:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -56,6 +56,8 @@ def create_payment(
             Payment.idempotency_key == payload.idempotency_key
         ).first()
         if existing_pmt:
+            if existing_pmt.order_id != order.id:
+                raise HTTPException(status_code=409, detail="Idempotency key is already in use for another order.")
             return existing_pmt
 
     provider = (payload.provider or "COD").upper().strip()
@@ -64,6 +66,10 @@ def create_payment(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Online payments are not enabled yet. Please choose Cash on Delivery (COD)."
         )
+    if provider == "RAZORPAY" and ENVIRONMENT == "production":
+        raise HTTPException(status_code=503, detail="Online payments are unavailable. Please choose Cash on Delivery.")
+    if order.status not in ("PENDING_PAYMENT", "PENDING", "CONFIRMED"):
+        raise HTTPException(status_code=409, detail="This order cannot accept a new payment.")
     provider_order_id = f"order_{provider.lower()}_{uuid.uuid4().hex[:14]}"
 
     payment = Payment(
@@ -94,7 +100,7 @@ def verify_payment(
     Verifies payment signature / transaction state against order amount.
     Transitions Payment -> VERIFIED and Order -> CONFIRMED.
     """
-    order = db.query(Order).filter(Order.id == payload.order_id).first()
+    order = db.query(Order).filter(Order.id == payload.order_id).with_for_update().first()
     if not order:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -120,6 +126,9 @@ def verify_payment(
     # Idempotency: If already verified, return successfully without duplicating side effects
     if payment.status == "VERIFIED" and order.status == "CONFIRMED":
         return payment
+
+    if order.status not in ("PENDING_PAYMENT", "PENDING", "CONFIRMED"):
+        raise HTTPException(status_code=409, detail="This order can no longer be confirmed by payment.")
 
     provider = (payload.provider or payment.provider or "RAZORPAY").upper().strip()
     if payment.provider.upper().strip() != provider:
@@ -154,6 +163,8 @@ def verify_payment(
     provider_payment_id = payload.provider_payment_id
 
     if provider == "COD":
+        if ENVIRONMENT == "production":
+            raise HTTPException(status_code=409, detail="Cash on Delivery is payable on delivery, not verified by the buyer.")
         # Cash on delivery verification
         verified = True
         provider_payment_id = provider_payment_id or f"cod_{uuid.uuid4().hex[:10]}"
@@ -176,7 +187,7 @@ def verify_payment(
         # generated UUID). Update the /create endpoint to call Razorpay's Orders API first.
         razorpay_order_id = payment.provider_order_id  # Must equal Razorpay's razorpay_order_id
 
-        from backend.app.config import RAZORPAY_KEY_SECRET, ENVIRONMENT
+        from backend.app.config import RAZORPAY_KEY_SECRET
         if RAZORPAY_KEY_SECRET:
             # Cryptographic HMAC-SHA256 signature verification
             # Razorpay signature format: HMAC-SHA256(razorpay_order_id + "|" + razorpay_payment_id)

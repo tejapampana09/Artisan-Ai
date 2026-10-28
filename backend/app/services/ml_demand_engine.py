@@ -64,7 +64,11 @@ class MLDemandEngine:
 
         try:
             import joblib
-            self.model = joblib.load(model_path)
+            import warnings
+            from sklearn.exceptions import InconsistentVersionWarning
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", InconsistentVersionWarning)
+                self.model = joblib.load(model_path)
             with open(meta_path, "r", encoding="utf-8") as f:
                 self.metadata = json.load(f)
             logger.info("Loaded ML Demand Model (%s, R²=%s)", self.metadata.get("model_name"), self.metadata.get("r2_score"))

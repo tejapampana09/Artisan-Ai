@@ -1,50 +1,39 @@
-/* Artisan AI PWA Service Worker v1.0.6 */
-const CACHE_NAME = 'artisan-ai-cache-v6';
+/* Artisan AI PWA Service Worker v1.0.7 */
+const CACHE_NAME = 'artisan-ai-cache-v7';
 
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-});
+self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => caches.delete(key))
-      );
-    })
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith('artisan-ai-cache-') && key !== CACHE_NAME)
+      .map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  
-  const url = event.request.url;
-
-  // Always fetch API, manifest, and icon assets live from network to prevent stale caching
-  if (
-    url.includes('/api/') || 
-    url.includes('/manifest.json') || 
-    url.includes('/icon-') || 
-    url.includes('/artisan-logo') || 
-    url.includes('apple-touch-icon') ||
-    url.includes('favicon.ico')
-  ) {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  event.respondWith(
-    fetch(event.request).then((networkResponse) => {
-      if (networkResponse && networkResponse.status === 200) {
-        const responseClone = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+  const request = event.request;
+  const url = new URL(request.url);
+  // Never cache API data, authenticated responses or third-party requests.
+  if (request.method !== 'GET' || url.origin !== self.location.origin ||
+      url.pathname === '/api' || url.pathname.startsWith('/api/') ||
+      request.headers.has('Authorization')) return;
+  // Only cache the app shell and immutable build assets.
+  if (request.mode !== 'navigate' && !url.pathname.startsWith('/assets/')) return;
+  event.respondWith((async () => {
+    try {
+      const response = await fetch(request);
+      if (response.ok && response.type === 'basic' &&
+          !/no-store|private/i.test(response.headers.get('Cache-Control') || '')) {
+        const copy = response.clone();
+        event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {}));
       }
-      return networkResponse;
-    }).catch(() => caches.match(event.request))
-  );
+      return response;
+    } catch {
+      return (await caches.match(request)) || Response.error();
+    }
+  })());
 });
 
 // PWA Native Mobile Push Event Listener

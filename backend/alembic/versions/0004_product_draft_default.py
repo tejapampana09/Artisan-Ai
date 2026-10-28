@@ -18,10 +18,9 @@ def upgrade() -> None:
     insp = sa.inspect(bind)
     prod_cols = [c['name'] for c in insp.get_columns('products')]
     if 'status' in prod_cols:
-        try:
-            op.alter_column('products', 'status', server_default='DRAFT')
-        except Exception:
-            pass
+        with op.batch_alter_table('products') as batch:
+            batch.alter_column('status', existing_type=sa.String(), server_default='DRAFT')
+
 
 def downgrade() -> None:
     pass

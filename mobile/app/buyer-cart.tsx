@@ -216,26 +216,11 @@ export default function BuyerCart() {
           buyer_phone: deliveryPhone.trim() || undefined
         });
 
-        if (order?.id != null) {
-          orderIds.push(String(order.id));
-
-          // Real server-authoritative payment initiation and verification
-          try {
-            await api.createPayment({
-              order_id: order.id,
-              provider: paymentMode,
-              idempotency_key: `pmt_${order.id}_${Date.now()}`
-            });
-
-            await api.verifyPayment({
-              order_id: order.id,
-              provider: paymentMode,
-              provider_payment_id: `${paymentMode.toLowerCase()}_${Date.now()}`
-            });
-          } catch (pmtErr) {
-            console.warn("Payment server verification notice:", pmtErr);
-          }
-        }
+        if (!order?.order_id) throw new Error("Order confirmation is missing. Check My Orders before retrying.");
+        orderIds.push(String(order.order_id));
+        // COD is collected on delivery, never verified by a buyer-side request.
+        const remaining = await removeFromCart(item.id);
+        setItems(remaining);
       }
 
       await clearCart();
@@ -524,14 +509,15 @@ export default function BuyerCart() {
                 styles.paymentOptionRow,
                 paymentMode === "RAZORPAY" && styles.paymentOptionActive
               ]}
-              onPress={() => setPaymentMode("RAZORPAY")}
+              disabled
+              accessibilityState={{ disabled: true }}
             >
               <View style={styles.radioOuter}>
                 {paymentMode === "RAZORPAY" && <View style={styles.radioInner} />}
               </View>
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={styles.paymentOptionTitle}>Instant Online Payment</Text>
-                <Text style={styles.paymentOptionSub}>UPI, Cards, NetBanking via Razorpay</Text>
+                <Text style={styles.paymentOptionSub}>Currently unavailable — please use Cash on Delivery</Text>
               </View>
               <Ionicons name="shield-checkmark-outline" size={20} color="#2E7D32" />
             </Pressable>

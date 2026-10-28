@@ -17,7 +17,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
 # ── Colour helpers ────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
@@ -74,7 +74,7 @@ if $CHECK_ONLY; then
 fi
 
 # ── Run migration ─────────────────────────────────────────────────────────────
-info "Target database: $(echo "$DB_URL" | sed 's/:\/\/[^:]*:[^@]*@/:\\/\\/<user>:<hidden>@/')"
+info "Using configured DATABASE_URL (credentials omitted)"
 info "Running: alembic upgrade ${REVISION}"
 echo ""
 

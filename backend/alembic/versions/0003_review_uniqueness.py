@@ -18,15 +18,9 @@ def upgrade() -> None:
     insp = sa.inspect(bind)
     uqs = [c['name'] for c in insp.get_unique_constraints('reviews')]
     if 'uq_review_order_product_buyer' not in uqs:
-        try:
-            op.create_unique_constraint(
-                'uq_review_order_product_buyer',
-                'reviews',
-                ['order_id', 'product_id', 'buyer_id']
-            )
-        except Exception:
-            # In SQLite or existing datasets with constraints, ignore if already present
-            pass
+        with op.batch_alter_table('reviews') as batch:
+            batch.create_unique_constraint('uq_review_order_product_buyer', ['order_id', 'product_id', 'buyer_id'])
+
 
 def downgrade() -> None:
     try:

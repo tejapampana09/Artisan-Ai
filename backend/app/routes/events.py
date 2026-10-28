@@ -344,7 +344,9 @@ def place_order(
 
         # Payments are disabled for the local prototype. Orders should move
         # straight into fulfilment instead of blocking the artisan on payment.
-        pay_method = "NOT_REQUIRED"
+        from backend.app.config import ENVIRONMENT
+        pay_method = "COD" if ENVIRONMENT == "production" else "NOT_REQUIRED"
+        pay_status = "UNPAID" if ENVIRONMENT == "production" else "NOT_REQUIRED"
 
         # 1. Dedicated structured order record ready for fulfilment.
         order_record = Order(
@@ -357,7 +359,7 @@ def place_order(
             total_price=total_price,
             delivery_address=order.delivery_address.strip(),
             payment_method=pay_method,
-            payment_status="NOT_REQUIRED",
+            payment_status=pay_status,
             payment_tx_id=None,
             status="CONFIRMED",
             created_at=datetime.now(timezone.utc)
@@ -366,7 +368,7 @@ def place_order(
         db.flush()
 
         # 2. Public analytics event with operational info
-        sanitized_meta = f"Quantity: {order.quantity} | Total: ₹{float(total_price):,.0f} | Payment: not required | Status: CONFIRMED"
+        sanitized_meta = f"Quantity: {order.quantity} | Total: ₹{float(total_price):,.0f} | Payment: {pay_status} | Status: CONFIRMED"
 
         evt = Event(
             event_type="ORDER",
@@ -409,7 +411,9 @@ def place_order(
             import logging
             logging.getLogger("artisan_ai").warning("Auto smart pricing trigger on order failed: %s", _ep_err)
 
-        return evt
+        response = EventResponse.model_validate(evt)
+        response.order_id = order_record.id
+        return response
     except Exception as e:
         db.rollback()
         import logging
@@ -477,7 +481,7 @@ def update_order_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    order = db.query(Order).filter(Order.id == order_id).first()
+    order = db.query(Order).filter(Order.id == order_id).with_for_update().first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     order = cast(Any, order)
@@ -503,14 +507,14 @@ def update_order_status(
     old_status = order.status
     old_status_norm = (old_status or "").upper().strip()
 
-    clean_user_phone = "".join(filter(str.isdigit, str(getattr(current_user, "phone", "") or "")))
-    clean_order_phone = "".join(filter(str.isdigit, str(order.buyer_phone or "")))
-    phone_matches = bool(clean_user_phone and clean_order_phone and (clean_user_phone == clean_order_phone or clean_user_phone.endswith(clean_order_phone) or clean_order_phone.endswith(clean_user_phone)))
-
     is_seller: bool = bool((prod.seller_id and prod.seller_id == current_user.id) or current_user.role == "ADMIN")
-    is_buyer: bool = bool((order.user_id is not None and order.user_id == current_user.id) or phone_matches)
+    is_buyer: bool = bool(order.user_id is not None and order.user_id == current_user.id)
 
     if is_seller:
+        if old_status_norm in ("CANCELLED", "DELIVERED") and new_status != old_status_norm:
+            raise HTTPException(status_code=409, detail="Completed or cancelled orders cannot be reopened.")
+        if new_status == "CANCELLED" and old_status_norm == "SHIPPED":
+            raise HTTPException(status_code=409, detail="Shipped orders require a return workflow, not cancellation.")
         order.status = new_status
     elif is_buyer and new_status == "CANCELLED":
         if old_status_norm in ["SHIPPED", "DELIVERED"]:
@@ -527,16 +531,10 @@ def update_order_status(
 
     # Business policy: Pre-fulfillment cancellation restores inventory once
     if new_status == "CANCELLED" and old_status_norm != "CANCELLED":
-        restored_stock = (prod.stock or 0) + order.quantity
-        prod.stock = restored_stock
         order.cancellation_status = "CANCELLED"
-        db.add(prod)
         db.add(order)
-        db.execute(
-            update(Product)
-            .where(Product.id == prod.id)
-            .values(stock=restored_stock)
-        )
+        db.execute(update(Product).where(Product.id == prod.id)
+                   .values(stock=Product.stock + order.quantity))
 
     db.commit()
     db.refresh(order)

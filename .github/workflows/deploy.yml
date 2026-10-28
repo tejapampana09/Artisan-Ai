@@ -1,12 +1,14 @@
 name: CI Test Gate & Auto Deploy (Neon & Render)
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches:
       - main
 
 concurrency:
-  group: deploy-production
+  group: deploy-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -46,7 +48,8 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   migrate-database:
     name: Database Schema Migration (alembic upgrade head)
-    needs: test-backend
+    needs: [test-backend, build-frontend, check-mobile, test-migrations]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -65,11 +68,12 @@ jobs:
 
       - name: Run Alembic Migrations against Neon DB
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.NEON_DATABASE_URL || 'postgresql+psycopg://neondb_owner:npg_bmWq3vQFNpk5@ep-rapid-math-b3if2ynz-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.NEON_DATABASE_URL }}
           ENVIRONMENT: ci
           PYTHONPATH: .
         run: |
-          echo "=== Running: alembic upgrade head against Neon DB ==="
+          test -n "$DATABASE_URL" || { echo "DATABASE_URL secret is required"; exit 1; }
+          echo "Running database migrations"
           python -m alembic upgrade head
           echo "=== Verifying Current Migration Revision ==="
           python -m alembic current
@@ -88,14 +92,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install Frontend Dependencies
         run: |
           cd frontend
-          npm install
+          npm ci
+          npm test
+          npm run lint
 
       - name: Build Production Frontend Bundle
         env:
@@ -109,22 +115,23 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   deploy-render:
     name: Deploy to Render & Verify Health
-    needs: [test-backend, migrate-database, build-frontend]
+    needs: [test-backend, migrate-database, build-frontend, check-mobile, test-migrations]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Render Deploy Hook (if secret configured)
-        if: env.RENDER_DEPLOY_HOOK != ''
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
+          test -n "$RENDER_DEPLOY_HOOK" || { echo "RENDER_DEPLOY_HOOK_URL secret is required"; exit 1; }
           echo "Triggering Render Deploy Webhook..."
-          curl -f -X POST "$RENDER_DEPLOY_HOOK"
+          curl --connect-timeout 10 --max-time 30 -f -X POST "$RENDER_DEPLOY_HOOK"
 
       - name: Check Live Render Backend Health
         run: |
-          echo "Checking https://artisan-ai-rpw7.onrender.com/api/health..."
+          echo "Checking https://artisan-ai-rpw7.onrender.com/api/ready..."
           for i in {1..6}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://artisan-ai-rpw7.onrender.com/api/health || true)
+            STATUS=$(curl --connect-timeout 10 --max-time 20 -s -o /dev/null -w "%{http_code}" https://artisan-ai-rpw7.onrender.com/api/ready || true)
             echo "Attempt $i: HTTP Status $STATUS"
             if [ "$STATUS" -eq 200 ]; then
               echo "✓ Render backend is healthy and responding!"
@@ -133,5 +140,46 @@ jobs:
             echo "Waiting 10s for backend..."
             sleep 10
           done
-          echo "Render is booting up or processing deploy."
-          exit 0
+          echo "Backend readiness failed after deployment."
+          exit 1
+
+  check-mobile:
+    name: Mobile Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: mobile
+      - run: npx tsc --noEmit
+        working-directory: mobile
+
+  test-migrations:
+    name: Fresh PostgreSQL Migration Gate
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: artisan_test
+          POSTGRES_PASSWORD: local_ci_only
+          POSTGRES_DB: artisan_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U artisan_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ENVIRONMENT: ci
+      DATABASE_URL: postgresql://artisan_test:local_ci_only@localhost:5432/artisan_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python -m alembic upgrade head
+      - run: python -m alembic upgrade head

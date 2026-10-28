@@ -269,6 +269,8 @@ class EventCreate(BaseModel):
 class EventResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    order_id: Optional[int] = None
+
     id: int
     event_type: str
     product_id: Optional[int] = None

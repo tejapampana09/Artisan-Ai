@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Navbar from './components/Navbar';
 import LandingPage from './components/LandingPage';
-import SellView from './components/SellView';
+const SellView = lazy(() => import('./components/SellView'));
 import BuyView from './components/BuyView';
 import OfflineSyncBanner from './components/OfflineSyncBanner';
 import AuthModal from './components/AuthModal';
@@ -17,19 +17,19 @@ import LanguageSelectorModal from './components/LanguageSelectorModal';
 import DownloadAppModal from './components/DownloadAppModal';
 import { setStoredUser, getStoredUser } from './services/offlineSync';
 
-import OurStoryView from './components/OurStoryView';
-import ArtisansView from './components/ArtisansView';
-import CollectionsView from './components/CollectionsView';
-import OrdersView from './components/OrdersView';
-import WishlistView from './components/WishlistView';
-import EnquiriesView from './components/EnquiriesView';
-import ProfileView from './components/ProfileView';
+const OurStoryView = lazy(() => import('./components/OurStoryView'));
+const ArtisansView = lazy(() => import('./components/ArtisansView'));
+const CollectionsView = lazy(() => import('./components/CollectionsView'));
+const OrdersView = lazy(() => import('./components/OrdersView'));
+const WishlistView = lazy(() => import('./components/WishlistView'));
+const EnquiriesView = lazy(() => import('./components/EnquiriesView'));
+const ProfileView = lazy(() => import('./components/ProfileView'));
 import CartView from './components/CartView';
 import Footer from './components/Footer';
-import AdminView from './components/AdminView';
-import LegalView from './components/LegalView';
-import BecomeArtisanView from './components/BecomeArtisanView';
-import CraftMapView from './components/CraftMapView';
+const AdminView = lazy(() => import('./components/AdminView'));
+const LegalView = lazy(() => import('./components/LegalView'));
+const BecomeArtisanView = lazy(() => import('./components/BecomeArtisanView'));
+const CraftMapView = lazy(() => import('./components/CraftMapView'));
 
 const roleDomain = (role) => (
   role === 'ARTISAN' ? 'STUDIO' : role === 'ADMIN' ? 'ADMIN' : role === 'BUYER' ? 'BUYER' : null
@@ -457,7 +457,9 @@ export default function App() {
     <LanguageProvider>
       <OfflineProvider>
         <NotificationProvider>
-          <AppContent />
+          <Suspense fallback={<div role="status" className="p-8 text-center">Loading…</div>}>
+            <AppContent />
+          </Suspense>
         </NotificationProvider>
       </OfflineProvider>
     </LanguageProvider>

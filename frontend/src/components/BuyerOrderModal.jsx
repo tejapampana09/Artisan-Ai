@@ -46,11 +46,11 @@ export default function BuyerOrderModal({ product, mode = 'ORDER', isOpen, onClo
           buyer_name: formData.buyer_name,
           quantity: formData.quantity,
           delivery_address: formData.delivery_address,
-          payment_method: 'UPI',
+          payment_method: 'COD',
           payment_tx_id: null
         });
         window.dispatchEvent(new CustomEvent('artisan_notification_refresh'));
-        onSuccess(`Order #${orderRes?.id || ''} placed successfully for ${formData.quantity} unit(s) of "${product.title}"!`);
+        onSuccess(`Order #${orderRes?.order_id || ''} placed successfully for ${formData.quantity} unit(s) of "${product.title}"!`);
       } else {
         await submitEnquiry({
           product_id: product.id,

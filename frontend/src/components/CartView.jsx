@@ -54,21 +54,6 @@ export function addToCart(product, quantity = 1) {
   saveStoredCart(current);
 }
 
-// Dynamically load Razorpay SDK
-function loadRazorpayScript() {
-  return new Promise((resolve) => {
-    if (window.Razorpay) {
-      resolve(true);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-}
-
 export default function CartView({ user, onSelectMode, onOpenAuth }) {
   const notify = useNotification();
   const [cartItems, setCartItems] = useState(getStoredCart());
@@ -123,12 +108,12 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
   };
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.product.price || 0) * item.quantity, 0);
-  const shipping = subtotal > 1500 || cartItems.length === 0 ? 0 : 99;
+  const shipping = 0; // Match the server total; no delivery fee is charged.
   const total = subtotal + shipping;
 
   const fullDeliveryAddress = `${shippingInfo.address}, ${shippingInfo.city}, ${shippingInfo.state} - ${shippingInfo.pincode}`;
 
-  // Payments are disabled for the local prototype. Submit the order directly.
+  // Cash is collected on delivery; no online payment is claimed here.
   const placeOrderDirectly = async () => {
     if (!user) {
       onOpenAuth('LOGIN');
@@ -157,12 +142,16 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
           buyer_phone: phone.trim(),
           quantity: item.quantity,
           delivery_address: fullDeliveryAddress,
-          payment_method: 'NOT_REQUIRED'
+          payment_method: 'COD'
         });
+        if (!res?.order_id) throw new Error("Order confirmation is missing. Check My Orders before retrying.");
         placedList.push({
           ...item,
-          order_id: res?.id || Math.floor(1000 + Math.random() * 9000)
+          order_id: res.order_id
         });
+        const remaining = cartItems.filter(entry => !placedList.some(placed => placed.product.id === entry.product.id));
+        saveStoredCart(remaining);
+        setCartItems(remaining);
       }
 
       setCompletedOrders(placedList);
@@ -175,59 +164,6 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
       notify.error('Order placement failed: ' + (err.message || 'Error occurred'));
     } finally {
       setPlacingOrder(false);
-    }
-  };
-
-  // Launch Live Razorpay Standard Checkout SDK Modal
-  const handleRazorpayGateway = async () => {
-    if (!user) {
-      onOpenAuth('LOGIN');
-      return;
-    }
-
-    setPlacingOrder(true);
-    try {
-      const scriptLoaded = await loadRazorpayScript();
-
-      if (!scriptLoaded) {
-        notify.warning("Razorpay SDK offline, falling back to simulated secure checkout.");
-        await placeOrderDirectly();
-        return;
-      }
-
-      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_ArtisanAI2026';
-
-      const options = {
-        key: razorpayKey,
-        amount: total * 100,
-        currency: "INR",
-        name: "Artisan AI Marketplace",
-        description: `Direct Artisan Purchase (${cartItems.length} Craft Items)`,
-        image: "/artisan-logo.png",
-        handler: function (response) {
-          placeOrderDirectly();
-        },
-        prefill: {
-          name: shippingInfo.fullName,
-          email: user.email || 'buyer@artisan.ai',
-          contact: shippingInfo.phone
-        },
-        theme: { color: "#A6533B" },
-        modal: {
-          ondismiss: function () {
-            setPlacingOrder(false);
-            notify.info("Razorpay payment modal closed");
-          }
-        }
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-      // Don't reset placingOrder here — modal.ondismiss handles it
-    } catch (err) {
-      notify.warning('Razorpay unavailable, placing order directly.');
-      setPlacingOrder(false);
-      placeOrderDirectly();
     }
   };
 
@@ -250,7 +186,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
           <p className="text-xs sm:text-sm text-stone-600 font-medium leading-relaxed">
             {checkoutStep === 1 && 'Review items in your shopping bag and proceed to shipping.'}
             {checkoutStep === 2 && 'Enter delivery address and recipient details.'}
-            {checkoutStep === 3 && 'Your order is confirmed. No payment is required for this local demo.'}
+            {checkoutStep === 3 && 'Your order is confirmed. Pay in cash when your order is delivered.'}
           </p>
         </div>
         <button
@@ -299,7 +235,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
               Order Confirmed!
             </h2>
             <p className="text-xs text-[#6B6B6B]">
-              Payment: <span className="font-bold text-[#1C1C1C]">Not required for this local demo</span>
+              Payment: <span className="font-bold text-[#1C1C1C]">Cash on Delivery</span>
             </p>
           </div>
 
@@ -315,7 +251,7 @@ export default function CartView({ user, onSelectMode, onOpenAuth }) {
             <div>
               <span className="font-bold text-[#6B6B6B] block">Order Summary:</span>
               <div className="mt-1 space-y-1">
-                <p><span className="text-[#6B6B6B]">Payment:</span> <span className="font-bold text-[#A6533B]">Not required</span></p>
+                <p><span className="text-[#6B6B6B]">Payment:</span> <span className="font-bold text-[#A6533B]">Pay on delivery</span></p>
                 <p><span className="text-[#6B6B6B]">Estimated Delivery:</span> <span className="font-bold text-[#1C1C1C]">3 - 5 Business Days</span></p>
                 <p><span className="text-[#6B6B6B]">Craft Guarantee:</span> <span className="font-semibold text-emerald-800">100% Handcrafted Fair Trade</span></p>
               </div>

@@ -66,7 +66,7 @@ def _check_alembic_head():
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "alembic.ini"
         )
         if not os.path.exists(alembic_ini):
-            return
+            raise RuntimeError("alembic.ini is required for production startup")
         from backend.app.database import engine, is_sqlite
         if is_sqlite:
             return  # Only enforce against PostgreSQL
@@ -81,12 +81,12 @@ def _check_alembic_head():
                     f"Database schema is out of date — run `alembic upgrade head` before deploying. "
                     f"Current={current}, Expected={heads}"
                 )
-    except ImportError:
-        pass
+    except ImportError as e:
+        raise RuntimeError("Alembic is required for production startup") from e
     except RuntimeError:
         raise
     except Exception as e:
-        logging.getLogger("artisan_ai").warning("Alembic migration check skipped: %s", e)
+        raise RuntimeError("Unable to verify production database schema") from e
 
 
 @asynccontextmanager
@@ -118,12 +118,12 @@ app = FastAPI(
 
 
 cors_origins = get_cors_origins()
-if "https://artisan-ai-gamma.vercel.app" not in cors_origins:
+if ENVIRONMENT != "production" and "https://artisan-ai-gamma.vercel.app" not in cors_origins:
     cors_origins.append("https://artisan-ai-gamma.vercel.app")
 
 cors_kwargs = {
     "allow_origins": cors_origins,
-    "allow_origin_regex": r"https://.*\.vercel\.app|https://.*\.onrender\.com|https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.\d+\.\d+\.\d+)(:\d+)?",
+    "allow_origin_regex": None if ENVIRONMENT == "production" else r"https://.*\.vercel\.app|https://.*\.onrender\.com|https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.\d+\.\d+\.\d+)(:\d+)?",
     "allow_credentials": True,
     "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     "allow_headers": ["*"],
@@ -180,13 +180,16 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Catches all exceptions, preserving HTTP status codes while guaranteeing CORS headers."""
-    origin = request.headers.get("origin") or "*"
-    headers = {
-        "Access-Control-Allow-Origin": origin,
-        "Access-Control-Allow-Credentials": "true",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "*",
-    }
+    origin = request.headers.get("origin")
+    headers = {}
+    # Error responses must follow the same origin policy as successful responses.
+    import re
+    allowed = origin and (origin in cors_origins or (
+        cors_kwargs["allow_origin_regex"] and re.fullmatch(cors_kwargs["allow_origin_regex"], origin)
+    ))
+    if allowed:
+        headers = {"Access-Control-Allow-Origin": origin,
+                   "Access-Control-Allow-Credentials": "true", "Vary": "Origin"}
 
     if isinstance(exc, (HTTPException, StarletteHTTPException)):
         if getattr(exc, "headers", None):
