@@ -101,6 +101,7 @@ jobs:
           cd frontend
           npm ci
           npm test
+          npm audit
           npm run lint
 
       - name: Build Production Frontend Bundle
@@ -144,7 +145,7 @@ jobs:
           exit 1
 
   check-mobile:
-    name: Mobile Typecheck
+    name: Mobile Tests, Typecheck and Bundle
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -155,8 +156,16 @@ jobs:
           cache-dependency-path: mobile/package-lock.json
       - run: npm ci --ignore-scripts
         working-directory: mobile
-      - run: npx tsc --noEmit
+      - run: npm test
         working-directory: mobile
+      - run: npm audit --omit=dev --audit-level=high
+        working-directory: mobile
+      - run: npm run typecheck
+        working-directory: mobile
+      - run: npx expo export --platform android --output-dir /tmp/artisan-android-export
+        working-directory: mobile
+        env:
+          CI: '1'
 
   test-migrations:
     name: Fresh PostgreSQL Migration Gate

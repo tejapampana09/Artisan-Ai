@@ -1,22 +1,18 @@
-export function redirectSystemPath({
-  path,
-  initial,
-}: {
-  path: string;
-  initial: boolean;
-}) {
+/** Reject malformed external URLs before Expo Router's legacy query decoder runs. */
+export function redirectSystemPath({ path }: { path: string; initial: boolean }): string {
+  if (typeof path !== 'string' || path.length > 8192) return '/';
   try {
-    if (!path) return path;
-
-    // Handle Google OAuth custom scheme redirect
-    // (e.g. "artisanai://oauth2redirect?code=..." or "artisanai:/oauth2redirect?code=...")
-    if (path.includes("oauth2redirect")) {
-      const queryIndex = path.indexOf("?");
-      const query = queryIndex !== -1 ? path.substring(queryIndex) : "";
+    // Validate only: returning the original preserves encoded slashes and query values.
+    // The platform decoder fails immediately instead of recursively repairing bad UTF-8.
+    decodeURIComponent(path);
+    // Preserve the existing Google OAuth custom-scheme callback normalization.
+    if (path.includes('oauth2redirect')) {
+      const queryIndex = path.indexOf('?');
+      const query = queryIndex !== -1 ? path.substring(queryIndex) : '';
       return `/oauth2redirect${query}`;
     }
-  } catch (err) {
-    console.warn("native-intent redirectSystemPath error:", err);
+    return path;
+  } catch {
+    return '/';
   }
-  return path;
 }
